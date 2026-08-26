@@ -15,6 +15,7 @@ use neutral_ir::CompilationArtifacts;
 use std::sync::Arc;
 
 mod frontend;
+mod language;
 mod semantics;
 
 /// The frozen v0 language-behavior contract used for captured compilation.

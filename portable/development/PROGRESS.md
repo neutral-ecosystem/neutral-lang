@@ -18,6 +18,10 @@ None recorded.
 
 ## Completed log
 
+- [*] 2026-08-27: Centralized frozen language spellings and the protected-core
+  namespace in compiler-private `language.rs`; lexer, parser, and semantics now
+  share the same named constants rather than repeating source-language strings.
+
 - [*] 2026-08-27: Completed Stage 3, Slice 3.1. Froze nine identifier,
   protected-name, comment, punctuation, newline, and string-boundary cases;
   implemented exact private trivia retention, full ASCII name classification,

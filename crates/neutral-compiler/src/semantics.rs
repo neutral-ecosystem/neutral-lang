@@ -2,6 +2,7 @@
 
 //! Private minimal semantic validation and public IR lowering.
 
+use crate::language::names;
 use crate::{CompilationFailure, CompilationFailureDetail, LANGUAGE_BEHAVIOR_VERSION};
 use neutral_core::{
     ByteSpan, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity, ResultClass,
@@ -56,14 +57,14 @@ pub(super) fn lower(
     limits: StructuralLimits,
 ) -> Result<CompilationArtifacts, SemanticError> {
     let _retained_private_trivia_count = unit.trivia_count();
-    if is_protected_name(&unit.module.name) {
+    if names::is_protected_name(&unit.module.name) {
         return Err(SemanticError {
             code: PROTECTED_NAME,
             span: unit.module.name_span,
         });
     }
     validate_snake_name(&unit.module.name, unit.module.name_span)?;
-    if is_protected_name(&unit.binding.name) {
+    if names::is_protected_name(&unit.binding.name) {
         return Err(SemanticError {
             code: PROTECTED_NAME,
             span: unit.binding.name_span,
@@ -175,30 +176,11 @@ fn classify_ascii_name(value: &str) -> AsciiNameCategory {
     }
 }
 
-/// Returns whether a binding name belongs to the frozen protected core set.
-fn is_protected_name(value: &str) -> bool {
-    matches!(
-        value,
-        "num"
-            | "string"
-            | "bool"
-            | "List"
-            | "Ref"
-            | "neu"
-            | "module"
-            | "use"
-            | "record"
-            | "true"
-            | "false"
-            | "null"
-            | "ref"
-    )
-}
-
 #[cfg(test)]
 /// Unit tests for minimal semantic validation and lowering.
 mod tests {
-    use super::{AsciiNameCategory, classify_ascii_name, is_protected_name, validate_snake_name};
+    use super::{AsciiNameCategory, classify_ascii_name, validate_snake_name};
+    use crate::language::names;
     use neutral_core::ByteSpan;
 
     #[test]
@@ -218,8 +200,8 @@ mod tests {
     #[test]
     /// Verifies the frozen core namespace cannot be redeclared by a binding.
     fn unit_semantics_protects_core_names() {
-        assert!(is_protected_name("num"));
-        assert!(is_protected_name("module"));
-        assert!(!is_protected_name("answer"));
+        assert!(names::is_protected_name(names::NUM));
+        assert!(names::is_protected_name(names::MODULE));
+        assert!(!names::is_protected_name("answer"));
     }
 }

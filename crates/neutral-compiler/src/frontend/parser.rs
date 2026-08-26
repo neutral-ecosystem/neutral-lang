@@ -5,6 +5,7 @@
 use super::{
     FrontendError, LexedSource, ParsedBinding, ParsedModule, ParsedUnit, Token, TokenKind, span,
 };
+use crate::language::names;
 use neutral_core::ByteSpan;
 
 /// Parses one exact minimal document or returns no private syntax model.
@@ -170,9 +171,9 @@ impl Parser<'_> {
 fn identifier_spelling(token: &Token) -> Option<String> {
     match &token.kind {
         TokenKind::Identifier(value) | TokenKind::ProtectedName(value) => Some(value.clone()),
-        TokenKind::Neu => Some("neu".to_owned()),
-        TokenKind::Module => Some("module".to_owned()),
-        TokenKind::Num => Some("num".to_owned()),
+        TokenKind::Neu => Some(names::NEU.to_owned()),
+        TokenKind::Module => Some(names::MODULE.to_owned()),
+        TokenKind::Num => Some(names::NUM.to_owned()),
         _ => None,
     }
 }

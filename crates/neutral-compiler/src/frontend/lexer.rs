@@ -5,6 +5,7 @@
 use super::{
     FrontendError, LexedSource, PhysicalLineEnd, Token, TokenKind, Trivia, TriviaKind, span,
 };
+use crate::language::names;
 
 /// UTF-8 byte-order mark accepted only once at byte offset zero.
 const UTF8_BOM: &[u8; 3] = b"\xef\xbb\xbf";
@@ -79,13 +80,16 @@ pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
                     value.is_ascii_alphanumeric() || *value == b'_'
                 });
                 let text = ascii_text(&source[index..end], index)?;
-                let kind = match text.as_str() {
-                    "neu" => TokenKind::Neu,
-                    "module" => TokenKind::Module,
-                    "num" => TokenKind::Num,
-                    "string" | "bool" | "List" | "Ref" | "use" | "record" | "true" | "false"
-                    | "null" | "ref" => TokenKind::ProtectedName(text),
-                    _ => TokenKind::Identifier(text),
+                let kind = if text == names::NEU {
+                    TokenKind::Neu
+                } else if text == names::MODULE {
+                    TokenKind::Module
+                } else if text == names::NUM {
+                    TokenKind::Num
+                } else if names::is_protected_name(&text) {
+                    TokenKind::ProtectedName(text)
+                } else {
+                    TokenKind::Identifier(text)
                 };
                 tokens.push(token(kind, index, end));
                 index = end;
