@@ -174,26 +174,21 @@ fn test_suite(suite: &str) -> Result<(), String> {
     match suite {
         "all" | "unit" => {
             run_cargo(&["test", "--workspace", "--all-targets"])?;
-            let profile = if active_stage()? >= 2 {
-                "stage2"
-            } else {
-                "stage1"
-            };
-            verify_test_counts(profile)
+            verify_test_counts(&active_test_profile()?)
         }
         "smoke" => run_shell_smoke(),
         "integration" | "system" | "conformance" | "property" | "security"
             if active_stage()? >= 2 =>
         {
-            run_stage2_test_filter(suite)
+            run_active_test_filter(suite)
         }
         "integration" | "system" | "conformance" | "property" | "security" => not_active(suite),
         _ => Err(format!("unknown or empty test suite: {suite}")),
     }
 }
 
-/// Runs one active Stage 2 cross-package suite by stable test-name prefix.
-fn run_stage2_test_filter(suite: &str) -> Result<(), String> {
+/// Runs one active cross-package suite by stable test-name prefix.
+fn run_active_test_filter(suite: &str) -> Result<(), String> {
     run_cargo(&[
         "test",
         "--package",
@@ -206,7 +201,7 @@ fn run_stage2_test_filter(suite: &str) -> Result<(), String> {
 /// Runs an active bounded fuzz-smoke selection or rejects future campaigns.
 fn fuzz(mode: &str) -> Result<(), String> {
     match mode {
-        "smoke" if active_stage()? >= 2 => run_stage2_test_filter("fuzz_smoke"),
+        "smoke" if active_stage()? >= 2 => run_active_test_filter("fuzz_smoke"),
         _ => not_active(&format!("fuzz mode {mode}")),
     }
 }
@@ -259,11 +254,16 @@ fn validate_test_minimums(
         let discovered = discovered.get(category).copied().unwrap_or_default();
         if discovered < *minimum {
             return Err(format!(
-                "active Stage 1 suite {category} requires at least {minimum} tests; discovered {discovered}"
+                "active suite {category} requires at least {minimum} tests; discovered {discovered}"
             ));
         }
     }
     Ok(())
+}
+
+/// Returns the test-minimum profile matching the configured active stage.
+fn active_test_profile() -> Result<String, String> {
+    Ok(format!("stage{}", active_stage()?))
 }
 
 /// Reads the simple Stage 1 test-minimum configuration owned by the workspace.
@@ -310,7 +310,7 @@ fn ci(profile: &str) -> Result<(), String> {
 }
 
 /// Runs the Stage 1 gate and writes a generated summary beneath the result root.
-fn run_ci_gate(profile: &str, include_stage2: bool) -> Result<(), String> {
+fn run_ci_gate(profile: &str, include_behavior: bool) -> Result<(), String> {
     verify_environment()?;
     run_cargo(&["metadata", "--format-version", "1", "--no-deps"])?;
     check_boundaries()?;
@@ -326,9 +326,14 @@ fn run_ci_gate(profile: &str, include_stage2: bool) -> Result<(), String> {
     ])?;
     run_cargo(&["check", "--workspace", "--all-targets", "--locked"])?;
     run_cargo(&["test", "--workspace", "--all-targets"])?;
-    verify_test_counts(if include_stage2 { "stage2" } else { "stage1" })?;
+    let test_profile = if include_behavior {
+        active_test_profile()?
+    } else {
+        "stage1".to_owned()
+    };
+    verify_test_counts(&test_profile)?;
     run_shell_smoke()?;
-    if include_stage2 {
+    if include_behavior {
         for suite in [
             "integration",
             "system",
@@ -336,7 +341,7 @@ fn run_ci_gate(profile: &str, include_stage2: bool) -> Result<(), String> {
             "property",
             "security",
         ] {
-            run_stage2_test_filter(suite)?;
+            run_active_test_filter(suite)?;
         }
         fuzz("smoke")?;
     }
@@ -697,7 +702,7 @@ mod tests {
         let manifest =
             super::environment_manifest().expect("environment manifest should be available");
         assert!(manifest.contains("rustc 1.97.1"));
-        assert!(manifest.contains("\"active_stage\": 2"));
+        assert!(manifest.contains("\"active_stage\": 3"));
     }
 
     #[test]

@@ -96,12 +96,13 @@ Stage 10: release qualification
 
 ## Current gate status
 
-Stage 1, the mandatory normative contract freeze, and Stage 2 are complete.
-The frozen minimal source now compiles through private frontend and semantics
-into authoritative logical IR, source maps, provenance, derivation, immutable
-reader views, and generic probe output. The newly active Stage 2 PR suites pass.
-The next work is Stage 3, Slice 3.1: complete source text, identifiers, comments,
-and boundaries. The approved [freeze manifest](spec/v0/freeze.toml) identifies
+Stage 1, the mandatory normative contract freeze, Stage 2, and Stage 3 Slice
+3.1 are complete. The private frontend now retains exact nonsemantic trivia,
+enforces frozen ASCII name and token boundaries, and carries accepted source
+through unchanged logical IR, source facts, reader views, and probe output.
+Frozen boundary diagnostics and the expanded active PR suites pass. The next
+work is Stage 3, Slice 3.2: strings and Booleans. The approved
+[freeze manifest](spec/v0/freeze.toml) identifies
 the v0 contract family, and the
 [contract question ledger](development/CONTRACT-QUESTION-LEDGER.md) records the
 resolutions accepted during review.

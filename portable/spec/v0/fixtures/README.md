@@ -4,6 +4,11 @@ These fixtures cover the reduced, domain-neutral v0 language.
 
 ## Positive source
 
+- [comments-equivalent.neu](positive/comments-equivalent.neu) proves line and
+  block comments remain nonsemantic while their source regions stay observable
+  only through source facts.
+- [identifier-boundaries.neu](positive/identifier-boundaries.neu) freezes valid
+  ASCII `snake_case` segments containing digits.
 - [minimal-core.neu](positive/minimal-core.neu) is the Stage 2 atomic source
   path: one module with one exact `num` binding and a complete frozen oracle.
 - [immutable-value-reuse.neu](positive/immutable-value-reuse.neu) distinguishes
@@ -15,6 +20,14 @@ These fixtures cover the reduced, domain-neutral v0 language.
 
 ## Negative source
 
+- [invalid-identifier.neu](negative/invalid-identifier.neu),
+  [protected-name.neu](negative/protected-name.neu),
+  [punctuation-rejection.neu](negative/punctuation-rejection.neu),
+  [unterminated-block-comment.neu](negative/unterminated-block-comment.neu),
+  [unsupported-symbol.neu](negative/unsupported-symbol.neu),
+  [comment-newline-ambiguity.neu](negative/comment-newline-ambiguity.neu), and
+  [string-token-boundary.neu](negative/string-token-boundary.neu) freeze the
+  Stage 3 Slice 3.1 name, comment, punctuation, and token-boundary failures.
 - [missing-module-header.neu](negative/missing-module-header.neu) freezes the
   missing-module-header diagnostic.
 - [unsupported-language-version.neu](negative/unsupported-language-version.neu)

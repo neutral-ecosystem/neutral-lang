@@ -28,6 +28,34 @@ mod tests {
     const UNSUPPORTED_VERSION: &[u8] = include_bytes!(
         "../../../portable/spec/v0/fixtures/negative/unsupported-language-version.neu"
     );
+    /// Frozen comment-equivalent positive fixture.
+    const COMMENTS_SOURCE: &[u8] =
+        include_bytes!("../../../portable/spec/v0/fixtures/positive/comments-equivalent.neu");
+    /// Frozen identifier-boundary positive fixture.
+    const IDENTIFIER_SOURCE: &[u8] =
+        include_bytes!("../../../portable/spec/v0/fixtures/positive/identifier-boundaries.neu");
+    /// Frozen invalid identifier fixture.
+    const INVALID_IDENTIFIER: &[u8] =
+        include_bytes!("../../../portable/spec/v0/fixtures/negative/invalid-identifier.neu");
+    /// Frozen protected-name fixture.
+    const PROTECTED_NAME: &[u8] =
+        include_bytes!("../../../portable/spec/v0/fixtures/negative/protected-name.neu");
+    /// Frozen unterminated block-comment fixture.
+    const UNTERMINATED_COMMENT: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/negative/unterminated-block-comment.neu"
+    );
+    /// Frozen unsupported-symbol fixture.
+    const UNSUPPORTED_SYMBOL: &[u8] =
+        include_bytes!("../../../portable/spec/v0/fixtures/negative/unsupported-symbol.neu");
+    /// Frozen punctuation-rejection fixture.
+    const PUNCTUATION_REJECTION: &[u8] =
+        include_bytes!("../../../portable/spec/v0/fixtures/negative/punctuation-rejection.neu");
+    /// Frozen comment/newline ambiguity fixture.
+    const COMMENT_NEWLINE: &[u8] =
+        include_bytes!("../../../portable/spec/v0/fixtures/negative/comment-newline-ambiguity.neu");
+    /// Frozen adjacent string-token boundary fixture.
+    const STRING_BOUNDARY: &[u8] =
+        include_bytes!("../../../portable/spec/v0/fixtures/negative/string-token-boundary.neu");
 
     /// Returns deterministic bounds for the minimal Stage 2 source slice.
     fn limits() -> StructuralLimits {
@@ -49,6 +77,15 @@ mod tests {
     fn compile_reader(source: &[u8]) -> ValidatedDocument {
         ValidatedDocument::from_compiler_output(compile_artifacts(source))
             .expect("compiler artifacts should validate")
+    }
+
+    /// Compiles one rejected source and returns its complete bounded failure.
+    fn compile_failure(source: &[u8]) -> neutral_compiler::CompilationFailure {
+        let request = CompilationRequest::new(source.to_vec(), limits(), CancellationToken::new());
+        match compile(request).expect("bounded source should capture") {
+            CompilationResult::Failure(failure) => failure,
+            CompilationResult::Success(_) => panic!("negative source unexpectedly produced IR"),
+        }
     }
 
     #[test]
@@ -174,6 +211,186 @@ mod tests {
     }
 
     #[test]
+    /// Verifies all frozen Slice 3.1 positive source facts and reader output.
+    fn conformance_stage3_source_text_positive_oracles() {
+        let cases = [
+            (
+                COMMENTS_SOURCE,
+                "minimal",
+                "answer",
+                227,
+                (130, 144),
+                (170, 226),
+                (170, 173),
+                (198, 204),
+                (224, 226),
+            ),
+            (
+                IDENTIFIER_SOURCE,
+                "minimal2_core",
+                "answer2_value3",
+                95,
+                (50, 70),
+                (71, 94),
+                (71, 74),
+                (75, 89),
+                (92, 94),
+            ),
+        ];
+        for (source, module, name, length, module_span, declaration, type_span, name_span, value) in
+            cases
+        {
+            let artifacts = compile_artifacts(source);
+            let mapping = artifacts
+                .source_map()
+                .entry(neutral_ir::ElementId::new(0))
+                .expect("frozen declaration should have a source mapping");
+            assert_eq!(artifacts.logical_document().module().module_name(), module);
+            assert_eq!(artifacts.logical_document().declarations()[0].name(), name);
+            assert_eq!(artifacts.source_map().source_byte_length(), length);
+            assert_eq!(span_pair(artifacts.source_map().module_span()), module_span);
+            assert_eq!(span_pair(mapping.declaration_span()), declaration);
+            assert_eq!(span_pair(mapping.type_span()), type_span);
+            assert_eq!(span_pair(mapping.name_span()), name_span);
+            assert_eq!(span_pair(mapping.value_span()), value);
+            let summary = summarize(&compile_reader(source));
+            assert_eq!(summary.module(), module);
+            assert_eq!(summary.declarations(), [format!("{name}: num = 42/1")]);
+        }
+    }
+
+    #[test]
+    /// Verifies frozen Slice 3.1 failures expose exact classes, codes, and spans.
+    fn conformance_stage3_source_text_negative_oracles() {
+        let cases = [
+            (
+                INVALID_IDENTIFIER,
+                ResultClass::Semantics,
+                "NEU-NAME-001",
+                (57, 69),
+            ),
+            (
+                PROTECTED_NAME,
+                ResultClass::Semantics,
+                "NEU-NAME-002",
+                (69, 75),
+            ),
+            (
+                UNTERMINATED_COMMENT,
+                ResultClass::Syntax,
+                "NEU-LEX-002",
+                (81, 97),
+            ),
+            (
+                UNSUPPORTED_SYMBOL,
+                ResultClass::Syntax,
+                "NEU-LEX-001",
+                (80, 81),
+            ),
+            (
+                PUNCTUATION_REJECTION,
+                ResultClass::Syntax,
+                "NEU-LEX-001",
+                (64, 65),
+            ),
+            (
+                COMMENT_NEWLINE,
+                ResultClass::Syntax,
+                "NEU-SYN-003",
+                (132, 133),
+            ),
+            (
+                STRING_BOUNDARY,
+                ResultClass::Syntax,
+                "NEU-SYN-003",
+                (55, 56),
+            ),
+        ];
+        for (source, class, code, expected_span) in cases {
+            let failure = compile_failure(source);
+            assert_eq!(failure.class(), class);
+            assert_eq!(failure.diagnostics()[0].code().as_str(), code);
+            assert_eq!(
+                span_pair(failure.diagnostics()[0].primary().span()),
+                expected_span
+            );
+        }
+    }
+
+    #[test]
+    /// Verifies inserting or removing comments preserves all logical IR.
+    fn property_comment_insertion_and_removal_preserves_logical_ir() {
+        let plain = compile_artifacts(MINIMAL_SOURCE);
+        let commented = compile_artifacts(COMMENTS_SOURCE);
+        assert!(
+            plain
+                .logical_document()
+                .logically_equivalent(commented.logical_document())
+        );
+        assert_ne!(plain.source_map(), commented.source_map());
+    }
+
+    #[test]
+    /// Verifies generated ASCII identifier spellings match the frozen categories.
+    fn property_ascii_identifier_boundaries_match_the_frozen_grammar() {
+        for name in ["a", "a0", "a_b", "answer2_value3"] {
+            let source = format!("neu \"0.1\"\nmodule {name}\nnum value = 42\n");
+            assert!(matches!(
+                compile(CompilationRequest::new(
+                    source.into_bytes(),
+                    limits(),
+                    CancellationToken::new(),
+                )),
+                Ok(CompilationResult::Success(_))
+            ));
+        }
+        for name in ["A", "_a", "a_", "a__b", "2a", "a-B", "é"] {
+            let source = format!("neu \"0.1\"\nmodule {name}\nnum value = 42\n");
+            assert!(matches!(
+                compile(CompilationRequest::new(
+                    source.into_bytes(),
+                    limits(),
+                    CancellationToken::new(),
+                )),
+                Ok(CompilationResult::Failure(_))
+            ));
+        }
+    }
+
+    #[test]
+    /// Verifies unterminated and misleading nested comments fail deterministically.
+    fn security_misleading_comments_fail_safely_and_deterministically() {
+        let misleading = b"neu \"0.1\"\nmodule minimal\nnum answer = 42 /* outer /* inner */ */\n";
+        for source in [UNTERMINATED_COMMENT, misleading.as_slice()] {
+            let first = compile_failure(source);
+            let second = compile_failure(source);
+            assert_eq!(first, second);
+            assert!(first.diagnostics().len() <= limits().diagnostics() as usize);
+        }
+    }
+
+    #[test]
+    /// Verifies planned Stage 3 grammar remains rejected until its own slice.
+    fn security_future_grammar_is_not_accepted_by_source_text_work() {
+        let future: [&[u8]; 4] = [
+            include_bytes!("../../../portable/spec/v0/fixtures/negative/visibility-modifier.neu"),
+            include_bytes!("../../../portable/spec/v0/fixtures/negative/reassignment.neu"),
+            include_bytes!("../../../portable/spec/v0/fixtures/negative/namespace-declaration.neu"),
+            include_bytes!("../../../portable/spec/v0/fixtures/negative/mut-modifier.neu"),
+        ];
+        for source in future {
+            assert!(matches!(
+                compile(CompilationRequest::new(
+                    source.to_vec(),
+                    limits(),
+                    CancellationToken::new(),
+                )),
+                Ok(CompilationResult::Failure(_))
+            ));
+        }
+    }
+
+    #[test]
     /// Verifies formatting changes preserve meaning, symbol identity, and fingerprint.
     fn property_formatting_preserves_minimal_logical_identity() {
         let formatted = b"neu \"0.1\"\r\nmodule minimal\r\n\r\nnum\tanswer = 00042";
@@ -271,5 +488,10 @@ mod tests {
     fn smoke_minimal_end_to_end_path_remains_runnable() {
         let summary = summarize(&compile_reader(MINIMAL_SOURCE));
         assert_eq!(summary.declarations().len(), 1);
+    }
+
+    /// Converts a checked byte span into a compact assertion pair.
+    fn span_pair(span: neutral_core::ByteSpan) -> (u64, u64) {
+        (span.start(), span.end())
     }
 }

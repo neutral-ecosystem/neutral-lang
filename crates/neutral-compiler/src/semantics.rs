@@ -55,14 +55,21 @@ pub(super) fn lower(
     source_length: usize,
     limits: StructuralLimits,
 ) -> Result<CompilationArtifacts, SemanticError> {
-    validate_snake_name(&unit.module.name, unit.module.span)?;
-    validate_snake_name(&unit.binding.name, unit.binding.name_span)?;
+    let _retained_private_trivia_count = unit.trivia_count();
+    if is_protected_name(&unit.module.name) {
+        return Err(SemanticError {
+            code: PROTECTED_NAME,
+            span: unit.module.name_span,
+        });
+    }
+    validate_snake_name(&unit.module.name, unit.module.name_span)?;
     if is_protected_name(&unit.binding.name) {
         return Err(SemanticError {
             code: PROTECTED_NAME,
             span: unit.binding.name_span,
         });
     }
+    validate_snake_name(&unit.binding.name, unit.binding.name_span)?;
 
     let number =
         ExactNumber::from_unsigned_integer(&unit.binding.number).map_err(|_| SemanticError {
@@ -126,19 +133,45 @@ pub(super) fn lower(
 
 /// Validates the frozen ASCII `snake_name` category without locale behavior.
 fn validate_snake_name(value: &str, span: ByteSpan) -> Result<(), SemanticError> {
-    let valid = !value.is_empty()
-        && value.split('_').all(|segment| {
-            let mut bytes = segment.bytes();
-            bytes.next().is_some_and(|byte| byte.is_ascii_lowercase())
-                && bytes.all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
-        });
-    if valid {
+    if classify_ascii_name(value) == AsciiNameCategory::Snake {
         Ok(())
     } else {
         Err(SemanticError {
             code: INVALID_NAME,
             span,
         })
+    }
+}
+
+/// Complete frozen ASCII identifier categories, independent of locale behavior.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum AsciiNameCategory {
+    /// `[a-z][a-z0-9]*("_"[a-z][a-z0-9]*)*`.
+    Snake,
+    /// `[A-Z][A-Za-z0-9]*`.
+    Upper,
+    /// Any other spelling.
+    Invalid,
+}
+
+/// Classifies one spelling into the frozen ASCII identifier categories.
+fn classify_ascii_name(value: &str) -> AsciiNameCategory {
+    let snake = !value.is_empty()
+        && value.split('_').all(|segment| {
+            let mut bytes = segment.bytes();
+            bytes.next().is_some_and(|byte| byte.is_ascii_lowercase())
+                && bytes.all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
+        });
+    if snake {
+        return AsciiNameCategory::Snake;
+    }
+    let mut bytes = value.bytes();
+    let upper = bytes.next().is_some_and(|byte| byte.is_ascii_uppercase())
+        && bytes.all(|byte| byte.is_ascii_alphanumeric());
+    if upper {
+        AsciiNameCategory::Upper
+    } else {
+        AsciiNameCategory::Invalid
     }
 }
 
@@ -165,7 +198,7 @@ fn is_protected_name(value: &str) -> bool {
 #[cfg(test)]
 /// Unit tests for minimal semantic validation and lowering.
 mod tests {
-    use super::{is_protected_name, validate_snake_name};
+    use super::{AsciiNameCategory, classify_ascii_name, is_protected_name, validate_snake_name};
     use neutral_core::ByteSpan;
 
     #[test]
@@ -175,6 +208,11 @@ mod tests {
         assert!(validate_snake_name("answer_two2", span).is_ok());
         assert!(validate_snake_name("Answer", span).is_err());
         assert!(validate_snake_name("answer__two", span).is_err());
+        assert_eq!(classify_ascii_name("Record2"), AsciiNameCategory::Upper);
+        assert_eq!(
+            classify_ascii_name("Record_Name"),
+            AsciiNameCategory::Invalid
+        );
     }
 
     #[test]

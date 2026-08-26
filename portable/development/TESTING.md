@@ -196,6 +196,15 @@ repeated/concurrent determinism, malformed-input safety, and absence of
 authoritative IR on every failure. Broader language and performance cases remain
 inactive until their owning stages.
 
+### Stage 3 Slice 3.1 active tests
+
+The active Stage 3 profile extends every Stage 2 gate with frozen positive and
+negative identifier/comment/boundary oracles. It verifies exact source facts,
+reader/probe visibility, comment insertion/removal invariance, generated ASCII
+identifier boundaries, stable unterminated and misleading-comment failures,
+and continued rejection of future grammar. Later scalar and performance suites
+remain inactive until their owning slices.
+
 ### Activation milestones
 
 | Stage | Newly active evidence |

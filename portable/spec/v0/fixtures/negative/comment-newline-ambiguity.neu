@@ -1,0 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module minimal
+num answer // declaration cannot continue through this line comment
+= 42

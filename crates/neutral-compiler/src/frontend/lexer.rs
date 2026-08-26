@@ -1,21 +1,31 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Raw lexer for the Stage 2 minimal frontend slice.
+//! Raw lexer for source text, exact trivia, and physical line boundaries.
 
-use super::{FrontendError, PhysicalLineEnd, Token, TokenKind, span};
+use super::{
+    FrontendError, LexedSource, PhysicalLineEnd, Token, TokenKind, Trivia, TriviaKind, span,
+};
 
 /// UTF-8 byte-order mark accepted only once at byte offset zero.
 const UTF8_BOM: &[u8; 3] = b"\xef\xbb\xbf";
 
 /// Lexes exact captured bytes while retaining physical newline tokens and spans.
-pub(super) fn lex(source: &[u8]) -> Result<Vec<Token>, FrontendError> {
+pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
     validate_source_text(source)?;
     let mut tokens = Vec::new();
+    let mut trivia = Vec::new();
     let mut index = usize::from(source.starts_with(UTF8_BOM)) * UTF8_BOM.len();
 
     while index < source.len() {
         match source[index] {
-            b' ' | b'\t' => index += 1,
+            b' ' | b'\t' => {
+                let end = consume_while(source, index, |value| matches!(value, b' ' | b'\t'));
+                trivia.push(Trivia {
+                    kind: TriviaKind::HorizontalWhitespace,
+                    span: span(index, end),
+                });
+                index = end;
+            }
             b'\n' => {
                 tokens.push(token(
                     TokenKind::PhysicalLineEnd(PhysicalLineEnd::LineFeed),
@@ -42,6 +52,23 @@ pub(super) fn lex(source: &[u8]) -> Result<Vec<Token>, FrontendError> {
                 tokens.push(token(TokenKind::Equals, index, index + 1));
                 index += 1;
             }
+            b'/' if source.get(index + 1) == Some(&b'/') => {
+                let end = consume_while(source, index + 2, |value| !matches!(value, b'\n' | b'\r'));
+                trivia.push(Trivia {
+                    kind: TriviaKind::LineComment,
+                    span: span(index, end),
+                });
+                index = end;
+            }
+            b'/' if source.get(index + 1) == Some(&b'*') => {
+                let (end, line_ends) = block_comment(source, index)?;
+                trivia.push(Trivia {
+                    kind: TriviaKind::BlockComment,
+                    span: span(index, end),
+                });
+                tokens.extend(line_ends);
+                index = end;
+            }
             b'"' => {
                 let (next, value) = string_literal(source, index)?;
                 tokens.push(token(TokenKind::StringLiteral(value), index, next));
@@ -56,23 +83,72 @@ pub(super) fn lex(source: &[u8]) -> Result<Vec<Token>, FrontendError> {
                     "neu" => TokenKind::Neu,
                     "module" => TokenKind::Module,
                     "num" => TokenKind::Num,
+                    "string" | "bool" | "List" | "Ref" | "use" | "record" | "true" | "false"
+                    | "null" | "ref" => TokenKind::ProtectedName(text),
                     _ => TokenKind::Identifier(text),
                 };
                 tokens.push(token(kind, index, end));
                 index = end;
             }
             byte if byte.is_ascii_digit() => {
-                let end = consume_while(source, index, u8::is_ascii_digit);
+                let end = consume_while(source, index, |value| {
+                    value.is_ascii_alphanumeric() || *value == b'_'
+                });
                 let value = ascii_text(&source[index..end], index)?;
-                tokens.push(token(TokenKind::Number(value), index, end));
+                let kind = if value.bytes().all(|byte| byte.is_ascii_digit()) {
+                    TokenKind::Number(value)
+                } else {
+                    TokenKind::Identifier(value)
+                };
+                tokens.push(token(kind, index, end));
                 index = end;
             }
-            _ => return Err(FrontendError::other(span(index, index + 1))),
+            _ => return Err(FrontendError::unsupported_symbol(span(index, index + 1))),
         }
     }
 
     tokens.push(token(TokenKind::EndOfFile, source.len(), source.len()));
-    Ok(tokens)
+    Ok(LexedSource { tokens, trivia })
+}
+
+/// Reads one non-nesting block comment and retains any physical line endings.
+fn block_comment(source: &[u8], start: usize) -> Result<(usize, Vec<Token>), FrontendError> {
+    let mut index = start + 2;
+    let mut line_ends = Vec::new();
+    while index < source.len() {
+        if source.get(index) == Some(&b'*') && source.get(index + 1) == Some(&b'/') {
+            return Ok((index + 2, line_ends));
+        }
+        match source[index] {
+            b'\n' => {
+                line_ends.push(token(
+                    TokenKind::PhysicalLineEnd(PhysicalLineEnd::LineFeed),
+                    index,
+                    index + 1,
+                ));
+                index += 1;
+            }
+            b'\r' => {
+                let end = if source.get(index + 1) == Some(&b'\n') {
+                    index + 2
+                } else {
+                    index + 1
+                };
+                let kind = if end == index + 2 {
+                    PhysicalLineEnd::CarriageReturnLineFeed
+                } else {
+                    PhysicalLineEnd::CarriageReturn
+                };
+                line_ends.push(token(TokenKind::PhysicalLineEnd(kind), index, end));
+                index = end;
+            }
+            _ => index += 1,
+        }
+    }
+    Err(FrontendError::unterminated_block_comment(span(
+        start,
+        source.len(),
+    )))
 }
 
 /// Rejects malformed UTF-8, unescaped NUL, and a BOM outside byte offset zero.
@@ -108,12 +184,12 @@ fn string_literal(source: &[u8], start: usize) -> Result<(usize, String), Fronte
                 return Ok((end + 1, value));
             }
             b'\n' | b'\r' | b'\\' => {
-                return Err(FrontendError::other(span(start, end + 1)));
+                return Err(FrontendError::malformed_boundary(span(start, end + 1)));
             }
             _ => end += 1,
         }
     }
-    Err(FrontendError::other(span(start, source.len())))
+    Err(FrontendError::malformed_boundary(span(start, source.len())))
 }
 
 /// Advances over bytes while the supplied ASCII predicate remains true.

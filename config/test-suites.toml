@@ -19,6 +19,16 @@ property = 3
 security = 2
 fuzz_smoke = 1
 
+[stage3.minimum]
+unit = 1
+smoke = 1
+integration = 1
+system = 1
+conformance = 4
+property = 5
+security = 4
+fuzz_smoke = 1
+
 [planned]
 performance = 3
 fuzz = 3

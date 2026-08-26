@@ -1,23 +1,29 @@
 # Neutral v0 development progress
 
-Status: Stage 2 minimal vertical slice complete.
+Status: Stage 3 Slice 3.1 complete.
 
 ## Current focus
 
-- Stage: Stage 2, Step 4
-- Status: Stage 2 complete; PR validation gate passing
-- Last updated: 2026-08-26
+- Stage: Stage 3, Slice 3.1
+- Status: Source text, identifiers, comments, and boundaries complete
+- Last updated: 2026-08-27
 
 ## Next actions
 
-- [ ] Continue with Stage 3, Slice 3.1: source text, identifiers, comments, and
-  boundaries.
+- [ ] Continue with Stage 3, Slice 3.2: strings and Booleans.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-08-27: Completed Stage 3, Slice 3.1. Froze nine identifier,
+  protected-name, comment, punctuation, newline, and string-boundary cases;
+  implemented exact private trivia retention, full ASCII name classification,
+  stable boundary diagnostics, and raw newline behavior; and verified logical
+  comment invariance, source facts, reader/probe output, deterministic hostile
+  comment rejection, limits, and future-grammar exclusion.
 
 - [*] 2026-08-26: Completed Stage 2, Step 4 and Stage 2 validation. The minimal
   fixture now validates names/types/exact values, receives frozen NHT-backed

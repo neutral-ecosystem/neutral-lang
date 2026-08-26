@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu/* language keyword boundary */ "0.1" // exact header version
+/* module
+   boundary */
+module minimal
+
+// declaration boundary
+num/* type/name boundary */ answer = /* exact value */42

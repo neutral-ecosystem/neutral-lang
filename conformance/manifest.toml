@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "stage2-fixtures-frozen"
+status = "stage3-slice1-fixtures-frozen"
 
 # No source behavior is active in Stage 1. These entries are an inventory only;
 # they are not executable compiler expectations until their listed stage.
@@ -25,6 +25,69 @@ id = "unsupported-language-version"
 fixture = "portable/spec/v0/fixtures/negative/unsupported-language-version.neu"
 oracle = "conformance/oracles/stage2/unsupported-language-version.toml"
 active_from_stage = 2
+status = "frozen"
+
+[[case]]
+id = "comments-equivalent"
+fixture = "portable/spec/v0/fixtures/positive/comments-equivalent.neu"
+oracle = "conformance/oracles/stage3/comments-equivalent.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "identifier-boundaries"
+fixture = "portable/spec/v0/fixtures/positive/identifier-boundaries.neu"
+oracle = "conformance/oracles/stage3/identifier-boundaries.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "invalid-identifier"
+fixture = "portable/spec/v0/fixtures/negative/invalid-identifier.neu"
+oracle = "conformance/oracles/stage3/invalid-identifier.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "protected-name"
+fixture = "portable/spec/v0/fixtures/negative/protected-name.neu"
+oracle = "conformance/oracles/stage3/protected-name.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "unterminated-block-comment"
+fixture = "portable/spec/v0/fixtures/negative/unterminated-block-comment.neu"
+oracle = "conformance/oracles/stage3/unterminated-block-comment.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "unsupported-symbol"
+fixture = "portable/spec/v0/fixtures/negative/unsupported-symbol.neu"
+oracle = "conformance/oracles/stage3/unsupported-symbol.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "punctuation-rejection"
+fixture = "portable/spec/v0/fixtures/negative/punctuation-rejection.neu"
+oracle = "conformance/oracles/stage3/punctuation-rejection.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "comment-newline-ambiguity"
+fixture = "portable/spec/v0/fixtures/negative/comment-newline-ambiguity.neu"
+oracle = "conformance/oracles/stage3/comment-newline-ambiguity.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "string-token-boundary"
+fixture = "portable/spec/v0/fixtures/negative/string-token-boundary.neu"
+oracle = "conformance/oracles/stage3/string-token-boundary.toml"
+active_from_stage = 3
 status = "frozen"
 
 [[case]]

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Private orchestration for the minimal captured-source frontend.
+//! Private orchestration for captured source, trivia, layout, and parsing.
 
 use neutral_core::{
     ByteSpan, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity, SourceContentDigest,
@@ -15,6 +15,41 @@ mod parser;
 const MISSING_MODULE_HEADER: &str = "NEU-SYN-001";
 /// Frozen diagnostic code for an unsupported language version.
 const UNSUPPORTED_LANGUAGE_VERSION: &str = "NEU-SYN-002";
+/// Frozen diagnostic code for a malformed lexical or layout boundary.
+const MALFORMED_BOUNDARY: &str = "NEU-SYN-003";
+/// Frozen diagnostic code for an explicitly unsupported source symbol.
+const UNSUPPORTED_SYMBOL: &str = "NEU-LEX-001";
+/// Frozen diagnostic code for a block comment without a closing delimiter.
+const UNTERMINATED_BLOCK_COMMENT: &str = "NEU-LEX-002";
+
+/// Raw lexing result with nonsemantic trivia kept separate from parser tokens.
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct LexedSource {
+    /// Semantic and physical-line tokens in original byte order.
+    tokens: Vec<Token>,
+    /// Exact source trivia retained privately for later formatter work.
+    trivia: Vec<Trivia>,
+}
+
+/// One exact nonsemantic source region.
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct Trivia {
+    /// Trivia category.
+    kind: TriviaKind,
+    /// Exact half-open span in captured source bytes.
+    span: ByteSpan,
+}
+
+/// Compiler-private source trivia categories.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum TriviaKind {
+    /// One or more spaces or horizontal tabs.
+    HorizontalWhitespace,
+    /// A `//` comment excluding its physical line ending.
+    LineComment,
+    /// A non-nesting `/* ... */` comment.
+    BlockComment,
+}
 
 /// A raw or normalized token retained only inside the compiler frontend.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -34,6 +69,8 @@ enum TokenKind {
     Module,
     /// The `num` core-type keyword.
     Num,
+    /// A protected core spelling appearing where an identifier can be diagnosed.
+    ProtectedName(String),
     /// An ASCII identifier retained for later semantic validation.
     Identifier(String),
     /// A raw, unescaped string body used only for the version header.
@@ -72,6 +109,15 @@ pub(super) struct ParsedUnit {
     pub(super) module: ParsedModule,
     /// Parsed minimal numeric binding.
     pub(super) binding: ParsedBinding,
+    /// Exact compiler-private trivia, never lowered into logical IR.
+    trivia: Vec<Trivia>,
+}
+
+impl ParsedUnit {
+    /// Returns the number of privately retained trivia regions.
+    pub(super) fn trivia_count(&self) -> usize {
+        self.trivia.len()
+    }
 }
 
 /// A compiler-private parsed module header.
@@ -81,6 +127,8 @@ pub(super) struct ParsedModule {
     pub(super) name: String,
     /// Exact span of the complete module header.
     pub(super) span: ByteSpan,
+    /// Exact span of the module name.
+    pub(super) name_span: ByteSpan,
 }
 
 /// A compiler-private parsed minimal numeric binding.
@@ -116,6 +164,12 @@ enum FrontendErrorKind {
     MissingModuleHeader,
     /// The quoted language version was not exactly `0.1`.
     UnsupportedLanguageVersion,
+    /// A malformed token or raw-newline boundary.
+    MalformedBoundary,
+    /// A symbol excluded by the frozen v0 grammar.
+    UnsupportedSymbol,
+    /// A block comment reached EOF without closing.
+    UnterminatedBlockComment,
     /// Source is invalid or beyond the currently active minimal slice.
     Other,
 }
@@ -137,6 +191,30 @@ impl FrontendError {
         }
     }
 
+    /// Creates a stable malformed-boundary failure.
+    fn malformed_boundary(span: ByteSpan) -> Self {
+        Self {
+            kind: FrontendErrorKind::MalformedBoundary,
+            span,
+        }
+    }
+
+    /// Creates a stable unsupported-symbol failure.
+    fn unsupported_symbol(span: ByteSpan) -> Self {
+        Self {
+            kind: FrontendErrorKind::UnsupportedSymbol,
+            span,
+        }
+    }
+
+    /// Creates a stable unterminated-block-comment failure.
+    fn unterminated_block_comment(span: ByteSpan) -> Self {
+        Self {
+            kind: FrontendErrorKind::UnterminatedBlockComment,
+            span,
+        }
+    }
+
     /// Creates a bounded non-frozen failure for inactive or malformed syntax.
     fn other(span: ByteSpan) -> Self {
         Self {
@@ -149,7 +227,10 @@ impl FrontendError {
     pub(super) const fn detail(&self) -> crate::CompilationFailureDetail {
         match self.kind {
             FrontendErrorKind::MissingModuleHeader
-            | FrontendErrorKind::UnsupportedLanguageVersion => {
+            | FrontendErrorKind::UnsupportedLanguageVersion
+            | FrontendErrorKind::MalformedBoundary
+            | FrontendErrorKind::UnsupportedSymbol
+            | FrontendErrorKind::UnterminatedBlockComment => {
                 crate::CompilationFailureDetail::SyntaxRejected
             }
             FrontendErrorKind::Other => crate::CompilationFailureDetail::FrontendUnavailable,
@@ -161,6 +242,9 @@ impl FrontendError {
         let code = match self.kind {
             FrontendErrorKind::MissingModuleHeader => MISSING_MODULE_HEADER,
             FrontendErrorKind::UnsupportedLanguageVersion => UNSUPPORTED_LANGUAGE_VERSION,
+            FrontendErrorKind::MalformedBoundary => MALFORMED_BOUNDARY,
+            FrontendErrorKind::UnsupportedSymbol => UNSUPPORTED_SYMBOL,
+            FrontendErrorKind::UnterminatedBlockComment => UNTERMINATED_BLOCK_COMMENT,
             FrontendErrorKind::Other => return Vec::new(),
         };
         let code = DiagnosticCode::new(code).expect("frozen diagnostic code must be valid ASCII");
@@ -179,7 +263,7 @@ impl FrontendError {
 pub(super) fn parse(source: &[u8]) -> Result<ParsedUnit, FrontendError> {
     let raw = lexer::lex(source)?;
     let normalized = layout::normalize(raw)?;
-    parser::parse(&normalized)
+    parser::parse(normalized)
 }
 
 /// Creates a checked source span from validated in-memory indexes.
@@ -194,7 +278,7 @@ fn span(start: usize, end: usize) -> ByteSpan {
 #[cfg(test)]
 /// Tests for the complete private minimal frontend pipeline.
 mod tests {
-    use super::{FrontendErrorKind, TokenKind, layout, lexer, parse};
+    use super::{FrontendErrorKind, PhysicalLineEnd, TokenKind, TriviaKind, layout, lexer, parse};
 
     /// Parses one exact captured source byte sequence.
     fn parse_source(source: &[u8]) -> Result<super::ParsedUnit, super::FrontendError> {
@@ -206,13 +290,45 @@ mod tests {
     fn lexer_retains_minimal_fixture_spans_and_physical_newlines() {
         let source =
             include_bytes!("../../../../portable/spec/v0/fixtures/positive/minimal-core.neu");
-        let tokens = lexer::lex(source).expect("frozen minimal fixture should lex");
-        assert!(matches!(tokens[0].kind, TokenKind::Neu));
-        assert_eq!(tokens[0].span.start(), 0);
-        assert_eq!(tokens[0].span.end(), 3);
-        assert!(tokens.iter().any(|token| matches!(
+        let source = lexer::lex(source).expect("frozen minimal fixture should lex");
+        assert!(matches!(source.tokens[0].kind, TokenKind::Neu));
+        assert_eq!(source.tokens[0].span.start(), 0);
+        assert_eq!(source.tokens[0].span.end(), 3);
+        assert!(source.tokens.iter().any(|token| matches!(
             token.kind,
             TokenKind::PhysicalLineEnd(super::PhysicalLineEnd::LineFeed)
+        )));
+    }
+
+    #[test]
+    /// Verifies whitespace and both comment forms retain exact private trivia.
+    fn lexer_retains_nonsemantic_trivia_without_parser_tokens() {
+        let source = lexer::lex(b"neu/*a*/ \"0.1\"//b\nmodule minimal\nnum answer = 42")
+            .expect("commented source should lex");
+        assert!(source.trivia.iter().any(|trivia| {
+            trivia.kind == TriviaKind::BlockComment
+                && (trivia.span.start(), trivia.span.end()) == (3, 8)
+        }));
+        assert!(source.trivia.iter().any(|trivia| {
+            trivia.kind == TriviaKind::LineComment
+                && (trivia.span.start(), trivia.span.end()) == (14, 17)
+        }));
+        assert!(
+            source
+                .trivia
+                .iter()
+                .any(|trivia| trivia.kind == TriviaKind::HorizontalWhitespace)
+        );
+    }
+
+    #[test]
+    /// Verifies a multiline block comment still exposes raw physical newlines.
+    fn lexer_retains_physical_newlines_inside_block_comments() {
+        let source = lexer::lex(b"/* first\r\nsecond */")
+            .expect("terminated multiline block comment should lex");
+        assert!(source.tokens.iter().any(|token| matches!(
+            token.kind,
+            TokenKind::PhysicalLineEnd(PhysicalLineEnd::CarriageReturnLineFeed)
         )));
     }
 
@@ -221,16 +337,17 @@ mod tests {
     fn layout_normalizes_minimal_fixture_line_ends() {
         let source = b"neu \"0.1\"\r\nmodule minimal\rnum answer = 42";
         let raw = lexer::lex(source).expect("source should lex");
-        let tokens = layout::normalize(raw).expect("layout should normalize");
+        let source = layout::normalize(raw).expect("layout should normalize");
         assert_eq!(
-            tokens
+            source
+                .tokens
                 .iter()
                 .filter(|token| matches!(token.kind, TokenKind::LineEnd))
                 .count(),
             3
         );
         assert!(matches!(
-            tokens.last().map(|token| &token.kind),
+            source.tokens.last().map(|token| &token.kind),
             Some(TokenKind::EndOfFile)
         ));
     }

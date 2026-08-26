@@ -145,6 +145,87 @@ required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "pro
 review_status = "oracle-approved"
 
 [[fixture]]
+id = "comments-equivalent"
+source = "portable/spec/v0/fixtures/positive/comments-equivalent.neu"
+source_sha256 = "5f792f9bfc7e5c73b73c3ab3663e307496d01f73fd2ab0c66114146120247c52"
+expected_outcome = "accept"
+active_from_stage = 3
+required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "identifier-boundaries"
+source = "portable/spec/v0/fixtures/positive/identifier-boundaries.neu"
+source_sha256 = "17a862b9285f0a2184a61e6d20d3b0e49a95d6a981a0279fa3e0e09cc0b3c507"
+expected_outcome = "accept"
+active_from_stage = 3
+required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "invalid-identifier"
+source = "portable/spec/v0/fixtures/negative/invalid-identifier.neu"
+source_sha256 = "6c702b86c74eae74678d9e08c055f6b12fe59afca0df314bf74776784f73ea49"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "protected-name"
+source = "portable/spec/v0/fixtures/negative/protected-name.neu"
+source_sha256 = "6b27025076abc4a02d1d26f69d01a34189cb6cad3ac11d323cfa5a4414a2610f"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "unterminated-block-comment"
+source = "portable/spec/v0/fixtures/negative/unterminated-block-comment.neu"
+source_sha256 = "435fccfaaa1d737e3b6552583e07d2284d32a7482214761173bc9b2cc732849a"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "unsupported-symbol"
+source = "portable/spec/v0/fixtures/negative/unsupported-symbol.neu"
+source_sha256 = "5896cc29ed084b7975fa9f73665406ed3115c7bfe57101134806b2bc9c1f56c4"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "punctuation-rejection"
+source = "portable/spec/v0/fixtures/negative/punctuation-rejection.neu"
+source_sha256 = "48a2d4c4603db7bfaf37bc528375972fccfc0840f2edb0c54b2e755313063455"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "comment-newline-ambiguity"
+source = "portable/spec/v0/fixtures/negative/comment-newline-ambiguity.neu"
+source_sha256 = "b7f772e7f63723f5d96b50bf2a8efc6ddb7148aa35dfbacb71b63b389c0f4753"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "string-token-boundary"
+source = "portable/spec/v0/fixtures/negative/string-token-boundary.neu"
+source_sha256 = "783e0b4d4d60f74e57f2c31dfc8dfa568a6efdd5864defc3898fc38399bc7c8f"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
 id = "missing-module-header"
 source = "portable/spec/v0/fixtures/negative/missing-module-header.neu"
 source_sha256 = "cc67a03da0a6322e38c444f63ee7672a00df1cd613c44dcbd549b166a0bf61dd"

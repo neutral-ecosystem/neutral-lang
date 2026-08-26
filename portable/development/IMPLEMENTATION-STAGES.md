@@ -238,23 +238,23 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Slice 3.1: complete source text, identifiers, comments, and boundaries
 
-- [ ] Add fixtures/oracles for identifiers, protected names, punctuation
+- [*] Add fixtures/oracles for identifiers, protected names, punctuation
       rejection, comments, strings' lexical boundaries, newline/comment
       ambiguity, and explicit unsupported symbols.
-- [ ] Implement full ASCII identifier categories and protected names.
-- [ ] Implement line and non-nesting block comments as nonsemantic trivia.
-- [ ] Complete raw newline/layout behavior for currently accepted scalar
+- [*] Implement full ASCII identifier categories and protected names.
+- [*] Implement line and non-nesting block comments as nonsemantic trivia.
+- [*] Complete raw newline/layout behavior for currently accepted scalar
       declarations, including malformed delimiter recovery needed by them.
-- [ ] Preserve trivia privately for later formatter work without lowering it.
-- [ ] Carry every behavior through diagnostics, source facts, reader-observable
+- [*] Preserve trivia privately for later formatter work without lowering it.
+- [*] Carry every behavior through diagnostics, source facts, reader-observable
       unchanged semantics, limits, and conformance.
 
 #### Slice validation
 
-- [ ] Comment insertion/removal preserves logical IR.
-- [ ] Identifier and boundary property tests match frozen grammar.
-- [ ] Unterminated/misleading comments fail safely and deterministically.
-- [ ] No future grammar production has become accepted.
+- [*] Comment insertion/removal preserves logical IR.
+- [*] Identifier and boundary property tests match frozen grammar.
+- [*] Unterminated/misleading comments fail safely and deterministically.
+- [*] No future grammar production has become accepted.
 
 ### Slice 3.2: strings and Booleans
 

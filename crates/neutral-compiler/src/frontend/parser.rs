@@ -2,13 +2,20 @@
 
 //! Recovery-free parser for the Stage 2 minimal document shape.
 
-use super::{FrontendError, ParsedBinding, ParsedModule, ParsedUnit, Token, TokenKind, span};
+use super::{
+    FrontendError, LexedSource, ParsedBinding, ParsedModule, ParsedUnit, Token, TokenKind, span,
+};
 use neutral_core::ByteSpan;
 
 /// Parses one exact minimal document or returns no private syntax model.
-pub(super) fn parse(tokens: &[Token]) -> Result<ParsedUnit, FrontendError> {
-    let mut parser = Parser { tokens, index: 0 };
-    parser.parse_unit()
+pub(super) fn parse(source: LexedSource) -> Result<ParsedUnit, FrontendError> {
+    let mut parser = Parser {
+        tokens: &source.tokens,
+        index: 0,
+    };
+    let mut unit = parser.parse_unit()?;
+    unit.trivia = source.trivia;
+    Ok(unit)
 }
 
 /// Cursor over normalized compiler-private tokens.
@@ -57,6 +64,7 @@ impl Parser<'_> {
             version_span,
             module,
             binding,
+            trivia: Vec::new(),
         })
     }
 
@@ -64,15 +72,14 @@ impl Parser<'_> {
     fn parse_module(&mut self) -> Result<ParsedModule, FrontendError> {
         let start = self.expect_simple(&TokenKind::Module)?.span.start();
         let name_token = self.next().ok_or_else(|| self.other_here())?;
-        let name = match &name_token.kind {
-            TokenKind::Identifier(value) => value.clone(),
-            _ => return Err(FrontendError::other(name_token.span)),
-        };
+        let name = identifier_spelling(&name_token)
+            .ok_or_else(|| FrontendError::other(name_token.span))?;
         let end = name_token.span.end();
         self.expect_simple(&TokenKind::LineEnd)?;
         Ok(ParsedModule {
             name,
             span: ByteSpan::new(start, end).expect("ordered module tokens must form a valid span"),
+            name_span: name_token.span,
         })
     }
 
@@ -81,10 +88,8 @@ impl Parser<'_> {
         let type_span = self.expect_simple(&TokenKind::Num)?.span;
         let name_token = self.next().ok_or_else(|| self.other_here())?;
         let name_span = name_token.span;
-        let name = match &name_token.kind {
-            TokenKind::Identifier(value) => value.clone(),
-            _ => return Err(FrontendError::other(name_token.span)),
-        };
+        let name = identifier_spelling(&name_token)
+            .ok_or_else(|| FrontendError::other(name_token.span))?;
         self.expect_simple(&TokenKind::Equals)?;
         let value_token = self.next().ok_or_else(|| self.other_here())?;
         let value_span = value_token.span;
@@ -158,5 +163,16 @@ impl Parser<'_> {
             .or_else(|| self.tokens.last().map(|token| token.span))
             .unwrap_or_else(|| span(0, 0));
         FrontendError::other(location)
+    }
+}
+
+/// Returns a spelling from any token that can occur in an identifier position.
+fn identifier_spelling(token: &Token) -> Option<String> {
+    match &token.kind {
+        TokenKind::Identifier(value) | TokenKind::ProtectedName(value) => Some(value.clone()),
+        TokenKind::Neu => Some("neu".to_owned()),
+        TokenKind::Module => Some("module".to_owned()),
+        TokenKind::Num => Some("num".to_owned()),
+        _ => None,
     }
 }
