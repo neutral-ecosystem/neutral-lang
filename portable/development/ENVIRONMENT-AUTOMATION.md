@@ -232,9 +232,10 @@ No compiler/conformance/performance placeholder is intentionally failed.
 - publish only after independent release approval.
 
 Untrusted pull-request code never runs with write-capable release credentials.
-The nightly workflow has no time-based schedule: it runs only after a push to
-`main` or an explicit manual dispatch. Workflow permissions are least privilege
-and reviewed for PR, branch, manual-dispatch, and release events.
+Continuous integration runs after every push to `main` (and may be manually
+dispatched). Release qualification runs after every pushed tag (and may be
+manually dispatched). Workflow permissions are least privilege and reviewed for
+branch, tag, and manual-dispatch events.
 
 ## Stage 1 acceptance
 

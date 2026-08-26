@@ -3,6 +3,8 @@
 name: Release qualification
 
 on:
+  push:
+    tags: ['*']
   workflow_dispatch:
 
 permissions:
@@ -17,4 +19,3 @@ jobs:
         with:
           components: rustfmt, clippy
       - run: cargo xtask ci release
-

@@ -18,6 +18,12 @@ None recorded.
 
 ## Completed log
 
+- [*] 2026-08-26: Configured continuous integration for every push to `main`
+  and release qualification for every pushed tag; both workflows retain manual
+  dispatch.
+- [*] 2026-08-26: Renamed the main-branch workflow from `stage1.yml` to
+  `ci.yml`; it remains the continuous-integration workflow.
+
 - [*] 2026-08-26: Moved automation names and output-category prefixes into the
   dedicated `xtask/src/constants.rs` module, including `[info]`, `[error]`,
   `[warn]`, and `[manifest]` linkage.
