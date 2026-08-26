@@ -410,6 +410,15 @@ fn check_boundaries() -> Result<(), String> {
             "neutral-core",
             "neutral-ir",
             "neutral-vocabulary",
+            "block-buffer",
+            "cfg-if",
+            "cpufeatures",
+            "crypto-common",
+            "digest",
+            "generic-array",
+            "sha2",
+            "typenum",
+            "version_check",
         ]),
     )?;
 
@@ -423,6 +432,15 @@ fn check_boundaries() -> Result<(), String> {
             "neutral-ir",
             "neutral-reader",
             "neutral-vocabulary",
+            "block-buffer",
+            "cfg-if",
+            "cpufeatures",
+            "crypto-common",
+            "digest",
+            "generic-array",
+            "sha2",
+            "typenum",
+            "version_check",
         ]),
     )?;
 
@@ -450,7 +468,7 @@ fn direct_dependency_policy() -> BTreeMap<&'static str, BTreeSet<&'static str>> 
             "neutral-compiler",
             set(["neutral-core", "neutral-ir", "neutral-vocabulary"]),
         ),
-        ("neutral-core", set([])),
+        ("neutral-core", set(["sha2"])),
         ("neutral-ir", set(["neutral-core"])),
         ("neutral-probe", set(["neutral-core", "neutral-reader"])),
         (
@@ -615,6 +633,13 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    /// Verifies that core may depend only on the reviewed SHA-256 value utility.
+    fn core_allows_only_the_reviewed_sha256_dependency() {
+        let actual = BTreeSet::from(["sha2".to_owned()]);
+        assert!(validate_direct_dependencies("neutral-core", &actual, &set(["sha2"])).is_ok());
     }
 
     #[test]

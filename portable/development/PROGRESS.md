@@ -5,12 +5,12 @@ Status: Stage 2 fixture/oracle activation in progress.
 ## Current focus
 
 - Stage: Stage 2, Step 1
-- Status: contract freeze approved; fixture/oracle activation complete
+- Status: contract freeze approved; Stage 2 Step 2 complete
 - Last updated: 2026-08-26
 
 ## Next actions
 
-- [ ] Continue with Stage 2, Step 2: foundational core, capture, and diagnostics.
+- [ ] Continue with Stage 2, Step 3: minimal frontend slice.
 
 ## Blockers
 
@@ -18,6 +18,11 @@ None recorded.
 
 ## Completed log
 
+- [*] 2026-08-26: Completed Stage 2, Step 2. Added typed exact SHA-256 source
+  identity, checked spans and line/column derivation, deterministic diagnostics
+  and limits, cancellation/result classes, immutable capture, and the I/O-free
+  compilation boundary. The SHA-256 dependency and its transitive closure are
+  explicitly reviewed by automation policy.
 - [*] 2026-08-26: Approved the v0 contract freeze with the repository owner,
   promoted the governing specifications and author guide, assigned the `0.1.0`
   contract family, and completed Stage 2, Step 1 with three frozen source cases

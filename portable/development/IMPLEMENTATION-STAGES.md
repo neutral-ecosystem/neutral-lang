@@ -168,21 +168,21 @@ num answer = 42
 
 ### Step 2: implement foundational core, capture, and diagnostics
 
-- [ ] Implement typed logical source identity, exact byte content digest, checked
+- [*] Implement typed logical source identity, exact byte content digest, checked
       half-open spans, line/column derivation, diagnostics, limits, cancellation,
       and result classes.
-- [ ] Implement `CompilationRequest`, resolver contract, immutable
+- [*] Implement `CompilationRequest`, resolver contract, immutable
       `CapturedCompilation`, `capture`, I/O-free `compile_captured`, and
       convenience `compile`.
-- [ ] Apply the accepted digest/transcript contract and test vectors.
-- [ ] Ensure any diagnostic/fatal/cancellation result exposes no authoritative IR.
+- [*] Apply the accepted digest/transcript contract and test vectors.
+- [*] Ensure any diagnostic/fatal/cancellation result exposes no authoritative IR.
 
 #### Step validation
 
-- [ ] UTF-8/CRLF/BOM span and digest vectors pass.
-- [ ] Diagnostic ordering/rendering is deterministic, bounded, and safe.
-- [ ] Capture never falls back to ambient authority.
-- [ ] Recompiling one captured object is mutation-free and deterministic.
+- [*] UTF-8/CRLF/BOM span and digest vectors pass.
+- [*] Diagnostic ordering/rendering is deterministic, bounded, and safe.
+- [*] Capture never falls back to ambient authority.
+- [*] Recompiling one captured object is mutation-free and deterministic.
 
 ### Step 3: implement the minimal frontend slice
 
