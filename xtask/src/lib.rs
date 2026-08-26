@@ -317,13 +317,17 @@ fn command_output(command: &str, arguments: &[&str]) -> Result<String, String> {
         .map_err(|error| format!("{command} emitted non-UTF-8 output: {error}"))
 }
 
-/// Creates a unique generated-evidence directory under the approved result root.
+/// Creates a unique generated-evidence directory beneath the relevant CI profile.
 fn unique_result_directory(profile: &str) -> Result<PathBuf, String> {
-    let root = result_root()?;
-    fs::create_dir_all(&root)
-        .map_err(|error| format!("could not create {}: {error}", root.display()))?;
+    let profile_root = result_root()?.join("ci").join(profile);
+    fs::create_dir_all(&profile_root).map_err(|error| {
+        format!(
+            "could not create CI evidence directory {}: {error}",
+            profile_root.display()
+        )
+    })?;
     for suffix in 0_u16..1000 {
-        let directory = root.join(format!("{profile}-{}-{suffix}", std::process::id()));
+        let directory = profile_root.join(format!("run-{}-{suffix}", std::process::id()));
         match fs::create_dir(&directory) {
             Ok(()) => return Ok(directory),
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}

@@ -154,24 +154,33 @@ Command rules:
 ## Generated evidence layout
 
 ```text
-test-results/<run-id>/
-├── environment.json
-├── task-summary.json
-├── junit/
-├── coverage/
-├── mutation/
-├── fuzz/
-├── benchmarks/
-├── static-analysis/
-├── dependency/
-├── logs/
-└── quality-report/
+test-results/
+├── bootstrap/
+│   └── environment.json
+├── ci/
+│   ├── stage1/
+│   │   └── run-<process-id>-<sequence>/
+│   │       └── task-summary.json
+│   ├── pr/
+│   ├── nightly/
+│   └── release/
+├── suites/
+│   ├── conformance/
+│   ├── fuzz/
+│   ├── performance/
+│   └── security/
+└── analysis/
+    ├── coverage/
+    ├── dependency/
+    ├── mutation/
+    └── quality-report/
 ```
 
-`run-id` is unique and does not carry semantic identity. Reports identify commit,
-tree cleanliness, toolchain, target, profile, fixture-manifest digest, limits,
-seed, host image, and task status. Sensitive input excerpts and credentials are
-excluded.
+Only directories for executed tasks are created. The CI profile/stage is part of
+the directory path, while `run-<process-id>-<sequence>` is unique and carries no
+semantic identity. Reports identify commit, tree cleanliness, toolchain, target,
+profile, fixture-manifest digest, limits, seed, host image, and task status.
+Sensitive input excerpts and credentials are excluded.
 
 ## CI profiles
 

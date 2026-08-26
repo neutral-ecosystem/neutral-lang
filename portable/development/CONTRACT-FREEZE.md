@@ -1,6 +1,6 @@
 # Neutral v0 normative contract-freeze gate
 
-Status: mandatory pre-implementation gate
+Status: review in progress; not approved
 
 This gate closes the gap between design exploration and production compiler
 behavior. Repository scaffolding and disposable experiments may happen before
@@ -30,7 +30,9 @@ behavior. Contradictory accepted documents fail this gate.
 
 ## Freeze artifact
 
-Create `spec/v0/freeze.toml` in the future implementation repository. It must
+The review draft is at [`../spec/v0/freeze.toml`](../spec/v0/freeze.toml). It
+identifies the current inputs and explicit blockers, but it is not an approval.
+The approved manifest must
 record:
 
 - freeze identifier and approval date;

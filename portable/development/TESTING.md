@@ -90,7 +90,8 @@ Rules:
   benchmark corpus identities.
 - Fuzz targets live only under `fuzz/` and promote confirmed failures into
   deterministic conformance/security regression fixtures.
-- Generated results live only under ignored `test-results/<run-id>/`.
+- Generated results live only under ignored `test-results/`, organized by
+  bootstrap, CI profile/stage, suite, and analysis category.
 - There is no duplicate root `tests/` tree outside its owning Cargo package.
 
 ## Independent probe proof

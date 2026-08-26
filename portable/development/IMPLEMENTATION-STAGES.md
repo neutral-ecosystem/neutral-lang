@@ -133,7 +133,8 @@ Complete and approve every gate in
 accepted identity/fingerprint and vocabulary bundle contracts from
 [IDENTITY-AND-VOCABULARY.md](IDENTITY-AND-VOCABULARY.md).
 
-- [ ] Freeze manifest exists and identifies every governing contract revision.
+- [*] Draft freeze manifest exists and identifies every governing contract
+      revision; it remains unapproved until all listed blocking issues close.
 - [ ] Initial fixture/oracle manifest is reviewed and immutable.
 - [ ] No blocking normative question remains.
 - [ ] Production Stage 2 tasks link frozen requirements and expected evidence.

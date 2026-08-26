@@ -1,0 +1,140 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# This is a review draft, not an approved contract freeze. It identifies the
+# exact inputs that reviewers must approve before Stage 2 can start.
+schema_version = 1
+freeze_id = "neutral-v0-draft-2026-08-26"
+status = "draft"
+created_on = "2026-08-26"
+approval_date = ""
+supersedes = ""
+
+[review]
+approvers = []
+blocking_issues = [
+  "The proposed authoring guide has not been promoted to an accepted guide.",
+  "Contract version identifiers have not been assigned by normative review.",
+  "Initial fixture and oracle corpus has not been reviewed or made immutable.",
+  "Gate A through Gate G review findings have not been recorded or approved.",
+]
+
+[contract_versions]
+language_behavior = "unassigned"
+logical_ir_schema = "unassigned"
+source_map = "unassigned"
+provenance = "unassigned"
+derivation = "unassigned"
+vocabulary_schema = "unassigned"
+vocabulary_bundle_encoding = "unassigned"
+digest_transcript_profile = "unassigned"
+compiler_api = "unassigned"
+reader_api = "unassigned"
+resolver_api = "unassigned"
+diagnostic_catalogue = "unassigned"
+structural_limits_profile = "unassigned"
+
+[fixture_corpus]
+manifest_path = "conformance/manifest.toml"
+manifest_sha256 = "95caec081173718f19223063901c13515e82606123a1fa0bec9af8a96e1de9f7"
+source_fixture_tree_sha256 = "0f4a950692a84b573b4d7e033a8c5e54765fa2cb29123aba3ef5fd3ecf87cfae"
+status = "planned; not immutable"
+
+[[governing_document]]
+path = "portable/spec/v0/architecture.md"
+sha256 = "37c45a4a139b9387f6cc8ef3928ea2b4c45144a910c069ca14214feee8821aa1"
+role = "highest-precedence architecture"
+
+[[governing_document]]
+path = "portable/spec/v0/requirements.md"
+sha256 = "8f3516d21ee704b4b55919cfac8b8a18ef61ea043dc23d3138bd73cf76f14cda"
+role = "requirements"
+
+[[governing_document]]
+path = "portable/spec/v0/decisions/README.md"
+sha256 = "a3c2d10c90696bd95b37f91b09e578b76b03c16f519217b8d3dd43ab6e52cc97"
+role = "accepted decision index"
+
+[[governing_document]]
+path = "portable/spec/v0/decisions"
+sha256 = "directory members listed below"
+role = "accepted decisions"
+
+[[governing_document]]
+path = "portable/spec/v0/decisions/01-governing-boundaries.md"
+sha256 = "7a5266d3be937ba00bd4ed972062ecc79985fc66c2ec28045d590a0eb629f511"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/spec/v0/decisions/02-lexical-source-text.md"
+sha256 = "e83cedd029e205bff1d6b7f241b80fcbb316330869c0d124b49eef022bf65b1e"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/spec/v0/decisions/03-documents-modules-profiles.md"
+sha256 = "a10f34b4d61f6bac08ea682a84ab36f0b13d0e213b0bbfcab4eacf3d7538214c"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/spec/v0/decisions/04-declarations-bindings-names.md"
+sha256 = "460320a2661c47b0fa8605e0abf55d1755ca4ad658493a7da91101c5b3363c6a"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/spec/v0/decisions/05-type-schema-notation.md"
+sha256 = "1443cceb5dcce5615cab58ec9115e9580684eb277641f9bfba695184fd11e6bc"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/spec/v0/decisions/06-literal-values.md"
+sha256 = "e1ba1d5ed2e5a6f17473f4ad198ce94b459d7b4a86a72d1d49da8ddf199af2ab"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/spec/v0/decisions/07-references-relationships.md"
+sha256 = "6018dfc94b0e868c89c03137ac6ecf1099264206b7378acfcf675dcfa4c80000"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/spec/v0/decisions/10-domain-vocabulary.md"
+sha256 = "45957584d77d6d70d19403e8c87233306b29d26b29e6bb1375c137347448f30a"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/spec/v0/decisions/12-security-sensitive-syntax.md"
+sha256 = "09eb144706e1b6f435881fdc38bb16849f91d8aeaa4a5ca58c477d3b7c815b50"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/spec/v0/decisions/13-diagnostics-invalid-syntax.md"
+sha256 = "457224a7c06bf7ac6fd477875b8a9b5770100b13a7c9243d4b26b7f0852021b8"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/spec/v0/decisions/14-documentation-formatting-tools.md"
+sha256 = "e49a3571fb7a4aba1d3d7bb27d8b706f2ac1e34811b5b912ae4489bbeb8af439"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/spec/v0/decisions/15-evolution-conformance.md"
+sha256 = "66fa3fff3acf10f2ea1517d3d7f61ed95cfc071461292b06c229ccf1895c2948"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/spec/v0/syntax.md"
+sha256 = "0859344780c5b7a5d5360ca7bbdd698db3028808fccfcad2f02c9eedb18ef856"
+role = "master syntax checklist"
+
+[[governing_document]]
+path = "portable/spec/v0/proposed-syntax-guide.md"
+sha256 = "7d4182ca56bab728cf76a080ad33e5a6bb61d47a97267746aaa6868f6c250b06"
+role = "proposed authoring guide; blocking until promoted"
+
+[[governing_document]]
+path = "portable/development/IDENTITY-AND-VOCABULARY.md"
+sha256 = "a2c0bf8ae1658dd1ecafe8f51311e50a5822993e6c1d0b582eb7af62952a7026"
+role = "identity and vocabulary encoding contract"
+
+[[governing_document]]
+path = "portable/spec/v0/fixtures/README.md"
+sha256 = "665b6b2971a34c2e77ce355cbfbfc5efb6d05dde26e610cf79e7b707b929a3a3"
+role = "fixture contract"
