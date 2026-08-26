@@ -21,6 +21,8 @@ None recorded.
 - [*] 2026-08-26: Configured continuous integration for every push to `main`
   and release qualification for every pushed tag; both workflows retain manual
   dispatch.
+- [*] 2026-08-26: Upgraded workflow repository checkout steps from v4 to
+  `actions/checkout@v6` for the current credential-handling implementation.
 - [*] 2026-08-26: Renamed the main-branch workflow from `stage1.yml` to
   `ci.yml`; it remains the continuous-integration workflow.
 
