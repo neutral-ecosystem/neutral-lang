@@ -1,6 +1,6 @@
 # Neutral language v0: needed features
 
-Status: proposed v0 requirements
+Status: accepted v0 requirements
 
 This file is the requirements source for the Neutral v0 checklists. It contains
 only features needed to prove the first source-to-IR boundary. It does not plan

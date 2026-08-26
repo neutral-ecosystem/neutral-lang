@@ -1,59 +1,55 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# This is a review draft, not an approved contract freeze. It identifies the
-# exact inputs that reviewers must approve before Stage 2 can start.
+# This approved manifest identifies the exact v0 inputs, contract versions,
+# fixture corpus, and repository-owner approval that permit Stage 2 work.
 schema_version = 1
-freeze_id = "neutral-v0-draft-2026-08-26"
-status = "draft"
+freeze_id = "neutral-v0-0.1.0-2026-08-26"
+status = "approved"
 created_on = "2026-08-26"
-approval_date = ""
+approval_date = "2026-08-26"
 supersedes = ""
 
 [review]
-approvers = []
-blocking_issues = [
-  "The proposed authoring guide has not been promoted to an accepted guide.",
-  "Contract version identifiers have not been assigned by normative review.",
-  "Initial fixture and oracle corpus has not been reviewed or made immutable.",
-  "Gate A through Gate G review findings have not been recorded or approved.",
-]
+question_ledger_path = "portable/development/CONTRACT-QUESTION-LEDGER.md"
+approvers = ["repository owner"]
+blocking_issues = []
 
 [contract_versions]
-language_behavior = "unassigned"
-logical_ir_schema = "unassigned"
-source_map = "unassigned"
-provenance = "unassigned"
-derivation = "unassigned"
-vocabulary_schema = "unassigned"
-vocabulary_bundle_encoding = "unassigned"
-digest_transcript_profile = "unassigned"
-compiler_api = "unassigned"
-reader_api = "unassigned"
-resolver_api = "unassigned"
-diagnostic_catalogue = "unassigned"
-structural_limits_profile = "unassigned"
+language_behavior = "0.1.0"
+logical_ir_schema = "0.1.0"
+source_map = "0.1.0"
+provenance = "0.1.0"
+derivation = "0.1.0"
+vocabulary_schema = "0.1.0"
+vocabulary_bundle_encoding = "0.1.0"
+digest_transcript_profile = "0.1.0"
+compiler_api = "0.1.0"
+reader_api = "0.1.0"
+resolver_api = "0.1.0"
+diagnostic_catalogue = "0.1.0"
+structural_limits_profile = "0.1.0"
 
 [fixture_corpus]
 manifest_path = "conformance/manifest.toml"
-manifest_sha256 = "95caec081173718f19223063901c13515e82606123a1fa0bec9af8a96e1de9f7"
+manifest_sha256 = "ea81005811ee237fe5471097b471784eca3a384dd9f9d67fd1f409f91bdc1c3b"
 fixture_oracle_review_path = "conformance/fixture-oracle-review.toml"
-fixture_oracle_review_sha256 = "e5b28a0f9f79bb2aba761783f7a00d1d1b22fed0cc110798f8aca426051cc8ba"
-source_fixture_tree_sha256 = "0f4a950692a84b573b4d7e033a8c5e54765fa2cb29123aba3ef5fd3ecf87cfae"
-status = "planned; not immutable"
+fixture_oracle_review_sha256 = "bacb53e01a751cebc05743b48167537d39e9a80ed0aedbc32cacb3ce80d9bbac"
+source_fixture_tree_sha256 = "f911118ab9aabd4e9171dff295020d18a2440c9aa2227317b9eb65098ccfbe9a"
+status = "approved initial corpus"
 
 [[governing_document]]
 path = "portable/spec/v0/architecture.md"
-sha256 = "37c45a4a139b9387f6cc8ef3928ea2b4c45144a910c069ca14214feee8821aa1"
+sha256 = "45c6a668697d670ba093307aec54f7078515dcdd25db2ae20daa39ab9897e92e"
 role = "highest-precedence architecture"
 
 [[governing_document]]
 path = "portable/spec/v0/requirements.md"
-sha256 = "8f3516d21ee704b4b55919cfac8b8a18ef61ea043dc23d3138bd73cf76f14cda"
+sha256 = "f3b752f47e2f16bead6dc2ac83e18c90b06fea9225c9a0b91002228d1255b408"
 role = "requirements"
 
 [[governing_document]]
 path = "portable/spec/v0/decisions/README.md"
-sha256 = "a3c2d10c90696bd95b37f91b09e578b76b03c16f519217b8d3dd43ab6e52cc97"
+sha256 = "a39f2ac3025b0c3d822e286d436eac934b275c9d5b276ec912292d696efd7339"
 role = "accepted decision index"
 
 [[governing_document]]
@@ -123,20 +119,25 @@ role = "accepted decision"
 
 [[governing_document]]
 path = "portable/spec/v0/syntax.md"
-sha256 = "0859344780c5b7a5d5360ca7bbdd698db3028808fccfcad2f02c9eedb18ef856"
+sha256 = "b904512aca75951fdc30eea3f2ba87099d47582f05f2cb41953b83d1fffa864c"
 role = "master syntax checklist"
 
 [[governing_document]]
 path = "portable/spec/v0/proposed-syntax-guide.md"
-sha256 = "7d4182ca56bab728cf76a080ad33e5a6bb61d47a97267746aaa6868f6c250b06"
-role = "proposed authoring guide; blocking until promoted"
+sha256 = "8018a447310c21cc265ab4769915b5192720df00beaacfdc59bd4871eb32b3ec"
+role = "accepted authoring guide"
 
 [[governing_document]]
 path = "portable/development/IDENTITY-AND-VOCABULARY.md"
-sha256 = "a2c0bf8ae1658dd1ecafe8f51311e50a5822993e6c1d0b582eb7af62952a7026"
+sha256 = "1221f8bb140e4042981354a434cbaf81cde3747ff9bee431360e31772281b671"
 role = "identity and vocabulary encoding contract"
 
 [[governing_document]]
 path = "portable/spec/v0/fixtures/README.md"
-sha256 = "8e4f329c398fefdf0bc2c5be95b996345fe0b406d8b0d6d133bc4efcbd8dbfd2"
+sha256 = "5c85308ff2837680fd4768bc7c48d18e6611f4956247fa187c6a6a75260d635f"
 role = "fixture contract"
+
+[[governing_document]]
+path = "portable/spec/v0/choices.md"
+sha256 = "fabb015bb5d90dbe9c1f5b6f51b7ad1bbdfa9760bb767dd0981ec99fc809a494"
+role = "accepted v0 choices"

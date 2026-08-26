@@ -133,11 +133,10 @@ Complete and approve every gate in
 accepted identity/fingerprint and vocabulary bundle contracts from
 [IDENTITY-AND-VOCABULARY.md](IDENTITY-AND-VOCABULARY.md).
 
-- [*] Draft freeze manifest exists and identifies every governing contract
-      revision; it remains unapproved until all listed blocking issues close.
-- [ ] Initial fixture/oracle manifest is reviewed and immutable.
-- [ ] No blocking normative question remains.
-- [ ] Production Stage 2 tasks link frozen requirements and expected evidence.
+- [*] Approved freeze manifest identifies every governing contract revision.
+- [*] Initial fixture/oracle manifest is reviewed and immutable.
+- [*] No blocking normative question remains.
+- [*] Production Stage 2 tasks link frozen requirements and expected evidence.
 
 ---
 
@@ -154,18 +153,18 @@ num answer = 42
 
 ### Step 1: activate minimal fixtures and oracles
 
-- [ ] Add one positive minimal fixture and final-v0-invalid malformed variants.
-- [ ] Do not classify additional valid v0 declarations as a normative error.
-- [ ] Assign expected stable diagnostics only for behavior invalid in final v0.
-- [ ] Add expected logical IR, source map, provenance, derivation, resource facts,
+- [*] Add one positive minimal fixture and final-v0-invalid malformed variants.
+- [*] Do not classify additional valid v0 declarations as a normative error.
+- [*] Assign expected stable diagnostics only for behavior invalid in final v0.
+- [*] Add expected logical IR, source map, provenance, derivation, resource facts,
       and standalone probe summary.
-- [ ] Activate these cases from Stage 2 in the conformance manifest.
+- [*] Activate these cases from Stage 2 in the conformance manifest.
 
 #### Step validation
 
-- [ ] Every active case has requirement IDs and one complete oracle.
-- [ ] No milestone-only implementation limitation appears in conformance.
-- [ ] Fixture discovery is deterministic and nonempty.
+- [*] Every active case has requirement IDs and one complete oracle.
+- [*] No milestone-only implementation limitation appears in conformance.
+- [*] Fixture discovery is deterministic and nonempty.
 
 ### Step 2: implement foundational core, capture, and diagnostics
 

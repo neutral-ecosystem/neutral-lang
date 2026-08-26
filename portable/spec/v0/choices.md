@@ -1,6 +1,6 @@
 # Neutral language v0 architectural choices
 
-Status: proposed
+Status: accepted v0 choices
 
 These choices answer only what is needed to implement and validate Neutral v0.
 They do not pre-design later versions.

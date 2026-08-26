@@ -1,17 +1,16 @@
 # Neutral v0 development progress
 
-Status: implementation foundation in progress.
+Status: Stage 2 fixture/oracle activation in progress.
 
 ## Current focus
 
-- Stage: Mandatory contract-freeze gate
-- Status: Stage 1 complete; contract-freeze review in progress, not approved
+- Stage: Stage 2, Step 1
+- Status: contract freeze approved; fixture/oracle activation complete
 - Last updated: 2026-08-26
 
 ## Next actions
 
-- [ ] Resolve the draft freeze manifest blockers and complete the mandatory
-      contract-freeze gate before compiler behavior.
+- [ ] Continue with Stage 2, Step 2: foundational core, capture, and diagnostics.
 
 ## Blockers
 
@@ -19,6 +18,13 @@ None recorded.
 
 ## Completed log
 
+- [*] 2026-08-26: Approved the v0 contract freeze with the repository owner,
+  promoted the governing specifications and author guide, assigned the `0.1.0`
+  contract family, and completed Stage 2, Step 1 with three frozen source cases
+  and complete per-case oracles.
+- [*] 2026-08-26: Classified all known contract-freeze questions in a blocking
+  ledger and linked it from the freeze manifest and development entry point.
+  Stage 2 remains blocked until every blocking entry is accepted and closed.
 - [*] 2026-08-26: Added a responsibility and ecosystem README to every
   workspace package, including the non-production `xtask` package.
 - [*] 2026-08-26: Added a review-candidate fixture/oracle registry for all 14

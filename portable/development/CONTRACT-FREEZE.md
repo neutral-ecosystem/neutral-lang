@@ -1,6 +1,6 @@
 # Neutral v0 normative contract-freeze gate
 
-Status: review in progress; not approved
+Status: approved v0 baseline on 2026-08-26
 
 This gate closes the gap between design exploration and production compiler
 behavior. Repository scaffolding and disposable experiments may happen before
@@ -30,9 +30,9 @@ behavior. Contradictory accepted documents fail this gate.
 
 ## Freeze artifact
 
-The review draft is at [`../spec/v0/freeze.toml`](../spec/v0/freeze.toml). It
-identifies the current inputs and explicit blockers, but it is not an approval.
-The approved manifest must
+The approved freeze manifest is at [`../spec/v0/freeze.toml`](../spec/v0/freeze.toml).
+It identifies the accepted inputs, contract versions, fixture corpus, and
+repository-owner approval. The manifest must
 record:
 
 - freeze identifier and approval date;
@@ -54,8 +54,11 @@ does not enter logical IR equality.
 
 The companion [fixture/oracle review candidate](../../conformance/fixture-oracle-review.toml)
 locks every currently known source fixture by SHA-256 and records its required
-oracle shape. It remains review-draft material until stable outcomes, diagnostic
-codes, and complete positive artifacts are approved.
+oracle shape. Stage 2 cases additionally carry complete per-case expected
+values, diagnostics, or spans beneath `conformance/oracles/stage2/`.
+
+The [contract question ledger](CONTRACT-QUESTION-LEDGER.md) records the approved
+resolutions for the questions found during the freeze review.
 
 ## Gate A: scope and document coherence
 
@@ -67,7 +70,7 @@ codes, and complete positive artifacts are approved.
 - [ ] No Flow, Neux, runtime, authority, filesystem, network, command, secret, or
       application-specific meaning appears in Neutral core.
 - [ ] Later-version placeholders contain no implied v0 commitment.
-- [ ] Open questions are classified as blocking, implementation-only, or
+- [*] Open questions are classified as blocking, implementation-only, or
       deliberately deferred.
 - [ ] Every blocking question is resolved before approval.
 

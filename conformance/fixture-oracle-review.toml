@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# Review candidate for the initial normative fixture/oracle corpus. This file is
-# not immutable and does not authorize implementation until reviewers assign and
-# approve every referenced oracle.
+# Approved inventory for the initial normative fixture/oracle corpus. Detailed
+# per-case expected values are added with each activated stage; this inventory
+# locks fixture bytes, intent, required oracle shape, and stage ownership.
 schema_version = 1
-status = "review-draft"
+status = "approved"
 source_fixture_root = "portable/spec/v0/fixtures"
-reviewers = []
+reviewers = ["repository owner"]
 unresolved_oracle_count = 14
 
 [[fixture]]
@@ -134,3 +134,30 @@ expected_outcome = "reject"
 active_from_stage = 4
 required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
 review_status = "oracle-unassigned"
+
+[[fixture]]
+id = "minimal-core"
+source = "portable/spec/v0/fixtures/positive/minimal-core.neu"
+source_sha256 = "2c0ba86566082520c52d6af9d772890512ae76e5b59dcd628ca64a398ae1522f"
+expected_outcome = "accept"
+active_from_stage = 2
+required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "missing-module-header"
+source = "portable/spec/v0/fixtures/negative/missing-module-header.neu"
+source_sha256 = "cc67a03da0a6322e38c444f63ee7672a00df1cd613c44dcbd549b166a0bf61dd"
+expected_outcome = "reject"
+active_from_stage = 2
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "unsupported-language-version"
+source = "portable/spec/v0/fixtures/negative/unsupported-language-version.neu"
+source_sha256 = "fb9a76dbf1827b2127220643e955fc4e45508b97b83d6682d552ee5a8d47e3ac"
+expected_outcome = "reject"
+active_from_stage = 2
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"

@@ -1,6 +1,6 @@
-# Proposed Neutral language v0 authoring guide
+# Neutral language v0 authoring guide
 
-Status: editable syntax proposal
+Status: accepted v0 authoring guide
 
 This guide shows the complete v0 source language. If syntax is not described
 here, it is unsupported in v0.

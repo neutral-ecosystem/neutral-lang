@@ -119,19 +119,37 @@ fn environment_manifest() -> Result<String, String> {
     let workspace_root = workspace_root()?;
     let rustc_version = command_output("rustc", &["--version"])?;
     let cargo_version = command_output("cargo", &["--version"])?;
+    let active_stage = active_stage()?;
     Ok(format!(
         concat!(
             "{{\n",
             "  \"workspace_root\": \"{}\",\n",
             "  \"rustc\": \"{}\",\n",
             "  \"cargo\": \"{}\",\n",
-            "  \"active_stage\": 1\n",
+            "  \"active_stage\": {}\n",
             "}}"
         ),
         json_string(&workspace_root.display().to_string()),
         json_string(&rustc_version),
         json_string(&cargo_version),
+        active_stage,
     ))
+}
+
+/// Reads the active implementation stage from the repository configuration.
+fn active_stage() -> Result<u8, String> {
+    let configuration_path = workspace_root()?.join("config/development-stage.toml");
+    let configuration = fs::read_to_string(&configuration_path)
+        .map_err(|error| format!("could not read {}: {error}", configuration_path.display()))?;
+    let value = configuration
+        .lines()
+        .map(str::trim)
+        .find_map(|line| line.strip_prefix("active_stage ="))
+        .ok_or_else(|| "development-stage configuration has no active_stage".to_owned())?;
+    value
+        .trim()
+        .parse::<u8>()
+        .map_err(|error| format!("invalid active_stage value: {error}"))
 }
 
 /// Escapes a string for the limited JSON values emitted by automation evidence.
@@ -573,11 +591,10 @@ mod tests {
     #[test]
     /// Verifies that the environment manifest identifies the pinned toolchain.
     fn environment_manifest_identifies_the_pinned_toolchain() {
-        assert!(
-            super::environment_manifest()
-                .expect("environment manifest should be available")
-                .contains("rustc 1.97.1")
-        );
+        let manifest =
+            super::environment_manifest().expect("environment manifest should be available");
+        assert!(manifest.contains("rustc 1.97.1"));
+        assert!(manifest.contains("\"active_stage\": 2"));
     }
 
     #[test]

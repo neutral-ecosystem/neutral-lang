@@ -1,6 +1,6 @@
 # Neutral language v0 syntax checklist
 
-Status: proposed master checklist
+Status: accepted v0 syntax checklist
 
 This is the complete syntax scope for v0. There is no v1 or v2 syntax plan in
 the current specification. Unlisted syntax is unsupported.

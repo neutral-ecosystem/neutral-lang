@@ -94,6 +94,15 @@ Stage 9: correctness, security, determinism, performance hardening
 Stage 10: release qualification
 ```
 
+## Current gate status
+
+Stage 1 and the mandatory normative contract freeze are complete. Stage 2,
+Step 1 has activated the minimum source fixtures and complete oracles; compiler
+implementation remains the subsequent Stage 2 work. The approved
+[freeze manifest](spec/v0/freeze.toml) identifies the v0 contract family, and
+the [contract question ledger](development/CONTRACT-QUESTION-LEDGER.md) records
+the resolutions accepted during review.
+
 ## Stage summary and exit evidence
 
 | Stage | Demonstrable outcome | Owning gate |

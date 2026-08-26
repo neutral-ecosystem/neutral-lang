@@ -1,6 +1,6 @@
 # Neutral language v0 architecture
 
-Status: proposed v0 architecture
+Status: accepted v0 architecture
 
 This document defines the architecture needed to prove the first Neutral
 language boundary. It intentionally specifies only v0. Future language features

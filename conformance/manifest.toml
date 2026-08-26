@@ -1,10 +1,31 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "planned"
+status = "stage2-fixtures-frozen"
 
 # No source behavior is active in Stage 1. These entries are an inventory only;
 # they are not executable compiler expectations until their listed stage.
+
+[[case]]
+id = "minimal-core"
+fixture = "portable/spec/v0/fixtures/positive/minimal-core.neu"
+oracle = "conformance/oracles/stage2/minimal-core.toml"
+active_from_stage = 2
+status = "frozen"
+
+[[case]]
+id = "missing-module-header"
+fixture = "portable/spec/v0/fixtures/negative/missing-module-header.neu"
+oracle = "conformance/oracles/stage2/missing-module-header.toml"
+active_from_stage = 2
+status = "frozen"
+
+[[case]]
+id = "unsupported-language-version"
+fixture = "portable/spec/v0/fixtures/negative/unsupported-language-version.neu"
+oracle = "conformance/oracles/stage2/unsupported-language-version.toml"
+active_from_stage = 2
+status = "frozen"
 
 [[case]]
 id = "minimal-vocabulary"
@@ -89,4 +110,3 @@ id = "generic-covariance"
 fixture = "portable/spec/v0/fixtures/negative/generic-covariance.neu"
 active_from_stage = 5
 status = "planned"
-

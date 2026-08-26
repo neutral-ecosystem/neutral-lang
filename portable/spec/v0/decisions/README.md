@@ -1,6 +1,6 @@
 # Neutral language v0 decisions
 
-Status: proposed coherent baseline
+Status: accepted v0 decision baseline
 
 These decisions specify only the minimum v0 language described by
 [architecture.md](../architecture.md). They do not plan later versions.

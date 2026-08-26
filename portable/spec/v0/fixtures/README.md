@@ -4,6 +4,8 @@ These fixtures cover the reduced, domain-neutral v0 language.
 
 ## Positive source
 
+- [minimal-core.neu](positive/minimal-core.neu) is the Stage 2 atomic source
+  path: one module with one exact `num` binding and a complete frozen oracle.
 - [immutable-value-reuse.neu](positive/immutable-value-reuse.neu) distinguishes
   ordinary value reuse from identity references and proves forward resolution.
 - [defaults-compatibility.neu](positive/defaults-compatibility.neu) covers
@@ -13,6 +15,10 @@ These fixtures cover the reduced, domain-neutral v0 language.
 
 ## Negative source
 
+- [missing-module-header.neu](negative/missing-module-header.neu) freezes the
+  missing-module-header diagnostic.
+- [unsupported-language-version.neu](negative/unsupported-language-version.neu)
+  freezes rejection of a non-`0.1` language version.
 - [generic-covariance.neu](negative/generic-covariance.neu): invariant generic
   argument violation.
 - [module-path.neu](negative/module-path.neu): module qualification is absent.

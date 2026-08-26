@@ -1,0 +1,4 @@
+neu "0.1"
+module minimal
+
+num answer = 42

@@ -1,6 +1,6 @@
 # Neutral v0 identity, digest, fingerprint, and vocabulary encoding contract
 
-Status: proposed normative contract; must be accepted by the contract-freeze gate
+Status: accepted v0 normative contract
 
 This document fixes the implementation-independent identity and captured
 vocabulary byte contracts needed before production code. It does not define the
