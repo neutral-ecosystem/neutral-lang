@@ -1,0 +1,26 @@
+neu "0.1"
+module fixture_value_reuse
+
+/* Ordinary values and identity links remain distinct. */
+record ToolConfig {
+    string image,
+    List<string> labels,
+}
+
+record Selection {
+    Ref<ToolConfig> config,
+}
+
+string image2 = image
+List<string> images = [image, image2]
+
+Selection selected = {
+    config: ref(config),
+}
+
+ToolConfig config = {
+    image: image,
+    labels: images,
+}
+
+string image = "example.invalid/tool:1"

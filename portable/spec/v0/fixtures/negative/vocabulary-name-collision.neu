@@ -1,0 +1,8 @@
+neu "0.1"
+module fixture_vocabulary_collision
+
+use Fixture
+
+record Fixture {
+    string name,
+}

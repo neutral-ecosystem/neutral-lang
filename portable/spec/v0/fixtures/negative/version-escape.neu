@@ -1,0 +1,4 @@
+neu "\u{30}.1"
+module fixture_version_escape
+
+bool enabled = true

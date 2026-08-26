@@ -1,0 +1,26 @@
+neu "0.1"
+module fixture_minimal_vocabulary
+
+use Fixture
+
+record ToolConfig {
+    string image,
+}
+
+record Selection {
+    Ref<ToolConfig> config,
+}
+
+string image = "example.invalid/tool:1"
+
+ToolConfig config = {
+    image: image,
+}
+
+Selection selection = {
+    config: ref(config),
+}
+
+Fixture::Metadata metadata = {
+    label: "generic probe",
+}

@@ -1,0 +1,6 @@
+neu "0.1"
+module fixture_visibility_modifier
+
+pub record Config {
+    string image,
+}

@@ -1,0 +1,6 @@
+neu "0.1"
+module fixture_namespace_declaration
+
+namespace checks {
+    bool enabled = true
+}

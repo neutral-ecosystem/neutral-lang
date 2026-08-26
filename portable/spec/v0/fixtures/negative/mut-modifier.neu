@@ -1,0 +1,4 @@
+neu "0.1"
+module fixture_mut_modifier
+
+mut num retry_count = 0

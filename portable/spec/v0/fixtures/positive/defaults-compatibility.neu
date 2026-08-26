@@ -1,0 +1,15 @@
+neu "0.1"
+module fixture_defaults
+
+record Config {
+    string image,
+    string? note = null,
+    List<string> labels = [],
+}
+
+string image = "example.invalid/tool:1"
+Config config = { image: image, }
+
+// Only the outer nullability changes.
+string? nullable_image = image
+List<string>? nullable_labels = ["portable"]

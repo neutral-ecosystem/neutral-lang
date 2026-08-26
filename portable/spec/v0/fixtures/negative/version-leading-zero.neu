@@ -1,0 +1,4 @@
+neu "00.1"
+module fixture_version_leading_zero
+
+bool enabled = true

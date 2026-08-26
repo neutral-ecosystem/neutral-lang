@@ -1,0 +1,5 @@
+neu "0.1"
+module fixture_generic_covariance
+
+List<string> names = ["one"]
+List<string?> nullable_names = names
