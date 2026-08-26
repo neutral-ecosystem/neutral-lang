@@ -1,6 +1,7 @@
 [package]
 name = "neutral-test-support"
 description = "Reusable test-only builders and assertions for Neutral"
+readme = "README.md"
 publish = false
 version.workspace = true
 edition.workspace = true
@@ -13,4 +14,3 @@ owner = "test-infrastructure"
 
 [lints]
 workspace = true
-

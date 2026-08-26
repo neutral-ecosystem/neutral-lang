@@ -1,6 +1,7 @@
 [package]
 name = "neutral-test-suite"
 description = "Cross-package smoke, integration, system, and conformance tests for Neutral"
+readme = "README.md"
 publish = false
 version.workspace = true
 edition.workspace = true
@@ -13,4 +14,3 @@ owner = "cross-package-testing"
 
 [lints]
 workspace = true
-

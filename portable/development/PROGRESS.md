@@ -19,6 +19,11 @@ None recorded.
 
 ## Completed log
 
+- [*] 2026-08-26: Added a responsibility and ecosystem README to every
+  workspace package, including the non-production `xtask` package.
+- [*] 2026-08-26: Added a review-candidate fixture/oracle registry for all 14
+  current source fixtures. It locks source SHA-256 values and required oracle
+  shapes while explicitly recording that no oracle is yet approved or immutable.
 - [*] 2026-08-26: Organized generated evidence beneath `test-results/` by
   bootstrap, CI profile/stage, suite, and analysis category; CI runs now write
   to `test-results/ci/<profile>/run-<process-id>-<sequence>/`.

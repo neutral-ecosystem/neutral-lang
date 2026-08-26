@@ -36,6 +36,8 @@ structural_limits_profile = "unassigned"
 [fixture_corpus]
 manifest_path = "conformance/manifest.toml"
 manifest_sha256 = "95caec081173718f19223063901c13515e82606123a1fa0bec9af8a96e1de9f7"
+fixture_oracle_review_path = "conformance/fixture-oracle-review.toml"
+fixture_oracle_review_sha256 = "e5b28a0f9f79bb2aba761783f7a00d1d1b22fed0cc110798f8aca426051cc8ba"
 source_fixture_tree_sha256 = "0f4a950692a84b573b4d7e033a8c5e54765fa2cb29123aba3ef5fd3ecf87cfae"
 status = "planned; not immutable"
 
@@ -136,5 +138,5 @@ role = "identity and vocabulary encoding contract"
 
 [[governing_document]]
 path = "portable/spec/v0/fixtures/README.md"
-sha256 = "665b6b2971a34c2e77ce355cbfbfc5efb6d05dde26e610cf79e7b707b929a3a3"
+sha256 = "8e4f329c398fefdf0bc2c5be95b996345fe0b406d8b0d6d133bc4efcbd8dbfd2"
 role = "fixture contract"

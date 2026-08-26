@@ -1,6 +1,7 @@
 [package]
 name = "neutral-bench"
 description = "Benchmark harnesses and immutable corpora for Neutral"
+readme = "README.md"
 publish = false
 version.workspace = true
 edition.workspace = true
@@ -13,4 +14,3 @@ owner = "performance-evaluation"
 
 [lints]
 workspace = true
-

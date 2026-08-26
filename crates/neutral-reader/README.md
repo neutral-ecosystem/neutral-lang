@@ -1,0 +1,11 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
+# neutral-reader
+
+`neutral-reader` validates external Neutral artifacts and exposes immutable,
+typed reader views over accepted logical data.
+
+It depends on core, IR, and vocabulary contracts. It does not acquire artifacts
+or perform vocabulary lookup: callers supply the bytes and the exact captured
+vocabulary contract. The CLI and standalone probe use this boundary to inspect
+artifacts without depending on compiler internals.

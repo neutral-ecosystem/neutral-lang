@@ -1,0 +1,136 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# Review candidate for the initial normative fixture/oracle corpus. This file is
+# not immutable and does not authorize implementation until reviewers assign and
+# approve every referenced oracle.
+schema_version = 1
+status = "review-draft"
+source_fixture_root = "portable/spec/v0/fixtures"
+reviewers = []
+unresolved_oracle_count = 14
+
+[[fixture]]
+id = "minimal-vocabulary"
+source = "portable/spec/v0/fixtures/positive/minimal-vocabulary.neu"
+source_sha256 = "cd13edee8bfbe559255cdbb0ee8bbd919f628247216e4320d21c757b04721ba8"
+expected_outcome = "accept"
+active_from_stage = 2
+required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "probe-summary"]
+review_status = "oracle-unassigned"
+
+[[fixture]]
+id = "version-leading-zero"
+source = "portable/spec/v0/fixtures/negative/version-leading-zero.neu"
+source_sha256 = "ae6e6a01012baceeedc0fa27f854e84b321ad8862449828c00f630da9d254c05"
+expected_outcome = "reject"
+active_from_stage = 2
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-unassigned"
+
+[[fixture]]
+id = "version-escape"
+source = "portable/spec/v0/fixtures/negative/version-escape.neu"
+source_sha256 = "3972ac67febb8fbdcac600a5cfaca555ec837a01a7a0249c43ea896f636753ce"
+expected_outcome = "reject"
+active_from_stage = 2
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-unassigned"
+
+[[fixture]]
+id = "module-path"
+source = "portable/spec/v0/fixtures/negative/module-path.neu"
+source_sha256 = "6128820de6ee539cddeea3a9deb96dce72b2030f64c83c466bde567ab490df35"
+expected_outcome = "reject"
+active_from_stage = 2
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-unassigned"
+
+[[fixture]]
+id = "visibility-modifier"
+source = "portable/spec/v0/fixtures/negative/visibility-modifier.neu"
+source_sha256 = "a05e4458abfffb63b46962e68a83eb4c0f5fd85913b435c544b99aff7af9916a"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-unassigned"
+
+[[fixture]]
+id = "reassignment"
+source = "portable/spec/v0/fixtures/negative/reassignment.neu"
+source_sha256 = "3a755add4623b0ac6d2cba43d79169dcd08ad832bd1ada537a7c9ddb612c612d"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-unassigned"
+
+[[fixture]]
+id = "mut-modifier"
+source = "portable/spec/v0/fixtures/negative/mut-modifier.neu"
+source_sha256 = "423d03369e7a6584f8bef2788a774cd69d27dfc1c165f4fc666a66ab8ffd1374"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-unassigned"
+
+[[fixture]]
+id = "namespace-declaration"
+source = "portable/spec/v0/fixtures/negative/namespace-declaration.neu"
+source_sha256 = "fcc608a124ce8d3e2813e529808ab46449246b87e70f87a68260b7fb59396ca3"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-unassigned"
+
+[[fixture]]
+id = "defaults-compatibility"
+source = "portable/spec/v0/fixtures/positive/defaults-compatibility.neu"
+source_sha256 = "c0b88e7b8f1cbf1c1e9ae77f30487ec9894eab9c6b662e791295f654afe28171"
+expected_outcome = "accept"
+active_from_stage = 4
+required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "probe-summary"]
+review_status = "oracle-unassigned"
+
+[[fixture]]
+id = "immutable-value-reuse"
+source = "portable/spec/v0/fixtures/positive/immutable-value-reuse.neu"
+source_sha256 = "5d4c01965db14c30e4696b6a471923df0c2ec1c0e9b89768fc2dffa75b76284e"
+expected_outcome = "accept"
+active_from_stage = 5
+required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "probe-summary"]
+review_status = "oracle-unassigned"
+
+[[fixture]]
+id = "generic-covariance"
+source = "portable/spec/v0/fixtures/negative/generic-covariance.neu"
+source_sha256 = "eabec5f32ecfc44f2dc3d329bce521ef448a68402b88bb7764dfc85c7a9702dc"
+expected_outcome = "reject"
+active_from_stage = 5
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-unassigned"
+
+[[fixture]]
+id = "value-cycle"
+source = "portable/spec/v0/fixtures/negative/value-cycle.neu"
+source_sha256 = "b42852f08784010b5c50388f94c288705c8c741f1fff6f73356208755bf5caab"
+expected_outcome = "reject"
+active_from_stage = 5
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-unassigned"
+
+[[fixture]]
+id = "vocabulary-name-collision"
+source = "portable/spec/v0/fixtures/negative/vocabulary-name-collision.neu"
+source_sha256 = "a5ddd7d80ceec463f7c5771741b1bb1453e3794e313eba3b72a21898d1bc064d"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-unassigned"
+
+[[fixture]]
+id = "nonconstant-default"
+source = "portable/spec/v0/fixtures/negative/nonconstant-default.neu"
+source_sha256 = "a8139702c0c9e18d5939e6296aad5b3d3f46a98fa0507a7c8c90d0d6eaef8129"
+expected_outcome = "reject"
+active_from_stage = 4
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-unassigned"

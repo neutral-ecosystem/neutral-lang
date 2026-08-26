@@ -1,6 +1,7 @@
 [package]
 name = "neutral-compiler"
 description = "Captured-input frontend, semantics, and IR lowering for Neutral"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -17,4 +18,3 @@ neutral-vocabulary = { path = "../neutral-vocabulary" }
 
 [lints]
 workspace = true
-

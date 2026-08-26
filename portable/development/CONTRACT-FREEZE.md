@@ -52,6 +52,11 @@ record:
 The freeze manifest identifies contracts; it is not itself a language input and
 does not enter logical IR equality.
 
+The companion [fixture/oracle review candidate](../../conformance/fixture-oracle-review.toml)
+locks every currently known source fixture by SHA-256 and records its required
+oracle shape. It remains review-draft material until stable outcomes, diagnostic
+codes, and complete positive artifacts are approved.
+
 ## Gate A: scope and document coherence
 
 - [ ] Every v0 requirement has one stable `NL-*` identifier.

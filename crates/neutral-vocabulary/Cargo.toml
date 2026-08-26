@@ -1,6 +1,7 @@
 [package]
 name = "neutral-vocabulary"
 description = "Closed logical vocabulary schema and strict bundle validation for Neutral"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -16,4 +17,3 @@ neutral-ir = { path = "../neutral-ir" }
 
 [lints]
 workspace = true
-

@@ -35,6 +35,9 @@ These fixtures cover the reduced, domain-neutral v0 language.
 
 - [vocabulary-contract-cases.md](vocabulary-contract-cases.md) specifies captured
   vocabulary resolution, closed-schema validation, and external-reader cases.
+- [Fixture/oracle review candidate](../../../../conformance/fixture-oracle-review.toml)
+  locks the current fixture bytes and identifies the required oracle shape for
+  each case. It is not approved or immutable until contract-freeze review.
 
 ## Required additions
 
