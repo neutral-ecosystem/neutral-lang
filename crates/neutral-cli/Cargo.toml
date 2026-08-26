@@ -1,0 +1,20 @@
+[package]
+name = "neutral-cli"
+description = "Host command-line adapter for Neutral capture, compilation, validation, and formatting"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.neutral]
+owner = "host-cli"
+
+[dependencies]
+neutral-compiler = { path = "../neutral-compiler" }
+neutral-core = { path = "../neutral-core" }
+neutral-reader = { path = "../neutral-reader" }
+
+[lints]
+workspace = true
+

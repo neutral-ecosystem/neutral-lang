@@ -1,0 +1,9 @@
+[alias]
+xtask = "run --package xtask --"
+
+[build]
+incremental = true
+
+[net]
+retry = 2
+

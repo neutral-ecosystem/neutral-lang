@@ -1,18 +1,18 @@
 # Neutral v0 development progress
 
-Status: planning baseline assembled; implementation has not started.
+Status: implementation foundation in progress.
 
 ## Current focus
 
-- Stage: S00 — normative contract freeze
-- Status: not started
+- Stage: Stage 1 — initialize the implementation foundation
+- Status: Step 1 complete; Step 2 not started
 - Last updated: 2026-08-26
 
 ## Next actions
 
-- [ ] Read `DEVELOPMENT.md` and the governing specification in order.
-- [ ] Resolve contradictions and complete the freeze manifest.
-- [ ] Approve the contract-freeze gate before implementing compiler behavior.
+- [ ] Enforce the Stage 1, Step 2 dependency and effect boundaries.
+- [ ] Establish Stage 1 environment, automation, and active tests.
+- [ ] Complete the mandatory contract-freeze gate before compiler behavior.
 
 ## Blockers
 
@@ -20,7 +20,11 @@ None recorded.
 
 ## Completed log
 
-No implementation stages are complete.
+- 2026-08-26: Stage 1, Step 1 completed. Created the 11-package virtual Rust
+  workspace with explicit ownership, non-published support packages, pinned
+  toolchain and quality configuration, documented behavior-free shells, and a
+  committed lockfile. `cargo metadata`, formatting, workspace check, strict
+  Clippy, tests, and documentation passed.
 
 ## Working rule
 

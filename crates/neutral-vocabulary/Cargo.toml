@@ -1,0 +1,19 @@
+[package]
+name = "neutral-vocabulary"
+description = "Closed logical vocabulary schema and strict bundle validation for Neutral"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.neutral]
+owner = "vocabulary-contracts"
+
+[dependencies]
+neutral-core = { path = "../neutral-core" }
+neutral-ir = { path = "../neutral-ir" }
+
+[lints]
+workspace = true
+

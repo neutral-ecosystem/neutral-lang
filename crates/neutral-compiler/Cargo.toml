@@ -1,0 +1,20 @@
+[package]
+name = "neutral-compiler"
+description = "Captured-input frontend, semantics, and IR lowering for Neutral"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.neutral]
+owner = "compiler-pipeline"
+
+[dependencies]
+neutral-core = { path = "../neutral-core" }
+neutral-ir = { path = "../neutral-ir" }
+neutral-vocabulary = { path = "../neutral-vocabulary" }
+
+[lints]
+workspace = true
+

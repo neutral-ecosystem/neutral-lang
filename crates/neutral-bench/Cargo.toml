@@ -1,0 +1,16 @@
+[package]
+name = "neutral-bench"
+description = "Benchmark harnesses and immutable corpora for Neutral"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.neutral]
+owner = "performance-evaluation"
+
+[lints]
+workspace = true
+
