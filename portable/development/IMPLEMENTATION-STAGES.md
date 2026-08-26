@@ -49,49 +49,49 @@ neutral-bench         benchmark harnesses and immutable corpora
 xtask                 developer/CI/evidence automation
 ```
 
-- [ ] Create virtual workspace manifest, lockfile, pinned toolchain, formatting,
+- [*] Create virtual workspace manifest, lockfile, pinned toolchain, formatting,
       lint, dependency, and quality/test-profile configuration.
-- [ ] Mark automation/test/benchmark packages non-published.
-- [ ] Keep unit tests colocated; use the ownership layout in
+- [*] Mark automation/test/benchmark packages non-published.
+- [*] Keep unit tests colocated; use the ownership layout in
       [TESTING.md](TESTING.md).
-- [ ] Add meaningful crate/module documentation describing ownership and
+- [*] Add meaningful crate/module documentation describing ownership and
       prohibited effects; do not enforce an exact line count.
-- [ ] Add compilable shells without placeholder panics or fake language behavior.
-- [ ] Keep package versions and public API stability at `0.x` until contract
+- [*] Add compilable shells without placeholder panics or fake language behavior.
+- [*] Keep package versions and public API stability at `0.x` until contract
       freeze/release policy says otherwise.
 
 #### Step validation
 
-- [ ] `cargo metadata`, workspace check, lint, tests, and docs pass.
-- [ ] Every package has one owner and no duplicate test/fixture tree.
-- [ ] No production package depends on automation/test/benchmark packages.
-- [ ] Tracked files remain unchanged after checks.
+- [*] `cargo metadata`, workspace check, lint, tests, and docs pass.
+- [*] Every package has one owner and no duplicate test/fixture tree.
+- [*] No production package depends on automation/test/benchmark packages.
+- [*] Tracked files remain unchanged after checks.
 
 ### Step 2: enforce dependency and effect boundaries
 
-- [ ] `neutral-core` has no compiler, reader, CLI, or host dependencies.
-- [ ] `neutral-ir` depends only on core and reviewed value utilities.
-- [ ] `neutral-vocabulary` depends only on core/public logical model contracts.
-- [ ] `neutral-compiler` depends on core, IR, and vocabulary; its frontend,
+- [*] `neutral-core` has no compiler, reader, CLI, or host dependencies.
+- [*] `neutral-ir` depends only on core and reviewed value utilities.
+- [*] `neutral-vocabulary` depends only on core/public logical model contracts.
+- [*] `neutral-compiler` depends on core, IR, and vocabulary; its frontend,
       semantic model, and lowering remain private.
-- [ ] `neutral-reader` depends on core, IR, vocabulary, and later the selected IR
+- [*] `neutral-reader` depends on core, IR, vocabulary, and later the selected IR
       encoding implementation; it performs no acquisition.
-- [ ] `neutral-probe` depends only on core/reader-facing contracts and approved
+- [*] `neutral-probe` depends only on core/reader-facing contracts and approved
       output/argument utilities.
-- [ ] `neutral-cli` owns filesystem/process-facing host behavior but does not
+- [*] `neutral-cli` owns filesystem/process-facing host behavior but does not
       become the independent probe artifact.
-- [ ] Forbid filesystem, environment, network, command, locale, and clock access
+- [*] Forbid filesystem, environment, network, command, locale, and clock access
       from `compile_captured` dependency closure.
-- [ ] Forbid unsafe code in project-owned v0 crates; audit transitive dependency
+- [*] Forbid unsafe code in project-owned v0 crates; audit transitive dependency
       unsafe separately rather than claiming it is absent.
 
 #### Step validation
 
-- [ ] Automated package-graph policy rejects every forbidden edge.
-- [ ] `cargo tree --package neutral-probe --edges all` matches the allowlist.
-- [ ] A compile-time/dependency audit proves the pure compiler closure has no
+- [*] Automated package-graph policy rejects every forbidden edge.
+- [*] `cargo tree --package neutral-probe --edges all` matches the allowlist.
+- [*] A compile-time/dependency audit proves the pure compiler closure has no
       effectful host adapter.
-- [ ] Deliberate forbidden edges fail Stage 1 CI.
+- [*] Deliberate forbidden edges fail Stage 1 CI.
 
 ### Step 3: establish environment, automation, and Stage 1 tests
 

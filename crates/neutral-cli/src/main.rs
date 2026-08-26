@@ -6,4 +6,5 @@
 //! compile, validate, and format commands. It must not serve as the independent
 //! probe artifact. Stage 1 intentionally provides no language commands.
 
+/// Starts the future host-facing Neutral command-line adapter.
 fn main() {}

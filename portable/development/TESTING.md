@@ -138,6 +138,8 @@ gates and is recorded in the change.
 - [ ] New parser acceptance cannot merge before semantic, IR, reader, and
       conformance obligations are implemented in the same slice.
 - [ ] Tests assert behavior/invariants, not incidental Rust layout or map order.
+- [*] Every Rust function, including private helpers and test functions, has a
+      concise Rust documentation comment describing its responsibility.
 - [ ] Goldens update only through explicit `cargo xtask golden update`, and every
       semantic difference is reviewed.
 - [ ] Flaky tests are defects; retries collect evidence but never convert a

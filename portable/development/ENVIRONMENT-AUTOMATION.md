@@ -119,6 +119,7 @@ Stable commands:
 ```text
 cargo xtask bootstrap
 cargo xtask environment verify|manifest
+cargo xtask boundary check
 cargo xtask format [--write]
 cargo xtask lint
 cargo xtask build --profile dev|test|release
