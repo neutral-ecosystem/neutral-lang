@@ -51,7 +51,7 @@ pub fn run(arguments: impl IntoIterator<Item = String>) -> Result<(), String> {
         {
             not_active(&format!("performance profile {profile}"))
         }
-        [command, mode] if command == "fuzz" => not_active(&format!("fuzz mode {mode}")),
+        [command, mode] if command == "fuzz" => fuzz(mode),
         [command] if command == "coverage" || command == "mutate" => not_active(command),
         [command, action] if command == "golden" || command == "quality" => {
             not_active(&format!("{command} {action}"))
@@ -174,11 +174,40 @@ fn test_suite(suite: &str) -> Result<(), String> {
     match suite {
         "all" | "unit" => {
             run_cargo(&["test", "--workspace", "--all-targets"])?;
-            verify_active_test_counts()
+            let profile = if active_stage()? >= 2 {
+                "stage2"
+            } else {
+                "stage1"
+            };
+            verify_test_counts(profile)
         }
         "smoke" => run_shell_smoke(),
+        "integration" | "system" | "conformance" | "property" | "security"
+            if active_stage()? >= 2 =>
+        {
+            run_stage2_test_filter(suite)
+        }
         "integration" | "system" | "conformance" | "property" | "security" => not_active(suite),
         _ => Err(format!("unknown or empty test suite: {suite}")),
+    }
+}
+
+/// Runs one active Stage 2 cross-package suite by stable test-name prefix.
+fn run_stage2_test_filter(suite: &str) -> Result<(), String> {
+    run_cargo(&[
+        "test",
+        "--package",
+        constants::NEUTRAL_TEST_SUITE,
+        "--",
+        &format!("{suite}_"),
+    ])
+}
+
+/// Runs an active bounded fuzz-smoke selection or rejects future campaigns.
+fn fuzz(mode: &str) -> Result<(), String> {
+    match mode {
+        "smoke" if active_stage()? >= 2 => run_stage2_test_filter("fuzz_smoke"),
+        _ => not_active(&format!("fuzz mode {mode}")),
     }
 }
 
@@ -203,12 +232,12 @@ fn run_shell_smoke() -> Result<(), String> {
 }
 
 /// Verifies that every active Stage 1 test category has its configured minimum.
-fn verify_active_test_counts() -> Result<(), String> {
+fn verify_test_counts(profile: &str) -> Result<(), String> {
     let test_list = command_output(
         constants::CARGO_COMMAND,
         &["test", "--workspace", "--all-targets", "--", "--list"],
     )?;
-    let minimums = stage1_test_minimums()?;
+    let minimums = test_minimums(profile)?;
     let discovered = minimums
         .keys()
         .map(|category| {
@@ -238,23 +267,24 @@ fn validate_test_minimums(
 }
 
 /// Reads the simple Stage 1 test-minimum configuration owned by the workspace.
-fn stage1_test_minimums() -> Result<BTreeMap<String, usize>, String> {
+fn test_minimums(profile: &str) -> Result<BTreeMap<String, usize>, String> {
     let configuration_path = workspace_root()?.join("config/test-suites.toml");
     let configuration = fs::read_to_string(&configuration_path)
         .map_err(|error| format!("could not read {}: {error}", configuration_path.display()))?;
-    let mut in_stage1_section = false;
+    let section = format!("[{profile}.minimum]");
+    let mut in_requested_section = false;
     let mut minimums = BTreeMap::new();
 
     for line in configuration.lines().map(str::trim) {
         if line.starts_with('[') {
-            in_stage1_section = line == "[stage1.minimum]";
+            in_requested_section = line == section;
             continue;
         }
-        if !in_stage1_section || line.is_empty() || line.starts_with('#') {
+        if !in_requested_section || line.is_empty() || line.starts_with('#') {
             continue;
         }
         let Some((name, value)) = line.split_once('=') else {
-            return Err(format!("invalid Stage 1 test-minimum entry: {line}"));
+            return Err(format!("invalid {profile} test-minimum entry: {line}"));
         };
         let minimum = value
             .trim()
@@ -264,7 +294,7 @@ fn stage1_test_minimums() -> Result<BTreeMap<String, usize>, String> {
     }
 
     if minimums.is_empty() {
-        Err("Stage 1 test-minimum configuration is empty".to_owned())
+        Err(format!("{profile} test-minimum configuration is empty"))
     } else {
         Ok(minimums)
     }
@@ -273,13 +303,14 @@ fn stage1_test_minimums() -> Result<BTreeMap<String, usize>, String> {
 /// Runs the currently active checks for each declared CI profile.
 fn ci(profile: &str) -> Result<(), String> {
     match profile {
-        "stage1" | "pr" | "nightly" | "release" => run_stage1_ci(profile),
+        "stage1" => run_ci_gate(profile, false),
+        "pr" | "nightly" | "release" => run_ci_gate(profile, true),
         _ => Err(format!("unknown CI profile: {profile}")),
     }
 }
 
 /// Runs the Stage 1 gate and writes a generated summary beneath the result root.
-fn run_stage1_ci(profile: &str) -> Result<(), String> {
+fn run_ci_gate(profile: &str, include_stage2: bool) -> Result<(), String> {
     verify_environment()?;
     run_cargo(&["metadata", "--format-version", "1", "--no-deps"])?;
     check_boundaries()?;
@@ -294,8 +325,21 @@ fn run_stage1_ci(profile: &str) -> Result<(), String> {
         "warnings",
     ])?;
     run_cargo(&["check", "--workspace", "--all-targets", "--locked"])?;
-    test_suite("all")?;
+    run_cargo(&["test", "--workspace", "--all-targets"])?;
+    verify_test_counts(if include_stage2 { "stage2" } else { "stage1" })?;
     run_shell_smoke()?;
+    if include_stage2 {
+        for suite in [
+            "integration",
+            "system",
+            "conformance",
+            "property",
+            "security",
+        ] {
+            run_stage2_test_filter(suite)?;
+        }
+        fuzz("smoke")?;
+    }
     run_cargo(&["build", "--locked", "--package", constants::NEUTRAL_PROBE])?;
     run_cargo(&["doc", "--workspace", "--no-deps"])?;
 

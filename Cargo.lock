@@ -118,6 +118,13 @@ dependencies = [
 [[package]]
 name = "neutral-test-suite"
 version = "0.1.0"
+dependencies = [
+ "neutral-compiler",
+ "neutral-core",
+ "neutral-ir",
+ "neutral-probe",
+ "neutral-reader",
+]
 
 [[package]]
 name = "neutral-test-support"

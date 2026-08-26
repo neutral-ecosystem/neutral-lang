@@ -9,5 +9,6 @@ It depends on core, IR, and vocabulary contracts only. The CLI supplies any
 host-facing capture work before this crate runs; `neutral-compiler` must remain
 deterministic and free of filesystem, environment, network, command, locale,
 and clock access. Its parser and semantic internals are intentionally private.
-The initial public boundary captures exact bytes immutably and does not expose
-authoritative IR until a later complete frontend slice succeeds.
+The public boundary captures exact bytes immutably. Its private Stage 2 frontend
+and semantic layer recognize the frozen minimal document shape and lower it to
+authoritative public IR without exposing parser or semantic-model types.

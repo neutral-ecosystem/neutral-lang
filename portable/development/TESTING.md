@@ -186,6 +186,16 @@ Compiler smoke, conformance, semantic integration, full system, fuzz, and
 performance suites are planned but inactive. Stage 1 cannot require them to
 pass, and no placeholder is allowed to fail on the main branch.
 
+### Stage 2 active tests
+
+Stage 2 activates the frozen minimal scalar path across unit, smoke,
+integration, system, conformance, property, security, and bounded fuzz-smoke
+categories. `cargo xtask ci pr` enforces the configured category minimums,
+exact positive/negative oracles, reader/probe traversal, formatting invariance,
+repeated/concurrent determinism, malformed-input safety, and absence of
+authoritative IR on every failure. Broader language and performance cases remain
+inactive until their owning stages.
+
 ### Activation milestones
 
 | Stage | Newly active evidence |

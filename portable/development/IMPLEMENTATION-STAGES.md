@@ -186,48 +186,48 @@ num answer = 42
 
 ### Step 3: implement the minimal frontend slice
 
-- [ ] Lex only tokens needed for exact headers and one `num` binding, while
+- [*] Lex only tokens needed for exact headers and one `num` binding, while
       retaining physical newlines and original spans.
-- [ ] Normalize layout into semantic line ends for those complete constructs.
-- [ ] Parse exact language/module headers and one explicit scalar binding.
-- [ ] Keep tokens/tree/recovery private and prevent recovered syntax from
+- [*] Normalize layout into semantic line ends for those complete constructs.
+- [*] Parse exact language/module headers and one explicit scalar binding.
+- [*] Keep tokens/tree/recovery private and prevent recovered syntax from
       becoming authoritative.
-- [ ] Reject malformed final-v0-invalid variants with frozen diagnostics.
+- [*] Reject malformed final-v0-invalid variants with frozen diagnostics.
 
 #### Step validation
 
-- [ ] Token/layout/parser fixtures agree with frozen oracles.
-- [ ] LF/CRLF/lone-CR/trailing/no-trailing newline forms are logically equal.
-- [ ] Malformed UTF-8/NUL/BOM/headers/numbers terminate safely within limits.
-- [ ] Parser types cannot be imported outside compiler internals.
+- [*] Token/layout/parser fixtures agree with frozen oracles.
+- [*] LF/CRLF/lone-CR/trailing/no-trailing newline forms are logically equal.
+- [*] Malformed UTF-8/NUL/BOM/headers/numbers terminate safely within limits.
+- [*] Parser types cannot be imported outside compiler internals.
 
 ### Step 4: implement minimal semantics, IR, reader, and probe
 
-- [ ] Validate exact `0.1`, one module scope, names, protected words, explicit
+- [*] Validate exact `0.1`, one module scope, names, protected words, explicit
       `num`, and exact numeric value.
-- [ ] Implement module-symbol identity and declaration fingerprint using frozen
+- [*] Implement module-symbol identity and declaration fingerprint using frozen
       contracts.
-- [ ] Lower module/declaration/type/value plus source map, explicit/normalization
+- [*] Lower module/declaration/type/value plus source map, explicit/normalization
       provenance, derivation partitions, and resource facts.
-- [ ] Expose immutable in-process reader views.
-- [ ] Implement probe library traversal and source-linked consumer diagnostic.
-- [ ] Implement standalone probe binary shell for later encoded input without
+- [*] Expose immutable in-process reader views.
+- [*] Implement probe library traversal and source-linked consumer diagnostic.
+- [*] Implement standalone probe binary shell for later encoded input without
       linking the compiler.
 
 #### Step validation
 
-- [ ] Minimal fixture compiles through reader/probe and matches all oracles.
-- [ ] Probe dependency allowlist passes.
-- [ ] Formatting-only source changes preserve logical meaning/fingerprint where
+- [*] Minimal fixture compiles through reader/probe and matches all oracles.
+- [*] Probe dependency allowlist passes.
+- [*] Formatting-only source changes preserve logical meaning/fingerprint where
       specified and update source facts correctly.
-- [ ] Repeated/concurrent results are equal modulo `ElementId` mapping.
+- [*] Repeated/concurrent results are equal modulo `ElementId` mapping.
 
 ### Stage 2 validation
 
-- [ ] `cargo xtask ci pr` passes with newly active minimal smoke, unit,
+- [*] `cargo xtask ci pr` passes with newly active minimal smoke, unit,
       integration, system, conformance, property, security, and fuzz-smoke cases.
-- [ ] Every minimal failure returns no authoritative IR.
-- [ ] The end-to-end path remains runnable for all later stages.
+- [*] Every minimal failure returns no authoritative IR.
+- [*] The end-to-end path remains runnable for all later stages.
 
 ---
 

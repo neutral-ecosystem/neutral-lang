@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# The active stage selects the implemented Stage 2 foundation work.
+# The active stage selects the completed Stage 2 minimal vertical slice.
 # Advancing this value requires its complete vertical slice and reviewed evidence.
 active_stage = 2
-active_step = 2
+active_step = 4

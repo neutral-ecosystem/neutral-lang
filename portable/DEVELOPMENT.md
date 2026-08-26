@@ -96,12 +96,12 @@ Stage 10: release qualification
 
 ## Current gate status
 
-Stage 1 and the mandatory normative contract freeze are complete. Stage 2,
-Steps 1–2 have activated the minimum fixture/oracle set and implemented the
-captured-input foundation: exact source identity, checked locations, limits,
-cancellation, diagnostics, and the I/O-free compilation boundary. The next work
-is the private minimal frontend slice; it is the first step that can accept
-Neutral source. The approved [freeze manifest](spec/v0/freeze.toml) identifies
+Stage 1, the mandatory normative contract freeze, and Stage 2 are complete.
+The frozen minimal source now compiles through private frontend and semantics
+into authoritative logical IR, source maps, provenance, derivation, immutable
+reader views, and generic probe output. The newly active Stage 2 PR suites pass.
+The next work is Stage 3, Slice 3.1: complete source text, identifiers, comments,
+and boundaries. The approved [freeze manifest](spec/v0/freeze.toml) identifies
 the v0 contract family, and the
 [contract question ledger](development/CONTRACT-QUESTION-LEDGER.md) records the
 resolutions accepted during review.

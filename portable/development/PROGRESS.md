@@ -1,22 +1,37 @@
 # Neutral v0 development progress
 
-Status: Stage 2 fixture/oracle activation in progress.
+Status: Stage 2 minimal vertical slice complete.
 
 ## Current focus
 
-- Stage: Stage 2, Step 1
-- Status: contract freeze approved; Stage 2 Step 2 complete
+- Stage: Stage 2, Step 4
+- Status: Stage 2 complete; PR validation gate passing
 - Last updated: 2026-08-26
 
 ## Next actions
 
-- [ ] Continue with Stage 2, Step 3: minimal frontend slice.
+- [ ] Continue with Stage 3, Slice 3.1: source text, identifiers, comments, and
+  boundaries.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-08-26: Completed Stage 2, Step 4 and Stage 2 validation. The minimal
+  fixture now validates names/types/exact values, receives frozen NHT-backed
+  identities, lowers to immutable logical IR/source-map/provenance/derivation
+  artifacts, traverses through reader/probe contracts, and maps a consumer
+  diagnostic back to source. Active unit, smoke, integration, system,
+  conformance, property, security, and fuzz-smoke suites pass under
+  `cargo xtask ci pr`.
+
+- [*] 2026-08-26: Completed Stage 2, Step 3. Added the private minimal raw
+  lexer, physical-newline retention, semantic line-end normalization, and exact
+  parser for `neu "0.1"`, one module header, and one `num` binding. Frozen
+  negative diagnostics and spans, newline equivalence, BOM/UTF-8/NUL safety,
+  and private parser boundaries are covered by tests.
 
 - [*] 2026-08-26: Configured continuous integration for every push to `main`
   and release qualification for every pushed tag; both workflows retain manual

@@ -35,6 +35,66 @@ impl SourceContentDigest {
     }
 }
 
+/// A typed SHA-256 digest produced by a Neutral Hash Transcript v1 domain.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct SemanticDigest([u8; 32]);
+
+impl SemanticDigest {
+    /// Hashes `payload` using the frozen NHT-v1 framing and supplied ASCII domain.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when a tag is non-ASCII or a framed length cannot be
+    /// represented by the frozen transcript integer widths.
+    pub fn from_nht(domain: &str, payload: &[u8]) -> Result<Self, CoreError> {
+        let domain = nht_frame(domain, payload)?;
+        let transcript = nht_frame("neutral-nht-v1", &domain)?;
+        let bytes: [u8; 32] = Sha256::digest(transcript).into();
+        Ok(Self(bytes))
+    }
+
+    /// Returns the raw SHA-256 bytes for integrity comparison or storage.
+    #[must_use]
+    pub const fn as_bytes(self) -> [u8; 32] {
+        self.0
+    }
+}
+
+impl fmt::Display for SemanticDigest {
+    /// Formats the semantic digest using lower hexadecimal text.
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for byte in self.0 {
+            write!(formatter, "{byte:02x}")?;
+        }
+        Ok(())
+    }
+}
+
+/// Frames one NHT-v1 tagged payload using unsigned big-endian lengths.
+///
+/// # Errors
+///
+/// Returns an error for non-ASCII tags or lengths outside the frozen widths.
+pub fn nht_frame(tag: &str, payload: &[u8]) -> Result<Vec<u8>, CoreError> {
+    if !tag.is_ascii() {
+        return Err(CoreError::InvalidTranscriptTag);
+    }
+    let tag_length = u16::try_from(tag.len()).map_err(|_| CoreError::TranscriptLengthExceeded)?;
+    let payload_length =
+        u64::try_from(payload.len()).map_err(|_| CoreError::TranscriptLengthExceeded)?;
+    let capacity = 2_usize
+        .checked_add(tag.len())
+        .and_then(|length| length.checked_add(8))
+        .and_then(|length| length.checked_add(payload.len()))
+        .ok_or(CoreError::TranscriptLengthExceeded)?;
+    let mut frame = Vec::with_capacity(capacity);
+    frame.extend_from_slice(&tag_length.to_be_bytes());
+    frame.extend_from_slice(tag.as_bytes());
+    frame.extend_from_slice(&payload_length.to_be_bytes());
+    frame.extend_from_slice(payload);
+    Ok(frame)
+}
+
 impl fmt::Display for SourceContentDigest {
     /// Formats the digest using the frozen `sha256:` lower-hex text form.
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -223,6 +283,8 @@ pub enum DiagnosticLayer {
     Syntax,
     /// Semantic validation.
     Semantics,
+    /// Reader-facing consumer or probe observation.
+    Consumer,
     /// Resource limits or cancellation.
     Resource,
     /// Internal invariant failure.
@@ -401,6 +463,10 @@ pub enum ResultClass {
     Capture,
     /// A structural limit was exceeded.
     Resource,
+    /// Captured source was rejected by decoding, lexing, layout, or parsing.
+    Syntax,
+    /// Parsed source was rejected by name, type, or value semantics.
+    Semantics,
     /// The caller cancelled bounded work.
     Cancellation,
     /// A compiler invariant failed without authoritative output.
@@ -428,14 +494,18 @@ pub enum CoreError {
     InvalidDiagnosticCode,
     /// A required deterministic limit was zero.
     ZeroLimit,
+    /// An NHT tag contained non-ASCII text.
+    InvalidTranscriptTag,
+    /// An NHT tag, payload, or combined frame exceeded its fixed-width length.
+    TranscriptLengthExceeded,
 }
 
 #[cfg(test)]
 /// Unit tests for foundational value contracts.
 mod tests {
     use super::{
-        ByteSpan, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity,
-        SourceContentDigest, SourceLocation, line_column_at,
+        ByteSpan, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity, SemanticDigest,
+        SourceContentDigest, SourceLocation, line_column_at, nht_frame,
     };
 
     #[test]
@@ -457,6 +527,19 @@ mod tests {
         assert_eq!(
             SourceContentDigest::from_bytes(b"abc").to_string(),
             "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
+    #[test]
+    /// Verifies exact NHT framing widths, order, and domain-separated hashing.
+    fn semantic_digest_uses_the_frozen_nht_v1_frame() {
+        assert_eq!(
+            nht_frame("x", b"ab").expect("short frame should succeed"),
+            [0, 1, b'x', 0, 0, 0, 0, 0, 0, 0, 2, b'a', b'b']
+        );
+        assert_ne!(
+            SemanticDigest::from_nht("domain-a", b"value").expect("ASCII domain should hash"),
+            SemanticDigest::from_nht("domain-b", b"value").expect("ASCII domain should hash")
         );
     }
 

@@ -8,8 +8,14 @@
 //! authority. Stage 2 establishes captured-input contracts before frontend
 //! acceptance behavior is implemented.
 
-use neutral_core::{CancellationToken, ResultClass, SourceContentDigest, StructuralLimits};
+use neutral_core::{
+    CancellationToken, Diagnostic, ResultClass, SourceContentDigest, StructuralLimits,
+};
+use neutral_ir::CompilationArtifacts;
 use std::sync::Arc;
+
+mod frontend;
+mod semantics;
 
 /// The frozen v0 language-behavior contract used for captured compilation.
 pub const LANGUAGE_BEHAVIOR_VERSION: &str = "0.1.0";
@@ -112,6 +118,8 @@ pub enum CaptureError {
 /// A non-authoritative result of the current compilation boundary.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilationResult {
+    /// Compilation produced authoritative validated in-process artifacts.
+    Success(Arc<CompilationArtifacts>),
     /// Compilation did not produce authoritative IR.
     Failure(CompilationFailure),
 }
@@ -123,6 +131,8 @@ pub struct CompilationFailure {
     class: ResultClass,
     /// Bounded reason that exposes no authoritative IR.
     detail: CompilationFailureDetail,
+    /// Stable, bounded diagnostics produced before authoritative output.
+    diagnostics: Vec<Diagnostic>,
 }
 
 impl CompilationFailure {
@@ -137,6 +147,12 @@ impl CompilationFailure {
     pub const fn detail(&self) -> CompilationFailureDetail {
         self.detail
     }
+
+    /// Returns stable diagnostics without exposing compiler-private syntax models.
+    #[must_use]
+    pub fn diagnostics(&self) -> &[Diagnostic] {
+        &self.diagnostics
+    }
 }
 
 /// The specific non-authoritative reason for a compilation failure.
@@ -144,8 +160,12 @@ impl CompilationFailure {
 pub enum CompilationFailureDetail {
     /// The caller cancelled before frontend work could begin.
     Cancelled,
-    /// Stage 2 frontend acceptance is not active until the next implementation step.
+    /// The source is outside the currently implemented frontend slice.
     FrontendUnavailable,
+    /// Syntax was rejected, potentially with a frozen diagnostic.
+    SyntaxRejected,
+    /// Parsed source was rejected by semantic validation.
+    SemanticRejected,
 }
 
 /// Captures exact host-supplied input without consulting ambient authority.
@@ -191,17 +211,30 @@ pub fn capture(request: CompilationRequest) -> Result<CapturedCompilation, Captu
 /// source until the minimal frontend slice is implemented.
 #[must_use]
 pub fn compile_captured(captured: &CapturedCompilation) -> CompilationResult {
-    let detail = if captured.cancellation.is_cancelled() {
-        CompilationFailureDetail::Cancelled
-    } else {
-        CompilationFailureDetail::FrontendUnavailable
-    };
-    let class = if detail == CompilationFailureDetail::Cancelled {
-        ResultClass::Cancellation
-    } else {
-        ResultClass::Internal
-    };
-    CompilationResult::Failure(CompilationFailure { class, detail })
+    if captured.cancellation.is_cancelled() {
+        return CompilationResult::Failure(CompilationFailure {
+            class: ResultClass::Cancellation,
+            detail: CompilationFailureDetail::Cancelled,
+            diagnostics: Vec::new(),
+        });
+    }
+
+    match frontend::parse(captured.source()) {
+        Ok(unit) => match semantics::lower(
+            unit,
+            captured.source_digest(),
+            captured.source().len(),
+            captured.limits(),
+        ) {
+            Ok(artifacts) => CompilationResult::Success(Arc::new(artifacts)),
+            Err(error) => CompilationResult::Failure(error.into_failure(captured.source_digest())),
+        },
+        Err(error) => CompilationResult::Failure(CompilationFailure {
+            class: ResultClass::Syntax,
+            detail: error.detail(),
+            diagnostics: error.into_diagnostics(captured.source_digest()),
+        }),
+    }
 }
 
 /// Captures then compiles one host-supplied request without exposing partial IR.
@@ -256,20 +289,66 @@ mod tests {
     }
 
     #[test]
-    /// Verifies that the pre-frontend boundary never exposes authoritative IR.
-    fn compile_captured_has_no_authoritative_result_before_the_frontend_slice() {
+    /// Verifies that the frozen minimal source produces authoritative artifacts.
+    fn compile_captured_accepts_the_minimal_frontend_slice() {
         let captured = capture(CompilationRequest::new(
-            b"source".to_vec(),
+            b"neu \"0.1\"\nmodule minimal\n\nnum answer = 42\n".to_vec(),
             test_limits(),
             CancellationToken::new(),
         ))
         .expect("source should capture");
-        assert!(matches!(
-            compile_captured(&captured),
-            super::CompilationResult::Failure(super::CompilationFailure {
-                detail: CompilationFailureDetail::FrontendUnavailable,
-                ..
-            })
-        ));
+        let super::CompilationResult::Success(artifacts) = compile_captured(&captured) else {
+            panic!("minimal source should compile successfully");
+        };
+        assert_eq!(
+            artifacts.logical_document().module().module_name(),
+            "minimal"
+        );
+        assert_eq!(artifacts.logical_document().declarations().len(), 1);
+    }
+
+    #[test]
+    /// Verifies frozen syntax failures expose exact codes and original-byte spans.
+    fn compilation_exposes_frozen_frontend_diagnostics_without_ir() {
+        let cases: [(&[u8], &str, (u64, u64)); 2] = [
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/missing-module-header.neu"
+                ),
+                "NEU-SYN-001",
+                (10, 10),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/unsupported-language-version.neu"
+                ),
+                "NEU-SYN-002",
+                (4, 9),
+            ),
+        ];
+
+        for (source, expected_code, expected_span) in cases {
+            let captured = capture(CompilationRequest::new(
+                source.to_vec(),
+                test_limits(),
+                CancellationToken::new(),
+            ))
+            .expect("frozen negative fixture should capture");
+            let super::CompilationResult::Failure(failure) = compile_captured(&captured) else {
+                panic!("frozen negative fixture must not produce authoritative IR");
+            };
+            assert_eq!(failure.class(), neutral_core::ResultClass::Syntax);
+            assert_eq!(failure.detail(), CompilationFailureDetail::SyntaxRejected);
+            assert_eq!(failure.diagnostics().len(), 1);
+            let diagnostic = &failure.diagnostics()[0];
+            assert_eq!(diagnostic.code().as_str(), expected_code);
+            assert_eq!(
+                (
+                    diagnostic.primary().span().start(),
+                    diagnostic.primary().span().end()
+                ),
+                expected_span
+            );
+        }
     }
 }

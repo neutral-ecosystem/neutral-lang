@@ -12,5 +12,12 @@ repository.workspace = true
 [package.metadata.neutral]
 owner = "cross-package-testing"
 
+[dev-dependencies]
+neutral-compiler = { path = "../neutral-compiler" }
+neutral-core = { path = "../neutral-core" }
+neutral-ir = { path = "../neutral-ir" }
+neutral-probe = { path = "../neutral-probe" }
+neutral-reader = { path = "../neutral-reader" }
+
 [lints]
 workspace = true
