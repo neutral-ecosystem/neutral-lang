@@ -18,6 +18,17 @@ None recorded.
 
 ## Completed log
 
+- [*] 2026-08-26: Moved automation names and output-category prefixes into the
+  dedicated `xtask/src/constants.rs` module, including `[info]`, `[error]`,
+  `[warn]`, and `[manifest]` linkage.
+- [*] 2026-08-26: Removed duplicated CLI/probe package-name output literals by
+  deriving names from Cargo package metadata while retaining category prefixes.
+
+- [*] 2026-08-26: Centralized workspace package and tool command names in the
+  `xtask` constants namespace, replacing repeated command literals (including
+  `NEUTRAL_COMPILER`), and linked host bootstrap scripts to safe
+  `NEUTRAL_CARGO_COMMAND`/`NEUTRAL_RUSTC_COMMAND` overrides.
+
 - [*] 2026-08-26: Completed Stage 2, Step 2. Added typed exact SHA-256 source
   identity, checked spans and line/column derivation, deterministic diagnostics
   and limits, cancellation/result classes, immutable capture, and the I/O-free

@@ -13,6 +13,8 @@ use std::{
     process::Command,
 };
 
+pub mod constants;
+
 /// Runs an `xtask` subcommand.
 ///
 /// # Errors
@@ -57,7 +59,7 @@ pub fn run(arguments: impl IntoIterator<Item = String>) -> Result<(), String> {
         [command, profile] if command == "ci" => ci(profile),
         [command] if command == "clean-results" => clean_results(),
         [command, action] if command == "boundary" && action == "help" => {
-            println!("[info] usage: cargo xtask boundary check");
+            println!("{} usage: cargo xtask boundary check", constants::INFO);
             Ok(())
         }
         _ => Err(
@@ -77,7 +79,7 @@ fn bootstrap() -> Result<(), String> {
         environment_manifest()?,
     )
     .map_err(|error| format!("could not write bootstrap environment manifest: {error}"))?;
-    println!("[info] workspace bootstrap: pass");
+    println!("{} workspace bootstrap: pass", constants::INFO);
     Ok(())
 }
 
@@ -97,28 +99,28 @@ fn verify_environment() -> Result<(), String> {
         }
     }
 
-    let rustc_version = command_output("rustc", &["--version"])?;
+    let rustc_version = command_output(constants::RUSTC_COMMAND, &["--version"])?;
     if !rustc_version.starts_with("rustc 1.97.1 ") {
         return Err(format!(
             "pinned Rust 1.97.1 is required; found {rustc_version}"
         ));
     }
 
-    println!("[info] environment verification: pass");
+    println!("{} environment verification: pass", constants::INFO);
     Ok(())
 }
 
 /// Prints the machine-readable environment manifest without writing tracked files.
 fn print_environment_manifest() -> Result<(), String> {
-    println!("[manifest] {}", environment_manifest()?);
+    println!("{} {}", constants::MANIFEST, environment_manifest()?);
     Ok(())
 }
 
 /// Builds the machine-readable environment manifest used in generated evidence.
 fn environment_manifest() -> Result<String, String> {
     let workspace_root = workspace_root()?;
-    let rustc_version = command_output("rustc", &["--version"])?;
-    let cargo_version = command_output("cargo", &["--version"])?;
+    let rustc_version = command_output(constants::RUSTC_COMMAND, &["--version"])?;
+    let cargo_version = command_output(constants::CARGO_COMMAND, &["--version"])?;
     let active_stage = active_stage()?;
     Ok(format!(
         concat!(
@@ -182,12 +184,19 @@ fn test_suite(suite: &str) -> Result<(), String> {
 
 /// Runs the behavior-free command-shell checks active during Stage 1.
 fn run_shell_smoke() -> Result<(), String> {
-    run_cargo(&["run", "--quiet", "--package", "neutral-cli", "--", "--help"])?;
     run_cargo(&[
         "run",
         "--quiet",
         "--package",
-        "neutral-probe",
+        constants::NEUTRAL_CLI,
+        "--",
+        "--help",
+    ])?;
+    run_cargo(&[
+        "run",
+        "--quiet",
+        "--package",
+        constants::NEUTRAL_PROBE,
         "--",
         "--help",
     ])
@@ -196,7 +205,7 @@ fn run_shell_smoke() -> Result<(), String> {
 /// Verifies that every active Stage 1 test category has its configured minimum.
 fn verify_active_test_counts() -> Result<(), String> {
     let test_list = command_output(
-        "cargo",
+        constants::CARGO_COMMAND,
         &["test", "--workspace", "--all-targets", "--", "--list"],
     )?;
     let minimums = stage1_test_minimums()?;
@@ -287,7 +296,7 @@ fn run_stage1_ci(profile: &str) -> Result<(), String> {
     run_cargo(&["check", "--workspace", "--all-targets", "--locked"])?;
     test_suite("all")?;
     run_shell_smoke()?;
-    run_cargo(&["build", "--locked", "--package", "neutral-probe"])?;
+    run_cargo(&["build", "--locked", "--package", constants::NEUTRAL_PROBE])?;
     run_cargo(&["doc", "--workspace", "--no-deps"])?;
 
     let result_directory = unique_result_directory(profile)?;
@@ -299,7 +308,7 @@ fn run_stage1_ci(profile: &str) -> Result<(), String> {
         ),
     )
     .map_err(|error| format!("could not write task summary: {error}"))?;
-    println!("[info] CI {profile}: pass");
+    println!("{} CI {profile}: pass", constants::INFO);
     Ok(())
 }
 
@@ -310,15 +319,24 @@ fn not_active(command: &str) -> Result<(), String> {
 
 /// Runs Cargo with inherited standard streams and converts failures to task errors.
 fn run_cargo(arguments: &[&str]) -> Result<(), String> {
-    let status = Command::new("cargo")
+    let status = Command::new(constants::CARGO_COMMAND)
         .current_dir(workspace_root()?)
         .args(arguments)
         .status()
-        .map_err(|error| format!("could not run cargo {}: {error}", arguments.join(" ")))?;
-    status
-        .success()
-        .then_some(())
-        .ok_or_else(|| format!("cargo {} failed with {status}", arguments.join(" ")))
+        .map_err(|error| {
+            format!(
+                "could not run {} {}: {error}",
+                constants::CARGO_COMMAND,
+                arguments.join(" ")
+            )
+        })?;
+    status.success().then_some(()).ok_or_else(|| {
+        format!(
+            "{} {} failed with {status}",
+            constants::CARGO_COMMAND,
+            arguments.join(" ")
+        )
+    })
 }
 
 /// Returns trimmed UTF-8 output from a successful command.
@@ -382,7 +400,7 @@ fn clean_results() -> Result<(), String> {
         fs::remove_dir_all(&root)
             .map_err(|error| format!("could not remove {}: {error}", root.display()))?;
     }
-    println!("[info] generated results cleaned");
+    println!("{} generated results cleaned", constants::INFO);
     Ok(())
 }
 
@@ -398,18 +416,18 @@ fn check_boundaries() -> Result<(), String> {
 
     let compiler_closure = package_names(&tree_output(
         &workspace_root,
-        "neutral-compiler",
+        constants::NEUTRAL_COMPILER,
         "normal",
         None,
     )?);
     validate_allowed_packages(
-        "neutral-compiler pure compilation closure",
+        &format!("{} pure compilation closure", constants::NEUTRAL_COMPILER),
         &compiler_closure,
         &set([
-            "neutral-compiler",
-            "neutral-core",
-            "neutral-ir",
-            "neutral-vocabulary",
+            constants::NEUTRAL_COMPILER,
+            constants::NEUTRAL_CORE,
+            constants::NEUTRAL_IR,
+            constants::NEUTRAL_VOCABULARY,
             "block-buffer",
             "cfg-if",
             "cpufeatures",
@@ -422,16 +440,21 @@ fn check_boundaries() -> Result<(), String> {
         ]),
     )?;
 
-    let probe_closure = package_names(&tree_output(&workspace_root, "neutral-probe", "all", None)?);
+    let probe_closure = package_names(&tree_output(
+        &workspace_root,
+        constants::NEUTRAL_PROBE,
+        "all",
+        None,
+    )?);
     validate_allowed_packages(
         "neutral-probe dependency tree",
         &probe_closure,
         &set([
-            "neutral-probe",
-            "neutral-core",
-            "neutral-ir",
-            "neutral-reader",
-            "neutral-vocabulary",
+            constants::NEUTRAL_PROBE,
+            constants::NEUTRAL_CORE,
+            constants::NEUTRAL_IR,
+            constants::NEUTRAL_READER,
+            constants::NEUTRAL_VOCABULARY,
             "block-buffer",
             "cfg-if",
             "cpufeatures",
@@ -444,7 +467,7 @@ fn check_boundaries() -> Result<(), String> {
         ]),
     )?;
 
-    println!("[info] dependency boundaries: pass");
+    println!("{} dependency boundaries: pass", constants::INFO);
     Ok(())
 }
 
@@ -459,26 +482,44 @@ fn workspace_root() -> Result<PathBuf, String> {
 /// Returns the exact normal-dependency policy for every workspace package.
 fn direct_dependency_policy() -> BTreeMap<&'static str, BTreeSet<&'static str>> {
     BTreeMap::from([
-        ("neutral-bench", set([])),
+        (constants::NEUTRAL_BENCH, set([])),
         (
-            "neutral-cli",
-            set(["neutral-compiler", "neutral-core", "neutral-reader"]),
+            constants::NEUTRAL_CLI,
+            set([
+                constants::NEUTRAL_COMPILER,
+                constants::NEUTRAL_CORE,
+                constants::NEUTRAL_READER,
+            ]),
         ),
         (
-            "neutral-compiler",
-            set(["neutral-core", "neutral-ir", "neutral-vocabulary"]),
+            constants::NEUTRAL_COMPILER,
+            set([
+                constants::NEUTRAL_CORE,
+                constants::NEUTRAL_IR,
+                constants::NEUTRAL_VOCABULARY,
+            ]),
         ),
-        ("neutral-core", set(["sha2"])),
-        ("neutral-ir", set(["neutral-core"])),
-        ("neutral-probe", set(["neutral-core", "neutral-reader"])),
+        (constants::NEUTRAL_CORE, set(["sha2"])),
+        (constants::NEUTRAL_IR, set([constants::NEUTRAL_CORE])),
         (
-            "neutral-reader",
-            set(["neutral-core", "neutral-ir", "neutral-vocabulary"]),
+            constants::NEUTRAL_PROBE,
+            set([constants::NEUTRAL_CORE, constants::NEUTRAL_READER]),
         ),
-        ("neutral-test-suite", set([])),
-        ("neutral-test-support", set([])),
-        ("neutral-vocabulary", set(["neutral-core", "neutral-ir"])),
-        ("xtask", set([])),
+        (
+            constants::NEUTRAL_READER,
+            set([
+                constants::NEUTRAL_CORE,
+                constants::NEUTRAL_IR,
+                constants::NEUTRAL_VOCABULARY,
+            ]),
+        ),
+        (constants::NEUTRAL_TEST_SUITE, set([])),
+        (constants::NEUTRAL_TEST_SUPPORT, set([])),
+        (
+            constants::NEUTRAL_VOCABULARY,
+            set([constants::NEUTRAL_CORE, constants::NEUTRAL_IR]),
+        ),
+        (constants::XTASK, set([])),
     ])
 }
 
@@ -500,7 +541,7 @@ fn tree_output(
     edges: &str,
     depth: Option<u8>,
 ) -> Result<String, String> {
-    let mut command = Command::new("cargo");
+    let mut command = Command::new(constants::CARGO_COMMAND);
     command.current_dir(workspace_root).args([
         "tree",
         "--locked",
@@ -597,7 +638,7 @@ fn set<const N: usize>(values: [&'static str; N]) -> BTreeSet<&'static str> {
 #[cfg(test)]
 /// Tests for dependency-boundary policy failures.
 mod tests {
-    use super::{set, validate_allowed_packages, validate_direct_dependencies};
+    use super::{constants, set, validate_allowed_packages, validate_direct_dependencies};
     use std::collections::{BTreeMap, BTreeSet};
 
     #[test]
@@ -619,17 +660,21 @@ mod tests {
     /// Verifies that a compiler-to-CLI edge violates the workspace policy.
     fn workspace_rejects_a_forbidden_direct_compiler_dependency() {
         let actual = BTreeSet::from([
-            "neutral-cli".to_owned(),
-            "neutral-core".to_owned(),
-            "neutral-ir".to_owned(),
-            "neutral-vocabulary".to_owned(),
+            constants::NEUTRAL_CLI.to_owned(),
+            constants::NEUTRAL_CORE.to_owned(),
+            constants::NEUTRAL_IR.to_owned(),
+            constants::NEUTRAL_VOCABULARY.to_owned(),
         ]);
 
         assert!(
             validate_direct_dependencies(
-                "neutral-compiler",
+                constants::NEUTRAL_COMPILER,
                 &actual,
-                &set(["neutral-core", "neutral-ir", "neutral-vocabulary"]),
+                &set([
+                    constants::NEUTRAL_CORE,
+                    constants::NEUTRAL_IR,
+                    constants::NEUTRAL_VOCABULARY
+                ]),
             )
             .is_err()
         );
@@ -639,17 +684,19 @@ mod tests {
     /// Verifies that core may depend only on the reviewed SHA-256 value utility.
     fn core_allows_only_the_reviewed_sha256_dependency() {
         let actual = BTreeSet::from(["sha2".to_owned()]);
-        assert!(validate_direct_dependencies("neutral-core", &actual, &set(["sha2"])).is_ok());
+        assert!(
+            validate_direct_dependencies(constants::NEUTRAL_CORE, &actual, &set(["sha2"])).is_ok()
+        );
     }
 
     #[test]
     /// Verifies that a compiler package in the probe closure is rejected.
     fn probe_allowlist_rejects_a_compiler_dependency_in_the_probe_closure() {
         let actual = BTreeSet::from([
-            "neutral-compiler".to_owned(),
-            "neutral-core".to_owned(),
-            "neutral-probe".to_owned(),
-            "neutral-reader".to_owned(),
+            constants::NEUTRAL_COMPILER.to_owned(),
+            constants::NEUTRAL_CORE.to_owned(),
+            constants::NEUTRAL_PROBE.to_owned(),
+            constants::NEUTRAL_READER.to_owned(),
         ]);
 
         assert!(
@@ -657,11 +704,11 @@ mod tests {
                 "neutral-probe dependency tree",
                 &actual,
                 &set([
-                    "neutral-probe",
-                    "neutral-core",
-                    "neutral-ir",
-                    "neutral-reader",
-                    "neutral-vocabulary",
+                    constants::NEUTRAL_PROBE,
+                    constants::NEUTRAL_CORE,
+                    constants::NEUTRAL_IR,
+                    constants::NEUTRAL_READER,
+                    constants::NEUTRAL_VOCABULARY,
                 ]),
             )
             .is_err()

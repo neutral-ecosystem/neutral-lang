@@ -29,6 +29,11 @@ The scripts contain no compiler/test policy beyond reaching the Rust task
 runner. They never use `curl | sh`, elevate privilege silently, write outside
 documented tool/cache roots, or modify shell startup files without consent.
 
+The host scripts resolve tool executables through the optional
+`NEUTRAL_CARGO_COMMAND` and `NEUTRAL_RUSTC_COMMAND` variables. They default to
+`cargo` and `rustc`, respectively, and invoke the resolved executable directly
+(without shell evaluation), so toolchain wrappers can be selected explicitly.
+
 ### Layer 1: workspace bootstrap
 
 `cargo xtask bootstrap` verifies or installs approved Cargo tools, configures

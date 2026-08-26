@@ -6,10 +6,15 @@
 //! compile, validate, and format commands. It must not serve as the independent
 //! probe artifact. Stage 1 intentionally provides no language commands.
 
+/// Error output category prefix.
+const ERROR_PREFIX: &str = "[error]";
+/// Informational output category prefix.
+const INFO_PREFIX: &str = "[info]";
+
 /// Starts the future host-facing Neutral command-line adapter.
 fn main() {
     if let Err(error) = run(std::env::args().skip(1)) {
-        eprintln!("[error] {error}");
+        eprintln!("{ERROR_PREFIX} {error}");
         std::process::exit(2);
     }
 }
@@ -18,11 +23,20 @@ fn main() {
 fn run(arguments: impl IntoIterator<Item = String>) -> Result<(), String> {
     match arguments.into_iter().collect::<Vec<_>>().as_slice() {
         [argument] if argument == "--help" => {
-            println!("[info] usage: neutral-cli <command>");
+            println!(
+                "{} usage: {} <command>",
+                INFO_PREFIX,
+                env!("CARGO_PKG_NAME")
+            );
             Ok(())
         }
         [argument] if argument == "--version" => {
-            println!("[info] neutral-cli {}", env!("CARGO_PKG_VERSION"));
+            println!(
+                "{} {} {}",
+                INFO_PREFIX,
+                env!("CARGO_PKG_NAME"),
+                env!("CARGO_PKG_VERSION")
+            );
             Ok(())
         }
         [] => Err("a command is required; run neutral-cli --help".to_owned()),

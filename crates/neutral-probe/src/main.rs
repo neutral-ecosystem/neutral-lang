@@ -5,10 +5,15 @@
 //! The Stage 1 binary is deliberately inert: encoded artifact input and probe
 //! behavior are introduced only at their scheduled implementation stages.
 
+/// Error output category prefix.
+const ERROR_PREFIX: &str = "[error]";
+/// Informational output category prefix.
+const INFO_PREFIX: &str = "[info]";
+
 /// Starts the standalone Neutral artifact probe.
 fn main() {
     if let Err(error) = run(std::env::args().skip(1)) {
-        eprintln!("[error] {error}");
+        eprintln!("{ERROR_PREFIX} {error}");
         std::process::exit(2);
     }
 }
@@ -17,11 +22,20 @@ fn main() {
 fn run(arguments: impl IntoIterator<Item = String>) -> Result<(), String> {
     match arguments.into_iter().collect::<Vec<_>>().as_slice() {
         [argument] if argument == "--help" => {
-            println!("[info] usage: neutral-probe <artifact>");
+            println!(
+                "{} usage: {} <artifact>",
+                INFO_PREFIX,
+                env!("CARGO_PKG_NAME")
+            );
             Ok(())
         }
         [argument] if argument == "--version" => {
-            println!("[info] neutral-probe {}", env!("CARGO_PKG_VERSION"));
+            println!(
+                "{} {} {}",
+                INFO_PREFIX,
+                env!("CARGO_PKG_NAME"),
+                env!("CARGO_PKG_VERSION")
+            );
             Ok(())
         }
         [] => Err("an artifact is required; run neutral-probe --help".to_owned()),

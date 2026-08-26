@@ -4,6 +4,8 @@
 set -eu
 
 required_toolchain='1.97.1'
+neutral_cargo_command="${NEUTRAL_CARGO_COMMAND:-cargo}"
+neutral_rustc_command="${NEUTRAL_RUSTC_COMMAND:-rustc}"
 
 host_os="$(uname -s)"
 host_architecture="$(uname -m)"
@@ -31,11 +33,11 @@ command -v tar >/dev/null || {
     printf '%s\n' '[error] tar is required for verified bootstrap archives.' >&2
     exit 1
 }
-command -v cargo >/dev/null || {
+command -v "$neutral_cargo_command" >/dev/null || {
     printf '%s\n' '[error] cargo is required; install Rust 1.97.1 explicitly, then rerun this script.' >&2
     exit 1
 }
-command -v rustc >/dev/null || {
+command -v "$neutral_rustc_command" >/dev/null || {
     printf '%s\n' '[error] rustc is required; install Rust 1.97.1 explicitly, then rerun this script.' >&2
     exit 1
 }
@@ -49,11 +51,11 @@ curl --version | grep -q 'Protocols:.*https' || {
     exit 1
 }
 
-actual_toolchain="$(rustc --version | awk '{print $2}')"
+actual_toolchain="$("$neutral_rustc_command" --version | awk '{print $2}')"
 if [ "$actual_toolchain" != "$required_toolchain" ]; then
     printf '%s\n' "[error] Rust $required_toolchain is required; found $actual_toolchain." >&2
     printf '%s\n' '[error] Install the pinned toolchain explicitly; this script never installs software automatically.' >&2
     exit 1
 fi
 
-cargo xtask bootstrap
+"$neutral_cargo_command" xtask bootstrap
