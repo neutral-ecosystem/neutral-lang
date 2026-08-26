@@ -1,0 +1,92 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+status = "planned"
+
+# No source behavior is active in Stage 1. These entries are an inventory only;
+# they are not executable compiler expectations until their listed stage.
+
+[[case]]
+id = "minimal-vocabulary"
+fixture = "portable/spec/v0/fixtures/positive/minimal-vocabulary.neu"
+active_from_stage = 2
+status = "planned"
+
+[[case]]
+id = "immutable-value-reuse"
+fixture = "portable/spec/v0/fixtures/positive/immutable-value-reuse.neu"
+active_from_stage = 5
+status = "planned"
+
+[[case]]
+id = "defaults-compatibility"
+fixture = "portable/spec/v0/fixtures/positive/defaults-compatibility.neu"
+active_from_stage = 4
+status = "planned"
+
+[[case]]
+id = "vocabulary-name-collision"
+fixture = "portable/spec/v0/fixtures/negative/vocabulary-name-collision.neu"
+active_from_stage = 6
+status = "planned"
+
+[[case]]
+id = "visibility-modifier"
+fixture = "portable/spec/v0/fixtures/negative/visibility-modifier.neu"
+active_from_stage = 3
+status = "planned"
+
+[[case]]
+id = "version-leading-zero"
+fixture = "portable/spec/v0/fixtures/negative/version-leading-zero.neu"
+active_from_stage = 2
+status = "planned"
+
+[[case]]
+id = "version-escape"
+fixture = "portable/spec/v0/fixtures/negative/version-escape.neu"
+active_from_stage = 2
+status = "planned"
+
+[[case]]
+id = "value-cycle"
+fixture = "portable/spec/v0/fixtures/negative/value-cycle.neu"
+active_from_stage = 5
+status = "planned"
+
+[[case]]
+id = "reassignment"
+fixture = "portable/spec/v0/fixtures/negative/reassignment.neu"
+active_from_stage = 3
+status = "planned"
+
+[[case]]
+id = "nonconstant-default"
+fixture = "portable/spec/v0/fixtures/negative/nonconstant-default.neu"
+active_from_stage = 4
+status = "planned"
+
+[[case]]
+id = "namespace-declaration"
+fixture = "portable/spec/v0/fixtures/negative/namespace-declaration.neu"
+active_from_stage = 3
+status = "planned"
+
+[[case]]
+id = "mut-modifier"
+fixture = "portable/spec/v0/fixtures/negative/mut-modifier.neu"
+active_from_stage = 3
+status = "planned"
+
+[[case]]
+id = "module-path"
+fixture = "portable/spec/v0/fixtures/negative/module-path.neu"
+active_from_stage = 2
+status = "planned"
+
+[[case]]
+id = "generic-covariance"
+fixture = "portable/spec/v0/fixtures/negative/generic-covariance.neu"
+active_from_stage = 5
+status = "planned"
+

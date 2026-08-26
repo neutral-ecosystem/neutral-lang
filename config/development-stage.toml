@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# The active stage selects only implementation-foundation evidence. Advancing
+# this value requires its complete vertical slice and reviewed evidence.
+active_stage = 1
+active_step = 3
+

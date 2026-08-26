@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+{
+  "name": "neutral-lang",
+  "build": { "dockerfile": "Dockerfile" },
+  "remoteUser": "neutral",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/neutral-lang,type=bind",
+  "workspaceFolder": "/workspaces/neutral-lang",
+  "mounts": [
+    "source=neutral-lang-cargo-cache,target=/usr/local/cargo/registry,type=volume",
+    "source=neutral-lang-target,target=/workspaces/neutral-lang/target,type=volume",
+    "source=neutral-lang-results,target=/workspaces/neutral-lang/test-results,type=volume"
+  ],
+  "containerEnv": {
+    "CARGO_NET_OFFLINE": "true"
+  },
+  "postCreateCommand": "cargo xtask environment verify"
+}

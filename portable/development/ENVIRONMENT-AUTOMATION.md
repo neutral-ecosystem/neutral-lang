@@ -13,7 +13,7 @@ and Cargo exist.
 
 ### Layer 0: host bootstrap
 
-Thin `scripts/bootstrap.sh` and `scripts/bootstrap.ps1` scripts:
+Thin `scripts/linux/bootstrap.sh` and `scripts/win/bootstrap.ps1` scripts:
 
 1. detect supported host/architecture;
 2. verify required shell/PowerShell, TLS, certificate, archive, and checksum
@@ -145,6 +145,9 @@ Command rules:
 - every aggregate command emits a machine-readable summary;
 - interruption marks the run incomplete;
 - verbose mode prints exact nonsecret commands/configuration;
+- human-readable automation output begins with a bracketed category, such as
+  `[info]` or `[error]`; structured payloads use a category followed by the
+  payload, such as `[manifest] { ... }`;
 - paths are resolved/canonicalized within approved roots; and
 - cleanup rejects root, parent, unresolved, symlink-escaped, or non-result paths.
 
@@ -215,18 +218,19 @@ No compiler/conformance/performance placeholder is intentionally failed.
 - publish only after independent release approval.
 
 Untrusted pull-request code never runs with write-capable release credentials.
-Workflow permissions are least privilege and reviewed for PR, branch, schedule,
-and release events.
+The nightly workflow has no time-based schedule: it runs only after a push to
+`main` or an explicit manual dispatch. Workflow permissions are least privilege
+and reviewed for PR, branch, manual-dispatch, and release events.
 
 ## Stage 1 acceptance
 
-- [ ] Layer 0 works on every supported bootstrap host.
-- [ ] Layer 1 validates all pinned workspace tools.
-- [ ] The optional development container passes the same Stage 1 gate.
-- [ ] Environment manifests contain no secrets and identify all relevant tools.
-- [ ] Host, container, and CI call identical `xtask` tasks after bootstrap.
-- [ ] Concurrent jobs cannot share mutable roots accidentally.
-- [ ] Network-denied Stage 1 build/tests pass with prepared dependencies.
-- [ ] Running Stage 1 CI leaves tracked files unchanged.
-- [ ] A deliberate task/test/dependency-boundary failure propagates nonzero.
-- [ ] Generated evidence stays beneath the configured result root.
+- [*] Layer 0 works on every supported bootstrap host.
+- [*] Layer 1 validates all pinned workspace tools.
+- [*] The optional development container passes the same Stage 1 gate.
+- [*] Environment manifests contain no secrets and identify all relevant tools.
+- [*] Host, container, and CI call identical `xtask` tasks after bootstrap.
+- [*] Concurrent jobs cannot share mutable roots accidentally.
+- [*] Network-denied Stage 1 build/tests pass with prepared dependencies.
+- [*] Running Stage 1 CI leaves tracked files unchanged.
+- [*] A deliberate task/test/dependency-boundary failure propagates nonzero.
+- [*] Generated evidence stays beneath the configured result root.

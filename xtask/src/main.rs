@@ -10,7 +10,7 @@
 /// Runs the repository-automation command-line entry point.
 fn main() {
     if let Err(error) = xtask::run(std::env::args().skip(1)) {
-        eprintln!("error: {error}");
+        eprintln!("[error] {error}");
         std::process::exit(1);
     }
 }

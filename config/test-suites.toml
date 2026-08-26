@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# Stage 1 minimum discovered test counts. Future-stage suites remain planned and
+# are intentionally absent from the active gate.
+[stage1.minimum]
+automation = 1
+environment = 1
+workspace = 1
+package_shell = 2
+probe_allowlist = 1
+
+[planned]
+integration = 2
+system = 2
+conformance = 2
+property = 3
+security = 3
+performance = 3
+fuzz = 3

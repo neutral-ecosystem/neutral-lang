@@ -95,34 +95,34 @@ xtask                 developer/CI/evidence automation
 
 ### Step 3: establish environment, automation, and Stage 1 tests
 
-- [ ] Implement [ENVIRONMENT-AUTOMATION.md](ENVIRONMENT-AUTOMATION.md) Layers
+- [*] Implement [ENVIRONMENT-AUTOMATION.md](ENVIRONMENT-AUTOMATION.md) Layers
       0–2 and the stable `cargo xtask` interface.
-- [ ] Add only the active Stage 1 tests defined by
+- [*] Add only the active Stage 1 tests defined by
       [TESTING.md](TESTING.md): automation, environment, workspace, dependency,
       package shell, and probe allowlist.
-- [ ] Record the active stage in `config/development-stage.toml`.
-- [ ] Create the conformance manifest with all known cases planned but none
+- [*] Record the active stage in `config/development-stage.toml`.
+- [*] Create the conformance manifest with all known cases planned but none
       falsely active as compiler behavior.
-- [ ] Configure Stage 1, PR, nightly, and release workflow shells; later profiles
+- [*] Configure Stage 1, PR, nightly, and release workflow shells; later profiles
       select only active suites.
 
 #### Step validation
 
-- [ ] `cargo xtask ci stage1` passes from a clean checkout.
-- [ ] Every active suite is nonempty and every future suite is explicitly planned,
+- [*] `cargo xtask ci stage1` passes from a clean checkout.
+- [*] Every active suite is nonempty and every future suite is explicitly planned,
       not intentionally failing.
-- [ ] A zero-test active suite fails discovery.
-- [ ] A fresh supported host and development container pass Stage 1.
+- [*] A zero-test active suite fails discovery.
+- [*] A fresh supported host and development container pass Stage 1.
 
 ### Stage 1 validation
 
-- [ ] Workspace, environment, automation, dependency boundaries, documentation,
+- [*] Workspace, environment, automation, dependency boundaries, documentation,
       and active Stage 1 tests pass.
-- [ ] No production source parser, semantic behavior, stable Neutral diagnostic,
+- [*] No production source parser, semantic behavior, stable Neutral diagnostic,
       public IR payload, or vocabulary decoder has been implemented.
-- [ ] The standalone probe package is independently buildable even though it has
+- [*] The standalone probe package is independently buildable even though it has
       no language document to inspect yet.
-- [ ] Stage 2 remains blocked by the normative contract-freeze gate.
+- [*] Stage 2 remains blocked by the normative contract-freeze gate.
 
 ---
 
