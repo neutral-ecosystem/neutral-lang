@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-fixture = "portable/spec/v0/fixtures/negative/string-limit.neu"
+fixture = "portable/spec/v0/fixtures/negative/strings/string-limit.neu"
 fixture_sha256 = "cafacfb921d8fc2bf79b6fe0e8377314eb3111820b54a904663a1a540fb83ab4"
 expected_outcome = "reject"
 requirements = ["NL-API-004", "NL-DIA-004"]

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-fixture = "portable/spec/v0/fixtures/negative/invalid-identifier.neu"
+fixture = "portable/spec/v0/fixtures/negative/identifiers/invalid-identifier.neu"
 fixture_sha256 = "6c702b86c74eae74678d9e08c055f6b12fe59afca0df314bf74776784f73ea49"
 expected_outcome = "reject"
 requirements = ["NL-SRC-006", "SYN-LEX-004"]

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-fixture = "portable/spec/v0/fixtures/positive/comments-equivalent.neu"
+fixture = "portable/spec/v0/fixtures/positive/syntax/comments-equivalent.neu"
 fixture_sha256 = "5f792f9bfc7e5c73b73c3ab3663e307496d01f73fd2ab0c66114146120247c52"
 expected_outcome = "accept"
 requirements = ["NL-SRC-002", "NL-SRC-003", "NL-SRC-005", "SYN-TOL-001"]

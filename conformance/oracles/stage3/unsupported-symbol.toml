@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-fixture = "portable/spec/v0/fixtures/negative/unsupported-symbol.neu"
+fixture = "portable/spec/v0/fixtures/negative/syntax/unsupported-symbol.neu"
 fixture_sha256 = "5896cc29ed084b7975fa9f73665406ed3115c7bfe57101134806b2bc9c1f56c4"
 expected_outcome = "reject"
 requirements = ["NL-SRC-004", "SYN-LEX-002"]

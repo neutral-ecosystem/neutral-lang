@@ -25,51 +25,60 @@ mod tests {
 
     /// Frozen positive minimal source fixture.
     const MINIMAL_SOURCE: &[u8] =
-        include_bytes!("../../../portable/spec/v0/fixtures/positive/minimal-core.neu");
+        include_bytes!("../../../portable/spec/v0/fixtures/positive/syntax/minimal-core.neu");
     /// Frozen missing-module negative fixture.
-    const MISSING_MODULE: &[u8] =
-        include_bytes!("../../../portable/spec/v0/fixtures/negative/missing-module-header.neu");
+    const MISSING_MODULE: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/negative/syntax/missing-module-header.neu"
+    );
     /// Frozen unsupported-version negative fixture.
     const UNSUPPORTED_VERSION: &[u8] = include_bytes!(
-        "../../../portable/spec/v0/fixtures/negative/unsupported-language-version.neu"
+        "../../../portable/spec/v0/fixtures/negative/syntax/unsupported-language-version.neu"
     );
     /// Frozen comment-equivalent positive fixture.
-    const COMMENTS_SOURCE: &[u8] =
-        include_bytes!("../../../portable/spec/v0/fixtures/positive/comments-equivalent.neu");
+    const COMMENTS_SOURCE: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/positive/syntax/comments-equivalent.neu"
+    );
     /// Frozen identifier-boundary positive fixture.
-    const IDENTIFIER_SOURCE: &[u8] =
-        include_bytes!("../../../portable/spec/v0/fixtures/positive/identifier-boundaries.neu");
+    const IDENTIFIER_SOURCE: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/positive/syntax/identifier-boundaries.neu"
+    );
     /// Frozen invalid identifier fixture.
-    const INVALID_IDENTIFIER: &[u8] =
-        include_bytes!("../../../portable/spec/v0/fixtures/negative/invalid-identifier.neu");
+    const INVALID_IDENTIFIER: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/negative/identifiers/invalid-identifier.neu"
+    );
     /// Frozen protected-name fixture.
-    const PROTECTED_NAME: &[u8] =
-        include_bytes!("../../../portable/spec/v0/fixtures/negative/protected-name.neu");
+    const PROTECTED_NAME: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/negative/identifiers/protected-name.neu"
+    );
     /// Frozen unterminated block-comment fixture.
     const UNTERMINATED_COMMENT: &[u8] = include_bytes!(
-        "../../../portable/spec/v0/fixtures/negative/unterminated-block-comment.neu"
+        "../../../portable/spec/v0/fixtures/negative/syntax/unterminated-block-comment.neu"
     );
     /// Frozen unsupported-symbol fixture.
     const UNSUPPORTED_SYMBOL: &[u8] =
-        include_bytes!("../../../portable/spec/v0/fixtures/negative/unsupported-symbol.neu");
+        include_bytes!("../../../portable/spec/v0/fixtures/negative/syntax/unsupported-symbol.neu");
     /// Frozen punctuation-rejection fixture.
-    const PUNCTUATION_REJECTION: &[u8] =
-        include_bytes!("../../../portable/spec/v0/fixtures/negative/punctuation-rejection.neu");
+    const PUNCTUATION_REJECTION: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/negative/syntax/punctuation-rejection.neu"
+    );
     /// Frozen comment/newline ambiguity fixture.
-    const COMMENT_NEWLINE: &[u8] =
-        include_bytes!("../../../portable/spec/v0/fixtures/negative/comment-newline-ambiguity.neu");
+    const COMMENT_NEWLINE: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/negative/syntax/comment-newline-ambiguity.neu"
+    );
     /// Frozen adjacent string-token boundary fixture.
-    const STRING_BOUNDARY: &[u8] =
-        include_bytes!("../../../portable/spec/v0/fixtures/negative/string-token-boundary.neu");
+    const STRING_BOUNDARY: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/negative/syntax/string-token-boundary.neu"
+    );
     /// Frozen escaped Unicode string fixture.
-    const STRING_SOURCE: &[u8] =
-        include_bytes!("../../../portable/spec/v0/fixtures/positive/string-escapes-unicode.neu");
+    const STRING_SOURCE: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/positive/strings/string-escapes-unicode.neu"
+    );
     /// Frozen true Boolean fixture.
     const BOOLEAN_TRUE: &[u8] =
-        include_bytes!("../../../portable/spec/v0/fixtures/positive/boolean-true.neu");
+        include_bytes!("../../../portable/spec/v0/fixtures/positive/booleans/boolean-true.neu");
     /// Frozen false Boolean fixture.
     const BOOLEAN_FALSE: &[u8] =
-        include_bytes!("../../../portable/spec/v0/fixtures/positive/boolean-false.neu");
+        include_bytes!("../../../portable/spec/v0/fixtures/positive/booleans/boolean-false.neu");
 
     /// Returns deterministic bounds for active scalar source slices.
     fn limits() -> StructuralLimits {
@@ -433,7 +442,7 @@ mod tests {
         let cases: [FailureOracle<'_>; 9] = [
             (
                 include_bytes!(
-                    "../../../portable/spec/v0/fixtures/negative/string-unknown-escape.neu"
+                    "../../../portable/spec/v0/fixtures/negative/strings/string-unknown-escape.neu"
                 ),
                 ResultClass::Syntax,
                 diagnostics::INVALID_STRING_LITERAL,
@@ -441,7 +450,7 @@ mod tests {
             ),
             (
                 include_bytes!(
-                    "../../../portable/spec/v0/fixtures/negative/string-invalid-surrogate.neu"
+                    "../../../portable/spec/v0/fixtures/negative/strings/string-invalid-surrogate.neu"
                 ),
                 ResultClass::Syntax,
                 diagnostics::INVALID_STRING_LITERAL,
@@ -449,7 +458,7 @@ mod tests {
             ),
             (
                 include_bytes!(
-                    "../../../portable/spec/v0/fixtures/negative/string-out-of-range.neu"
+                    "../../../portable/spec/v0/fixtures/negative/strings/string-out-of-range.neu"
                 ),
                 ResultClass::Syntax,
                 diagnostics::INVALID_STRING_LITERAL,
@@ -457,7 +466,7 @@ mod tests {
             ),
             (
                 include_bytes!(
-                    "../../../portable/spec/v0/fixtures/negative/string-raw-control.neu"
+                    "../../../portable/spec/v0/fixtures/negative/strings/string-raw-control.neu"
                 ),
                 ResultClass::Syntax,
                 diagnostics::INVALID_STRING_LITERAL,
@@ -465,7 +474,7 @@ mod tests {
             ),
             (
                 include_bytes!(
-                    "../../../portable/spec/v0/fixtures/negative/string-unterminated.neu"
+                    "../../../portable/spec/v0/fixtures/negative/strings/string-unterminated.neu"
                 ),
                 ResultClass::Syntax,
                 diagnostics::UNTERMINATED_STRING_LITERAL,
@@ -473,7 +482,7 @@ mod tests {
             ),
             (
                 include_bytes!(
-                    "../../../portable/spec/v0/fixtures/negative/string-type-mismatch.neu"
+                    "../../../portable/spec/v0/fixtures/negative/strings/string-type-mismatch.neu"
                 ),
                 ResultClass::Semantics,
                 diagnostics::TYPE_MISMATCH,
@@ -481,21 +490,23 @@ mod tests {
             ),
             (
                 include_bytes!(
-                    "../../../portable/spec/v0/fixtures/negative/invalid-boolean-literal.neu"
+                    "../../../portable/spec/v0/fixtures/negative/booleans/invalid-boolean-literal.neu"
                 ),
                 ResultClass::Syntax,
                 diagnostics::MALFORMED_BOUNDARY,
                 (91, 92),
             ),
             (
-                include_bytes!("../../../portable/spec/v0/fixtures/negative/version-escape.neu"),
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/syntax/version-escape.neu"
+                ),
                 ResultClass::Syntax,
                 diagnostics::UNSUPPORTED_LANGUAGE_VERSION,
                 (4, 14),
             ),
             (
                 include_bytes!(
-                    "../../../portable/spec/v0/fixtures/negative/version-leading-zero.neu"
+                    "../../../portable/spec/v0/fixtures/negative/syntax/version-leading-zero.neu"
                 ),
                 ResultClass::Syntax,
                 diagnostics::UNSUPPORTED_LANGUAGE_VERSION,
@@ -568,7 +579,8 @@ mod tests {
     #[test]
     /// Verifies decoded string limits fail through the resource result boundary.
     fn security_decoded_string_limit_fails_before_ir_allocation() {
-        let source = include_bytes!("../../../portable/spec/v0/fixtures/negative/string-limit.neu");
+        let source =
+            include_bytes!("../../../portable/spec/v0/fixtures/negative/strings/string-limit.neu");
         let limits = StructuralLimits::new(1_024, 16)
             .expect("base limits should be valid")
             .with_string_bytes(8)
@@ -653,10 +665,16 @@ mod tests {
     /// Verifies planned Stage 3 grammar remains rejected until its own slice.
     fn security_future_grammar_is_not_accepted_by_source_text_work() {
         let future: [&[u8]; 4] = [
-            include_bytes!("../../../portable/spec/v0/fixtures/negative/visibility-modifier.neu"),
-            include_bytes!("../../../portable/spec/v0/fixtures/negative/reassignment.neu"),
-            include_bytes!("../../../portable/spec/v0/fixtures/negative/namespace-declaration.neu"),
-            include_bytes!("../../../portable/spec/v0/fixtures/negative/mut-modifier.neu"),
+            include_bytes!(
+                "../../../portable/spec/v0/fixtures/negative/vocabulary/visibility-modifier.neu"
+            ),
+            include_bytes!("../../../portable/spec/v0/fixtures/negative/values/reassignment.neu"),
+            include_bytes!(
+                "../../../portable/spec/v0/fixtures/negative/vocabulary/namespace-declaration.neu"
+            ),
+            include_bytes!(
+                "../../../portable/spec/v0/fixtures/negative/vocabulary/mut-modifier.neu"
+            ),
         ];
         for source in future {
             assert!(matches!(

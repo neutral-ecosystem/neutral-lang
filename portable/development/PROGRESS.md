@@ -18,6 +18,11 @@ None recorded.
 
 ## Completed log
 
+- [*] 2026-08-27: Reorganized v0 source fixtures by outcome and primary
+  feature (`syntax`, `identifiers`, `strings`, `booleans`, `values`, and
+  `vocabulary`); updated manifests, oracles, compiler includes, and fixture
+  documentation to use the grouped paths.
+
 - [*] 2026-08-27: Replaced duplicated compiler diagnostic literals with the
   owning `neutral-compiler::diagnostics` and `neutral-probe::diagnostics`
   namespaces; cross-package version assertions now use exported compiler and

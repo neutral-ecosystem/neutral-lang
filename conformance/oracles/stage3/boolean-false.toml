@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-fixture = "portable/spec/v0/fixtures/positive/boolean-false.neu"
+fixture = "portable/spec/v0/fixtures/positive/booleans/boolean-false.neu"
 fixture_sha256 = "bbda34018945d76c6b5a98df5a62364e41b4d787e9af94558038435aa33e40aa"
 expected_outcome = "accept"
 requirements = ["NL-TYP-001", "SYN-VAL-001"]

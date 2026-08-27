@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-fixture = "portable/spec/v0/fixtures/negative/string-unterminated.neu"
+fixture = "portable/spec/v0/fixtures/negative/strings/string-unterminated.neu"
 fixture_sha256 = "90bcc210635ca6305b60cca5aa4bd4f895fe19126e43eaaa301882b522f3b23e"
 expected_outcome = "reject"
 requirements = ["SYN-LEX-006"]

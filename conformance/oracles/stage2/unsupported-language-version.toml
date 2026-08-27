@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-fixture = "portable/spec/v0/fixtures/negative/unsupported-language-version.neu"
+fixture = "portable/spec/v0/fixtures/negative/syntax/unsupported-language-version.neu"
 fixture_sha256 = "fb9a76dbf1827b2127220643e955fc4e45508b97b83d6682d552ee5a8d47e3ac"
 expected_outcome = "reject"
 requirements = ["NL-DOC-001"]

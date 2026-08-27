@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-fixture = "portable/spec/v0/fixtures/positive/minimal-core.neu"
+fixture = "portable/spec/v0/fixtures/positive/syntax/minimal-core.neu"
 fixture_sha256 = "2c0ba86566082520c52d6af9d772890512ae76e5b59dcd628ca64a398ae1522f"
 expected_outcome = "accept"
 requirements = ["NL-DOC-001", "NL-DOC-004", "NL-DEC-001", "NL-TYP-002", "NL-IR-001", "NL-PRO-001", "NL-V0-001"]

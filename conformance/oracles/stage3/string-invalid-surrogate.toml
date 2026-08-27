@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-fixture = "portable/spec/v0/fixtures/negative/string-invalid-surrogate.neu"
+fixture = "portable/spec/v0/fixtures/negative/strings/string-invalid-surrogate.neu"
 fixture_sha256 = "02fac19d1b6252bc08632495533a2552321218db0eafd1b45d98d5f14545137c"
 expected_outcome = "reject"
 requirements = ["SYN-LEX-006"]

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-fixture = "portable/spec/v0/fixtures/negative/protected-name.neu"
+fixture = "portable/spec/v0/fixtures/negative/identifiers/protected-name.neu"
 fixture_sha256 = "6b27025076abc4a02d1d26f69d01a34189cb6cad3ac11d323cfa5a4414a2610f"
 expected_outcome = "reject"
 requirements = ["SYN-DEC-004"]

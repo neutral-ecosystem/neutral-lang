@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-fixture = "portable/spec/v0/fixtures/positive/identifier-boundaries.neu"
+fixture = "portable/spec/v0/fixtures/positive/syntax/identifier-boundaries.neu"
 fixture_sha256 = "17a862b9285f0a2184a61e6d20d3b0e49a95d6a981a0279fa3e0e09cc0b3c507"
 expected_outcome = "accept"
 requirements = ["NL-SRC-006", "SYN-LEX-004", "SYN-EVO-001"]

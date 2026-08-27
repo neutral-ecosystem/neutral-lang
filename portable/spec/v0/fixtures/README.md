@@ -2,59 +2,71 @@
 
 These fixtures cover the reduced, domain-neutral v0 language.
 
+The corpus is grouped first by outcome, then by the primary language feature
+under test. This keeps feature growth localized and makes it easy to discover
+the matching fixture and oracle.
+
+```text
+fixtures/
+├── positive/
+│   ├── syntax/       # headers, comments, identifiers, and core source shape
+│   ├── strings/      # valid string decoding
+│   ├── booleans/     # valid Boolean literals
+│   ├── values/       # value reuse and defaults
+│   └── vocabulary/   # data-only vocabulary integration
+└── negative/
+    ├── syntax/       # rejected syntax, boundaries, and versions
+    ├── identifiers/  # invalid and protected names
+    ├── strings/      # rejected string forms and limits
+    ├── booleans/     # rejected Boolean forms
+    ├── values/       # rejected value semantics
+    └── vocabulary/   # rejected vocabulary/module features
+```
+
 ## Positive source
 
-- [string-escapes-unicode.neu](positive/string-escapes-unicode.neu),
-  [boolean-true.neu](positive/boolean-true.neu), and
-  [boolean-false.neu](positive/boolean-false.neu) freeze Stage 3 Slice 3.2
+- [string-escapes-unicode.neu](positive/strings/string-escapes-unicode.neu),
+  [boolean-true.neu](positive/booleans/boolean-true.neu), and
+  [boolean-false.neu](positive/booleans/boolean-false.neu) freeze Stage 3 Slice 3.2
   string decoding and exact Boolean values.
-- [comments-equivalent.neu](positive/comments-equivalent.neu) proves line and
+- [comments-equivalent.neu](positive/syntax/comments-equivalent.neu) proves line and
   block comments remain nonsemantic while their source regions stay observable
   only through source facts.
-- [identifier-boundaries.neu](positive/identifier-boundaries.neu) freezes valid
+- [identifier-boundaries.neu](positive/syntax/identifier-boundaries.neu) freezes valid
   ASCII `snake_case` segments containing digits.
-- [minimal-core.neu](positive/minimal-core.neu) is the Stage 2 atomic source
+- [minimal-core.neu](positive/syntax/minimal-core.neu) is the Stage 2 atomic source
   path: one module with one exact `num` binding and a complete frozen oracle.
-- [immutable-value-reuse.neu](positive/immutable-value-reuse.neu) distinguishes
+- [immutable-value-reuse.neu](positive/values/immutable-value-reuse.neu) distinguishes
   ordinary value reuse from identity references and proves forward resolution.
-- [defaults-compatibility.neu](positive/defaults-compatibility.neu) covers
+- [defaults-compatibility.neu](positive/values/defaults-compatibility.neu) covers
   defaults, nullability, lists, and outer nullable widening.
-- [minimal-vocabulary.neu](positive/minimal-vocabulary.neu) proves one captured
+- [minimal-vocabulary.neu](positive/vocabulary/minimal-vocabulary.neu) proves one captured
   data-only vocabulary through the generic source-to-IR boundary.
 
 ## Negative source
 
-- The `string-*` scalar fixtures plus
-  [invalid-boolean-literal.neu](negative/invalid-boolean-literal.neu) freeze
+- The `string-*` scalar fixtures in [negative/strings](negative/strings/) plus
+  [invalid-boolean-literal.neu](negative/booleans/invalid-boolean-literal.neu) freeze
   invalid escapes, Unicode scalars, controls, termination, types, and limits.
-- [invalid-identifier.neu](negative/invalid-identifier.neu),
-  [protected-name.neu](negative/protected-name.neu),
-  [punctuation-rejection.neu](negative/punctuation-rejection.neu),
-  [unterminated-block-comment.neu](negative/unterminated-block-comment.neu),
-  [unsupported-symbol.neu](negative/unsupported-symbol.neu),
-  [comment-newline-ambiguity.neu](negative/comment-newline-ambiguity.neu), and
-  [string-token-boundary.neu](negative/string-token-boundary.neu) freeze the
+- Identifier failures are in [negative/identifiers](negative/identifiers/).
+- Syntax failures are in [negative/syntax](negative/syntax/) and freeze the
   Stage 3 Slice 3.1 name, comment, punctuation, and token-boundary failures.
-- [missing-module-header.neu](negative/missing-module-header.neu) freezes the
-  missing-module-header diagnostic.
-- [unsupported-language-version.neu](negative/unsupported-language-version.neu)
-  freezes rejection of a non-`0.1` language version.
-- [generic-covariance.neu](negative/generic-covariance.neu): invariant generic
+- [generic-covariance.neu](negative/vocabulary/generic-covariance.neu): invariant generic
   argument violation.
-- [module-path.neu](negative/module-path.neu): module qualification is absent.
-- [mut-modifier.neu](negative/mut-modifier.neu): mutation is absent.
-- [namespace-declaration.neu](negative/namespace-declaration.neu): namespaces
+- [module-path.neu](negative/vocabulary/module-path.neu): module qualification is absent.
+- [mut-modifier.neu](negative/vocabulary/mut-modifier.neu): mutation is absent.
+- [namespace-declaration.neu](negative/vocabulary/namespace-declaration.neu): namespaces
   are absent.
-- [nonconstant-default.neu](negative/nonconstant-default.neu): defaults cannot
+- [nonconstant-default.neu](negative/values/nonconstant-default.neu): defaults cannot
   read bindings.
-- [reassignment.neu](negative/reassignment.neu): reassignment is absent.
-- [value-cycle.neu](negative/value-cycle.neu): immutable value cycle.
-- [version-escape.neu](negative/version-escape.neu): escaped version spelling.
-- [version-leading-zero.neu](negative/version-leading-zero.neu): noncanonical
+- [reassignment.neu](negative/values/reassignment.neu): reassignment is absent.
+- [value-cycle.neu](negative/values/value-cycle.neu): immutable value cycle.
+- [version-escape.neu](negative/syntax/version-escape.neu): escaped version spelling.
+- [version-leading-zero.neu](negative/syntax/version-leading-zero.neu): noncanonical
   version spelling.
-- [visibility-modifier.neu](negative/visibility-modifier.neu): visibility syntax
+- [visibility-modifier.neu](negative/vocabulary/visibility-modifier.neu): visibility syntax
   is absent.
-- [vocabulary-name-collision.neu](negative/vocabulary-name-collision.neu): the
+- [vocabulary-name-collision.neu](negative/vocabulary/vocabulary-name-collision.neu): the
   imported vocabulary namespace cannot be redeclared.
 
 ## Contract matrix

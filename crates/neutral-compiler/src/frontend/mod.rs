@@ -350,8 +350,9 @@ mod tests {
     #[test]
     /// Verifies raw tokens retain original spans and physical newline spellings.
     fn lexer_retains_minimal_fixture_spans_and_physical_newlines() {
-        let source =
-            include_bytes!("../../../../portable/spec/v0/fixtures/positive/minimal-core.neu");
+        let source = include_bytes!(
+            "../../../../portable/spec/v0/fixtures/positive/syntax/minimal-core.neu"
+        );
         let source = lexer::lex(source).expect("frozen minimal fixture should lex");
         assert!(matches!(source.tokens[0].kind, TokenKind::Neu));
         assert_eq!(source.tokens[0].span.start(), 0);
@@ -417,8 +418,9 @@ mod tests {
     #[test]
     /// Verifies the positive frozen fixture produces its expected private spans.
     fn parser_matches_the_minimal_frozen_oracle() {
-        let source =
-            include_bytes!("../../../../portable/spec/v0/fixtures/positive/minimal-core.neu");
+        let source = include_bytes!(
+            "../../../../portable/spec/v0/fixtures/positive/syntax/minimal-core.neu"
+        );
         let unit = parse_source(source).expect("frozen minimal fixture should parse");
         assert_eq!((unit.module.span.start(), unit.module.span.end()), (10, 24));
         assert_eq!(
@@ -449,7 +451,7 @@ mod tests {
     /// Verifies the missing-module fixture matches its frozen diagnostic span.
     fn parser_matches_the_missing_module_frozen_oracle() {
         let source = include_bytes!(
-            "../../../../portable/spec/v0/fixtures/negative/missing-module-header.neu"
+            "../../../../portable/spec/v0/fixtures/negative/syntax/missing-module-header.neu"
         );
         let error = parse_source(source).expect_err("missing module must fail");
         assert_eq!(error.kind, FrontendErrorKind::MissingModuleHeader);
@@ -460,7 +462,7 @@ mod tests {
     /// Verifies the unsupported-version fixture matches its frozen diagnostic span.
     fn parser_matches_the_unsupported_version_frozen_oracle() {
         let source = include_bytes!(
-            "../../../../portable/spec/v0/fixtures/negative/unsupported-language-version.neu"
+            "../../../../portable/spec/v0/fixtures/negative/syntax/unsupported-language-version.neu"
         );
         let error = parse_source(source).expect_err("unsupported version must fail");
         assert_eq!(error.kind, FrontendErrorKind::UnsupportedLanguageVersion);

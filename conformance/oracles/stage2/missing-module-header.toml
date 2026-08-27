@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-fixture = "portable/spec/v0/fixtures/negative/missing-module-header.neu"
+fixture = "portable/spec/v0/fixtures/negative/syntax/missing-module-header.neu"
 fixture_sha256 = "cc67a03da0a6322e38c444f63ee7672a00df1cd613c44dcbd549b166a0bf61dd"
 expected_outcome = "reject"
 requirements = ["NL-DOC-001"]

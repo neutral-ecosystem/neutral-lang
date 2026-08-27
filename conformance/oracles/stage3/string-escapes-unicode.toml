@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-fixture = "portable/spec/v0/fixtures/positive/string-escapes-unicode.neu"
+fixture = "portable/spec/v0/fixtures/positive/strings/string-escapes-unicode.neu"
 fixture_sha256 = "19ed3848037a14ce49c5a37e1fca667f468d3c405496f68123d0b527c0ad8afb"
 expected_outcome = "accept"
 requirements = ["NL-TYP-001", "SYN-LEX-006", "SYN-VAL-001", "NL-DIA-006"]

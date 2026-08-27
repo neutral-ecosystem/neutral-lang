@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-fixture = "portable/spec/v0/fixtures/negative/string-token-boundary.neu"
+fixture = "portable/spec/v0/fixtures/negative/syntax/string-token-boundary.neu"
 fixture_sha256 = "783e0b4d4d60f74e57f2c31dfc8dfa568a6efdd5864defc3898fc38399bc7c8f"
 expected_outcome = "reject"
 requirements = ["SYN-DOC-001", "SYN-EVO-001"]
