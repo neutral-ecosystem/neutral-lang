@@ -13,6 +13,7 @@ fixtures/
 │   ├── strings/      # valid string decoding
 │   ├── booleans/     # valid Boolean literals
 │   ├── numbers/      # valid exact-number spellings and normalization
+│   ├── nullability/  # nullable scalars, explicit null, and outer widening
 │   ├── values/       # value reuse and defaults
 │   └── vocabulary/   # data-only vocabulary integration
 └── negative/
@@ -21,6 +22,7 @@ fixtures/
     ├── strings/      # rejected string forms and limits
     ├── booleans/     # rejected Boolean forms
     ├── numbers/      # rejected exact-number spellings and limits
+    ├── nullability/  # rejected null placement and nullable type shapes
     ├── values/       # rejected value semantics
     └── vocabulary/   # rejected vocabulary/module features
 ```
@@ -40,6 +42,8 @@ fixtures/
   path: one module with one exact `num` binding and a complete frozen oracle.
 - The [positive number fixtures](positive/numbers/) freeze signs, separators,
   fractions, exponents, zero canonicalization, and exact normalization.
+- The [positive nullability fixtures](positive/nullability/) freeze nullable
+  scalar types, explicit typed null, and outer scalar widening.
 - [immutable-value-reuse.neu](positive/values/immutable-value-reuse.neu) distinguishes
   ordinary value reuse from identity references and proves forward resolution.
 - [defaults-compatibility.neu](positive/values/defaults-compatibility.neu) covers
@@ -57,6 +61,8 @@ fixtures/
   Stage 3 Slice 3.1 name, comment, punctuation, and token-boundary failures.
 - The [negative number fixtures](negative/numbers/) freeze malformed
   separators/fractions/exponents, base prefixes, and digit/scale limits.
+- The [negative nullability fixtures](negative/nullability/) freeze null in a
+  non-nullable context, duplicate postfix `?`, and forbidden inner widening.
 - [generic-covariance.neu](negative/vocabulary/generic-covariance.neu): invariant generic
   argument violation.
 - [module-path.neu](negative/vocabulary/module-path.neu): module qualification is absent.

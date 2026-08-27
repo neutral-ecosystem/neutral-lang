@@ -1,0 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module nullable_num
+num? value = null

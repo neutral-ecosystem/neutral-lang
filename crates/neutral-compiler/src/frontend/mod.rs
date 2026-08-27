@@ -67,6 +67,8 @@ enum TokenKind {
     True,
     /// The `false` Boolean literal.
     False,
+    /// The `null` explicit null literal.
+    Null,
     /// A protected core spelling appearing where an identifier can be diagnosed.
     ProtectedName(String),
     /// An ASCII identifier retained for later semantic validation.
@@ -77,6 +79,8 @@ enum TokenKind {
     Number(String),
     /// The binding initializer delimiter.
     Equals,
+    /// Postfix outer-nullability delimiter.
+    Question,
     /// An original physical newline before layout normalization.
     PhysicalLineEnd(PhysicalLineEnd),
     /// A semantic declaration/header terminator.
@@ -157,8 +161,8 @@ pub(super) struct ParsedBinding {
     pub(super) value_span: ByteSpan,
 }
 
-/// Compiler-private scalar type syntax active through Slice 3.2.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// Compiler-private scalar type syntax active through Slice 3.4.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum ParsedType {
     /// Exact numeric type.
     Num,
@@ -166,9 +170,11 @@ pub(super) enum ParsedType {
     String,
     /// Boolean type.
     Bool,
+    /// Exactly one outer nullable layer around a supported type.
+    Nullable(Box<ParsedType>),
 }
 
-/// Compiler-private scalar literal active through Slice 3.2.
+/// Compiler-private scalar literal active through Slice 3.4.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum ParsedValue {
     /// Minimal digits-only number spelling.
@@ -177,6 +183,8 @@ pub(super) enum ParsedValue {
     String(String),
     /// Exact Boolean value.
     Boolean(bool),
+    /// Explicit null value.
+    Null,
 }
 
 /// A private frontend failure with an optional frozen public diagnostic.

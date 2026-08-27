@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/spec/v0/fixtures/negative/nullability/inner-generic-widening.neu"
+fixture_sha256 = "689538c8f9e6cda22118144a1e2484224ca1951f3ba19070dc645642231f176f"
+expected_outcome = "reject"
+failure_class = "syntax"
+diagnostic = "NEU-LEX-001"
+primary_span = [84, 85]

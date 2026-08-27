@@ -80,6 +80,8 @@ pub enum ReaderError {
     MissingSourceMapEntry,
     /// A declaration had no matching value-provenance record.
     MissingProvenanceRecord,
+    /// A declaration value did not satisfy its resolved type and nullability.
+    TypeValueMismatch,
 }
 
 /// Validates relationships among logical declarations and companion artifacts.
@@ -87,6 +89,12 @@ fn validate_artifacts(artifacts: &CompilationArtifacts) -> Result<(), ReaderErro
     let mut element_ids = BTreeSet::new();
     let mut names = BTreeSet::new();
     for declaration in artifacts.logical_document().declarations() {
+        if !declaration
+            .resolved_type()
+            .accepts_value(declaration.value())
+        {
+            return Err(ReaderError::TypeValueMismatch);
+        }
         if !element_ids.insert(declaration.element_id()) {
             return Err(ReaderError::DuplicateElementId);
         }

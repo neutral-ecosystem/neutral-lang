@@ -379,7 +379,7 @@ impl fmt::Display for ExactNumber {
 }
 
 /// Resolved minimal Neutral type identity.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ResolvedType {
     /// Exact Neutral numeric type.
     Num,
@@ -387,6 +387,44 @@ pub enum ResolvedType {
     String,
     /// Exact Boolean type.
     Bool,
+    /// One outer nullable layer around an otherwise resolved type.
+    Nullable(Box<ResolvedType>),
+}
+
+impl ResolvedType {
+    /// Wraps a resolved non-null type in exactly one outer nullable layer.
+    #[must_use]
+    pub fn nullable(inner: Self) -> Self {
+        Self::Nullable(Box::new(inner))
+    }
+
+    /// Returns whether this type has an outer nullable layer.
+    #[must_use]
+    pub const fn is_nullable(&self) -> bool {
+        matches!(self, Self::Nullable(_))
+    }
+
+    /// Returns the inner resolved type when this type is nullable.
+    #[must_use]
+    pub fn nullable_inner(&self) -> Option<&Self> {
+        match self {
+            Self::Nullable(inner) => Some(inner),
+            _ => None,
+        }
+    }
+
+    /// Returns whether a logical value satisfies exact identity plus outer nullability.
+    #[must_use]
+    pub fn accepts_value(&self, value: &LogicalValue) -> bool {
+        match (self, value) {
+            (Self::Num, LogicalValue::Number(_))
+            | (Self::String, LogicalValue::String(_))
+            | (Self::Bool, LogicalValue::Boolean(_))
+            | (Self::Nullable(_), LogicalValue::Null) => true,
+            (Self::Nullable(inner), value) => inner.accepts_value(value),
+            _ => false,
+        }
+    }
 }
 
 impl fmt::Display for ResolvedType {
@@ -396,6 +434,7 @@ impl fmt::Display for ResolvedType {
             Self::Num => formatter.write_str("num"),
             Self::String => formatter.write_str("string"),
             Self::Bool => formatter.write_str("bool"),
+            Self::Nullable(inner) => write!(formatter, "{inner}?"),
         }
     }
 }
@@ -409,6 +448,8 @@ pub enum LogicalValue {
     String(String),
     /// Exact Boolean value.
     Boolean(bool),
+    /// Explicit null value, valid only with a nullable resolved type.
+    Null,
 }
 
 impl fmt::Display for LogicalValue {
@@ -418,6 +459,7 @@ impl fmt::Display for LogicalValue {
             Self::Number(number) => number.fmt(formatter),
             Self::String(value) => format_safe_string(value, formatter),
             Self::Boolean(value) => value.fmt(formatter),
+            Self::Null => formatter.write_str("null"),
         }
     }
 }
@@ -453,7 +495,7 @@ impl DeclarationFingerprint {
     ///
     /// Returns an error only when NHT framing exceeds its fixed widths.
     pub fn for_binding(
-        resolved_type: ResolvedType,
+        resolved_type: &ResolvedType,
         value: &LogicalValue,
     ) -> Result<Self, CoreError> {
         let mut payload = Vec::new();
@@ -466,6 +508,7 @@ impl DeclarationFingerprint {
             LogicalValue::Number(number) => number.nht_payload()?,
             LogicalValue::String(value) => nht_frame("string", value.as_bytes())?,
             LogicalValue::Boolean(value) => nht_frame("boolean", &[u8::from(*value)])?,
+            LogicalValue::Null => nht_frame("null", &[])?,
         };
         payload.extend(nht_frame("logical-definition", &definition)?);
         SemanticDigest::from_nht("neutral/declaration-fingerprint/v1", &payload).map(Self)
@@ -542,8 +585,8 @@ impl Declaration {
 
     /// Returns the resolved type.
     #[must_use]
-    pub const fn resolved_type(&self) -> ResolvedType {
-        self.resolved_type
+    pub const fn resolved_type(&self) -> &ResolvedType {
+        &self.resolved_type
     }
 
     /// Returns the final immutable logical value.
@@ -747,6 +790,8 @@ pub enum Normalization {
     StringEscapeDecoding,
     /// A Boolean token was lowered without value transformation.
     BooleanIdentity,
+    /// An explicit null token was lowered without structural omission.
+    NullIdentity,
 }
 
 /// Provenance record for one minimal binding value.
@@ -1135,9 +1180,9 @@ mod tests {
         let value = LogicalValue::Number(
             ExactNumber::from_unsigned_integer("42").expect("integer should normalize"),
         );
-        let first = DeclarationFingerprint::for_binding(ResolvedType::Num, &value)
+        let first = DeclarationFingerprint::for_binding(&ResolvedType::Num, &value)
             .expect("fingerprint should succeed");
-        let second = DeclarationFingerprint::for_binding(ResolvedType::Num, &value)
+        let second = DeclarationFingerprint::for_binding(&ResolvedType::Num, &value)
             .expect("fingerprint should be deterministic");
         assert_eq!(first, second);
     }
@@ -1156,17 +1201,44 @@ mod tests {
     /// Verifies scalar types and Boolean values enter definition fingerprints.
     fn scalar_fingerprints_distinguish_type_and_boolean_value() {
         let truth =
-            DeclarationFingerprint::for_binding(ResolvedType::Bool, &LogicalValue::Boolean(true))
+            DeclarationFingerprint::for_binding(&ResolvedType::Bool, &LogicalValue::Boolean(true))
                 .expect("Boolean fingerprint should succeed");
         let falsehood =
-            DeclarationFingerprint::for_binding(ResolvedType::Bool, &LogicalValue::Boolean(false))
+            DeclarationFingerprint::for_binding(&ResolvedType::Bool, &LogicalValue::Boolean(false))
                 .expect("Boolean fingerprint should succeed");
         let text = DeclarationFingerprint::for_binding(
-            ResolvedType::String,
+            &ResolvedType::String,
             &LogicalValue::String("true".to_owned()),
         )
         .expect("string fingerprint should succeed");
         assert_ne!(truth, falsehood);
         assert_ne!(truth, text);
+    }
+
+    #[test]
+    /// Verifies explicit null requires outer nullable type identity.
+    fn nullable_type_compatibility_distinguishes_null_from_nonnull_values() {
+        let nullable_string = ResolvedType::nullable(ResolvedType::String);
+        assert!(nullable_string.accepts_value(&LogicalValue::Null));
+        assert!(nullable_string.accepts_value(&LogicalValue::String("value".to_owned())));
+        assert!(!ResolvedType::String.accepts_value(&LogicalValue::Null));
+        assert!(!nullable_string.accepts_value(&LogicalValue::Boolean(false)));
+        assert_eq!(nullable_string.to_string(), "string?");
+    }
+
+    #[test]
+    /// Verifies null fingerprints include the nullable expected scalar type.
+    fn typed_null_fingerprints_distinguish_nullable_types() {
+        let string = DeclarationFingerprint::for_binding(
+            &ResolvedType::nullable(ResolvedType::String),
+            &LogicalValue::Null,
+        )
+        .expect("nullable string null should fingerprint");
+        let boolean = DeclarationFingerprint::for_binding(
+            &ResolvedType::nullable(ResolvedType::Bool),
+            &LogicalValue::Null,
+        )
+        .expect("nullable Boolean null should fingerprint");
+        assert_ne!(string, boolean);
     }
 }

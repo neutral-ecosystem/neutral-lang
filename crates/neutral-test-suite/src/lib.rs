@@ -91,6 +91,22 @@ mod tests {
     /// Frozen zero-number positive fixture.
     const NUMBER_ZERO: &[u8] =
         include_bytes!("../../../portable/spec/v0/fixtures/positive/numbers/number-zero.neu");
+    /// Frozen nullable string-null positive fixture.
+    const NULLABLE_STRING_NULL: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/positive/nullability/nullable-string-null.neu"
+    );
+    /// Frozen nullable number-null positive fixture.
+    const NULLABLE_NUM_NULL: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/positive/nullability/nullable-num-null.neu"
+    );
+    /// Frozen nullable Boolean-null positive fixture.
+    const NULLABLE_BOOL_NULL: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/positive/nullability/nullable-bool-null.neu"
+    );
+    /// Frozen outer scalar-widening positive fixture.
+    const NULLABLE_SCALAR_WIDENING: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/positive/nullability/nullable-scalar-widening.neu"
+    );
 
     /// Returns deterministic bounds for active scalar source slices.
     fn limits() -> StructuralLimits {
@@ -256,6 +272,99 @@ mod tests {
             );
             assert_eq!(span_pair(failure.diagnostics()[0].primary().span()), span);
         }
+    }
+
+    #[test]
+    /// Verifies nullable scalar null and outer widening fixtures through public IR.
+    fn conformance_stage3_nullable_scalar_positive_oracles() {
+        let null_cases = [
+            (NULLABLE_STRING_NULL, "string?"),
+            (NULLABLE_NUM_NULL, "num?"),
+            (NULLABLE_BOOL_NULL, "bool?"),
+        ];
+        for (source, expected_type) in null_cases {
+            let artifacts = compile_artifacts(source);
+            let declaration = &artifacts.logical_document().declarations()[0];
+            assert_eq!(declaration.resolved_type().to_string(), expected_type);
+            assert_eq!(declaration.value(), &neutral_ir::LogicalValue::Null);
+            assert_eq!(
+                artifacts.provenance()[0].normalization(),
+                neutral_ir::Normalization::NullIdentity
+            );
+        }
+
+        let widened = compile_artifacts(NULLABLE_SCALAR_WIDENING);
+        let declaration = &widened.logical_document().declarations()[0];
+        assert_eq!(declaration.resolved_type().to_string(), "string?");
+        assert_eq!(declaration.value().to_string(), "\"present\"");
+    }
+
+    #[test]
+    /// Verifies reader/probe retain explicit null as a typed declaration value.
+    fn system_nullable_null_remains_distinct_from_absence() {
+        let document = compile_reader(NULLABLE_STRING_NULL);
+        let declaration = document
+            .declaration_by_name("value")
+            .expect("explicit null declaration must not be omitted");
+        assert_eq!(declaration.resolved_type().to_string(), "string?");
+        assert_eq!(declaration.value(), &neutral_ir::LogicalValue::Null);
+        assert_eq!(
+            summarize(&document).declarations(),
+            ["value: string? = null"]
+        );
+    }
+
+    #[test]
+    /// Verifies null and malformed nullability fail at their frozen boundaries.
+    fn conformance_stage3_nullable_scalar_negative_oracles() {
+        let cases: [FailureOracle<'_>; 3] = [
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/nullability/nonnullable-null.neu"
+                ),
+                ResultClass::Semantics,
+                diagnostics::TYPE_MISMATCH,
+                (89, 93),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/nullability/double-nullable.neu"
+                ),
+                ResultClass::Syntax,
+                diagnostics::MALFORMED_BOUNDARY,
+                (80, 81),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/nullability/inner-generic-widening.neu"
+                ),
+                ResultClass::Syntax,
+                diagnostics::UNSUPPORTED_SYMBOL,
+                (84, 85),
+            ),
+        ];
+        for (source, class, code, expected_span) in cases {
+            let failure = compile_failure(source);
+            assert_eq!(failure.class(), class);
+            assert_eq!(failure.diagnostics()[0].code().as_str(), code);
+            assert_eq!(
+                span_pair(failure.diagnostics()[0].primary().span()),
+                expected_span
+            );
+        }
+    }
+
+    #[test]
+    /// Verifies nullable type identity enters null definition fingerprints.
+    fn property_typed_null_fingerprints_remain_distinct() {
+        let string = compile_artifacts(NULLABLE_STRING_NULL);
+        let number = compile_artifacts(NULLABLE_NUM_NULL);
+        let boolean = compile_artifacts(NULLABLE_BOOL_NULL);
+        let fingerprints = [string, number, boolean]
+            .map(|artifacts| artifacts.logical_document().declarations()[0].fingerprint());
+        assert_ne!(fingerprints[0], fingerprints[1]);
+        assert_ne!(fingerprints[1], fingerprints[2]);
+        assert_ne!(fingerprints[0], fingerprints[2]);
     }
 
     #[test]
@@ -790,9 +899,9 @@ mod tests {
     }
 
     #[test]
-    /// Verifies planned Stage 3 grammar remains rejected until its own slice.
+    /// Verifies Stage 4 and later grammar remains rejected until its own slice.
     fn security_future_grammar_is_not_accepted_by_source_text_work() {
-        let future: [&[u8]; 4] = [
+        let future: [&[u8]; 9] = [
             include_bytes!(
                 "../../../portable/spec/v0/fixtures/negative/vocabulary/visibility-modifier.neu"
             ),
@@ -803,6 +912,11 @@ mod tests {
             include_bytes!(
                 "../../../portable/spec/v0/fixtures/negative/vocabulary/mut-modifier.neu"
             ),
+            b"neu \"0.1\"\nmodule future\nrecord Item {}\n",
+            b"neu \"0.1\"\nmodule future\nList<string> values = []\n",
+            b"neu \"0.1\"\nmodule future\nstring first = \"x\"\nstring second = first\n",
+            b"neu \"0.1\"\nmodule future\nstring value = \"x\"\nRef<string> link = ref(value)\n",
+            b"neu \"0.1\"\nmodule future\nuse vocabulary core\n",
         ];
         for source in future {
             assert!(matches!(

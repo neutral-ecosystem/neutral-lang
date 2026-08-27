@@ -89,13 +89,27 @@ impl Parser<'_> {
     /// Parses one active explicit scalar binding and literal.
     fn parse_binding(&mut self) -> Result<ParsedBinding, FrontendError> {
         let type_token = self.next().ok_or_else(|| self.other_here())?;
-        let type_span = type_token.span;
-        let declared_type = match type_token.kind {
+        let mut type_span = type_token.span;
+        let mut declared_type = match type_token.kind {
             TokenKind::Num => ParsedType::Num,
             TokenKind::StringType => ParsedType::String,
             TokenKind::BoolType => ParsedType::Bool,
             _ => return Err(FrontendError::other(type_span)),
         };
+        if self.at(&TokenKind::Question) {
+            let question = self
+                .next()
+                .expect("looked-ahead nullable delimiter must exist");
+            type_span = ByteSpan::new(type_span.start(), question.span.end())
+                .expect("adjacent type tokens must form a valid span");
+            declared_type = ParsedType::Nullable(Box::new(declared_type));
+            if self.at(&TokenKind::Question) {
+                let duplicate = self
+                    .next()
+                    .expect("looked-ahead duplicate nullable delimiter must exist");
+                return Err(FrontendError::malformed_boundary(duplicate.span));
+            }
+        }
         let name_token = self.next().ok_or_else(|| self.other_here())?;
         let name_span = name_token.span;
         let name = identifier_spelling(&name_token)
@@ -108,6 +122,7 @@ impl Parser<'_> {
             TokenKind::StringLiteral(value) => ParsedValue::String(value.value),
             TokenKind::True => ParsedValue::Boolean(true),
             TokenKind::False => ParsedValue::Boolean(false),
+            TokenKind::Null => ParsedValue::Null,
             _ => return Err(FrontendError::other(value_token.span)),
         };
         let end = value_token.span.end();
@@ -191,6 +206,7 @@ fn identifier_spelling(token: &Token) -> Option<String> {
         TokenKind::BoolType => Some(names::BOOL.to_owned()),
         TokenKind::True => Some(names::TRUE.to_owned()),
         TokenKind::False => Some(names::FALSE.to_owned()),
+        TokenKind::Null => Some(names::NULL.to_owned()),
         _ => None,
     }
 }

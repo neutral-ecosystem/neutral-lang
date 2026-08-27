@@ -288,24 +288,24 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Slice 3.4: nullable scalar and explicit null
 
-- [ ] Activate `T?`, outer widening, and null fixtures for scalar types.
-- [ ] Parse postfix nullability and `null` only in currently supported scalar
+- [*] Activate `T?`, outer widening, and null fixtures for scalar types.
+- [*] Parse postfix nullability and `null` only in currently supported scalar
       contexts.
-- [ ] Implement exact identity plus outer `T` → `T?` compatibility.
-- [ ] Lower/read/probe typed null and nullable values.
-- [ ] Keep null distinct from structural omission.
+- [*] Implement exact identity plus outer `T` → `T?` compatibility.
+- [*] Lower/read/probe typed null and nullable values.
+- [*] Keep null distinct from structural omission.
 
 #### Slice validation
 
-- [ ] Null without nullable expected type fails.
-- [ ] Inner/generic widening is not accidentally accepted.
-- [ ] IR/reader distinguishes null from absence.
+- [*] Null without nullable expected type fails.
+- [*] Inner/generic widening is not accidentally accepted.
+- [*] IR/reader distinguishes null from absence.
 
 ### Stage 3 validation
 
-- [ ] Every Stage 3 slice is complete through probe and conformance.
-- [ ] No record/list/reuse/reference/vocabulary syntax is accepted yet.
-- [ ] Stage 2 remains green.
+- [*] Every Stage 3 slice is complete through probe and conformance.
+- [*] No record/list/reuse/reference/vocabulary syntax is accepted yet.
+- [*] Stage 2 remains green.
 
 ---
 

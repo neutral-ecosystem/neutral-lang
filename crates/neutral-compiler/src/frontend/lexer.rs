@@ -54,6 +54,10 @@ pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
                 tokens.push(token(TokenKind::Equals, index, index + 1));
                 index += 1;
             }
+            b'?' => {
+                tokens.push(token(TokenKind::Question, index, index + 1));
+                index += 1;
+            }
             b'/' if source.get(index + 1) == Some(&b'/') => {
                 let end = consume_while(source, index + 2, |value| !matches!(value, b'\n' | b'\r'));
                 trivia.push(Trivia {
@@ -127,6 +131,8 @@ fn word_token(text: String) -> TokenKind {
         TokenKind::True
     } else if text == names::FALSE {
         TokenKind::False
+    } else if text == names::NULL {
+        TokenKind::Null
     } else if names::is_protected_name(&text) {
         TokenKind::ProtectedName(text)
     } else {

@@ -68,6 +68,28 @@ fn is_complete_construct(tokens: &[Token]) -> bool {
                 && matches!(third.kind, TokenKind::Equals)
                 && is_scalar_value(&fourth.kind)
         }
+        [first, question, second, third, fourth] => {
+            is_scalar_type(&first.kind)
+                && matches!(question.kind, TokenKind::Question)
+                && is_name_token(&second.kind)
+                && matches!(third.kind, TokenKind::Equals)
+                && is_scalar_value(&fourth.kind)
+        }
+        [
+            first,
+            first_question,
+            second_question,
+            second,
+            third,
+            fourth,
+        ] => {
+            is_scalar_type(&first.kind)
+                && matches!(first_question.kind, TokenKind::Question)
+                && matches!(second_question.kind, TokenKind::Question)
+                && is_name_token(&second.kind)
+                && matches!(third.kind, TokenKind::Equals)
+                && is_scalar_value(&fourth.kind)
+        }
         _ => false,
     }
 }
@@ -84,7 +106,11 @@ fn is_scalar_type(kind: &TokenKind) -> bool {
 fn is_scalar_value(kind: &TokenKind) -> bool {
     matches!(
         kind,
-        TokenKind::Number(_) | TokenKind::StringLiteral(_) | TokenKind::True | TokenKind::False
+        TokenKind::Number(_)
+            | TokenKind::StringLiteral(_)
+            | TokenKind::True
+            | TokenKind::False
+            | TokenKind::Null
     )
 }
 
@@ -101,5 +127,6 @@ fn is_name_token(kind: &TokenKind) -> bool {
             | TokenKind::BoolType
             | TokenKind::True
             | TokenKind::False
+            | TokenKind::Null
     )
 }

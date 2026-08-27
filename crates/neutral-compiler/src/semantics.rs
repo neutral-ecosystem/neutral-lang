@@ -101,9 +101,10 @@ pub(super) fn lower(
         LogicalModuleIdentity::new(LANGUAGE_BEHAVIOR_VERSION, unit.module.name.clone());
     let symbol_identity =
         ModuleSymbolIdentity::new(module_identity.clone(), unit.binding.name.clone());
-    let fingerprint = DeclarationFingerprint::for_binding(resolved_type, &value).map_err(|_| {
-        SemanticError::semantic(diagnostics::INVALID_NUMBER, unit.binding.value_span)
-    })?;
+    let fingerprint =
+        DeclarationFingerprint::for_binding(&resolved_type, &value).map_err(|_| {
+            SemanticError::semantic(diagnostics::INVALID_NUMBER, unit.binding.value_span)
+        })?;
     let element_id = ElementId::new(0);
     let declaration = Declaration::new(
         element_id,
@@ -159,17 +160,50 @@ fn lower_scalar(
     limits: StructuralLimits,
 ) -> Result<(ResolvedType, LogicalValue, Normalization, u64), SemanticError> {
     match (&binding.declared_type, &binding.value) {
+        (ParsedType::Nullable(inner), ParsedValue::Null) => Ok((
+            ResolvedType::nullable(resolved_scalar_type(inner)),
+            LogicalValue::Null,
+            Normalization::NullIdentity,
+            0,
+        )),
+        (ParsedType::Nullable(inner), value) => {
+            let (resolved, value, normalization, decoded_string_bytes) =
+                lower_nonnullable(inner, value, binding.value_span, limits)?;
+            Ok((
+                ResolvedType::nullable(resolved),
+                value,
+                normalization,
+                decoded_string_bytes,
+            ))
+        }
+        (_, ParsedValue::Null) => Err(SemanticError::semantic(
+            diagnostics::TYPE_MISMATCH,
+            binding.value_span,
+        )),
+        (declared_type, value) => {
+            lower_nonnullable(declared_type, value, binding.value_span, limits)
+        }
+    }
+}
+
+/// Lowers one value against an exact non-nullable scalar expected type.
+fn lower_nonnullable(
+    declared_type: &ParsedType,
+    value: &ParsedValue,
+    value_span: ByteSpan,
+    limits: StructuralLimits,
+) -> Result<(ResolvedType, LogicalValue, Normalization, u64), SemanticError> {
+    match (declared_type, value) {
         (ParsedType::Num, ParsedValue::Number(spelling)) => {
             let number =
                 ExactNumber::from_source(spelling, limits.numeric_digits(), limits.numeric_scale())
                     .map_err(|error| match error {
                         neutral_ir::IrError::InvalidExactNumber => {
-                            SemanticError::semantic(diagnostics::INVALID_NUMBER, binding.value_span)
+                            SemanticError::semantic(diagnostics::INVALID_NUMBER, value_span)
                         }
-                        neutral_ir::IrError::ExactNumberLimitExceeded => SemanticError::resource(
-                            diagnostics::NUMBER_LIMIT_EXCEEDED,
-                            binding.value_span,
-                        ),
+                        neutral_ir::IrError::ExactNumberLimitExceeded => {
+                            SemanticError::resource(diagnostics::NUMBER_LIMIT_EXCEEDED, value_span)
+                        }
                     })?;
             Ok((
                 ResolvedType::Num,
@@ -183,7 +217,7 @@ fn lower_scalar(
             if decoded_bytes > limits.string_bytes() {
                 return Err(SemanticError::resource(
                     diagnostics::STRING_LIMIT_EXCEEDED,
-                    binding.value_span,
+                    value_span,
                 ));
             }
             Ok((
@@ -201,8 +235,18 @@ fn lower_scalar(
         )),
         _ => Err(SemanticError::semantic(
             diagnostics::TYPE_MISMATCH,
-            binding.value_span,
+            value_span,
         )),
+    }
+}
+
+/// Maps one compiler-private scalar type to its public resolved identity.
+fn resolved_scalar_type(parsed: &ParsedType) -> ResolvedType {
+    match parsed {
+        ParsedType::Num => ResolvedType::Num,
+        ParsedType::String => ResolvedType::String,
+        ParsedType::Bool => ResolvedType::Bool,
+        ParsedType::Nullable(inner) => ResolvedType::nullable(resolved_scalar_type(inner)),
     }
 }
 

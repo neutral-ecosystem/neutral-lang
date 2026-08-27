@@ -10,7 +10,8 @@ host-facing capture work before this crate runs; `neutral-compiler` must remain
 deterministic and free of filesystem, environment, network, command, locale,
 and clock access. Its parser and semantic internals are intentionally private.
 The public boundary captures exact bytes immutably. Its private frontend now
-recognizes the frozen minimal document plus Stage 3 Slice 3.1–3.2 source-text,
-identifier, comment, bounded string, Boolean, and boundary behavior. Exact
+recognizes the frozen minimal document plus all Stage 3 source-text, identifier,
+comment, exact-number, bounded-string, Boolean, nullable-scalar, and null
+behavior. Exact
 trivia stays private for a later formatter and is never lowered into
 authoritative logical IR.

@@ -21,11 +21,11 @@ fuzz_smoke = 1
 [stage3.minimum]
 unit = 1
 smoke = 1
-integration = 1
-system = 1
-conformance = 6
-property = 6
-security = 5
+integration = 2
+system = 3
+conformance = 10
+property = 8
+security = 6
 fuzz_smoke = 1
 
 [planned]

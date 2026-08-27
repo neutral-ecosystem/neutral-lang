@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "stage3-slice3-fixtures-frozen"
+status = "stage3-complete-fixtures-frozen"
 
 # No source behavior is active in Stage 1. These entries are an inventory only;
 # they are not executable compiler expectations until their listed stage.
@@ -320,5 +320,54 @@ status = "frozen"
 id = "number-scale-limit"
 fixture = "portable/spec/v0/fixtures/negative/numbers/number-scale-limit.neu"
 oracle = "conformance/oracles/stage3/number-scale-limit.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "nullable-string-null"
+fixture = "portable/spec/v0/fixtures/positive/nullability/nullable-string-null.neu"
+oracle = "conformance/oracles/stage3/nullable-string-null.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "nullable-num-null"
+fixture = "portable/spec/v0/fixtures/positive/nullability/nullable-num-null.neu"
+oracle = "conformance/oracles/stage3/nullable-num-null.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "nullable-bool-null"
+fixture = "portable/spec/v0/fixtures/positive/nullability/nullable-bool-null.neu"
+oracle = "conformance/oracles/stage3/nullable-bool-null.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "nullable-scalar-widening"
+fixture = "portable/spec/v0/fixtures/positive/nullability/nullable-scalar-widening.neu"
+oracle = "conformance/oracles/stage3/nullable-scalar-widening.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "nonnullable-null"
+fixture = "portable/spec/v0/fixtures/negative/nullability/nonnullable-null.neu"
+oracle = "conformance/oracles/stage3/nonnullable-null.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "double-nullable"
+fixture = "portable/spec/v0/fixtures/negative/nullability/double-nullable.neu"
+oracle = "conformance/oracles/stage3/double-nullable.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "inner-generic-widening"
+fixture = "portable/spec/v0/fixtures/negative/nullability/inner-generic-widening.neu"
+oracle = "conformance/oracles/stage3/inner-generic-widening.toml"
 active_from_stage = 3
 status = "frozen"

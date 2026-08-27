@@ -100,6 +100,69 @@ required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
 review_status = "oracle-approved"
 
 [[fixture]]
+id = "nullable-string-null"
+source = "portable/spec/v0/fixtures/positive/nullability/nullable-string-null.neu"
+source_sha256 = "8f0c7317abc98eb1aa298456680e94770d46b44cc545c30fd2fd998810a2a930"
+expected_outcome = "accept"
+active_from_stage = 3
+required_oracles = ["logical-ir", "provenance", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "nullable-num-null"
+source = "portable/spec/v0/fixtures/positive/nullability/nullable-num-null.neu"
+source_sha256 = "5f375644dab1207781c5dea44ac54f0b4ab961ecb029fecef51b67d0c59413f1"
+expected_outcome = "accept"
+active_from_stage = 3
+required_oracles = ["logical-ir", "provenance", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "nullable-bool-null"
+source = "portable/spec/v0/fixtures/positive/nullability/nullable-bool-null.neu"
+source_sha256 = "7ed48c6e488a6f4b59df324a0b380c174c276800946e42b160c47be6c2b03b38"
+expected_outcome = "accept"
+active_from_stage = 3
+required_oracles = ["logical-ir", "provenance", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "nullable-scalar-widening"
+source = "portable/spec/v0/fixtures/positive/nullability/nullable-scalar-widening.neu"
+source_sha256 = "6a8d0e9eb74b71dd759e20b70e8872a9aae057d97c199ec7a94c1c06f0e4de15"
+expected_outcome = "accept"
+active_from_stage = 3
+required_oracles = ["logical-ir", "provenance", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "nonnullable-null"
+source = "portable/spec/v0/fixtures/negative/nullability/nonnullable-null.neu"
+source_sha256 = "37f6aeabecea0185ba56503aefbb8b07d5bf08f88db7ba19746b3a669b5c47bf"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "double-nullable"
+source = "portable/spec/v0/fixtures/negative/nullability/double-nullable.neu"
+source_sha256 = "fa48fdf8f1910d61f0dc84d5cec9570bb958f5577316293b134a5f882fde6e51"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "inner-generic-widening"
+source = "portable/spec/v0/fixtures/negative/nullability/inner-generic-widening.neu"
+source_sha256 = "689538c8f9e6cda22118144a1e2484224ca1951f3ba19070dc645642231f176f"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
 id = "minimal-vocabulary"
 source = "portable/spec/v0/fixtures/positive/vocabulary/minimal-vocabulary.neu"
 source_sha256 = "cd13edee8bfbe559255cdbb0ee8bbd919f628247216e4320d21c757b04721ba8"

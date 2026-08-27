@@ -1,22 +1,28 @@
 # Neutral v0 development progress
 
-Status: Stage 3 Slice 3.3 complete.
+Status: Stage 3 complete through Slice 3.4.
 
 ## Current focus
 
-- Stage: Stage 3, Slice 3.3
-- Status: Exact numbers complete; PR validation gate passing
+- Stage: Stage 3, Slice 3.4
+- Status: Nullable scalars and explicit null complete; Stage 3 validation passing
 - Last updated: 2026-08-27
 
 ## Next actions
 
-- [ ] Continue with Stage 3, Slice 3.4: nullable scalar and explicit null.
+- [ ] Continue with Stage 4, Slice 4.1: nominal records and contextual values.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-08-27: Completed Stage 3, Slice 3.4 and Stage 3 validation. Added
+  recursive outer-nullable resolved types, explicit typed null, exact scalar to
+  nullable widening, null fingerprints/provenance, reader type/value checks,
+  probe traversal, frozen nullability fixtures/oracles, and future grammar
+  exclusion evidence while keeping Stage 2 green.
 
 - [*] 2026-08-27: Completed Stage 3, Slice 3.3. Added frozen signed decimal
   grammar, separator/fraction/exponent normalization, canonical zero, exact
