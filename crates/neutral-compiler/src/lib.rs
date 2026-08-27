@@ -40,6 +40,8 @@ pub mod diagnostics {
     pub const PROTECTED_NAME: &str = "NEU-NAME-002";
     /// Invalid exact numeric value diagnostic.
     pub const INVALID_NUMBER: &str = "NEU-VAL-001";
+    /// Exact numeric resource-limit diagnostic.
+    pub const NUMBER_LIMIT_EXCEEDED: &str = "NEU-LIM-002";
     /// Explicit scalar type/value mismatch diagnostic.
     pub const TYPE_MISMATCH: &str = "NEU-TYP-001";
     /// Decoded string resource-limit diagnostic.

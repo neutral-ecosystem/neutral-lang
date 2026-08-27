@@ -85,7 +85,23 @@ Accepted spelling is digits with optional `_` separators, optional decimal
 fraction, and optional base-10 exponent. Separators must occur between digits.
 Non-finite values and base-prefixed numbers are invalid.
 
+The complete frozen grammar is:
+
+```text
+numeric_literal = ["+" | "-"] digit_run ["." digit_run] [("e" | "E") ["+" | "-"] digit_run]
+digit_run      = ASCII_DIGIT { ASCII_DIGIT | "_" ASCII_DIGIT }
+```
+
+Both the integer and fractional parts, when present, require at least one
+digit. The exponent requires at least one digit. A separator never begins or
+ends a run and cannot touch a sign, decimal point, or exponent marker.
+
 IR retains the normalized exact rational. v0 performs no signed/unsigned integer,
 decimal-width, or IEEE binary target conversion. Values such as `0.1`, `0.5`,
 and `16_777_217` remain exact Neutral values rather than inheriting a host
 representation.
+
+The compiler applies explicit captured limits for significant coefficient
+digits and absolute normalized decimal scale before allocating the normalized
+coefficient. An exceeded numeric bound is a resource failure, not a partially
+accepted value.

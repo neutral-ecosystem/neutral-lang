@@ -84,17 +84,10 @@ pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
                 tokens.push(token(word_token(text), index, end));
                 index = end;
             }
-            byte if byte.is_ascii_digit() => {
-                let end = consume_while(source, index, |value| {
-                    value.is_ascii_alphanumeric() || *value == b'_'
-                });
+            byte if starts_number(source, index, byte) => {
+                let end = consume_number_candidate(source, index);
                 let value = ascii_text(&source[index..end], index)?;
-                let kind = if value.bytes().all(|byte| byte.is_ascii_digit()) {
-                    TokenKind::Number(value)
-                } else {
-                    TokenKind::Identifier(value)
-                };
-                tokens.push(token(kind, index, end));
+                tokens.push(token(TokenKind::Number(value), index, end));
                 index = end;
             }
             _ => return Err(FrontendError::unsupported_symbol(span(index, index + 1))),
@@ -103,6 +96,19 @@ pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
 
     tokens.push(token(TokenKind::EndOfFile, source.len(), source.len()));
     Ok(LexedSource { tokens, trivia })
+}
+
+/// Returns whether `byte` begins a candidate frozen numeric literal.
+fn starts_number(source: &[u8], index: usize, byte: u8) -> bool {
+    byte.is_ascii_digit()
+        || matches!(byte, b'+' | b'-') && source.get(index + 1).is_some_and(u8::is_ascii_digit)
+}
+
+/// Consumes a numeric candidate for later exact semantic validation.
+fn consume_number_candidate(source: &[u8], start: usize) -> usize {
+    consume_while(source, start, |byte| {
+        byte.is_ascii_alphanumeric() || matches!(*byte, b'_' | b'.' | b'+' | b'-')
+    })
 }
 
 /// Classifies one ASCII word through the centralized language-name namespace.

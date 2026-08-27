@@ -404,6 +404,10 @@ pub struct StructuralLimits {
     diagnostics: u32,
     /// Maximum decoded UTF-8 bytes in one string scalar.
     string_bytes: u64,
+    /// Maximum significant decimal digits in one exact numeric scalar.
+    numeric_digits: u64,
+    /// Maximum absolute decimal scale in one exact numeric scalar.
+    numeric_scale: u64,
 }
 
 impl StructuralLimits {
@@ -420,6 +424,8 @@ impl StructuralLimits {
             source_bytes,
             diagnostics,
             string_bytes: source_bytes,
+            numeric_digits: source_bytes,
+            numeric_scale: source_bytes,
         })
     }
 
@@ -433,6 +439,32 @@ impl StructuralLimits {
             return Err(CoreError::ZeroLimit);
         }
         self.string_bytes = string_bytes;
+        Ok(self)
+    }
+
+    /// Overrides the maximum significant decimal digits in one exact number.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CoreError::ZeroLimit`] when `numeric_digits` is zero.
+    pub const fn with_numeric_digits(mut self, numeric_digits: u64) -> Result<Self, CoreError> {
+        if numeric_digits == 0 {
+            return Err(CoreError::ZeroLimit);
+        }
+        self.numeric_digits = numeric_digits;
+        Ok(self)
+    }
+
+    /// Overrides the maximum absolute decimal scale in one exact number.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CoreError::ZeroLimit`] when `numeric_scale` is zero.
+    pub const fn with_numeric_scale(mut self, numeric_scale: u64) -> Result<Self, CoreError> {
+        if numeric_scale == 0 {
+            return Err(CoreError::ZeroLimit);
+        }
+        self.numeric_scale = numeric_scale;
         Ok(self)
     }
 
@@ -452,6 +484,18 @@ impl StructuralLimits {
     #[must_use]
     pub const fn string_bytes(self) -> u64 {
         self.string_bytes
+    }
+
+    /// Returns the maximum significant decimal digits in one exact number.
+    #[must_use]
+    pub const fn numeric_digits(self) -> u64 {
+        self.numeric_digits
+    }
+
+    /// Returns the maximum absolute decimal scale in one exact number.
+    #[must_use]
+    pub const fn numeric_scale(self) -> u64 {
+        self.numeric_scale
     }
 }
 
@@ -616,5 +660,20 @@ mod tests {
             .expect("string limit should be valid");
         assert_eq!(limits.string_bytes(), 64);
         assert!(limits.with_string_bytes(0).is_err());
+    }
+
+    #[test]
+    /// Verifies numeric digit and scale limits are explicit captured budgets.
+    fn structural_limits_capture_exact_number_budgets() {
+        let limits = StructuralLimits::new(1_024, 16)
+            .expect("base limits should be valid")
+            .with_numeric_digits(64)
+            .expect("numeric digit limit should be valid")
+            .with_numeric_scale(32)
+            .expect("numeric scale limit should be valid");
+        assert_eq!(limits.numeric_digits(), 64);
+        assert_eq!(limits.numeric_scale(), 32);
+        assert!(limits.with_numeric_digits(0).is_err());
+        assert!(limits.with_numeric_scale(0).is_err());
     }
 }

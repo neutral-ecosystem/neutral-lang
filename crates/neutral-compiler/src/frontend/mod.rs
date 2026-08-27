@@ -522,13 +522,12 @@ mod tests {
     #[test]
     /// Verifies malformed encoding, NUL, BOM, headers, and numbers fail safely.
     fn frontend_rejects_malformed_minimal_inputs_safely() {
-        let malformed: [&[u8]; 7] = [
+        let malformed: [&[u8]; 6] = [
             b"\xff",
             b"neu \"0.1\"\0\nmodule minimal\nnum answer = 42\n",
             b"neu \"0.1\"\n\xef\xbb\xbfmodule minimal\nnum answer = 42\n",
             b"neu 0.1\nmodule minimal\nnum answer = 42\n",
             b"neu \"0.1\"\nmodule\nnum answer = 42\n",
-            b"neu \"0.1\"\nmodule minimal\nnum answer = 4.2\n",
             b"neu \"0.1\"\nmodule minimal\nnum answer = --42\n",
         ];
         for source in malformed {

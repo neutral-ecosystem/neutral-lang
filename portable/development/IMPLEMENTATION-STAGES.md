@@ -273,18 +273,18 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Slice 3.3: complete exact numbers
 
-- [ ] Activate sign, separator, fraction, exponent, equality, normalization, and
+- [*] Activate sign, separator, fraction, exponent, equality, normalization, and
       limit fixtures.
-- [ ] Implement full frozen numeric grammar and exact normalized representation.
-- [ ] Use no host floating-point conversion.
-- [ ] Apply NHT numeric fingerprint vectors.
-- [ ] Expose normalized exact values and normalization provenance.
+- [*] Implement full frozen numeric grammar and exact normalized representation.
+- [*] Use no host floating-point conversion.
+- [*] Apply NHT numeric fingerprint vectors.
+- [*] Expose normalized exact values and normalization provenance.
 
 #### Slice validation
 
-- [ ] Equivalent spellings normalize/fingerprint equally.
-- [ ] Boundary/over-limit values fail before proportional allocation.
-- [ ] Locale and host numeric types cannot affect output.
+- [*] Equivalent spellings normalize/fingerprint equally.
+- [*] Boundary/over-limit values fail before proportional allocation.
+- [*] Locale and host numeric types cannot affect output.
 
 ### Slice 3.4: nullable scalar and explicit null
 

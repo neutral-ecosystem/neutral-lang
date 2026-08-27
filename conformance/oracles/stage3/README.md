@@ -3,7 +3,7 @@
 # Stage 3 conformance oracles
 
 This directory freezes expected results for Stage 3 source-text and scalar
-vertical slices, including bounded strings and Booleans. Each oracle binds one immutable fixture digest to either the
+vertical slices, including bounded strings, Booleans, and exact numbers. Each oracle binds one immutable fixture digest to either the
 complete observable compilation result or an exact rejection class, diagnostic
 code, and original-byte span.
 

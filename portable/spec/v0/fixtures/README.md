@@ -12,6 +12,7 @@ fixtures/
 │   ├── syntax/       # headers, comments, identifiers, and core source shape
 │   ├── strings/      # valid string decoding
 │   ├── booleans/     # valid Boolean literals
+│   ├── numbers/      # valid exact-number spellings and normalization
 │   ├── values/       # value reuse and defaults
 │   └── vocabulary/   # data-only vocabulary integration
 └── negative/
@@ -19,6 +20,7 @@ fixtures/
     ├── identifiers/  # invalid and protected names
     ├── strings/      # rejected string forms and limits
     ├── booleans/     # rejected Boolean forms
+    ├── numbers/      # rejected exact-number spellings and limits
     ├── values/       # rejected value semantics
     └── vocabulary/   # rejected vocabulary/module features
 ```
@@ -36,6 +38,8 @@ fixtures/
   ASCII `snake_case` segments containing digits.
 - [minimal-core.neu](positive/syntax/minimal-core.neu) is the Stage 2 atomic source
   path: one module with one exact `num` binding and a complete frozen oracle.
+- The [positive number fixtures](positive/numbers/) freeze signs, separators,
+  fractions, exponents, zero canonicalization, and exact normalization.
 - [immutable-value-reuse.neu](positive/values/immutable-value-reuse.neu) distinguishes
   ordinary value reuse from identity references and proves forward resolution.
 - [defaults-compatibility.neu](positive/values/defaults-compatibility.neu) covers
@@ -51,6 +55,8 @@ fixtures/
 - Identifier failures are in [negative/identifiers](negative/identifiers/).
 - Syntax failures are in [negative/syntax](negative/syntax/) and freeze the
   Stage 3 Slice 3.1 name, comment, punctuation, and token-boundary failures.
+- The [negative number fixtures](negative/numbers/) freeze malformed
+  separators/fractions/exponents, base prefixes, and digit/scale limits.
 - [generic-covariance.neu](negative/vocabulary/generic-covariance.neu): invariant generic
   argument violation.
 - [module-path.neu](negative/vocabulary/module-path.neu): module qualification is absent.
@@ -79,7 +85,7 @@ fixtures/
 
 ## Required additions
 
-The corpus still needs fixtures for malformed UTF-8, layout recovery, strings,
-exact numeric normalization/limits, record recursion, wrong-kind references, missing/duplicate fields, resource
+The corpus still needs fixtures for malformed UTF-8, layout recovery, record recursion,
+wrong-kind references, missing/duplicate fields, resource
 boundaries, invalid encoded IR, logical alpha-equivalence, source maps,
 provenance, and deterministic concurrent compilation.

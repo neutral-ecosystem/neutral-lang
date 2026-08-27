@@ -115,26 +115,51 @@ pub struct ExactNumber {
 }
 
 impl ExactNumber {
-    /// Normalizes one unsigned digits-only integer without host numeric conversion.
+    /// Normalizes one frozen source number without floating-point conversion.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a malformed spelling or an exceeded digit/scale bound.
+    pub fn from_source(
+        spelling: &str,
+        maximum_digits: u64,
+        maximum_scale: u64,
+    ) -> Result<Self, IrError> {
+        let parsed = parse_source_number(spelling, maximum_digits, maximum_scale)?;
+        let coefficient = parsed.coefficient.trim_start_matches('0');
+        if coefficient.is_empty() {
+            return Ok(Self {
+                negative: false,
+                coefficient: "0".to_owned(),
+                scale: 0,
+            });
+        }
+        let mut coefficient = coefficient.to_owned();
+        let mut scale = parsed.scale;
+        while coefficient.ends_with('0') {
+            coefficient.pop();
+            scale = scale
+                .checked_add(1)
+                .ok_or(IrError::ExactNumberLimitExceeded)?;
+        }
+        if scale.unsigned_abs() > maximum_scale {
+            return Err(IrError::ExactNumberLimitExceeded);
+        }
+        Ok(Self {
+            negative: parsed.negative,
+            coefficient,
+            scale,
+        })
+    }
+
+    /// Normalizes one unsigned digits-only integer for minimal compatibility tests.
     ///
     /// # Errors
     ///
     /// Returns an error when the spelling is empty or contains non-digits.
     pub fn from_unsigned_integer(spelling: &str) -> Result<Self, IrError> {
-        if spelling.is_empty() || !spelling.bytes().all(|byte| byte.is_ascii_digit()) {
-            return Err(IrError::InvalidExactNumber);
-        }
-        let coefficient = spelling.trim_start_matches('0');
-        let coefficient = if coefficient.is_empty() {
-            "0"
-        } else {
-            coefficient
-        };
-        Ok(Self {
-            negative: false,
-            coefficient: coefficient.to_owned(),
-            scale: 0,
-        })
+        let maximum_digits = u64::try_from(spelling.len()).unwrap_or(u64::MAX).max(1);
+        Self::from_source(spelling, maximum_digits, maximum_digits)
     }
 
     /// Returns whether the normalized number is negative.
@@ -174,6 +199,169 @@ impl ExactNumber {
         )?);
         Ok(payload)
     }
+}
+
+/// Parsed numeric components retained only until exact normalization completes.
+struct ParsedSourceNumber {
+    /// Whether the source spelling carries a minus sign.
+    negative: bool,
+    /// Coefficient digits without separators.
+    coefficient: String,
+    /// Decimal scale before trailing-zero normalization.
+    scale: i64,
+}
+
+/// Parses the frozen numeric grammar before allocating its normalized coefficient.
+fn parse_source_number(
+    spelling: &str,
+    maximum_digits: u64,
+    maximum_scale: u64,
+) -> Result<ParsedSourceNumber, IrError> {
+    if spelling.is_empty() || maximum_digits == 0 || maximum_scale == 0 {
+        return Err(IrError::InvalidExactNumber);
+    }
+    let bytes = spelling.as_bytes();
+    let mut index = 0;
+    let negative = match bytes.first() {
+        Some(b'+') => {
+            index = 1;
+            false
+        }
+        Some(b'-') => {
+            index = 1;
+            true
+        }
+        _ => false,
+    };
+    let integer = consume_digit_run(bytes, &mut index)?;
+    let fraction = if bytes.get(index) == Some(&b'.') {
+        index += 1;
+        consume_digit_run(bytes, &mut index)?
+    } else {
+        DigitRun::empty(index)
+    };
+    let mut exponent = 0_i64;
+    if matches!(bytes.get(index), Some(b'e' | b'E')) {
+        index += 1;
+        let exponent_negative = if matches!(bytes.get(index), Some(b'+' | b'-')) {
+            let value = bytes[index] == b'-';
+            index += 1;
+            value
+        } else {
+            false
+        };
+        let digits = consume_digit_run(bytes, &mut index)?;
+        exponent = parse_bounded_exponent(
+            &spelling[digits.start..digits.end],
+            maximum_scale,
+            exponent_negative,
+        )?;
+    }
+    if index != bytes.len() {
+        return Err(IrError::InvalidExactNumber);
+    }
+    let digit_count = integer.digit_count.saturating_add(fraction.digit_count);
+    if u64::try_from(digit_count).unwrap_or(u64::MAX) > maximum_digits {
+        return Err(IrError::ExactNumberLimitExceeded);
+    }
+    let fraction_scale =
+        i64::try_from(fraction.digit_count).map_err(|_| IrError::ExactNumberLimitExceeded)?;
+    let scale = exponent
+        .checked_sub(fraction_scale)
+        .ok_or(IrError::ExactNumberLimitExceeded)?;
+    if scale.unsigned_abs() > maximum_scale {
+        return Err(IrError::ExactNumberLimitExceeded);
+    }
+    let mut coefficient = String::with_capacity(digit_count);
+    coefficient.extend(
+        spelling[integer.start..integer.end]
+            .bytes()
+            .filter(u8::is_ascii_digit)
+            .map(char::from),
+    );
+    coefficient.extend(
+        spelling[fraction.start..fraction.end]
+            .bytes()
+            .filter(u8::is_ascii_digit)
+            .map(char::from),
+    );
+    Ok(ParsedSourceNumber {
+        negative,
+        coefficient,
+        scale,
+    })
+}
+
+/// One validated source digit-run range without a proportional digit buffer.
+struct DigitRun {
+    /// First included source byte.
+    start: usize,
+    /// First excluded source byte.
+    end: usize,
+    /// Number of decimal digits excluding separators.
+    digit_count: usize,
+}
+
+impl DigitRun {
+    /// Creates an empty omitted fractional run at one source position.
+    const fn empty(index: usize) -> Self {
+        Self {
+            start: index,
+            end: index,
+            digit_count: 0,
+        }
+    }
+}
+
+/// Consumes a nonempty decimal digit run with separators only between digits.
+fn consume_digit_run(bytes: &[u8], index: &mut usize) -> Result<DigitRun, IrError> {
+    if !bytes.get(*index).is_some_and(u8::is_ascii_digit) {
+        return Err(IrError::InvalidExactNumber);
+    }
+    let start = *index;
+    let mut digit_count = 0_usize;
+    while let Some(byte) = bytes.get(*index) {
+        if byte.is_ascii_digit() {
+            digit_count = digit_count.saturating_add(1);
+            *index += 1;
+        } else if *byte == b'_' {
+            if !bytes
+                .get((*index).saturating_sub(1))
+                .is_some_and(u8::is_ascii_digit)
+                || !bytes.get(*index + 1).is_some_and(u8::is_ascii_digit)
+            {
+                return Err(IrError::InvalidExactNumber);
+            }
+            *index += 1;
+        } else {
+            break;
+        }
+    }
+    Ok(DigitRun {
+        start,
+        end: *index,
+        digit_count,
+    })
+}
+
+/// Parses a bounded decimal exponent without host floating-point conversion.
+fn parse_bounded_exponent(
+    digits: &str,
+    maximum_scale: u64,
+    negative: bool,
+) -> Result<i64, IrError> {
+    let mut magnitude = 0_u64;
+    for byte in digits.bytes().filter(u8::is_ascii_digit) {
+        magnitude = magnitude
+            .checked_mul(10)
+            .and_then(|value| value.checked_add(u64::from(byte - b'0')))
+            .ok_or(IrError::ExactNumberLimitExceeded)?;
+        if magnitude > maximum_scale {
+            return Err(IrError::ExactNumberLimitExceeded);
+        }
+    }
+    let magnitude = i64::try_from(magnitude).map_err(|_| IrError::ExactNumberLimitExceeded)?;
+    Ok(if negative { -magnitude } else { magnitude })
 }
 
 impl fmt::Display for ExactNumber {
@@ -685,9 +873,31 @@ pub struct AcceptancePartition {
     diagnostics: u32,
     /// Maximum decoded UTF-8 bytes in one string scalar.
     string_bytes: u64,
+    /// Maximum significant decimal digits in one exact number.
+    numeric_digits: u64,
+    /// Maximum absolute decimal scale in one exact number.
+    numeric_scale: u64,
 }
 
 impl AcceptancePartition {
+    /// Creates the complete captured resource-limit partition.
+    #[must_use]
+    pub const fn new(
+        source_bytes: u64,
+        diagnostics: u32,
+        string_bytes: u64,
+        numeric_digits: u64,
+        numeric_scale: u64,
+    ) -> Self {
+        Self {
+            source_bytes,
+            diagnostics,
+            string_bytes,
+            numeric_digits,
+            numeric_scale,
+        }
+    }
+
     /// Returns the captured source-byte limit.
     #[must_use]
     pub const fn source_byte_limit(self) -> u64 {
@@ -704,6 +914,18 @@ impl AcceptancePartition {
     #[must_use]
     pub const fn string_byte_limit(self) -> u64 {
         self.string_bytes
+    }
+
+    /// Returns the exact-number significant-digit limit.
+    #[must_use]
+    pub const fn numeric_digit_limit(self) -> u64 {
+        self.numeric_digits
+    }
+
+    /// Returns the exact-number absolute-scale limit.
+    #[must_use]
+    pub const fn numeric_scale_limit(self) -> u64 {
+        self.numeric_scale
     }
 }
 
@@ -743,19 +965,13 @@ impl DerivationManifest {
     pub fn new(
         language_behavior_version: impl Into<String>,
         source_digest: SourceContentDigest,
-        source_byte_limit: u64,
-        diagnostic_limit: u32,
-        string_byte_limit: u64,
+        acceptance: AcceptancePartition,
         resource_facts: ResourceFacts,
     ) -> Self {
         Self {
             language_behavior_version: language_behavior_version.into(),
             meaning: MeaningPartition { source_digest },
-            acceptance: AcceptancePartition {
-                source_bytes: source_byte_limit,
-                diagnostics: diagnostic_limit,
-                string_bytes: string_byte_limit,
-            },
+            acceptance,
             diagnostics: DiagnosticPartition {
                 safe_bounded_output: true,
             },
@@ -872,6 +1088,8 @@ impl CompilationArtifacts {
 pub enum IrError {
     /// A source numeric spelling was empty or contained non-digits.
     InvalidExactNumber,
+    /// A source numeric spelling exceeded an explicit deterministic bound.
+    ExactNumberLimitExceeded,
 }
 
 #[cfg(test)]
@@ -886,6 +1104,29 @@ mod tests {
             .expect("digits-only integer should normalize");
         assert_eq!(number.coefficient(), "42");
         assert_eq!(number.to_string(), "42/1");
+    }
+
+    #[test]
+    /// Verifies signs, separators, fractions, and exponents normalize exactly.
+    fn exact_number_normalization_is_independent_of_source_spelling() {
+        let first = ExactNumber::from_source("-001.2300e2", 16, 32)
+            .expect("bounded exact source number should normalize");
+        let second = ExactNumber::from_source("-123", 16, 32)
+            .expect("equivalent exact source number should normalize");
+        assert_eq!(first, second);
+        assert_eq!(first.coefficient(), "123");
+        assert_eq!(first.scale(), 0);
+    }
+
+    #[test]
+    /// Verifies malformed and over-limit numeric source is rejected without floats.
+    fn exact_number_source_validation_rejects_invalid_and_over_limit_values() {
+        assert!(ExactNumber::from_source("1__0", 16, 16).is_err());
+        assert!(ExactNumber::from_source("1.", 16, 16).is_err());
+        assert!(ExactNumber::from_source("1e-", 16, 16).is_err());
+        assert!(ExactNumber::from_source("0x10", 16, 16).is_err());
+        assert!(ExactNumber::from_source("12345", 4, 16).is_err());
+        assert!(ExactNumber::from_source("1e9", 16, 2).is_err());
     }
 
     #[test]

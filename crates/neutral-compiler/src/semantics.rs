@@ -11,10 +11,10 @@ use neutral_core::{
     SourceContentDigest, SourceLocation, StructuralLimits,
 };
 use neutral_ir::{
-    CompilationArtifacts, Declaration, DeclarationFingerprint, DerivationManifest, ElementId,
-    ExactNumber, LogicalDocument, LogicalModuleIdentity, LogicalValue, ModuleSymbolIdentity,
-    Normalization, ProvenanceRecord, ResolvedType, ResourceFacts, SourceMap, SourceMapEntry,
-    ValueOrigin,
+    AcceptancePartition, CompilationArtifacts, Declaration, DeclarationFingerprint,
+    DerivationManifest, ElementId, ExactNumber, LogicalDocument, LogicalModuleIdentity,
+    LogicalValue, ModuleSymbolIdentity, Normalization, ProvenanceRecord, ResolvedType,
+    ResourceFacts, SourceMap, SourceMapEntry, ValueOrigin,
 };
 
 /// A private semantic failure before authoritative IR construction.
@@ -136,9 +136,13 @@ pub(super) fn lower(
     let derivation = DerivationManifest::new(
         LANGUAGE_BEHAVIOR_VERSION,
         source_digest,
-        limits.source_bytes(),
-        limits.diagnostics(),
-        limits.string_bytes(),
+        AcceptancePartition::new(
+            limits.source_bytes(),
+            limits.diagnostics(),
+            limits.string_bytes(),
+            limits.numeric_digits(),
+            limits.numeric_scale(),
+        ),
         resource_facts,
     );
     Ok(CompilationArtifacts::new(
@@ -156,9 +160,17 @@ fn lower_scalar(
 ) -> Result<(ResolvedType, LogicalValue, Normalization, u64), SemanticError> {
     match (&binding.declared_type, &binding.value) {
         (ParsedType::Num, ParsedValue::Number(spelling)) => {
-            let number = ExactNumber::from_unsigned_integer(spelling).map_err(|_| {
-                SemanticError::semantic(diagnostics::INVALID_NUMBER, binding.value_span)
-            })?;
+            let number =
+                ExactNumber::from_source(spelling, limits.numeric_digits(), limits.numeric_scale())
+                    .map_err(|error| match error {
+                        neutral_ir::IrError::InvalidExactNumber => {
+                            SemanticError::semantic(diagnostics::INVALID_NUMBER, binding.value_span)
+                        }
+                        neutral_ir::IrError::ExactNumberLimitExceeded => SemanticError::resource(
+                            diagnostics::NUMBER_LIMIT_EXCEEDED,
+                            binding.value_span,
+                        ),
+                    })?;
             Ok((
                 ResolvedType::Num,
                 LogicalValue::Number(number),

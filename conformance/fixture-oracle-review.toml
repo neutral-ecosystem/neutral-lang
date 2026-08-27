@@ -10,6 +10,96 @@ reviewers = ["repository owner"]
 unresolved_oracle_count = 12
 
 [[fixture]]
+id = "number-fraction"
+source = "portable/spec/v0/fixtures/positive/numbers/number-fraction.neu"
+source_sha256 = "ac0cca8e7c546ccb8316155c26166c7321b0e8e8dc79071be59c6e302e6382de"
+expected_outcome = "accept"
+active_from_stage = 3
+required_oracles = ["logical-ir", "provenance"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "number-exponent"
+source = "portable/spec/v0/fixtures/positive/numbers/number-exponent.neu"
+source_sha256 = "16bd69b270b18a08f501ddd2d059bdeeb3f149cec00c85d5e17ccc97acfa7e03"
+expected_outcome = "accept"
+active_from_stage = 3
+required_oracles = ["logical-ir", "provenance"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "number-separators"
+source = "portable/spec/v0/fixtures/positive/numbers/number-separators.neu"
+source_sha256 = "1a077f9b9ef44b7789b4f6f9ab00b4514b43b4dd469defb7128cfbf6db0795ac"
+expected_outcome = "accept"
+active_from_stage = 3
+required_oracles = ["logical-ir", "provenance"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "number-zero"
+source = "portable/spec/v0/fixtures/positive/numbers/number-zero.neu"
+source_sha256 = "b5ac8aea19219e3715cb442e02ed52ae8ec4f603b81449066e64a11f5ec01183"
+expected_outcome = "accept"
+active_from_stage = 3
+required_oracles = ["logical-ir", "provenance"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "number-invalid-separator"
+source = "portable/spec/v0/fixtures/negative/numbers/number-invalid-separator.neu"
+source_sha256 = "34e05720a7a8f0573ff343b85d27a309730b667c8505baead568240fa7ce5e29"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "number-missing-fraction"
+source = "portable/spec/v0/fixtures/negative/numbers/number-missing-fraction.neu"
+source_sha256 = "5d150c4f1be81f42e63fed0a110b98e1e83f77d21f6cf261e31fc01f1add02f4"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "number-invalid-exponent"
+source = "portable/spec/v0/fixtures/negative/numbers/number-invalid-exponent.neu"
+source_sha256 = "e652237994cc6f27903fb5c35d4462dfa3a2ccb1130bd3138ec6e0b5fde3163b"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "number-base-prefix"
+source = "portable/spec/v0/fixtures/negative/numbers/number-base-prefix.neu"
+source_sha256 = "887802ac8fd9c60205f01d4769cf7e4dfd6cfe675cfea5d7b8f697c1cde0e27c"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "number-digit-limit"
+source = "portable/spec/v0/fixtures/negative/numbers/number-digit-limit.neu"
+source_sha256 = "f5051425050178fedbfc475276e61310b2435926f5c1077a6fe60edc2f8b9e2e"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "number-scale-limit"
+source = "portable/spec/v0/fixtures/negative/numbers/number-scale-limit.neu"
+source_sha256 = "6590da56cd425e660acc2b254a80cfe61856830e9e280e49cc9bc0a57fef8848"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
 id = "minimal-vocabulary"
 source = "portable/spec/v0/fixtures/positive/vocabulary/minimal-vocabulary.neu"
 source_sha256 = "cd13edee8bfbe559255cdbb0ee8bbd919f628247216e4320d21c757b04721ba8"

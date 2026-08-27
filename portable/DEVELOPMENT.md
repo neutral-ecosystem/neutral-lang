@@ -97,11 +97,12 @@ Stage 10: release qualification
 ## Current gate status
 
 Stage 1, the mandatory normative contract freeze, Stage 2, and Stage 3 Slices
-3.1–3.2 are complete. The private frontend now retains exact nonsemantic trivia,
+3.1–3.3 are complete. The private frontend now retains exact nonsemantic trivia,
 enforces frozen ASCII/token boundaries, decodes bounded Unicode strings, and
-type-checks string and Boolean literals. Typed IR, source facts, provenance,
+type-checks string and Boolean literals, and normalizes signed decimal exact
+numbers without floating-point conversion. Typed IR, source facts, provenance,
 reader views, and safely escaped probe output are covered by frozen oracles.
-The next work is Stage 3, Slice 3.3: complete exact numbers. The approved
+The next work is Stage 3, Slice 3.4: nullable scalar and explicit null. The approved
 [freeze manifest](spec/v0/freeze.toml) identifies
 the v0 contract family, and the
 [contract question ledger](development/CONTRACT-QUESTION-LEDGER.md) records the

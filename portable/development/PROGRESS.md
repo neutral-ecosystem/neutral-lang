@@ -1,22 +1,28 @@
 # Neutral v0 development progress
 
-Status: Stage 3 Slice 3.2 complete.
+Status: Stage 3 Slice 3.3 complete.
 
 ## Current focus
 
-- Stage: Stage 3, Slice 3.2
-- Status: Strings and Booleans complete; PR validation gate passing
+- Stage: Stage 3, Slice 3.3
+- Status: Exact numbers complete; PR validation gate passing
 - Last updated: 2026-08-27
 
 ## Next actions
 
-- [ ] Continue with Stage 3, Slice 3.3: complete exact numbers.
+- [ ] Continue with Stage 3, Slice 3.4: nullable scalar and explicit null.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-08-27: Completed Stage 3, Slice 3.3. Added frozen signed decimal
+  grammar, separator/fraction/exponent normalization, canonical zero, exact
+  NHT-backed fingerprints, explicit numeric digit/scale limits, stable
+  numeric-limit diagnostics, and grouped positive/negative numeric fixtures
+  with conformance evidence.
 
 - [*] 2026-08-27: Reorganized v0 source fixtures by outcome and primary
   feature (`syntax`, `identifiers`, `strings`, `booleans`, `values`, and
