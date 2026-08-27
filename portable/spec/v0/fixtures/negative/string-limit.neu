@@ -1,0 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module scalar_strings
+string message = "123456789"

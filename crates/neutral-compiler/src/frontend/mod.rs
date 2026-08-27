@@ -2,6 +2,7 @@
 
 //! Private orchestration for captured source, trivia, layout, and parsing.
 
+use crate::diagnostics;
 use neutral_core::{
     ByteSpan, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity, SourceContentDigest,
     SourceLocation,
@@ -10,17 +11,6 @@ use neutral_core::{
 mod layout;
 mod lexer;
 mod parser;
-
-/// Frozen diagnostic code for a missing module header.
-const MISSING_MODULE_HEADER: &str = "NEU-SYN-001";
-/// Frozen diagnostic code for an unsupported language version.
-const UNSUPPORTED_LANGUAGE_VERSION: &str = "NEU-SYN-002";
-/// Frozen diagnostic code for a malformed lexical or layout boundary.
-const MALFORMED_BOUNDARY: &str = "NEU-SYN-003";
-/// Frozen diagnostic code for an explicitly unsupported source symbol.
-const UNSUPPORTED_SYMBOL: &str = "NEU-LEX-001";
-/// Frozen diagnostic code for a block comment without a closing delimiter.
-const UNTERMINATED_BLOCK_COMMENT: &str = "NEU-LEX-002";
 
 /// Raw lexing result with nonsemantic trivia kept separate from parser tokens.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -60,7 +50,7 @@ struct Token {
     span: ByteSpan,
 }
 
-/// Token categories required by the Stage 2 minimal source slice.
+/// Token categories required by the active source and scalar slices.
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum TokenKind {
     /// The `neu` document-header keyword.
@@ -69,12 +59,20 @@ enum TokenKind {
     Module,
     /// The `num` core-type keyword.
     Num,
+    /// The `string` core-type keyword.
+    StringType,
+    /// The `bool` core-type keyword.
+    BoolType,
+    /// The `true` Boolean literal.
+    True,
+    /// The `false` Boolean literal.
+    False,
     /// A protected core spelling appearing where an identifier can be diagnosed.
     ProtectedName(String),
     /// An ASCII identifier retained for later semantic validation.
     Identifier(String),
     /// A raw, unescaped string body used only for the version header.
-    StringLiteral(String),
+    StringLiteral(DecodedString),
     /// A digits-only minimal numeric spelling retained for later semantics.
     Number(String),
     /// The binding initializer delimiter.
@@ -85,6 +83,15 @@ enum TokenKind {
     LineEnd,
     /// End of captured source.
     EndOfFile,
+}
+
+/// A decoded string token plus spelling information needed by canonical headers.
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct DecodedString {
+    /// Exact decoded Unicode scalar sequence.
+    value: String,
+    /// Whether the source spelling contained any escape.
+    had_escape: bool,
 }
 
 /// Original physical newline spellings retained by the raw lexer.
@@ -107,7 +114,7 @@ pub(super) struct ParsedUnit {
     pub(super) version_span: ByteSpan,
     /// Parsed module header.
     pub(super) module: ParsedModule,
-    /// Parsed minimal numeric binding.
+    /// Parsed active scalar binding.
     pub(super) binding: ParsedBinding,
     /// Exact compiler-private trivia, never lowered into logical IR.
     trivia: Vec<Trivia>,
@@ -131,13 +138,15 @@ pub(super) struct ParsedModule {
     pub(super) name_span: ByteSpan,
 }
 
-/// A compiler-private parsed minimal numeric binding.
+/// A compiler-private parsed scalar binding.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct ParsedBinding {
     /// Binding name spelling retained for Step 4 semantic validation.
     pub(super) name: String,
-    /// Minimal numeric spelling retained without host numeric conversion.
-    pub(super) number: String,
+    /// Explicit parsed scalar type.
+    pub(super) declared_type: ParsedType,
+    /// Explicit parsed scalar value.
+    pub(super) value: ParsedValue,
     /// Exact span of the complete binding.
     pub(super) span: ByteSpan,
     /// Exact span of the explicit `num` type.
@@ -146,6 +155,28 @@ pub(super) struct ParsedBinding {
     pub(super) name_span: ByteSpan,
     /// Exact span of the numeric source value.
     pub(super) value_span: ByteSpan,
+}
+
+/// Compiler-private scalar type syntax active through Slice 3.2.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum ParsedType {
+    /// Exact numeric type.
+    Num,
+    /// Unicode scalar-sequence string type.
+    String,
+    /// Boolean type.
+    Bool,
+}
+
+/// Compiler-private scalar literal active through Slice 3.2.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) enum ParsedValue {
+    /// Minimal digits-only number spelling.
+    Number(String),
+    /// Decoded Unicode scalar sequence.
+    String(String),
+    /// Exact Boolean value.
+    Boolean(bool),
 }
 
 /// A private frontend failure with an optional frozen public diagnostic.
@@ -157,7 +188,7 @@ pub(super) struct FrontendError {
     span: ByteSpan,
 }
 
-/// Private categories for minimal frontend failures.
+/// Private categories for active frontend failures.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum FrontendErrorKind {
     /// The required module header was absent.
@@ -170,6 +201,10 @@ enum FrontendErrorKind {
     UnsupportedSymbol,
     /// A block comment reached EOF without closing.
     UnterminatedBlockComment,
+    /// A string contained an invalid escape, scalar, or raw control.
+    InvalidStringLiteral,
+    /// A string reached a raw newline or EOF without closing.
+    UnterminatedStringLiteral,
     /// Source is invalid or beyond the currently active minimal slice.
     Other,
 }
@@ -215,6 +250,22 @@ impl FrontendError {
         }
     }
 
+    /// Creates a stable invalid-string-literal failure.
+    fn invalid_string_literal(span: ByteSpan) -> Self {
+        Self {
+            kind: FrontendErrorKind::InvalidStringLiteral,
+            span,
+        }
+    }
+
+    /// Creates a stable unterminated-string-literal failure.
+    fn unterminated_string_literal(span: ByteSpan) -> Self {
+        Self {
+            kind: FrontendErrorKind::UnterminatedStringLiteral,
+            span,
+        }
+    }
+
     /// Creates a bounded non-frozen failure for inactive or malformed syntax.
     fn other(span: ByteSpan) -> Self {
         Self {
@@ -230,7 +281,9 @@ impl FrontendError {
             | FrontendErrorKind::UnsupportedLanguageVersion
             | FrontendErrorKind::MalformedBoundary
             | FrontendErrorKind::UnsupportedSymbol
-            | FrontendErrorKind::UnterminatedBlockComment => {
+            | FrontendErrorKind::UnterminatedBlockComment
+            | FrontendErrorKind::InvalidStringLiteral
+            | FrontendErrorKind::UnterminatedStringLiteral => {
                 crate::CompilationFailureDetail::SyntaxRejected
             }
             FrontendErrorKind::Other => crate::CompilationFailureDetail::FrontendUnavailable,
@@ -240,11 +293,17 @@ impl FrontendError {
     /// Converts only frozen frontend failures into stable public diagnostics.
     pub(super) fn into_diagnostics(self, source: SourceContentDigest) -> Vec<Diagnostic> {
         let code = match self.kind {
-            FrontendErrorKind::MissingModuleHeader => MISSING_MODULE_HEADER,
-            FrontendErrorKind::UnsupportedLanguageVersion => UNSUPPORTED_LANGUAGE_VERSION,
-            FrontendErrorKind::MalformedBoundary => MALFORMED_BOUNDARY,
-            FrontendErrorKind::UnsupportedSymbol => UNSUPPORTED_SYMBOL,
-            FrontendErrorKind::UnterminatedBlockComment => UNTERMINATED_BLOCK_COMMENT,
+            FrontendErrorKind::MissingModuleHeader => diagnostics::MISSING_MODULE_HEADER,
+            FrontendErrorKind::UnsupportedLanguageVersion => {
+                diagnostics::UNSUPPORTED_LANGUAGE_VERSION
+            }
+            FrontendErrorKind::MalformedBoundary => diagnostics::MALFORMED_BOUNDARY,
+            FrontendErrorKind::UnsupportedSymbol => diagnostics::UNSUPPORTED_SYMBOL,
+            FrontendErrorKind::UnterminatedBlockComment => diagnostics::UNTERMINATED_BLOCK_COMMENT,
+            FrontendErrorKind::InvalidStringLiteral => diagnostics::INVALID_STRING_LITERAL,
+            FrontendErrorKind::UnterminatedStringLiteral => {
+                diagnostics::UNTERMINATED_STRING_LITERAL
+            }
             FrontendErrorKind::Other => return Vec::new(),
         };
         let code = DiagnosticCode::new(code).expect("frozen diagnostic code must be valid ASCII");
@@ -276,9 +335,12 @@ fn span(start: usize, end: usize) -> ByteSpan {
 }
 
 #[cfg(test)]
-/// Tests for the complete private minimal frontend pipeline.
+/// Tests for the complete private active frontend pipeline.
 mod tests {
-    use super::{FrontendErrorKind, PhysicalLineEnd, TokenKind, TriviaKind, layout, lexer, parse};
+    use super::{
+        FrontendErrorKind, ParsedValue, PhysicalLineEnd, TokenKind, TriviaKind, layout, lexer,
+        parse,
+    };
 
     /// Parses one exact captured source byte sequence.
     fn parse_source(source: &[u8]) -> Result<super::ParsedUnit, super::FrontendError> {
@@ -380,7 +442,7 @@ mod tests {
         );
         assert_eq!(unit.module.name, "minimal");
         assert_eq!(unit.binding.name, "answer");
-        assert_eq!(unit.binding.number, "42");
+        assert_eq!(unit.binding.value, ParsedValue::Number("42".to_owned()));
     }
 
     #[test]
@@ -418,9 +480,31 @@ mod tests {
         ];
         let logical = variants.map(|source| {
             let unit = parse_source(source).expect("newline variant should parse");
-            (unit.module.name, unit.binding.name, unit.binding.number)
+            (unit.module.name, unit.binding.name, unit.binding.value)
         });
         assert!(logical.windows(2).all(|pair| pair[0] == pair[1]));
+    }
+
+    #[test]
+    /// Verifies string escapes and raw Unicode decode before private semantics.
+    fn parser_decodes_string_scalars_exactly() {
+        let source =
+            b"neu \"0.1\"\nmodule scalar\nstring message = \"a\\n\\0\\u{1f642}\xc3\xa9\"\n";
+        let unit = parse_source(source).expect("valid escaped string should parse");
+        assert_eq!(
+            unit.binding.value,
+            ParsedValue::String("a\n\0🙂é".to_owned())
+        );
+    }
+
+    #[test]
+    /// Verifies both exact Boolean tokens become typed private values.
+    fn parser_recognizes_exact_boolean_literals() {
+        for (spelling, expected) in [("true", true), ("false", false)] {
+            let source = format!("neu \"0.1\"\nmodule scalar\nbool enabled = {spelling}\n");
+            let unit = parse_source(source.as_bytes()).expect("Boolean source should parse");
+            assert_eq!(unit.binding.value, ParsedValue::Boolean(expected));
+        }
     }
 
     #[test]

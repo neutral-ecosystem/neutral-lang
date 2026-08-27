@@ -5,8 +5,8 @@
 //! This crate owns capture contracts, the private frontend and semantic model,
 //! and lowering into public logical IR. Its pure captured-input compilation
 //! path must not use filesystem, process, environment, network, locale, or clock
-//! authority. Stage 2 establishes captured-input contracts before frontend
-//! acceptance behavior is implemented.
+//! authority. Stage 2 established captured-input contracts; Stage 3 extends
+//! the private frontend while preserving the same effect-free boundary.
 
 use neutral_core::{
     CancellationToken, Diagnostic, ResultClass, SourceContentDigest, StructuralLimits,
@@ -17,6 +17,34 @@ use std::sync::Arc;
 mod frontend;
 mod language;
 mod semantics;
+
+/// Stable diagnostic identifiers emitted by compiler validation.
+pub mod diagnostics {
+    /// Missing module header diagnostic.
+    pub const MISSING_MODULE_HEADER: &str = "NEU-SYN-001";
+    /// Unsupported language version diagnostic.
+    pub const UNSUPPORTED_LANGUAGE_VERSION: &str = "NEU-SYN-002";
+    /// Malformed lexical or layout boundary diagnostic.
+    pub const MALFORMED_BOUNDARY: &str = "NEU-SYN-003";
+    /// Unsupported source symbol diagnostic.
+    pub const UNSUPPORTED_SYMBOL: &str = "NEU-LEX-001";
+    /// Unterminated block comment diagnostic.
+    pub const UNTERMINATED_BLOCK_COMMENT: &str = "NEU-LEX-002";
+    /// Invalid string literal diagnostic.
+    pub const INVALID_STRING_LITERAL: &str = "NEU-LEX-003";
+    /// Unterminated string literal diagnostic.
+    pub const UNTERMINATED_STRING_LITERAL: &str = "NEU-LEX-004";
+    /// Invalid identifier name diagnostic.
+    pub const INVALID_NAME: &str = "NEU-NAME-001";
+    /// Protected core name diagnostic.
+    pub const PROTECTED_NAME: &str = "NEU-NAME-002";
+    /// Invalid exact numeric value diagnostic.
+    pub const INVALID_NUMBER: &str = "NEU-VAL-001";
+    /// Explicit scalar type/value mismatch diagnostic.
+    pub const TYPE_MISMATCH: &str = "NEU-TYP-001";
+    /// Decoded string resource-limit diagnostic.
+    pub const STRING_LIMIT_EXCEEDED: &str = "NEU-LIM-001";
+}
 
 /// The frozen v0 language-behavior contract used for captured compilation.
 pub const LANGUAGE_BEHAVIOR_VERSION: &str = "0.1.0";
@@ -167,6 +195,8 @@ pub enum CompilationFailureDetail {
     SyntaxRejected,
     /// Parsed source was rejected by semantic validation.
     SemanticRejected,
+    /// A deterministic captured structural limit was exceeded.
+    ResourceLimitExceeded,
 }
 
 /// Captures exact host-supplied input without consulting ambient authority.
@@ -250,6 +280,7 @@ pub fn compile(request: CompilationRequest) -> Result<CompilationResult, Capture
 #[cfg(test)]
 /// Unit tests for captured-input and I/O-free compiler contracts.
 mod tests {
+    use super::diagnostics;
     use super::{
         CaptureError, CompilationFailureDetail, CompilationRequest, capture, compile_captured,
     };
@@ -316,14 +347,14 @@ mod tests {
                 include_bytes!(
                     "../../../portable/spec/v0/fixtures/negative/missing-module-header.neu"
                 ),
-                "NEU-SYN-001",
+                diagnostics::MISSING_MODULE_HEADER,
                 (10, 10),
             ),
             (
                 include_bytes!(
                     "../../../portable/spec/v0/fixtures/negative/unsupported-language-version.neu"
                 ),
-                "NEU-SYN-002",
+                diagnostics::UNSUPPORTED_LANGUAGE_VERSION,
                 (4, 9),
             ),
         ];

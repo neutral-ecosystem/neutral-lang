@@ -402,6 +402,8 @@ pub struct StructuralLimits {
     source_bytes: u64,
     /// The maximum number of retained diagnostics.
     diagnostics: u32,
+    /// Maximum decoded UTF-8 bytes in one string scalar.
+    string_bytes: u64,
 }
 
 impl StructuralLimits {
@@ -417,7 +419,21 @@ impl StructuralLimits {
         Ok(Self {
             source_bytes,
             diagnostics,
+            string_bytes: source_bytes,
         })
+    }
+
+    /// Overrides the maximum decoded UTF-8 bytes in one string scalar.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CoreError::ZeroLimit`] when `string_bytes` is zero.
+    pub const fn with_string_bytes(mut self, string_bytes: u64) -> Result<Self, CoreError> {
+        if string_bytes == 0 {
+            return Err(CoreError::ZeroLimit);
+        }
+        self.string_bytes = string_bytes;
+        Ok(self)
     }
 
     /// Returns the maximum exact captured source-byte count.
@@ -430,6 +446,12 @@ impl StructuralLimits {
     #[must_use]
     pub const fn diagnostics(self) -> u32 {
         self.diagnostics
+    }
+
+    /// Returns the maximum decoded UTF-8 bytes in one string scalar.
+    #[must_use]
+    pub const fn string_bytes(self) -> u64 {
+        self.string_bytes
     }
 }
 
@@ -505,7 +527,7 @@ pub enum CoreError {
 mod tests {
     use super::{
         ByteSpan, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity, SemanticDigest,
-        SourceContentDigest, SourceLocation, line_column_at, nht_frame,
+        SourceContentDigest, SourceLocation, StructuralLimits, line_column_at, nht_frame,
     };
 
     #[test]
@@ -583,5 +605,16 @@ mod tests {
             false,
         );
         assert!(earlier < later);
+    }
+
+    #[test]
+    /// Verifies decoded string limits are explicit, nonzero captured budgets.
+    fn structural_limits_capture_a_string_byte_budget() {
+        let limits = StructuralLimits::new(1_024, 16)
+            .expect("base limits should be valid")
+            .with_string_bytes(64)
+            .expect("string limit should be valid");
+        assert_eq!(limits.string_bytes(), 64);
+        assert!(limits.with_string_bytes(0).is_err());
     }
 }

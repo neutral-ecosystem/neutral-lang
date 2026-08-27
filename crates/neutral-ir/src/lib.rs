@@ -195,6 +195,10 @@ impl fmt::Display for ExactNumber {
 pub enum ResolvedType {
     /// Exact Neutral numeric type.
     Num,
+    /// Unicode scalar-sequence string type.
+    String,
+    /// Exact Boolean type.
+    Bool,
 }
 
 impl fmt::Display for ResolvedType {
@@ -202,6 +206,8 @@ impl fmt::Display for ResolvedType {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Num => formatter.write_str("num"),
+            Self::String => formatter.write_str("string"),
+            Self::Bool => formatter.write_str("bool"),
         }
     }
 }
@@ -211,6 +217,10 @@ impl fmt::Display for ResolvedType {
 pub enum LogicalValue {
     /// Exact normalized Neutral number.
     Number(ExactNumber),
+    /// Exact decoded Unicode scalar sequence.
+    String(String),
+    /// Exact Boolean value.
+    Boolean(bool),
 }
 
 impl fmt::Display for LogicalValue {
@@ -218,8 +228,30 @@ impl fmt::Display for LogicalValue {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Number(number) => number.fmt(formatter),
+            Self::String(value) => format_safe_string(value, formatter),
+            Self::Boolean(value) => value.fmt(formatter),
         }
     }
+}
+
+/// Formats a logical string with all hostile control text escaped.
+fn format_safe_string(value: &str, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    formatter.write_str("\"")?;
+    for character in value.chars() {
+        match character {
+            '"' => formatter.write_str("\\\"")?,
+            '\\' => formatter.write_str("\\\\")?,
+            '\n' => formatter.write_str("\\n")?,
+            '\r' => formatter.write_str("\\r")?,
+            '\t' => formatter.write_str("\\t")?,
+            '\0' => formatter.write_str("\\0")?,
+            character if character.is_control() => {
+                write!(formatter, "\\u{{{:x}}}", u32::from(character))?;
+            }
+            character => write!(formatter, "{character}")?,
+        }
+    }
+    formatter.write_str("\"")
 }
 
 /// Frozen declaration fingerprint separated from module-symbol continuity.
@@ -244,6 +276,8 @@ impl DeclarationFingerprint {
         )?);
         let definition = match value {
             LogicalValue::Number(number) => number.nht_payload()?,
+            LogicalValue::String(value) => nht_frame("string", value.as_bytes())?,
+            LogicalValue::Boolean(value) => nht_frame("boolean", &[u8::from(*value)])?,
         };
         payload.extend(nht_frame("logical-definition", &definition)?);
         SemanticDigest::from_nht("neutral/declaration-fingerprint/v1", &payload).map(Self)
@@ -521,6 +555,10 @@ pub enum ValueOrigin {
 pub enum Normalization {
     /// Exact source number was normalized without host floating point.
     ExactNumberCanonicalization,
+    /// String escapes were decoded to their exact Unicode scalar sequence.
+    StringEscapeDecoding,
+    /// A Boolean token was lowered without value transformation.
+    BooleanIdentity,
 }
 
 /// Provenance record for one minimal binding value.
@@ -577,16 +615,24 @@ pub struct ResourceFacts {
     declarations: u64,
     /// Number of retained diagnostics.
     diagnostics: u64,
+    /// Decoded UTF-8 bytes retained by string values.
+    decoded_string_bytes: u64,
 }
 
 impl ResourceFacts {
     /// Creates successful-compilation resource accounting.
     #[must_use]
-    pub const fn new(source_bytes: u64, declarations: u64, diagnostics: u64) -> Self {
+    pub const fn new(
+        source_bytes: u64,
+        declarations: u64,
+        diagnostics: u64,
+        decoded_string_bytes: u64,
+    ) -> Self {
         Self {
             source_bytes,
             declarations,
             diagnostics,
+            decoded_string_bytes,
         }
     }
 
@@ -606,6 +652,12 @@ impl ResourceFacts {
     #[must_use]
     pub const fn diagnostics(self) -> u64 {
         self.diagnostics
+    }
+
+    /// Returns decoded UTF-8 bytes retained by string values.
+    #[must_use]
+    pub const fn decoded_string_bytes(self) -> u64 {
+        self.decoded_string_bytes
     }
 }
 
@@ -628,22 +680,30 @@ impl MeaningPartition {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct AcceptancePartition {
     /// Maximum accepted captured source bytes.
-    source_byte_limit: u64,
+    source_bytes: u64,
     /// Maximum retained diagnostics.
-    diagnostic_limit: u32,
+    diagnostics: u32,
+    /// Maximum decoded UTF-8 bytes in one string scalar.
+    string_bytes: u64,
 }
 
 impl AcceptancePartition {
     /// Returns the captured source-byte limit.
     #[must_use]
     pub const fn source_byte_limit(self) -> u64 {
-        self.source_byte_limit
+        self.source_bytes
     }
 
     /// Returns the captured diagnostic limit.
     #[must_use]
     pub const fn diagnostic_limit(self) -> u32 {
-        self.diagnostic_limit
+        self.diagnostics
+    }
+
+    /// Returns the decoded string-byte limit.
+    #[must_use]
+    pub const fn string_byte_limit(self) -> u64 {
+        self.string_bytes
     }
 }
 
@@ -685,14 +745,16 @@ impl DerivationManifest {
         source_digest: SourceContentDigest,
         source_byte_limit: u64,
         diagnostic_limit: u32,
+        string_byte_limit: u64,
         resource_facts: ResourceFacts,
     ) -> Self {
         Self {
             language_behavior_version: language_behavior_version.into(),
             meaning: MeaningPartition { source_digest },
             acceptance: AcceptancePartition {
-                source_byte_limit,
-                diagnostic_limit,
+                source_bytes: source_byte_limit,
+                diagnostics: diagnostic_limit,
+                string_bytes: string_byte_limit,
             },
             diagnostics: DiagnosticPartition {
                 safe_bounded_output: true,
@@ -837,5 +899,33 @@ mod tests {
         let second = DeclarationFingerprint::for_binding(ResolvedType::Num, &value)
             .expect("fingerprint should be deterministic");
         assert_eq!(first, second);
+    }
+
+    #[test]
+    /// Verifies logical strings render every decoded control through safe escapes.
+    fn logical_string_rendering_escapes_controls_and_delimiters() {
+        let value = LogicalValue::String("quote:\" slash:\\ line:\n nul:\0".to_owned());
+        assert_eq!(
+            value.to_string(),
+            "\"quote:\\\" slash:\\\\ line:\\n nul:\\0\""
+        );
+    }
+
+    #[test]
+    /// Verifies scalar types and Boolean values enter definition fingerprints.
+    fn scalar_fingerprints_distinguish_type_and_boolean_value() {
+        let truth =
+            DeclarationFingerprint::for_binding(ResolvedType::Bool, &LogicalValue::Boolean(true))
+                .expect("Boolean fingerprint should succeed");
+        let falsehood =
+            DeclarationFingerprint::for_binding(ResolvedType::Bool, &LogicalValue::Boolean(false))
+                .expect("Boolean fingerprint should succeed");
+        let text = DeclarationFingerprint::for_binding(
+            ResolvedType::String,
+            &LogicalValue::String("true".to_owned()),
+        )
+        .expect("string fingerprint should succeed");
+        assert_ne!(truth, falsehood);
+        assert_ne!(truth, text);
     }
 }

@@ -4,6 +4,10 @@ These fixtures cover the reduced, domain-neutral v0 language.
 
 ## Positive source
 
+- [string-escapes-unicode.neu](positive/string-escapes-unicode.neu),
+  [boolean-true.neu](positive/boolean-true.neu), and
+  [boolean-false.neu](positive/boolean-false.neu) freeze Stage 3 Slice 3.2
+  string decoding and exact Boolean values.
 - [comments-equivalent.neu](positive/comments-equivalent.neu) proves line and
   block comments remain nonsemantic while their source regions stay observable
   only through source facts.
@@ -20,6 +24,9 @@ These fixtures cover the reduced, domain-neutral v0 language.
 
 ## Negative source
 
+- The `string-*` scalar fixtures plus
+  [invalid-boolean-literal.neu](negative/invalid-boolean-literal.neu) freeze
+  invalid escapes, Unicode scalars, controls, termination, types, and limits.
 - [invalid-identifier.neu](negative/invalid-identifier.neu),
   [protected-name.neu](negative/protected-name.neu),
   [punctuation-rejection.neu](negative/punctuation-rejection.neu),

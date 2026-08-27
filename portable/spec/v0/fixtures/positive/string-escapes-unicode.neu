@@ -1,0 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module scalar_strings
+string message = "quote:\" slash:\\ newline:\n nul:\0 unicode:\u{1f642} raw:é"

@@ -9,4 +9,6 @@ independently of source spelling, storage, or external encoding.
 It depends only on `neutral-core`. The compiler produces this logical model;
 the reader validates and exposes it; the vocabulary layer refers to it; and the
 probe observes it through public reader contracts. It must not acquire input or
-perform host effects.
+perform host effects. Its active scalar model carries exact numbers, decoded
+Unicode strings, and Booleans; string display is deterministic and escapes
+hostile control characters.

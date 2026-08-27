@@ -1,22 +1,33 @@
 # Neutral v0 development progress
 
-Status: Stage 3 Slice 3.1 complete.
+Status: Stage 3 Slice 3.2 complete.
 
 ## Current focus
 
-- Stage: Stage 3, Slice 3.1
-- Status: Source text, identifiers, comments, and boundaries complete
+- Stage: Stage 3, Slice 3.2
+- Status: Strings and Booleans complete; PR validation gate passing
 - Last updated: 2026-08-27
 
 ## Next actions
 
-- [ ] Continue with Stage 3, Slice 3.2: strings and Booleans.
+- [ ] Continue with Stage 3, Slice 3.3: complete exact numbers.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-08-27: Replaced duplicated compiler diagnostic literals with the
+  owning `neutral-compiler::diagnostics` and `neutral-probe::diagnostics`
+  namespaces; cross-package version assertions now use exported compiler and
+  IR contract constants instead of raw version strings.
+
+- [*] 2026-08-27: Completed Stage 3, Slice 3.2. Added bounded string escape and
+  Unicode-scalar decoding, exact Boolean tokens, scalar type checking, typed IR
+  and fingerprints, safe reader/probe rendering, decoded-string resource
+  accounting, stable invalid-string/type/limit diagnostics, and frozen
+  positive/negative conformance evidence.
 
 - [*] 2026-08-27: Centralized frozen language spellings and the protected-core
   namespace in compiler-private `language.rs`; lexer, parser, and semantics now

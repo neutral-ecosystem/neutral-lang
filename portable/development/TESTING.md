@@ -205,6 +205,14 @@ identifier boundaries, stable unterminated and misleading-comment failures,
 and continued rejection of future grammar. Later scalar and performance suites
 remain inactive until their owning slices.
 
+### Stage 3 Slice 3.2 active tests
+
+The active Stage 3 profile additionally freezes string escapes, raw Unicode,
+Unicode scalar boundaries, raw controls, unterminated strings, explicit scalar
+type mismatches, both Boolean values, and decoded-string resource limits.
+Reader traversal asserts typed public IR values, while probe tests require every
+decoded control character to be rendered through a safe escape.
+
 ### Activation milestones
 
 | Stage | Newly active evidence |

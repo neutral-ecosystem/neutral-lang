@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Recovery-free parser for the Stage 2 minimal document shape.
+//! Recovery-free parser for the active scalar document shape.
 
 use super::{
-    FrontendError, LexedSource, ParsedBinding, ParsedModule, ParsedUnit, Token, TokenKind, span,
+    FrontendError, LexedSource, ParsedBinding, ParsedModule, ParsedType, ParsedUnit, ParsedValue,
+    Token, TokenKind, span,
 };
 use crate::language::names;
 use neutral_core::ByteSpan;
@@ -34,7 +35,8 @@ impl Parser<'_> {
         let version = self.next().ok_or_else(|| self.other_here())?;
         let version_span = version.span;
         match &version.kind {
-            TokenKind::StringLiteral(value) if value == "0.1" => {}
+            TokenKind::StringLiteral(value)
+                if value.value == names::SOURCE_LANGUAGE_VERSION && !value.had_escape => {}
             TokenKind::StringLiteral(_) => {
                 return Err(FrontendError::unsupported_language_version(version_span));
             }
@@ -84,9 +86,16 @@ impl Parser<'_> {
         })
     }
 
-    /// Parses the exact `num identifier = digits LINE_END` binding shape.
+    /// Parses one active explicit scalar binding and literal.
     fn parse_binding(&mut self) -> Result<ParsedBinding, FrontendError> {
-        let type_span = self.expect_simple(&TokenKind::Num)?.span;
+        let type_token = self.next().ok_or_else(|| self.other_here())?;
+        let type_span = type_token.span;
+        let declared_type = match type_token.kind {
+            TokenKind::Num => ParsedType::Num,
+            TokenKind::StringType => ParsedType::String,
+            TokenKind::BoolType => ParsedType::Bool,
+            _ => return Err(FrontendError::other(type_span)),
+        };
         let name_token = self.next().ok_or_else(|| self.other_here())?;
         let name_span = name_token.span;
         let name = identifier_spelling(&name_token)
@@ -94,15 +103,19 @@ impl Parser<'_> {
         self.expect_simple(&TokenKind::Equals)?;
         let value_token = self.next().ok_or_else(|| self.other_here())?;
         let value_span = value_token.span;
-        let number = match &value_token.kind {
-            TokenKind::Number(value) => value.clone(),
+        let value = match value_token.kind {
+            TokenKind::Number(value) => ParsedValue::Number(value),
+            TokenKind::StringLiteral(value) => ParsedValue::String(value.value),
+            TokenKind::True => ParsedValue::Boolean(true),
+            TokenKind::False => ParsedValue::Boolean(false),
             _ => return Err(FrontendError::other(value_token.span)),
         };
         let end = value_token.span.end();
         self.expect_simple(&TokenKind::LineEnd)?;
         Ok(ParsedBinding {
             name,
-            number,
+            declared_type,
+            value,
             span: ByteSpan::new(type_span.start(), end)
                 .expect("ordered binding tokens must form a valid span"),
             type_span,
@@ -174,6 +187,10 @@ fn identifier_spelling(token: &Token) -> Option<String> {
         TokenKind::Neu => Some(names::NEU.to_owned()),
         TokenKind::Module => Some(names::MODULE.to_owned()),
         TokenKind::Num => Some(names::NUM.to_owned()),
+        TokenKind::StringType => Some(names::STRING.to_owned()),
+        TokenKind::BoolType => Some(names::BOOL.to_owned()),
+        TokenKind::True => Some(names::TRUE.to_owned()),
+        TokenKind::False => Some(names::FALSE.to_owned()),
         _ => None,
     }
 }

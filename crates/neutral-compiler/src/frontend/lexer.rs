@@ -3,7 +3,8 @@
 //! Raw lexer for source text, exact trivia, and physical line boundaries.
 
 use super::{
-    FrontendError, LexedSource, PhysicalLineEnd, Token, TokenKind, Trivia, TriviaKind, span,
+    DecodedString, FrontendError, LexedSource, PhysicalLineEnd, Token, TokenKind, Trivia,
+    TriviaKind, span,
 };
 use crate::language::names;
 
@@ -80,18 +81,7 @@ pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
                     value.is_ascii_alphanumeric() || *value == b'_'
                 });
                 let text = ascii_text(&source[index..end], index)?;
-                let kind = if text == names::NEU {
-                    TokenKind::Neu
-                } else if text == names::MODULE {
-                    TokenKind::Module
-                } else if text == names::NUM {
-                    TokenKind::Num
-                } else if names::is_protected_name(&text) {
-                    TokenKind::ProtectedName(text)
-                } else {
-                    TokenKind::Identifier(text)
-                };
-                tokens.push(token(kind, index, end));
+                tokens.push(token(word_token(text), index, end));
                 index = end;
             }
             byte if byte.is_ascii_digit() => {
@@ -113,6 +103,29 @@ pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
 
     tokens.push(token(TokenKind::EndOfFile, source.len(), source.len()));
     Ok(LexedSource { tokens, trivia })
+}
+
+/// Classifies one ASCII word through the centralized language-name namespace.
+fn word_token(text: String) -> TokenKind {
+    if text == names::NEU {
+        TokenKind::Neu
+    } else if text == names::MODULE {
+        TokenKind::Module
+    } else if text == names::NUM {
+        TokenKind::Num
+    } else if text == names::STRING {
+        TokenKind::StringType
+    } else if text == names::BOOL {
+        TokenKind::BoolType
+    } else if text == names::TRUE {
+        TokenKind::True
+    } else if text == names::FALSE {
+        TokenKind::False
+    } else if names::is_protected_name(&text) {
+        TokenKind::ProtectedName(text)
+    } else {
+        TokenKind::Identifier(text)
+    }
 }
 
 /// Reads one non-nesting block comment and retains any physical line endings.
@@ -179,21 +192,113 @@ fn validate_source_text(source: &[u8]) -> Result<(), FrontendError> {
 }
 
 /// Reads one simple, unescaped string literal without crossing a physical line.
-fn string_literal(source: &[u8], start: usize) -> Result<(usize, String), FrontendError> {
-    let mut end = start + 1;
-    while let Some(byte) = source.get(end) {
-        match *byte {
+fn string_literal(source: &[u8], start: usize) -> Result<(usize, DecodedString), FrontendError> {
+    let mut index = start + 1;
+    let mut value = String::new();
+    let mut had_escape = false;
+    while let Some(byte) = source.get(index).copied() {
+        match byte {
             b'"' => {
-                let value = ascii_text(&source[start + 1..end], start + 1)?;
-                return Ok((end + 1, value));
+                return Ok((index + 1, DecodedString { value, had_escape }));
             }
-            b'\n' | b'\r' | b'\\' => {
-                return Err(FrontendError::malformed_boundary(span(start, end + 1)));
+            b'\\' => {
+                had_escape = true;
+                index = decode_escape(source, index, &mut value)?;
             }
-            _ => end += 1,
+            b'\n' | b'\r' => {
+                return Err(FrontendError::unterminated_string_literal(span(
+                    start, index,
+                )));
+            }
+            byte if byte.is_ascii_control() => {
+                return Err(FrontendError::invalid_string_literal(span(
+                    index,
+                    index + 1,
+                )));
+            }
+            byte if byte.is_ascii() => {
+                value.push(char::from(byte));
+                index += 1;
+            }
+            _ => {
+                let remaining = std::str::from_utf8(&source[index..])
+                    .expect("source UTF-8 was validated before string decoding");
+                let character = remaining
+                    .chars()
+                    .next()
+                    .expect("non-ASCII byte must start one character");
+                let end = index + character.len_utf8();
+                if character.is_control() {
+                    return Err(FrontendError::invalid_string_literal(span(index, end)));
+                }
+                value.push(character);
+                index = end;
+            }
         }
     }
-    Err(FrontendError::malformed_boundary(span(start, source.len())))
+    Err(FrontendError::unterminated_string_literal(span(
+        start,
+        source.len(),
+    )))
+}
+
+/// Decodes one frozen string escape and returns the next unread byte offset.
+fn decode_escape(source: &[u8], start: usize, value: &mut String) -> Result<usize, FrontendError> {
+    let Some(escaped) = source.get(start + 1).copied() else {
+        return Err(FrontendError::unterminated_string_literal(span(
+            start,
+            source.len(),
+        )));
+    };
+    let character = match escaped {
+        b'"' => '"',
+        b'\\' => '\\',
+        b'n' => '\n',
+        b'r' => '\r',
+        b't' => '\t',
+        b'0' => '\0',
+        b'u' => return decode_unicode_escape(source, start, value),
+        _ => {
+            return Err(FrontendError::invalid_string_literal(span(
+                start,
+                (start + 2).min(source.len()),
+            )));
+        }
+    };
+    value.push(character);
+    Ok(start + 2)
+}
+
+/// Decodes one `\u{HEX}` escape containing one to six hexadecimal digits.
+fn decode_unicode_escape(
+    source: &[u8],
+    start: usize,
+    value: &mut String,
+) -> Result<usize, FrontendError> {
+    if source.get(start + 2) != Some(&b'{') {
+        return Err(FrontendError::invalid_string_literal(span(
+            start,
+            (start + 3).min(source.len()),
+        )));
+    }
+    let digits_start = start + 3;
+    let mut end = digits_start;
+    while source.get(end).is_some_and(u8::is_ascii_hexdigit) && end - digits_start < 6 {
+        end += 1;
+    }
+    if end == digits_start || source.get(end) != Some(&b'}') {
+        return Err(FrontendError::invalid_string_literal(span(
+            start,
+            (end + 1).min(source.len()),
+        )));
+    }
+    let digits = ascii_text(&source[digits_start..end], digits_start)?;
+    let scalar = u32::from_str_radix(&digits, 16)
+        .ok()
+        .and_then(char::from_u32)
+        .ok_or_else(|| FrontendError::invalid_string_literal(span(start, end + 1)))?;
+    value.push(scalar);
+    Ok(end + 1)
 }
 
 /// Advances over bytes while the supplied ASCII predicate remains true.

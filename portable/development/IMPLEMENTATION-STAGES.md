@@ -258,18 +258,18 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Slice 3.2: strings and Booleans
 
-- [ ] Activate string/escape/Unicode/control and Boolean fixtures.
-- [ ] Implement string and Boolean tokens/parser values.
-- [ ] Type-check explicit `string`/`bool` bindings.
-- [ ] Lower exact logical values, source maps, provenance, derivation, and limits.
-- [ ] Expose values through reader and probe.
+- [*] Activate string/escape/Unicode/control and Boolean fixtures.
+- [*] Implement string and Boolean tokens/parser values.
+- [*] Type-check explicit `string`/`bool` bindings.
+- [*] Lower exact logical values, source maps, provenance, derivation, and limits.
+- [*] Expose values through reader and probe.
 
 #### Slice validation
 
-- [ ] Every escape, Unicode boundary, invalid surrogate/control, and limit case
+- [*] Every escape, Unicode boundary, invalid surrogate/control, and limit case
       passes its oracle.
-- [ ] Safe rendering never emits hostile control text unescaped.
-- [ ] Reader/probe behavior uses typed values, not source parsing.
+- [*] Safe rendering never emits hostile control text unescaped.
+- [*] Reader/probe behavior uses typed values, not source parsing.
 
 ### Slice 3.3: complete exact numbers
 

@@ -7,7 +7,7 @@ schema_version = 1
 status = "approved"
 source_fixture_root = "portable/spec/v0/fixtures"
 reviewers = ["repository owner"]
-unresolved_oracle_count = 14
+unresolved_oracle_count = 12
 
 [[fixture]]
 id = "minimal-vocabulary"
@@ -25,7 +25,7 @@ source_sha256 = "ae6e6a01012baceeedc0fa27f854e84b321ad8862449828c00f630da9d254c0
 expected_outcome = "reject"
 active_from_stage = 2
 required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
-review_status = "oracle-unassigned"
+review_status = "oracle-approved"
 
 [[fixture]]
 id = "version-escape"
@@ -34,7 +34,106 @@ source_sha256 = "3972ac67febb8fbdcac600a5cfaca555ec837a01a7a0249c43ea896f636753c
 expected_outcome = "reject"
 active_from_stage = 2
 required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
-review_status = "oracle-unassigned"
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "string-escapes-unicode"
+source = "portable/spec/v0/fixtures/positive/string-escapes-unicode.neu"
+source_sha256 = "19ed3848037a14ce49c5a37e1fca667f468d3c405496f68123d0b527c0ad8afb"
+expected_outcome = "accept"
+active_from_stage = 3
+required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "boolean-true"
+source = "portable/spec/v0/fixtures/positive/boolean-true.neu"
+source_sha256 = "80e4ba134de7ef2b0b914f08fbf1bb1e04a8c74a4a395691a1b05e1c96bc87ee"
+expected_outcome = "accept"
+active_from_stage = 3
+required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "boolean-false"
+source = "portable/spec/v0/fixtures/positive/boolean-false.neu"
+source_sha256 = "bbda34018945d76c6b5a98df5a62364e41b4d787e9af94558038435aa33e40aa"
+expected_outcome = "accept"
+active_from_stage = 3
+required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "string-unknown-escape"
+source = "portable/spec/v0/fixtures/negative/string-unknown-escape.neu"
+source_sha256 = "d670c190f6cbd4d46892bae312eb83d18480d25d9e3a58a8c8e56520917bb44e"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "string-invalid-surrogate"
+source = "portable/spec/v0/fixtures/negative/string-invalid-surrogate.neu"
+source_sha256 = "02fac19d1b6252bc08632495533a2552321218db0eafd1b45d98d5f14545137c"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "string-out-of-range"
+source = "portable/spec/v0/fixtures/negative/string-out-of-range.neu"
+source_sha256 = "2f7c5b3c3be3ac47b3ada9c0ece86dda9468dca9a864022ee818e2d137f45459"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "string-raw-control"
+source = "portable/spec/v0/fixtures/negative/string-raw-control.neu"
+source_sha256 = "2484f1068a082ccbfbb0a362269e0010d7c69c3e78cd55b8ed70532b80dd5aa1"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "string-unterminated"
+source = "portable/spec/v0/fixtures/negative/string-unterminated.neu"
+source_sha256 = "90bcc210635ca6305b60cca5aa4bd4f895fe19126e43eaaa301882b522f3b23e"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "string-type-mismatch"
+source = "portable/spec/v0/fixtures/negative/string-type-mismatch.neu"
+source_sha256 = "d208ccf8ab665368fe0a984e871353e5fda64726ab167d275bab117900e31baa"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "invalid-boolean-literal"
+source = "portable/spec/v0/fixtures/negative/invalid-boolean-literal.neu"
+source_sha256 = "783138540c4725a00eb0431e6b2bce0cb39c7ac6f53062d14118811677f9e3d9"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "string-limit"
+source = "portable/spec/v0/fixtures/negative/string-limit.neu"
+source_sha256 = "cafacfb921d8fc2bf79b6fe0e8377314eb3111820b54a904663a1a540fb83ab4"
+expected_outcome = "reject"
+active_from_stage = 3
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span", "resource-limit"]
+review_status = "oracle-approved"
 
 [[fixture]]
 id = "module-path"

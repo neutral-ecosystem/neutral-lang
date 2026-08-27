@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Semantic line-end normalization for the minimal frontend slice.
+//! Semantic line-end normalization for active scalar frontend slices.
 
 use super::{FrontendError, LexedSource, Token, TokenKind};
 
@@ -54,7 +54,7 @@ pub(super) fn normalize(raw: LexedSource) -> Result<LexedSource, FrontendError> 
     })
 }
 
-/// Returns whether one physical line is a complete minimal frontend construct.
+/// Returns whether one physical line is a complete active scalar construct.
 fn is_complete_construct(tokens: &[Token]) -> bool {
     match tokens {
         [first, second] => {
@@ -63,13 +63,29 @@ fn is_complete_construct(tokens: &[Token]) -> bool {
                 || matches!(first.kind, TokenKind::Module) && is_name_token(&second.kind)
         }
         [first, second, third, fourth] => {
-            matches!(first.kind, TokenKind::Num)
+            is_scalar_type(&first.kind)
                 && is_name_token(&second.kind)
                 && matches!(third.kind, TokenKind::Equals)
-                && matches!(fourth.kind, TokenKind::Number(_))
+                && is_scalar_value(&fourth.kind)
         }
         _ => false,
     }
+}
+
+/// Returns whether a token is an active explicit scalar type.
+fn is_scalar_type(kind: &TokenKind) -> bool {
+    matches!(
+        kind,
+        TokenKind::Num | TokenKind::StringType | TokenKind::BoolType
+    )
+}
+
+/// Returns whether a token is an active explicit scalar literal.
+fn is_scalar_value(kind: &TokenKind) -> bool {
+    matches!(
+        kind,
+        TokenKind::Number(_) | TokenKind::StringLiteral(_) | TokenKind::True | TokenKind::False
+    )
 }
 
 /// Returns whether a token spelling can be diagnosed in an identifier position.
@@ -81,5 +97,9 @@ fn is_name_token(kind: &TokenKind) -> bool {
             | TokenKind::Neu
             | TokenKind::Module
             | TokenKind::Num
+            | TokenKind::StringType
+            | TokenKind::BoolType
+            | TokenKind::True
+            | TokenKind::False
     )
 }

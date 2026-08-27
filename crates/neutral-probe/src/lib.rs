@@ -9,8 +9,11 @@
 use neutral_core::{Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity};
 use neutral_reader::{ElementId, ValidatedDocument};
 
-/// Stable consumer-owned source-linked probe diagnostic code.
-const PROBE_OBSERVATION: &str = "NEU-PROBE-001";
+/// Stable consumer-owned diagnostic identifiers.
+pub mod diagnostics {
+    /// Source-linked probe observation diagnostic.
+    pub const OBSERVATION: &str = "NEU-PROBE-001";
+}
 
 /// Deterministic generic summary of one validated Neutral document.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -77,7 +80,8 @@ pub fn source_linked_diagnostic(
     let primary = document
         .source_location(element_id)
         .ok_or(ProbeError::UnknownElement)?;
-    let code = DiagnosticCode::new(PROBE_OBSERVATION).map_err(|_| ProbeError::InternalInvariant)?;
+    let code =
+        DiagnosticCode::new(diagnostics::OBSERVATION).map_err(|_| ProbeError::InternalInvariant)?;
     Ok(Diagnostic::new(
         code,
         DiagnosticLayer::Consumer,

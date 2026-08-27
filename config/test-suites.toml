@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# Stage 1 minimum discovered test counts. Future-stage suites remain planned and
-# are intentionally absent from the active gate.
+# Minimum discovered test counts for each activated implementation stage.
 [stage1.minimum]
 automation = 1
 environment = 1
@@ -24,9 +23,9 @@ unit = 1
 smoke = 1
 integration = 1
 system = 1
-conformance = 4
-property = 5
-security = 4
+conformance = 6
+property = 6
+security = 5
 fuzz_smoke = 1
 
 [planned]

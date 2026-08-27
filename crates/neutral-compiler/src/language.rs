@@ -8,6 +8,8 @@
 
 /// Frozen language-word constants grouped by source-language responsibility.
 pub(crate) mod names {
+    /// Canonical source-level language version spelling.
+    pub(crate) const SOURCE_LANGUAGE_VERSION: &str = "0.1";
     /// Canonical document-header keyword.
     pub(crate) const NEU: &str = "neu";
     /// Canonical module-header keyword.
