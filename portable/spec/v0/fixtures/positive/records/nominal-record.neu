@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module records
+
+record Metadata {
+    string image,
+    string? note,
+    bool enabled,
+}
+
+Metadata metadata = {
+    note: null,
+    enabled: true,
+    image: "example.invalid/tool:1",
+}

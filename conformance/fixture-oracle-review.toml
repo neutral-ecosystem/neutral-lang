@@ -494,3 +494,111 @@ expected_outcome = "reject"
 active_from_stage = 2
 required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
 review_status = "oracle-approved"
+
+[[fixture]]
+id = "nominal-record"
+source = "portable/spec/v0/fixtures/positive/records/nominal-record.neu"
+source_sha256 = "7530ab4712de1b2c10d83f1c66f68c148224591dc9926dc1208fc983375f349a"
+expected_outcome = "accept"
+active_from_stage = 4
+required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "record-forward-order"
+source = "portable/spec/v0/fixtures/positive/records/record-forward-order.neu"
+source_sha256 = "f1aa9aba5944ea24f8c58f4ba1e0e5955fd88fd0bf2fa3c46c7c486c0a3cd297"
+expected_outcome = "accept"
+active_from_stage = 4
+required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "nested-record"
+source = "portable/spec/v0/fixtures/positive/records/nested-record.neu"
+source_sha256 = "075cd6dc0493f75441bdbfc59969ef472561e786e5ed1c1d2f64ddfbee9352b3"
+expected_outcome = "accept"
+active_from_stage = 4
+required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "duplicate-declaration"
+source = "portable/spec/v0/fixtures/negative/records/duplicate-declaration.neu"
+source_sha256 = "30ee87b6c2bb7895b6088bb58e4ead564bcf1e2810c1206092d1e5ebd469246f"
+expected_outcome = "reject"
+active_from_stage = 4
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "duplicate-schema-field"
+source = "portable/spec/v0/fixtures/negative/records/duplicate-schema-field.neu"
+source_sha256 = "17a7a4b0f1619c53d2a78da12339b1ca557d3a8f51bb14a1ba5df46b868ca79f"
+expected_outcome = "reject"
+active_from_stage = 4
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "missing-value-field"
+source = "portable/spec/v0/fixtures/negative/records/missing-value-field.neu"
+source_sha256 = "20784888bd6c8f1b971593238b37a2c2f9bec8114660fba8d02a1a83257a91f4"
+expected_outcome = "reject"
+active_from_stage = 4
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "unknown-value-field"
+source = "portable/spec/v0/fixtures/negative/records/unknown-value-field.neu"
+source_sha256 = "53d348b729dfe84c257b67c2760663363e493e809ad772af512dd551a7883f76"
+expected_outcome = "reject"
+active_from_stage = 4
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "duplicate-value-field"
+source = "portable/spec/v0/fixtures/negative/records/duplicate-value-field.neu"
+source_sha256 = "cfc7a8d3548dc4346f6fee62faa82727435bccbb1554dcd8b014a230cec0e118"
+expected_outcome = "reject"
+active_from_stage = 4
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "wrong-kind-type"
+source = "portable/spec/v0/fixtures/negative/records/wrong-kind-type.neu"
+source_sha256 = "fd56a8b5536a1c487f9880ddab75ea8f7e6ddbf833582d2fef79b07a4d07db0a"
+expected_outcome = "reject"
+active_from_stage = 4
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "embedded-recursion"
+source = "portable/spec/v0/fixtures/negative/records/embedded-recursion.neu"
+source_sha256 = "68cd7cf059562ac3e34f2bacfd17ee0e8ca0da187c2e8424b25055c59d709755"
+expected_outcome = "reject"
+active_from_stage = 4
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "field-shorthand"
+source = "portable/spec/v0/fixtures/negative/records/field-shorthand.neu"
+source_sha256 = "dcd01ab265928e36e18a9ef09030801bc8b8720231df8a6f49616bcfdde54113"
+expected_outcome = "reject"
+active_from_stage = 4
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "wrong-field-type"
+source = "portable/spec/v0/fixtures/negative/records/wrong-field-type.neu"
+source_sha256 = "779df949f8d3873dbc67901b7d5885076a7d506cc8139f81bdfba6f62cb2cec6"
+expected_outcome = "reject"
+active_from_stage = 4
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"

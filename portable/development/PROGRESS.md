@@ -1,22 +1,28 @@
 # Neutral v0 development progress
 
-Status: Stage 3 complete through Slice 3.4.
+Status: Stage 4 Slice 4.1 complete.
 
 ## Current focus
 
-- Stage: Stage 3, Slice 3.4
-- Status: Nullable scalars and explicit null complete; Stage 3 validation passing
-- Last updated: 2026-08-27
+- Stage: Stage 4, Slice 4.1
+- Status: Nominal records and contextual values complete; validation passing
+- Last updated: 2026-08-29
 
 ## Next actions
 
-- [ ] Continue with Stage 4, Slice 4.1: nominal records and contextual values.
+- [ ] Continue with Stage 4, Slice 4.2: closed defaults and omission.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-08-29: Completed Stage 4, Slice 4.1. Added bounded record grammar,
+  two-pass root collection, nominal schema resolution, contextual and nested
+  record lowering, duplicate/missing/unknown/wrong-kind/recursion diagnostics,
+  canonical declaration and field order, public reader/probe traversal, and
+  frozen Stage 4 fixtures/oracles.
 
 - [*] 2026-08-27: Completed Stage 3, Slice 3.4 and Stage 3 validation. Added
   recursive outer-nullable resolved types, explicit typed null, exact scalar to

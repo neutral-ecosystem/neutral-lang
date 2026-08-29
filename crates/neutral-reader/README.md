@@ -10,6 +10,7 @@ or perform vocabulary lookup: callers supply the bytes and the exact captured
 vocabulary contract. The CLI and standalone probe use this boundary to inspect
 artifacts without depending on compiler internals.
 
-Stage 2 exposes validated in-process compiler artifacts through immutable typed
-traversal and indexed source lookup. Hostile external decoding is introduced by
-its later owning stage.
+The active reader exposes validated in-process compiler artifacts through
+immutable scalar and nominal-record traversal, recursive type/value validation,
+and indexed source lookup. Hostile external decoding is introduced by its later
+owning stage.

@@ -1,19 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Recovery-free parser for the active scalar document shape.
+//! Recovery-free parser for active scalar and nominal-record document shapes.
 
 use super::{
-    FrontendError, LexedSource, ParsedBinding, ParsedModule, ParsedType, ParsedUnit, ParsedValue,
-    Token, TokenKind, span,
+    FrontendError, LexedSource, ParsedBinding, ParsedDeclaration, ParsedModule, ParsedRecord,
+    ParsedRecordField, ParsedType, ParsedUnit, ParsedValue, ParsedValueField, Token, TokenKind,
+    span,
 };
 use crate::language::names;
-use neutral_core::ByteSpan;
+use neutral_core::{ByteSpan, StructuralLimits};
 
-/// Parses one exact minimal document or returns no private syntax model.
-pub(super) fn parse(source: LexedSource) -> Result<ParsedUnit, FrontendError> {
+/// Parses one active document or returns no private syntax model.
+pub(super) fn parse(
+    source: LexedSource,
+    limits: StructuralLimits,
+) -> Result<ParsedUnit, FrontendError> {
     let mut parser = Parser {
         tokens: &source.tokens,
         index: 0,
+        limits,
     };
     let mut unit = parser.parse_unit()?;
     unit.trivia = source.trivia;
@@ -26,10 +31,12 @@ struct Parser<'a> {
     tokens: &'a [Token],
     /// Index of the next token to inspect.
     index: usize,
+    /// Captured deterministic structural limits.
+    limits: StructuralLimits,
 }
 
 impl Parser<'_> {
-    /// Parses the language header, module header, and one minimal binding.
+    /// Parses headers followed by all root declarations.
     fn parse_unit(&mut self) -> Result<ParsedUnit, FrontendError> {
         let language_start = self.expect_simple(&TokenKind::Neu)?.span.start();
         let version = self.next().ok_or_else(|| self.other_here())?;
@@ -58,15 +65,28 @@ impl Parser<'_> {
 
         let module = self.parse_module()?;
         self.skip_line_ends();
-        let binding = self.parse_binding()?;
-        self.skip_line_ends();
+        let mut declarations = Vec::new();
+        while !self.at(&TokenKind::EndOfFile) {
+            Self::ensure_capacity(
+                declarations.len(),
+                self.limits.declarations(),
+                self.peek().map_or_else(|| span(0, 0), |token| token.span),
+            )?;
+            let declaration = if self.at(&TokenKind::Record) {
+                ParsedDeclaration::Record(self.parse_record()?)
+            } else {
+                ParsedDeclaration::Binding(self.parse_binding()?)
+            };
+            declarations.push(declaration);
+            self.skip_line_ends();
+        }
         self.expect_simple(&TokenKind::EndOfFile)?;
 
         Ok(ParsedUnit {
             language_header_span,
             version_span,
             module,
-            binding,
+            declarations,
             trivia: Vec::new(),
         })
     }
@@ -86,14 +106,97 @@ impl Parser<'_> {
         })
     }
 
-    /// Parses one active explicit scalar binding and literal.
+    /// Parses one nominal record declaration with required fields.
+    fn parse_record(&mut self) -> Result<ParsedRecord, FrontendError> {
+        let start = self.expect_simple(&TokenKind::Record)?.span.start();
+        let name_token = self.next().ok_or_else(|| self.other_here())?;
+        let name = identifier_spelling(&name_token)
+            .ok_or_else(|| FrontendError::other(name_token.span))?;
+        let open = self.expect_simple(&TokenKind::OpenBrace)?;
+        let mut fields = Vec::new();
+        while !self.at(&TokenKind::CloseBrace) {
+            Self::ensure_capacity(
+                fields.len(),
+                self.limits.record_fields(),
+                self.peek().map_or(open.span, |token| token.span),
+            )?;
+            fields.push(self.parse_record_field()?);
+        }
+        let close = self.expect_simple(&TokenKind::CloseBrace)?;
+        self.expect_simple(&TokenKind::LineEnd)?;
+        Ok(ParsedRecord {
+            name,
+            fields,
+            span: ByteSpan::new(start, close.span.end())
+                .expect("ordered record tokens must form a valid span"),
+            name_span: name_token.span,
+            body_span: ByteSpan::new(open.span.start(), close.span.end())
+                .expect("ordered record body tokens must form a valid span"),
+        })
+    }
+
+    /// Parses one required record field without a Stage 4.2 default.
+    fn parse_record_field(&mut self) -> Result<ParsedRecordField, FrontendError> {
+        let (declared_type, type_span) = self.parse_type()?;
+        let name_token = self.next().ok_or_else(|| self.other_here())?;
+        let name = identifier_spelling(&name_token)
+            .ok_or_else(|| FrontendError::malformed_boundary(name_token.span))?;
+        if self.at(&TokenKind::Equals) {
+            let equals = self.next().expect("looked-ahead equals token must exist");
+            return Err(FrontendError::malformed_boundary(equals.span));
+        }
+        let comma = self.expect_field_delimiter(&TokenKind::Comma)?;
+        Ok(ParsedRecordField {
+            declared_type,
+            name,
+            span: ByteSpan::new(type_span.start(), comma.span.end())
+                .expect("ordered field tokens must form a valid span"),
+            type_span,
+            name_span: name_token.span,
+        })
+    }
+
+    /// Parses one immutable typed binding and contextual value.
     fn parse_binding(&mut self) -> Result<ParsedBinding, FrontendError> {
+        let (declared_type, type_span) = self.parse_type()?;
+        let name_token = self.next().ok_or_else(|| self.other_here())?;
+        let name_span = name_token.span;
+        let name = identifier_spelling(&name_token)
+            .ok_or_else(|| FrontendError::other(name_token.span))?;
+        self.expect_simple(&TokenKind::Equals)?;
+        let value_start = self.peek().ok_or_else(|| self.other_here())?.span.start();
+        let value = self.parse_value(0)?;
+        let value_end = self
+            .previous()
+            .expect("a parsed value consumes at least one token")
+            .span
+            .end();
+        let value_span = ByteSpan::new(value_start, value_end)
+            .expect("ordered value tokens must form a valid span");
+        self.expect_simple(&TokenKind::LineEnd)?;
+        Ok(ParsedBinding {
+            name,
+            declared_type,
+            value,
+            span: ByteSpan::new(type_span.start(), value_end)
+                .expect("ordered binding tokens must form a valid span"),
+            type_span,
+            name_span,
+            value_span,
+        })
+    }
+
+    /// Parses one scalar or nominal type with optional outer nullability.
+    fn parse_type(&mut self) -> Result<(ParsedType, ByteSpan), FrontendError> {
         let type_token = self.next().ok_or_else(|| self.other_here())?;
         let mut type_span = type_token.span;
         let mut declared_type = match type_token.kind {
             TokenKind::Num => ParsedType::Num,
             TokenKind::StringType => ParsedType::String,
             TokenKind::BoolType => ParsedType::Bool,
+            TokenKind::Identifier(name) | TokenKind::ProtectedName(name) => {
+                ParsedType::Record(name)
+            }
             _ => return Err(FrontendError::other(type_span)),
         };
         if self.at(&TokenKind::Question) {
@@ -110,33 +213,84 @@ impl Parser<'_> {
                 return Err(FrontendError::malformed_boundary(duplicate.span));
             }
         }
-        let name_token = self.next().ok_or_else(|| self.other_here())?;
-        let name_span = name_token.span;
-        let name = identifier_spelling(&name_token)
-            .ok_or_else(|| FrontendError::other(name_token.span))?;
-        self.expect_simple(&TokenKind::Equals)?;
-        let value_token = self.next().ok_or_else(|| self.other_here())?;
-        let value_span = value_token.span;
-        let value = match value_token.kind {
-            TokenKind::Number(value) => ParsedValue::Number(value),
-            TokenKind::StringLiteral(value) => ParsedValue::String(value.value),
-            TokenKind::True => ParsedValue::Boolean(true),
-            TokenKind::False => ParsedValue::Boolean(false),
-            TokenKind::Null => ParsedValue::Null,
-            _ => return Err(FrontendError::other(value_token.span)),
-        };
-        let end = value_token.span.end();
-        self.expect_simple(&TokenKind::LineEnd)?;
-        Ok(ParsedBinding {
-            name,
-            declared_type,
-            value,
-            span: ByteSpan::new(type_span.start(), end)
-                .expect("ordered binding tokens must form a valid span"),
-            type_span,
-            name_span,
-            value_span,
-        })
+        Ok((declared_type, type_span))
+    }
+
+    /// Parses one scalar or recursively contextual record value.
+    fn parse_value(&mut self, depth: u64) -> Result<ParsedValue, FrontendError> {
+        let token = self.next().ok_or_else(|| self.other_here())?;
+        match token.kind {
+            TokenKind::Number(value) => Ok(ParsedValue::Number(value)),
+            TokenKind::StringLiteral(value) => Ok(ParsedValue::String(value.value)),
+            TokenKind::True => Ok(ParsedValue::Boolean(true)),
+            TokenKind::False => Ok(ParsedValue::Boolean(false)),
+            TokenKind::Null => Ok(ParsedValue::Null),
+            TokenKind::OpenBrace => self.parse_record_value(token.span, depth),
+            _ => Err(FrontendError::other(token.span)),
+        }
+    }
+
+    /// Parses explicit fields in one contextual record value.
+    fn parse_record_value(
+        &mut self,
+        open_span: ByteSpan,
+        depth: u64,
+    ) -> Result<ParsedValue, FrontendError> {
+        let nested_depth = depth.saturating_add(1);
+        if nested_depth > self.limits.nesting_depth() {
+            return Err(FrontendError::record_limit_exceeded(open_span));
+        }
+        let mut fields = Vec::new();
+        while !self.at(&TokenKind::CloseBrace) {
+            Self::ensure_capacity(
+                fields.len(),
+                self.limits.record_fields(),
+                self.peek().map_or(open_span, |token| token.span),
+            )?;
+            let name_token = self.next().ok_or_else(|| self.other_here())?;
+            let name = identifier_spelling(&name_token)
+                .ok_or_else(|| FrontendError::malformed_boundary(name_token.span))?;
+            self.expect_field_delimiter(&TokenKind::Colon)?;
+            let value_start = self.peek().ok_or_else(|| self.other_here())?.span.start();
+            let value = self.parse_value(nested_depth)?;
+            let value_end = self
+                .previous()
+                .expect("a parsed field value consumes at least one token")
+                .span
+                .end();
+            let value_span = ByteSpan::new(value_start, value_end)
+                .expect("ordered field value tokens must form a valid span");
+            self.expect_field_delimiter(&TokenKind::Comma)?;
+            fields.push(ParsedValueField {
+                name,
+                value,
+                span: ByteSpan::new(name_token.span.start(), value_end)
+                    .expect("ordered value-field tokens must form a valid span"),
+                name_span: name_token.span,
+                value_span,
+            });
+        }
+        self.expect_simple(&TokenKind::CloseBrace)?;
+        Ok(ParsedValue::Record(fields))
+    }
+
+    /// Fails before growing a bounded declaration or field vector past its limit.
+    fn ensure_capacity(current: usize, limit: u64, span: ByteSpan) -> Result<(), FrontendError> {
+        if u64::try_from(current).unwrap_or(u64::MAX) >= limit {
+            Err(FrontendError::record_limit_exceeded(span))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Consumes a required record field delimiter with a stable owned failure.
+    fn expect_field_delimiter(&mut self, expected: &TokenKind) -> Result<Token, FrontendError> {
+        let token = self.next().ok_or_else(|| self.other_here())?;
+        if std::mem::discriminant(&token.kind) == std::mem::discriminant(expected) {
+            Ok(token)
+        } else {
+            Err(FrontendError::malformed_boundary(token.span))
+        }
     }
 
     /// Consumes and returns one token matching a value-free token category.
@@ -201,6 +355,7 @@ fn identifier_spelling(token: &Token) -> Option<String> {
         TokenKind::Identifier(value) | TokenKind::ProtectedName(value) => Some(value.clone()),
         TokenKind::Neu => Some(names::NEU.to_owned()),
         TokenKind::Module => Some(names::MODULE.to_owned()),
+        TokenKind::Record => Some(names::RECORD.to_owned()),
         TokenKind::Num => Some(names::NUM.to_owned()),
         TokenKind::StringType => Some(names::STRING.to_owned()),
         TokenKind::BoolType => Some(names::BOOL.to_owned()),

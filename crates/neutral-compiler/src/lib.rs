@@ -5,8 +5,8 @@
 //! This crate owns capture contracts, the private frontend and semantic model,
 //! and lowering into public logical IR. Its pure captured-input compilation
 //! path must not use filesystem, process, environment, network, locale, or clock
-//! authority. Stage 2 established captured-input contracts; Stage 3 extends
-//! the private frontend while preserving the same effect-free boundary.
+//! authority. Stage 2 established captured-input contracts; Stages 3 and 4
+//! extend the private frontend while preserving the same effect-free boundary.
 
 use neutral_core::{
     CancellationToken, Diagnostic, ResultClass, SourceContentDigest, StructuralLimits,
@@ -38,14 +38,32 @@ pub mod diagnostics {
     pub const INVALID_NAME: &str = "NEU-NAME-001";
     /// Protected core name diagnostic.
     pub const PROTECTED_NAME: &str = "NEU-NAME-002";
+    /// Duplicate root declaration diagnostic.
+    pub const DUPLICATE_DECLARATION: &str = "NEU-NAME-003";
+    /// Duplicate record schema field diagnostic.
+    pub const DUPLICATE_RECORD_FIELD: &str = "NEU-NAME-004";
     /// Invalid exact numeric value diagnostic.
     pub const INVALID_NUMBER: &str = "NEU-VAL-001";
     /// Exact numeric resource-limit diagnostic.
     pub const NUMBER_LIMIT_EXCEEDED: &str = "NEU-LIM-002";
     /// Explicit scalar type/value mismatch diagnostic.
     pub const TYPE_MISMATCH: &str = "NEU-TYP-001";
+    /// Unknown nominal type diagnostic.
+    pub const UNKNOWN_TYPE: &str = "NEU-TYP-002";
+    /// A declaration name was used with the wrong kind.
+    pub const WRONG_DECLARATION_KIND: &str = "NEU-TYP-003";
+    /// Embedded nominal record recursion diagnostic.
+    pub const EMBEDDED_RECORD_RECURSION: &str = "NEU-TYP-004";
+    /// Missing required contextual-record field diagnostic.
+    pub const MISSING_RECORD_FIELD: &str = "NEU-VAL-002";
+    /// Unknown contextual-record field diagnostic.
+    pub const UNKNOWN_RECORD_FIELD: &str = "NEU-VAL-003";
+    /// Duplicate contextual-record value field diagnostic.
+    pub const DUPLICATE_VALUE_FIELD: &str = "NEU-VAL-004";
     /// Decoded string resource-limit diagnostic.
     pub const STRING_LIMIT_EXCEEDED: &str = "NEU-LIM-001";
+    /// Record structure resource-limit diagnostic.
+    pub const RECORD_LIMIT_EXCEEDED: &str = "NEU-LIM-003";
 }
 
 /// The frozen v0 language-behavior contract used for captured compilation.
@@ -252,7 +270,7 @@ pub fn compile_captured(captured: &CapturedCompilation) -> CompilationResult {
         });
     }
 
-    match frontend::parse(captured.source()) {
+    match frontend::parse(captured.source(), captured.limits()) {
         Ok(unit) => match semantics::lower(
             unit,
             captured.source_digest(),
@@ -263,7 +281,7 @@ pub fn compile_captured(captured: &CapturedCompilation) -> CompilationResult {
             Err(error) => CompilationResult::Failure(error.into_failure(captured.source_digest())),
         },
         Err(error) => CompilationResult::Failure(CompilationFailure {
-            class: ResultClass::Syntax,
+            class: error.class(),
             detail: error.detail(),
             diagnostics: error.into_diagnostics(captured.source_digest()),
         }),

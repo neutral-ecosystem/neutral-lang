@@ -7,7 +7,7 @@
 //! not provide production APIs or duplicate normative fixtures.
 
 #[cfg(test)]
-/// Cross-package tests for active Stage 2 and Stage 3 vertical slices.
+/// Cross-package tests for active Stage 2 through Stage 4 vertical slices.
 mod tests {
     use neutral_compiler::{
         CompilationFailureDetail, CompilationRequest, CompilationResult, LANGUAGE_BEHAVIOR_VERSION,
@@ -107,6 +107,16 @@ mod tests {
     const NULLABLE_SCALAR_WIDENING: &[u8] = include_bytes!(
         "../../../portable/spec/v0/fixtures/positive/nullability/nullable-scalar-widening.neu"
     );
+    /// Frozen basic nominal-record positive fixture.
+    const NOMINAL_RECORD: &[u8] =
+        include_bytes!("../../../portable/spec/v0/fixtures/positive/records/nominal-record.neu");
+    /// Frozen forward record-collection positive fixture.
+    const RECORD_FORWARD_ORDER: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/positive/records/record-forward-order.neu"
+    );
+    /// Frozen nested contextual-record positive fixture.
+    const NESTED_RECORD: &[u8] =
+        include_bytes!("../../../portable/spec/v0/fixtures/positive/records/nested-record.neu");
 
     /// Returns deterministic bounds for active scalar source slices.
     fn limits() -> StructuralLimits {
@@ -365,6 +375,204 @@ mod tests {
         assert_ne!(fingerprints[0], fingerprints[1]);
         assert_ne!(fingerprints[1], fingerprints[2]);
         assert_ne!(fingerprints[0], fingerprints[2]);
+    }
+
+    #[test]
+    /// Verifies frozen nominal record fixtures through public logical IR.
+    fn conformance_stage4_nominal_record_positive_oracles() {
+        let basic = compile_artifacts(NOMINAL_RECORD);
+        let record = &basic.logical_document().record_types()[0];
+        assert_eq!(record.name(), "Metadata");
+        assert_eq!(
+            record
+                .fields()
+                .iter()
+                .map(|field| format!("{}: {}", field.name(), field.resolved_type()))
+                .collect::<Vec<_>>(),
+            ["enabled: bool", "image: string", "note: string?"]
+        );
+        let binding = &basic.logical_document().declarations()[0];
+        assert_eq!(binding.resolved_type().to_string(), "Metadata");
+        assert_eq!(
+            binding.value().to_string(),
+            "{enabled: true, image: \"example.invalid/tool:1\", note: null}"
+        );
+
+        let forward = compile_artifacts(RECORD_FORWARD_ORDER);
+        assert_eq!(
+            forward.logical_document().record_types()[0].name(),
+            "Config"
+        );
+        assert_eq!(
+            forward.logical_document().declarations()[0].name(),
+            "config"
+        );
+
+        let nested = compile_artifacts(NESTED_RECORD);
+        assert_eq!(nested.logical_document().record_types().len(), 2);
+        assert_eq!(
+            nested.logical_document().declarations()[0]
+                .value()
+                .to_string(),
+            "{metadata: {name: \"neutral\"}}"
+        );
+    }
+
+    #[test]
+    /// Verifies reader and probe expose nominal schemas and contextual values.
+    fn system_nominal_records_cross_reader_and_probe() {
+        let document = compile_reader(NOMINAL_RECORD);
+        assert_eq!(
+            document
+                .record_type_by_name("Metadata")
+                .unwrap()
+                .fields()
+                .len(),
+            3
+        );
+        let summary = summarize(&document);
+        assert_eq!(
+            summary.record_types(),
+            ["record Metadata { enabled: bool, image: string, note: string? }"]
+        );
+        assert_eq!(
+            summary.declarations(),
+            ["metadata: Metadata = {enabled: true, image: \"example.invalid/tool:1\", note: null}"]
+        );
+    }
+
+    #[test]
+    /// Verifies root and field source order cannot change logical record meaning.
+    fn property_record_declaration_and_field_order_is_nonsemantic() {
+        let first = b"neu \"0.1\"\nmodule ordering\nrecord Config { string name, bool enabled, }\nConfig config = { name: \"x\", enabled: true, }\n";
+        let second = b"neu \"0.1\"\nmodule ordering\nConfig config = { enabled: true, name: \"x\", }\nrecord Config { bool enabled, string name, }\n";
+        let first = compile_artifacts(first);
+        let second = compile_artifacts(second);
+        assert!(
+            first
+                .logical_document()
+                .logically_equivalent(second.logical_document())
+        );
+    }
+
+    #[test]
+    /// Verifies frozen nominal record failures own stable codes and source spans.
+    fn conformance_stage4_nominal_record_negative_oracles() {
+        let cases: [FailureOracle<'_>; 9] = [
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/records/duplicate-declaration.neu"
+                ),
+                ResultClass::Semantics,
+                diagnostics::DUPLICATE_DECLARATION,
+                (114, 118),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/records/duplicate-schema-field.neu"
+                ),
+                ResultClass::Semantics,
+                diagnostics::DUPLICATE_RECORD_FIELD,
+                (121, 125),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/records/missing-value-field.neu"
+                ),
+                ResultClass::Semantics,
+                diagnostics::MISSING_RECORD_FIELD,
+                (142, 166),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/records/unknown-value-field.neu"
+                ),
+                ResultClass::Semantics,
+                diagnostics::UNKNOWN_RECORD_FIELD,
+                (151, 156),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/records/duplicate-value-field.neu"
+                ),
+                ResultClass::Semantics,
+                diagnostics::DUPLICATE_VALUE_FIELD,
+                (153, 157),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/records/wrong-kind-type.neu"
+                ),
+                ResultClass::Semantics,
+                diagnostics::WRONG_DECLARATION_KIND,
+                (120, 125),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/records/embedded-recursion.neu"
+                ),
+                ResultClass::Semantics,
+                diagnostics::EMBEDDED_RECORD_RECURSION,
+                (135, 140),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/records/field-shorthand.neu"
+                ),
+                ResultClass::Syntax,
+                diagnostics::MALFORMED_BOUNDARY,
+                (130, 131),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/records/wrong-field-type.neu"
+                ),
+                ResultClass::Semantics,
+                diagnostics::TYPE_MISMATCH,
+                (137, 142),
+            ),
+        ];
+        for (source, class, code, expected_span) in cases {
+            let failure = compile_failure(source);
+            assert_eq!(failure.class(), class);
+            assert_eq!(failure.diagnostics()[0].code().as_str(), code);
+            assert_eq!(
+                span_pair(failure.diagnostics()[0].primary().span()),
+                expected_span
+            );
+        }
+    }
+
+    #[test]
+    /// Verifies record field and nesting limits fail through the resource boundary.
+    fn security_record_limits_fail_before_schema_resolution() {
+        let fields = b"neu \"0.1\"\nmodule limits\nrecord Item { string first, string second, }\n";
+        let field_limits = limits()
+            .with_record_fields(1)
+            .expect("record field limit should be valid");
+        let nested = b"neu \"0.1\"\nmodule limits\nrecord Inner { string name, }\nrecord Outer { Inner inner, }\nOuter value = { inner: { name: \"x\", }, }\n";
+        let depth_limits = limits()
+            .with_nesting_depth(1)
+            .expect("record depth limit should be valid");
+        for (source, limits) in [
+            (fields.as_slice(), field_limits),
+            (nested.as_slice(), depth_limits),
+        ] {
+            let result = compile(CompilationRequest::new(
+                source.to_vec(),
+                limits,
+                CancellationToken::new(),
+            ))
+            .expect("bounded record source should capture");
+            let CompilationResult::Failure(failure) = result else {
+                panic!("over-limit record source must produce no IR");
+            };
+            assert_eq!(failure.class(), ResultClass::Resource);
+            assert_eq!(
+                failure.diagnostics()[0].code().as_str(),
+                diagnostics::RECORD_LIMIT_EXCEEDED
+            );
+        }
     }
 
     #[test]
@@ -899,9 +1107,9 @@ mod tests {
     }
 
     #[test]
-    /// Verifies Stage 4 and later grammar remains rejected until its own slice.
+    /// Verifies grammar beyond Slice 4.1 remains rejected until its own slice.
     fn security_future_grammar_is_not_accepted_by_source_text_work() {
-        let future: [&[u8]; 9] = [
+        let future: [&[u8]; 11] = [
             include_bytes!(
                 "../../../portable/spec/v0/fixtures/negative/vocabulary/visibility-modifier.neu"
             ),
@@ -912,11 +1120,13 @@ mod tests {
             include_bytes!(
                 "../../../portable/spec/v0/fixtures/negative/vocabulary/mut-modifier.neu"
             ),
-            b"neu \"0.1\"\nmodule future\nrecord Item {}\n",
             b"neu \"0.1\"\nmodule future\nList<string> values = []\n",
             b"neu \"0.1\"\nmodule future\nstring first = \"x\"\nstring second = first\n",
             b"neu \"0.1\"\nmodule future\nstring value = \"x\"\nRef<string> link = ref(value)\n",
             b"neu \"0.1\"\nmodule future\nuse vocabulary core\n",
+            b"neu \"0.1\"\nmodule future\n{ name: \"anonymous\", }\n",
+            b"neu \"0.1\"\nmodule future\nrecord Left { string name, }\nrecord Right { string name, }\nLeft value = Right { name: \"structural\", }\n",
+            b"neu \"0.1\"\nmodule future\nrecord Config { string name = \"default\", }\n",
         ];
         for source in future {
             assert!(matches!(

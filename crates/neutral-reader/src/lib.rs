@@ -7,8 +7,13 @@
 //! not acquire inputs or depend on compiler-private representations.
 
 use neutral_core::SourceLocation;
-use neutral_ir::{CompilationArtifacts, Declaration};
-use std::{collections::BTreeSet, sync::Arc};
+use neutral_ir::{
+    CompilationArtifacts, Declaration, LogicalValue, RecordTypeDefinition, ResolvedType,
+};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 pub use neutral_ir::ElementId;
 
@@ -41,6 +46,18 @@ impl ValidatedDocument {
     #[must_use]
     pub fn declarations(&self) -> &[Declaration] {
         self.artifacts.logical_document().declarations()
+    }
+
+    /// Returns nominal record schemas in canonical name order.
+    #[must_use]
+    pub fn record_types(&self) -> &[RecordTypeDefinition] {
+        self.artifacts.logical_document().record_types()
+    }
+
+    /// Finds one nominal record schema by its validated name.
+    #[must_use]
+    pub fn record_type_by_name(&self, name: &str) -> Option<&RecordTypeDefinition> {
+        self.artifacts.logical_document().record_type_by_name(name)
     }
 
     /// Finds one declaration by its validated source name.
@@ -82,17 +99,34 @@ pub enum ReaderError {
     MissingProvenanceRecord,
     /// A declaration value did not satisfy its resolved type and nullability.
     TypeValueMismatch,
+    /// A nominal record schema violated ownership, ordering, or recursion rules.
+    InvalidRecordSchema,
 }
 
 /// Validates relationships among logical declarations and companion artifacts.
 fn validate_artifacts(artifacts: &CompilationArtifacts) -> Result<(), ReaderError> {
     let mut element_ids = BTreeSet::new();
     let mut names = BTreeSet::new();
+    let records = artifacts
+        .logical_document()
+        .record_types()
+        .iter()
+        .map(|record| (record.name(), record))
+        .collect::<BTreeMap<_, _>>();
+    validate_record_schemas(artifacts, &records)?;
+    for record in artifacts.logical_document().record_types() {
+        if !element_ids.insert(record.element_id()) {
+            return Err(ReaderError::DuplicateElementId);
+        }
+        if !names.insert(record.name()) {
+            return Err(ReaderError::DuplicateDeclarationName);
+        }
+        if artifacts.source_map().entry(record.element_id()).is_none() {
+            return Err(ReaderError::MissingSourceMapEntry);
+        }
+    }
     for declaration in artifacts.logical_document().declarations() {
-        if !declaration
-            .resolved_type()
-            .accepts_value(declaration.value())
-        {
+        if !validate_value(declaration.resolved_type(), declaration.value(), &records) {
             return Err(ReaderError::TypeValueMismatch);
         }
         if !element_ids.insert(declaration.element_id()) {
@@ -117,4 +151,118 @@ fn validate_artifacts(artifacts: &CompilationArtifacts) -> Result<(), ReaderErro
         }
     }
     Ok(())
+}
+
+/// Validates one recursively typed value against public record schemas.
+fn validate_value(
+    expected: &ResolvedType,
+    value: &LogicalValue,
+    records: &BTreeMap<&str, &RecordTypeDefinition>,
+) -> bool {
+    match (expected, value) {
+        (ResolvedType::Nullable(_), LogicalValue::Null) => true,
+        (ResolvedType::Nullable(inner), value) => validate_value(inner, value, records),
+        (ResolvedType::Record(identity), LogicalValue::Record(value)) => {
+            if identity != value.nominal_type() {
+                return false;
+            }
+            let Some(schema) = records.get(identity.name()) else {
+                return false;
+            };
+            if identity != schema.nominal_identity() {
+                return false;
+            }
+            schema.fields().len() == value.fields().len()
+                && schema
+                    .fields()
+                    .iter()
+                    .zip(value.fields())
+                    .all(|(schema_field, value_field)| {
+                        schema_field.name() == value_field.name()
+                            && validate_value(
+                                schema_field.resolved_type(),
+                                value_field.value(),
+                                records,
+                            )
+                    })
+        }
+        _ => expected.accepts_value(value),
+    }
+}
+
+/// Validates nominal ownership, canonical fields, targets, and acyclic embedding.
+fn validate_record_schemas(
+    artifacts: &CompilationArtifacts,
+    records: &BTreeMap<&str, &RecordTypeDefinition>,
+) -> Result<(), ReaderError> {
+    for record in records.values() {
+        if record.nominal_identity().module() != artifacts.logical_document().module() {
+            return Err(ReaderError::InvalidRecordSchema);
+        }
+        let mut previous = None;
+        for field in record.fields() {
+            if previous.is_some_and(|name| name >= field.name())
+                || !resolved_record_targets_exist(field.resolved_type(), records)
+            {
+                return Err(ReaderError::InvalidRecordSchema);
+            }
+            previous = Some(field.name());
+        }
+    }
+    let mut visiting = BTreeSet::new();
+    let mut visited = BTreeSet::new();
+    for name in records.keys() {
+        if record_schema_has_cycle(name, records, &mut visiting, &mut visited) {
+            return Err(ReaderError::InvalidRecordSchema);
+        }
+    }
+    Ok(())
+}
+
+/// Returns whether every nominal target in one resolved type has an exact schema.
+fn resolved_record_targets_exist(
+    resolved_type: &ResolvedType,
+    records: &BTreeMap<&str, &RecordTypeDefinition>,
+) -> bool {
+    match resolved_type {
+        ResolvedType::Record(identity) => records
+            .get(identity.name())
+            .is_some_and(|record| record.nominal_identity() == identity),
+        ResolvedType::Nullable(inner) => resolved_record_targets_exist(inner, records),
+        ResolvedType::Num | ResolvedType::String | ResolvedType::Bool => true,
+    }
+}
+
+/// Detects an embedded cycle from one public nominal record schema.
+fn record_schema_has_cycle(
+    name: &str,
+    records: &BTreeMap<&str, &RecordTypeDefinition>,
+    visiting: &mut BTreeSet<String>,
+    visited: &mut BTreeSet<String>,
+) -> bool {
+    if visited.contains(name) {
+        return false;
+    }
+    visiting.insert(name.to_owned());
+    for field in records[name].fields() {
+        let Some(target) = resolved_record_target(field.resolved_type()) else {
+            continue;
+        };
+        if visiting.contains(target) || record_schema_has_cycle(target, records, visiting, visited)
+        {
+            return true;
+        }
+    }
+    visiting.remove(name);
+    visited.insert(name.to_owned());
+    false
+}
+
+/// Returns the nominal target embedded by an active public resolved type.
+fn resolved_record_target(resolved_type: &ResolvedType) -> Option<&str> {
+    match resolved_type {
+        ResolvedType::Record(identity) => Some(identity.name()),
+        ResolvedType::Nullable(inner) => resolved_record_target(inner),
+        ResolvedType::Num | ResolvedType::String | ResolvedType::Bool => None,
+    }
 }

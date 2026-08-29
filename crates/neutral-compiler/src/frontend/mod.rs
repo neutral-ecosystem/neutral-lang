@@ -5,7 +5,7 @@
 use crate::diagnostics;
 use neutral_core::{
     ByteSpan, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity, SourceContentDigest,
-    SourceLocation,
+    SourceLocation, StructuralLimits,
 };
 
 mod layout;
@@ -57,6 +57,8 @@ enum TokenKind {
     Neu,
     /// The `module` header keyword.
     Module,
+    /// The `record` nominal-type declaration keyword.
+    Record,
     /// The `num` core-type keyword.
     Num,
     /// The `string` core-type keyword.
@@ -81,6 +83,14 @@ enum TokenKind {
     Equals,
     /// Postfix outer-nullability delimiter.
     Question,
+    /// Record declaration or contextual-value opening delimiter.
+    OpenBrace,
+    /// Record declaration or contextual-value closing delimiter.
+    CloseBrace,
+    /// Record value field-name separator.
+    Colon,
+    /// Required record field terminator.
+    Comma,
     /// An original physical newline before layout normalization.
     PhysicalLineEnd(PhysicalLineEnd),
     /// A semantic declaration/header terminator.
@@ -118,10 +128,67 @@ pub(super) struct ParsedUnit {
     pub(super) version_span: ByteSpan,
     /// Parsed module header.
     pub(super) module: ParsedModule,
-    /// Parsed active scalar binding.
-    pub(super) binding: ParsedBinding,
+    /// Parsed root declarations in source order.
+    pub(super) declarations: Vec<ParsedDeclaration>,
     /// Exact compiler-private trivia, never lowered into logical IR.
     trivia: Vec<Trivia>,
+}
+
+/// One compiler-private root declaration.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) enum ParsedDeclaration {
+    /// One nominal record schema declaration.
+    Record(ParsedRecord),
+    /// One immutable typed value binding.
+    Binding(ParsedBinding),
+}
+
+impl ParsedDeclaration {
+    /// Returns the declared root name.
+    pub(super) fn name(&self) -> &str {
+        match self {
+            Self::Record(record) => &record.name,
+            Self::Binding(binding) => &binding.name,
+        }
+    }
+
+    /// Returns the exact root-name span.
+    pub(super) const fn name_span(&self) -> ByteSpan {
+        match self {
+            Self::Record(record) => record.name_span,
+            Self::Binding(binding) => binding.name_span,
+        }
+    }
+}
+
+/// A compiler-private nominal record declaration.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct ParsedRecord {
+    /// Uppercase-leading nominal type name.
+    pub(super) name: String,
+    /// Required fields in source order.
+    pub(super) fields: Vec<ParsedRecordField>,
+    /// Complete declaration span.
+    pub(super) span: ByteSpan,
+    /// Exact record-name span.
+    pub(super) name_span: ByteSpan,
+    /// Exact braces-and-fields span.
+    pub(super) body_span: ByteSpan,
+}
+
+/// One compiler-private required record field contract.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct ParsedRecordField {
+    /// Explicit parsed field type.
+    pub(super) declared_type: ParsedType,
+    /// Required field name.
+    pub(super) name: String,
+    /// Complete field span.
+    pub(super) span: ByteSpan,
+    /// Exact type span.
+    pub(super) type_span: ByteSpan,
+    /// Exact field-name span.
+    pub(super) name_span: ByteSpan,
 }
 
 impl ParsedUnit {
@@ -170,6 +237,8 @@ pub(super) enum ParsedType {
     String,
     /// Boolean type.
     Bool,
+    /// Unresolved user nominal record name.
+    Record(String),
     /// Exactly one outer nullable layer around a supported type.
     Nullable(Box<ParsedType>),
 }
@@ -185,6 +254,23 @@ pub(super) enum ParsedValue {
     Boolean(bool),
     /// Explicit null value.
     Null,
+    /// Contextual record value with explicit fields.
+    Record(Vec<ParsedValueField>),
+}
+
+/// One compiler-private explicit contextual-record value field.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct ParsedValueField {
+    /// Explicit field name.
+    pub(super) name: String,
+    /// Recursively parsed contextual value.
+    pub(super) value: ParsedValue,
+    /// Complete `name: value` span.
+    pub(super) span: ByteSpan,
+    /// Exact field-name span.
+    pub(super) name_span: ByteSpan,
+    /// Exact field-value span.
+    pub(super) value_span: ByteSpan,
 }
 
 /// A private frontend failure with an optional frozen public diagnostic.
@@ -213,6 +299,8 @@ enum FrontendErrorKind {
     InvalidStringLiteral,
     /// A string reached a raw newline or EOF without closing.
     UnterminatedStringLiteral,
+    /// A record/declaration/depth limit was exceeded during bounded parsing.
+    RecordLimitExceeded,
     /// Source is invalid or beyond the currently active minimal slice.
     Other,
 }
@@ -282,6 +370,22 @@ impl FrontendError {
         }
     }
 
+    /// Creates a stable record-structure resource-limit failure.
+    fn record_limit_exceeded(span: ByteSpan) -> Self {
+        Self {
+            kind: FrontendErrorKind::RecordLimitExceeded,
+            span,
+        }
+    }
+
+    /// Returns the broad public failure class.
+    pub(super) const fn class(&self) -> neutral_core::ResultClass {
+        match self.kind {
+            FrontendErrorKind::RecordLimitExceeded => neutral_core::ResultClass::Resource,
+            _ => neutral_core::ResultClass::Syntax,
+        }
+    }
+
     /// Returns the public failure detail without exposing private token state.
     pub(super) const fn detail(&self) -> crate::CompilationFailureDetail {
         match self.kind {
@@ -293,6 +397,9 @@ impl FrontendError {
             | FrontendErrorKind::InvalidStringLiteral
             | FrontendErrorKind::UnterminatedStringLiteral => {
                 crate::CompilationFailureDetail::SyntaxRejected
+            }
+            FrontendErrorKind::RecordLimitExceeded => {
+                crate::CompilationFailureDetail::ResourceLimitExceeded
             }
             FrontendErrorKind::Other => crate::CompilationFailureDetail::FrontendUnavailable,
         }
@@ -312,12 +419,17 @@ impl FrontendError {
             FrontendErrorKind::UnterminatedStringLiteral => {
                 diagnostics::UNTERMINATED_STRING_LITERAL
             }
+            FrontendErrorKind::RecordLimitExceeded => diagnostics::RECORD_LIMIT_EXCEEDED,
             FrontendErrorKind::Other => return Vec::new(),
         };
         let code = DiagnosticCode::new(code).expect("frozen diagnostic code must be valid ASCII");
         vec![Diagnostic::new(
             code,
-            DiagnosticLayer::Syntax,
+            if self.kind == FrontendErrorKind::RecordLimitExceeded {
+                DiagnosticLayer::Resource
+            } else {
+                DiagnosticLayer::Syntax
+            },
             DiagnosticSeverity::Error,
             SourceLocation::new(source, self.span),
             Vec::new(),
@@ -327,10 +439,10 @@ impl FrontendError {
 }
 
 /// Runs raw lexing, layout normalization, and parsing without ambient authority.
-pub(super) fn parse(source: &[u8]) -> Result<ParsedUnit, FrontendError> {
+pub(super) fn parse(source: &[u8], limits: StructuralLimits) -> Result<ParsedUnit, FrontendError> {
     let raw = lexer::lex(source)?;
     let normalized = layout::normalize(raw)?;
-    parser::parse(normalized)
+    parser::parse(normalized, limits)
 }
 
 /// Creates a checked source span from validated in-memory indexes.
@@ -352,7 +464,19 @@ mod tests {
 
     /// Parses one exact captured source byte sequence.
     fn parse_source(source: &[u8]) -> Result<super::ParsedUnit, super::FrontendError> {
-        parse(source)
+        parse(
+            source,
+            neutral_core::StructuralLimits::new(4_096, 16)
+                .expect("frontend test limits should be valid"),
+        )
+    }
+
+    /// Returns the only binding in one scalar frontend test unit.
+    fn only_binding(unit: &super::ParsedUnit) -> &super::ParsedBinding {
+        let [super::ParsedDeclaration::Binding(binding)] = unit.declarations.as_slice() else {
+            panic!("scalar frontend test must contain exactly one binding");
+        };
+        binding
     }
 
     #[test]
@@ -430,29 +554,24 @@ mod tests {
             "../../../../portable/spec/v0/fixtures/positive/syntax/minimal-core.neu"
         );
         let unit = parse_source(source).expect("frozen minimal fixture should parse");
+        let binding = only_binding(&unit);
         assert_eq!((unit.module.span.start(), unit.module.span.end()), (10, 24));
+        assert_eq!((binding.span.start(), binding.span.end()), (26, 41));
         assert_eq!(
-            (unit.binding.span.start(), unit.binding.span.end()),
-            (26, 41)
-        );
-        assert_eq!(
-            (unit.binding.type_span.start(), unit.binding.type_span.end()),
+            (binding.type_span.start(), binding.type_span.end()),
             (26, 29)
         );
         assert_eq!(
-            (unit.binding.name_span.start(), unit.binding.name_span.end()),
+            (binding.name_span.start(), binding.name_span.end()),
             (30, 36)
         );
         assert_eq!(
-            (
-                unit.binding.value_span.start(),
-                unit.binding.value_span.end()
-            ),
+            (binding.value_span.start(), binding.value_span.end()),
             (39, 41)
         );
         assert_eq!(unit.module.name, "minimal");
-        assert_eq!(unit.binding.name, "answer");
-        assert_eq!(unit.binding.value, ParsedValue::Number("42".to_owned()));
+        assert_eq!(binding.name, "answer");
+        assert_eq!(binding.value, ParsedValue::Number("42".to_owned()));
     }
 
     #[test]
@@ -490,7 +609,12 @@ mod tests {
         ];
         let logical = variants.map(|source| {
             let unit = parse_source(source).expect("newline variant should parse");
-            (unit.module.name, unit.binding.name, unit.binding.value)
+            let binding = only_binding(&unit);
+            (
+                unit.module.name.clone(),
+                binding.name.clone(),
+                binding.value.clone(),
+            )
         });
         assert!(logical.windows(2).all(|pair| pair[0] == pair[1]));
     }
@@ -502,7 +626,7 @@ mod tests {
             b"neu \"0.1\"\nmodule scalar\nstring message = \"a\\n\\0\\u{1f642}\xc3\xa9\"\n";
         let unit = parse_source(source).expect("valid escaped string should parse");
         assert_eq!(
-            unit.binding.value,
+            only_binding(&unit).value,
             ParsedValue::String("a\n\0🙂é".to_owned())
         );
     }
@@ -513,7 +637,7 @@ mod tests {
         for (spelling, expected) in [("true", true), ("false", false)] {
             let source = format!("neu \"0.1\"\nmodule scalar\nbool enabled = {spelling}\n");
             let unit = parse_source(source.as_bytes()).expect("Boolean source should parse");
-            assert_eq!(unit.binding.value, ParsedValue::Boolean(expected));
+            assert_eq!(only_binding(&unit).value, ParsedValue::Boolean(expected));
         }
     }
 

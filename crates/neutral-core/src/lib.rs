@@ -408,6 +408,12 @@ pub struct StructuralLimits {
     numeric_digits: u64,
     /// Maximum absolute decimal scale in one exact numeric scalar.
     numeric_scale: u64,
+    /// Maximum root declarations in one source unit.
+    declarations: u64,
+    /// Maximum fields in one record declaration or value.
+    record_fields: u64,
+    /// Maximum nested contextual-record value depth.
+    nesting_depth: u64,
 }
 
 impl StructuralLimits {
@@ -426,6 +432,9 @@ impl StructuralLimits {
             string_bytes: source_bytes,
             numeric_digits: source_bytes,
             numeric_scale: source_bytes,
+            declarations: source_bytes,
+            record_fields: source_bytes,
+            nesting_depth: source_bytes,
         })
     }
 
@@ -468,6 +477,45 @@ impl StructuralLimits {
         Ok(self)
     }
 
+    /// Overrides the maximum root declaration count.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CoreError::ZeroLimit`] when `declarations` is zero.
+    pub const fn with_declarations(mut self, declarations: u64) -> Result<Self, CoreError> {
+        if declarations == 0 {
+            return Err(CoreError::ZeroLimit);
+        }
+        self.declarations = declarations;
+        Ok(self)
+    }
+
+    /// Overrides the maximum fields in one record declaration or value.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CoreError::ZeroLimit`] when `record_fields` is zero.
+    pub const fn with_record_fields(mut self, record_fields: u64) -> Result<Self, CoreError> {
+        if record_fields == 0 {
+            return Err(CoreError::ZeroLimit);
+        }
+        self.record_fields = record_fields;
+        Ok(self)
+    }
+
+    /// Overrides the maximum nested contextual-record value depth.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CoreError::ZeroLimit`] when `nesting_depth` is zero.
+    pub const fn with_nesting_depth(mut self, nesting_depth: u64) -> Result<Self, CoreError> {
+        if nesting_depth == 0 {
+            return Err(CoreError::ZeroLimit);
+        }
+        self.nesting_depth = nesting_depth;
+        Ok(self)
+    }
+
     /// Returns the maximum exact captured source-byte count.
     #[must_use]
     pub const fn source_bytes(self) -> u64 {
@@ -496,6 +544,24 @@ impl StructuralLimits {
     #[must_use]
     pub const fn numeric_scale(self) -> u64 {
         self.numeric_scale
+    }
+
+    /// Returns the maximum root declaration count.
+    #[must_use]
+    pub const fn declarations(self) -> u64 {
+        self.declarations
+    }
+
+    /// Returns the maximum fields in one record declaration or value.
+    #[must_use]
+    pub const fn record_fields(self) -> u64 {
+        self.record_fields
+    }
+
+    /// Returns the maximum nested contextual-record value depth.
+    #[must_use]
+    pub const fn nesting_depth(self) -> u64 {
+        self.nesting_depth
     }
 }
 
@@ -675,5 +741,24 @@ mod tests {
         assert_eq!(limits.numeric_scale(), 32);
         assert!(limits.with_numeric_digits(0).is_err());
         assert!(limits.with_numeric_scale(0).is_err());
+    }
+
+    #[test]
+    /// Verifies declaration, record-field, and nesting budgets are explicit.
+    fn structural_limits_capture_record_budgets() {
+        let limits = StructuralLimits::new(1_024, 16)
+            .expect("base limits should be valid")
+            .with_declarations(8)
+            .expect("declaration limit should be valid")
+            .with_record_fields(16)
+            .expect("record field limit should be valid")
+            .with_nesting_depth(4)
+            .expect("nesting depth limit should be valid");
+        assert_eq!(limits.declarations(), 8);
+        assert_eq!(limits.record_fields(), 16);
+        assert_eq!(limits.nesting_depth(), 4);
+        assert!(limits.with_declarations(0).is_err());
+        assert!(limits.with_record_fields(0).is_err());
+        assert!(limits.with_nesting_depth(0).is_err());
     }
 }

@@ -6,7 +6,9 @@
 //! records. It must not acquire source input, expose compiler-private models, or
 //! perform host I/O.
 
-use neutral_core::{ByteSpan, CoreError, SemanticDigest, SourceContentDigest, nht_frame};
+use neutral_core::{
+    ByteSpan, CoreError, SemanticDigest, SourceContentDigest, StructuralLimits, nht_frame,
+};
 use std::fmt;
 
 /// Frozen logical IR schema version for the minimal v0 artifact.
@@ -50,6 +52,38 @@ impl LogicalModuleIdentity {
     #[must_use]
     pub fn module_name(&self) -> &str {
         &self.module_name
+    }
+}
+
+/// Exact nominal identity of one user record type.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct NominalTypeIdentity {
+    /// Logical module that owns the record declaration.
+    module: LogicalModuleIdentity,
+    /// Validated uppercase-leading record name.
+    name: String,
+}
+
+impl NominalTypeIdentity {
+    /// Creates one module-owned nominal record identity.
+    #[must_use]
+    pub fn new(module: LogicalModuleIdentity, name: impl Into<String>) -> Self {
+        Self {
+            module,
+            name: name.into(),
+        }
+    }
+
+    /// Returns the module that owns this nominal type.
+    #[must_use]
+    pub const fn module(&self) -> &LogicalModuleIdentity {
+        &self.module
+    }
+
+    /// Returns the validated record type name.
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
     }
 }
 
@@ -387,6 +421,8 @@ pub enum ResolvedType {
     String,
     /// Exact Boolean type.
     Bool,
+    /// Exact module-owned nominal record type.
+    Record(NominalTypeIdentity),
     /// One outer nullable layer around an otherwise resolved type.
     Nullable(Box<ResolvedType>),
 }
@@ -421,6 +457,9 @@ impl ResolvedType {
             | (Self::String, LogicalValue::String(_))
             | (Self::Bool, LogicalValue::Boolean(_))
             | (Self::Nullable(_), LogicalValue::Null) => true,
+            (Self::Record(expected), LogicalValue::Record(value)) => {
+                expected == value.nominal_type()
+            }
             (Self::Nullable(inner), value) => inner.accepts_value(value),
             _ => false,
         }
@@ -434,12 +473,13 @@ impl fmt::Display for ResolvedType {
             Self::Num => formatter.write_str("num"),
             Self::String => formatter.write_str("string"),
             Self::Bool => formatter.write_str("bool"),
+            Self::Record(identity) => formatter.write_str(identity.name()),
             Self::Nullable(inner) => write!(formatter, "{inner}?"),
         }
     }
 }
 
-/// Immutable logical value in the minimal IR slice.
+/// Immutable logical value in the active public IR slice.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum LogicalValue {
     /// Exact normalized Neutral number.
@@ -450,6 +490,8 @@ pub enum LogicalValue {
     Boolean(bool),
     /// Explicit null value, valid only with a nullable resolved type.
     Null,
+    /// Contextually typed nominal record value with canonical field order.
+    Record(RecordValue),
 }
 
 impl fmt::Display for LogicalValue {
@@ -460,7 +502,86 @@ impl fmt::Display for LogicalValue {
             Self::String(value) => format_safe_string(value, formatter),
             Self::Boolean(value) => value.fmt(formatter),
             Self::Null => formatter.write_str("null"),
+            Self::Record(value) => value.fmt(formatter),
         }
+    }
+}
+
+/// One final field in a contextual record value.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct RecordValueField {
+    /// Validated field name.
+    name: String,
+    /// Final recursively lowered logical value.
+    value: LogicalValue,
+}
+
+impl RecordValueField {
+    /// Creates one validated final record field.
+    #[must_use]
+    pub fn new(name: impl Into<String>, value: LogicalValue) -> Self {
+        Self {
+            name: name.into(),
+            value,
+        }
+    }
+
+    /// Returns the validated field name.
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Returns the final field value.
+    #[must_use]
+    pub const fn value(&self) -> &LogicalValue {
+        &self.value
+    }
+}
+
+/// One contextually typed nominal record value.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct RecordValue {
+    /// Exact nominal type supplied by context.
+    nominal_type: NominalTypeIdentity,
+    /// Final fields sorted by field name.
+    fields: Vec<RecordValueField>,
+}
+
+impl RecordValue {
+    /// Creates one validated contextual record value.
+    #[must_use]
+    pub fn new(nominal_type: NominalTypeIdentity, fields: Vec<RecordValueField>) -> Self {
+        Self {
+            nominal_type,
+            fields,
+        }
+    }
+
+    /// Returns the exact contextual nominal type.
+    #[must_use]
+    pub const fn nominal_type(&self) -> &NominalTypeIdentity {
+        &self.nominal_type
+    }
+
+    /// Returns final fields in canonical name order.
+    #[must_use]
+    pub fn fields(&self) -> &[RecordValueField] {
+        &self.fields
+    }
+}
+
+impl fmt::Display for RecordValue {
+    /// Formats a deterministic reader-facing record value.
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("{")?;
+        for (index, field) in self.fields.iter().enumerate() {
+            if index > 0 {
+                formatter.write_str(", ")?;
+            }
+            write!(formatter, "{}: {}", field.name(), field.value())?;
+        }
+        formatter.write_str("}")
     }
 }
 
@@ -504,13 +625,28 @@ impl DeclarationFingerprint {
             "resolved-type",
             resolved_type.to_string().as_bytes(),
         )?);
-        let definition = match value {
-            LogicalValue::Number(number) => number.nht_payload()?,
-            LogicalValue::String(value) => nht_frame("string", value.as_bytes())?,
-            LogicalValue::Boolean(value) => nht_frame("boolean", &[u8::from(*value)])?,
-            LogicalValue::Null => nht_frame("null", &[])?,
-        };
+        let definition = logical_value_payload(value)?;
         payload.extend(nht_frame("logical-definition", &definition)?);
+        SemanticDigest::from_nht("neutral/declaration-fingerprint/v1", &payload).map(Self)
+    }
+
+    /// Computes the v1 record-schema fingerprint over canonical field contracts.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error only when NHT framing exceeds its fixed widths.
+    pub fn for_record(fields: &[RecordFieldSchema]) -> Result<Self, CoreError> {
+        let mut payload = Vec::new();
+        payload.extend(nht_frame("declaration-kind", b"record")?);
+        for field in fields {
+            let mut definition = Vec::new();
+            definition.extend(nht_frame("field-name", field.name().as_bytes())?);
+            definition.extend(nht_frame(
+                "field-type",
+                field.resolved_type().to_string().as_bytes(),
+            )?);
+            payload.extend(nht_frame("record-field", &definition)?);
+        }
         SemanticDigest::from_nht("neutral/declaration-fingerprint/v1", &payload).map(Self)
     }
 
@@ -518,6 +654,136 @@ impl DeclarationFingerprint {
     #[must_use]
     pub const fn digest(self) -> SemanticDigest {
         self.0
+    }
+}
+
+/// Builds the recursive NHT payload for one final logical value.
+fn logical_value_payload(value: &LogicalValue) -> Result<Vec<u8>, CoreError> {
+    match value {
+        LogicalValue::Number(number) => number.nht_payload(),
+        LogicalValue::String(value) => nht_frame("string", value.as_bytes()),
+        LogicalValue::Boolean(value) => nht_frame("boolean", &[u8::from(*value)]),
+        LogicalValue::Null => nht_frame("null", &[]),
+        LogicalValue::Record(value) => {
+            let mut payload = Vec::new();
+            payload.extend(nht_frame(
+                "record-type",
+                value.nominal_type().name().as_bytes(),
+            )?);
+            for field in value.fields() {
+                let mut definition = Vec::new();
+                definition.extend(nht_frame("field-name", field.name().as_bytes())?);
+                definition.extend(nht_frame(
+                    "field-value",
+                    &logical_value_payload(field.value())?,
+                )?);
+                payload.extend(nht_frame("record-field", &definition)?);
+            }
+            nht_frame("record", &payload)
+        }
+    }
+}
+
+/// One typed field contract in a nominal record declaration.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RecordFieldSchema {
+    /// Validated field name.
+    name: String,
+    /// Fully resolved field type.
+    resolved_type: ResolvedType,
+}
+
+impl RecordFieldSchema {
+    /// Creates one validated required record field.
+    #[must_use]
+    pub fn new(name: impl Into<String>, resolved_type: ResolvedType) -> Self {
+        Self {
+            name: name.into(),
+            resolved_type,
+        }
+    }
+
+    /// Returns the validated field name.
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Returns the fully resolved required field type.
+    #[must_use]
+    pub const fn resolved_type(&self) -> &ResolvedType {
+        &self.resolved_type
+    }
+}
+
+/// One exported nominal record type declaration.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RecordTypeDefinition {
+    /// Graph-local declaration identifier.
+    element_id: ElementId,
+    /// Durable module-symbol continuity identity.
+    symbol_identity: ModuleSymbolIdentity,
+    /// Logical schema fingerprint.
+    fingerprint: DeclarationFingerprint,
+    /// Exact nominal record identity.
+    nominal_identity: NominalTypeIdentity,
+    /// Required fields in canonical name order.
+    fields: Vec<RecordFieldSchema>,
+}
+
+impl RecordTypeDefinition {
+    /// Creates one fully validated nominal record declaration.
+    #[must_use]
+    pub fn new(
+        element_id: ElementId,
+        symbol_identity: ModuleSymbolIdentity,
+        fingerprint: DeclarationFingerprint,
+        nominal_identity: NominalTypeIdentity,
+        fields: Vec<RecordFieldSchema>,
+    ) -> Self {
+        Self {
+            element_id,
+            symbol_identity,
+            fingerprint,
+            nominal_identity,
+            fields,
+        }
+    }
+
+    /// Returns the graph-local declaration identifier.
+    #[must_use]
+    pub const fn element_id(&self) -> ElementId {
+        self.element_id
+    }
+
+    /// Returns the module-symbol continuity identity.
+    #[must_use]
+    pub const fn symbol_identity(&self) -> &ModuleSymbolIdentity {
+        &self.symbol_identity
+    }
+
+    /// Returns the logical schema fingerprint.
+    #[must_use]
+    pub const fn fingerprint(&self) -> DeclarationFingerprint {
+        self.fingerprint
+    }
+
+    /// Returns the exact nominal identity.
+    #[must_use]
+    pub const fn nominal_identity(&self) -> &NominalTypeIdentity {
+        &self.nominal_identity
+    }
+
+    /// Returns the validated record name.
+    #[must_use]
+    pub fn name(&self) -> &str {
+        self.nominal_identity.name()
+    }
+
+    /// Returns required fields in canonical name order.
+    #[must_use]
+    pub fn fields(&self) -> &[RecordFieldSchema] {
+        &self.fields
     }
 }
 
@@ -601,6 +867,8 @@ impl Declaration {
 pub struct LogicalDocument {
     /// Logical module identity.
     module: LogicalModuleIdentity,
+    /// Exported nominal record declarations in canonical name order.
+    record_types: Vec<RecordTypeDefinition>,
     /// Exported declarations in deterministic source order.
     declarations: Vec<Declaration>,
 }
@@ -611,6 +879,21 @@ impl LogicalDocument {
     pub fn new(module: LogicalModuleIdentity, declarations: Vec<Declaration>) -> Self {
         Self {
             module,
+            record_types: Vec::new(),
+            declarations,
+        }
+    }
+
+    /// Creates a validated logical document containing nominal records and bindings.
+    #[must_use]
+    pub fn with_record_types(
+        module: LogicalModuleIdentity,
+        record_types: Vec<RecordTypeDefinition>,
+        declarations: Vec<Declaration>,
+    ) -> Self {
+        Self {
+            module,
+            record_types,
             declarations,
         }
     }
@@ -619,6 +902,20 @@ impl LogicalDocument {
     #[must_use]
     pub const fn module(&self) -> &LogicalModuleIdentity {
         &self.module
+    }
+
+    /// Returns exported nominal records in canonical name order.
+    #[must_use]
+    pub fn record_types(&self) -> &[RecordTypeDefinition] {
+        &self.record_types
+    }
+
+    /// Finds one exported nominal record by its validated name.
+    #[must_use]
+    pub fn record_type_by_name(&self, name: &str) -> Option<&RecordTypeDefinition> {
+        self.record_types
+            .iter()
+            .find(|record| record.name() == name)
     }
 
     /// Returns exported declarations in deterministic order.
@@ -631,6 +928,7 @@ impl LogicalDocument {
     #[must_use]
     pub fn logically_equivalent(&self, other: &Self) -> bool {
         self.module == other.module
+            && self.record_types == other.record_types
             && self.declarations.len() == other.declarations.len()
             && self
                 .declarations
@@ -662,7 +960,7 @@ pub struct SourceMapEntry {
 }
 
 impl SourceMapEntry {
-    /// Creates source accounting for one minimal declaration.
+    /// Creates source accounting for one root declaration.
     #[must_use]
     pub const fn new(
         element_id: ElementId,
@@ -774,7 +1072,7 @@ impl SourceMap {
     }
 }
 
-/// Why a final logical value exists in the minimal document.
+/// Why a final logical value exists in the active document.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ValueOrigin {
     /// Value was written explicitly in captured source.
@@ -792,6 +1090,8 @@ pub enum Normalization {
     BooleanIdentity,
     /// An explicit null token was lowered without structural omission.
     NullIdentity,
+    /// Explicit record fields were matched to one nominal contextual schema.
+    RecordContextualization,
 }
 
 /// Provenance record for one minimal binding value.
@@ -894,7 +1194,7 @@ impl ResourceFacts {
     }
 }
 
-/// Meaning-affecting derivation inputs for the minimal compilation.
+/// Meaning-affecting derivation inputs for captured compilation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct MeaningPartition {
     /// Exact captured source content identity.
@@ -909,7 +1209,7 @@ impl MeaningPartition {
     }
 }
 
-/// Acceptance and resource inputs for the minimal compilation.
+/// Acceptance and resource inputs for captured compilation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct AcceptancePartition {
     /// Maximum accepted captured source bytes.
@@ -922,24 +1222,27 @@ pub struct AcceptancePartition {
     numeric_digits: u64,
     /// Maximum absolute decimal scale in one exact number.
     numeric_scale: u64,
+    /// Maximum root declarations.
+    declarations: u64,
+    /// Maximum record fields per declaration or value.
+    record_fields: u64,
+    /// Maximum contextual-record nesting depth.
+    nesting_depth: u64,
 }
 
 impl AcceptancePartition {
-    /// Creates the complete captured resource-limit partition.
+    /// Captures the complete resource-limit partition from core limits.
     #[must_use]
-    pub const fn new(
-        source_bytes: u64,
-        diagnostics: u32,
-        string_bytes: u64,
-        numeric_digits: u64,
-        numeric_scale: u64,
-    ) -> Self {
+    pub const fn from_limits(limits: StructuralLimits) -> Self {
         Self {
-            source_bytes,
-            diagnostics,
-            string_bytes,
-            numeric_digits,
-            numeric_scale,
+            source_bytes: limits.source_bytes(),
+            diagnostics: limits.diagnostics(),
+            string_bytes: limits.string_bytes(),
+            numeric_digits: limits.numeric_digits(),
+            numeric_scale: limits.numeric_scale(),
+            declarations: limits.declarations(),
+            record_fields: limits.record_fields(),
+            nesting_depth: limits.nesting_depth(),
         }
     }
 
@@ -972,9 +1275,27 @@ impl AcceptancePartition {
     pub const fn numeric_scale_limit(self) -> u64 {
         self.numeric_scale
     }
+
+    /// Returns the root declaration-count limit.
+    #[must_use]
+    pub const fn declaration_limit(self) -> u64 {
+        self.declarations
+    }
+
+    /// Returns the per-record field-count limit.
+    #[must_use]
+    pub const fn record_field_limit(self) -> u64 {
+        self.record_fields
+    }
+
+    /// Returns the contextual-record nesting-depth limit.
+    #[must_use]
+    pub const fn nesting_depth_limit(self) -> u64 {
+        self.nesting_depth
+    }
 }
 
-/// Diagnostic/output-policy inputs for the minimal compilation.
+/// Diagnostic/output-policy inputs for captured compilation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DiagnosticPartition {
     /// Whether safe bounded diagnostics are enabled.
@@ -1140,7 +1461,10 @@ pub enum IrError {
 #[cfg(test)]
 /// Unit tests for public logical IR identity and equality contracts.
 mod tests {
-    use super::{DeclarationFingerprint, ExactNumber, LogicalValue, ResolvedType};
+    use super::{
+        DeclarationFingerprint, ExactNumber, LogicalModuleIdentity, LogicalValue,
+        NominalTypeIdentity, RecordValue, RecordValueField, ResolvedType,
+    };
 
     #[test]
     /// Verifies minimal integer normalization does not use host numeric types.
@@ -1240,5 +1564,21 @@ mod tests {
         )
         .expect("nullable Boolean null should fingerprint");
         assert_ne!(string, boolean);
+    }
+
+    #[test]
+    /// Verifies equal record shapes cannot substitute for distinct nominal identities.
+    fn nominal_record_values_reject_structural_compatibility() {
+        let module = LogicalModuleIdentity::new("0.1.0", "records");
+        let left = NominalTypeIdentity::new(module.clone(), "Left");
+        let right = NominalTypeIdentity::new(module, "Right");
+        let value = LogicalValue::Record(RecordValue::new(
+            right,
+            vec![RecordValueField::new(
+                "name",
+                LogicalValue::String("same shape".to_owned()),
+            )],
+        ));
+        assert!(!ResolvedType::Record(left).accepts_value(&value));
     }
 }

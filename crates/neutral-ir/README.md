@@ -11,4 +11,5 @@ the reader validates and exposes it; the vocabulary layer refers to it; and the
 probe observes it through public reader contracts. It must not acquire input or
 perform host effects. Its active scalar model carries exact numbers, decoded
 Unicode strings, Booleans, recursive outer-nullable type identity, and explicit
-typed null; string display is deterministic and escapes hostile controls.
+typed null, module-owned nominal record schemas, and recursively typed
+contextual record values; display is deterministic and escapes hostile controls.

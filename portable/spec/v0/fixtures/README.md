@@ -44,6 +44,8 @@ fixtures/
   fractions, exponents, zero canonicalization, and exact normalization.
 - The [positive nullability fixtures](positive/nullability/) freeze nullable
   scalar types, explicit typed null, and outer scalar widening.
+- The [positive record fixtures](positive/records/) freeze nominal schemas,
+  contextual values, forward collection, nesting, and canonical field order.
 - [immutable-value-reuse.neu](positive/values/immutable-value-reuse.neu) distinguishes
   ordinary value reuse from identity references and proves forward resolution.
 - [defaults-compatibility.neu](positive/values/defaults-compatibility.neu) covers
@@ -63,6 +65,9 @@ fixtures/
   separators/fractions/exponents, base prefixes, and digit/scale limits.
 - The [negative nullability fixtures](negative/nullability/) freeze null in a
   non-nullable context, duplicate postfix `?`, and forbidden inner widening.
+- The [negative record fixtures](negative/records/) freeze duplicate roots and
+  fields, missing/unknown fields, type/kind mismatches, shorthand, and embedded
+  recursion.
 - [generic-covariance.neu](negative/vocabulary/generic-covariance.neu): invariant generic
   argument violation.
 - [module-path.neu](negative/vocabulary/module-path.neu): module qualification is absent.
@@ -91,7 +96,7 @@ fixtures/
 
 ## Required additions
 
-The corpus still needs fixtures for malformed UTF-8, layout recovery, record recursion,
-wrong-kind references, missing/duplicate fields, resource
+The corpus still needs fixtures for malformed UTF-8, layout recovery,
+wrong-kind references, resource
 boundaries, invalid encoded IR, logical alpha-equivalence, source maps,
 provenance, and deterministic concurrent compilation.

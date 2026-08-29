@@ -313,22 +313,22 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Slice 4.1: nominal record declarations and contextual values
 
-- [ ] Activate record declaration/value, field, nominal compatibility, duplicate,
+- [*] Activate record declaration/value, field, nominal compatibility, duplicate,
       wrong-kind, and recursion fixtures.
-- [ ] Add record/field/contextual-value grammar only now.
-- [ ] Collect root declarations before resolution and enforce one scope.
-- [ ] Resolve nominal types and validate contextual fields.
-- [ ] Reject missing/unknown/duplicate fields, anonymous records, shorthand,
+- [*] Add record/field/contextual-value grammar only now.
+- [*] Collect root declarations before resolution and enforce one scope.
+- [*] Resolve nominal types and validate contextual fields.
+- [*] Reject missing/unknown/duplicate fields, anonymous records, shorthand,
       structural compatibility, and embedded recursive cycles.
-- [ ] Lower record declarations/values and source/provenance/derivation facts.
-- [ ] Expose nominal records through reader/probe.
+- [*] Lower record declarations/values and source/provenance/derivation facts.
+- [*] Expose nominal records through reader/probe.
 
 #### Slice validation
 
-- [ ] Declaration order is nonsemantic.
-- [ ] Every field failure has stable ownership/span.
-- [ ] Public IR contains no parser/private semantic types.
-- [ ] Record limits fail before proportional work.
+- [*] Declaration order is nonsemantic.
+- [*] Every field failure has stable ownership/span.
+- [*] Public IR contains no parser/private semantic types.
+- [*] Record limits fail before proportional work.
 
 ### Slice 4.2: closed defaults and omission
 

@@ -20,6 +20,8 @@ pub mod diagnostics {
 pub struct ProbeSummary {
     /// Logical module name.
     module: String,
+    /// Nominal record schema summaries in reader order.
+    record_types: Vec<String>,
     /// Typed declaration summaries in reader order.
     declarations: Vec<String>,
     /// Safe diagnostic-code summaries.
@@ -39,6 +41,12 @@ impl ProbeSummary {
         &self.declarations
     }
 
+    /// Returns deterministic nominal record schema summaries.
+    #[must_use]
+    pub fn record_types(&self) -> &[String] {
+        &self.record_types
+    }
+
     /// Returns safe probe diagnostic-code summaries.
     #[must_use]
     pub fn diagnostics(&self) -> &[String] {
@@ -49,6 +57,19 @@ impl ProbeSummary {
 /// Traverses only immutable public reader views to summarize a document.
 #[must_use]
 pub fn summarize(document: &ValidatedDocument) -> ProbeSummary {
+    let record_types = document
+        .record_types()
+        .iter()
+        .map(|record| {
+            let fields = record
+                .fields()
+                .iter()
+                .map(|field| format!("{}: {}", field.name(), field.resolved_type()))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("record {} {{ {fields} }}", record.name())
+        })
+        .collect();
     let declarations = document
         .declarations()
         .iter()
@@ -63,6 +84,7 @@ pub fn summarize(document: &ValidatedDocument) -> ProbeSummary {
         .collect();
     ProbeSummary {
         module: document.module_name().to_owned(),
+        record_types,
         declarations,
         diagnostics: Vec::new(),
     }

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "stage3-complete-fixtures-frozen"
+status = "stage4-slice4.1-fixtures-frozen"
 
 # No source behavior is active in Stage 1. These entries are an inventory only;
 # they are not executable compiler expectations until their listed stage.
@@ -370,4 +370,88 @@ id = "inner-generic-widening"
 fixture = "portable/spec/v0/fixtures/negative/nullability/inner-generic-widening.neu"
 oracle = "conformance/oracles/stage3/inner-generic-widening.toml"
 active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "nominal-record"
+fixture = "portable/spec/v0/fixtures/positive/records/nominal-record.neu"
+oracle = "conformance/oracles/stage4/nominal-record.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "record-forward-order"
+fixture = "portable/spec/v0/fixtures/positive/records/record-forward-order.neu"
+oracle = "conformance/oracles/stage4/record-forward-order.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "nested-record"
+fixture = "portable/spec/v0/fixtures/positive/records/nested-record.neu"
+oracle = "conformance/oracles/stage4/nested-record.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "duplicate-declaration"
+fixture = "portable/spec/v0/fixtures/negative/records/duplicate-declaration.neu"
+oracle = "conformance/oracles/stage4/duplicate-declaration.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "duplicate-schema-field"
+fixture = "portable/spec/v0/fixtures/negative/records/duplicate-schema-field.neu"
+oracle = "conformance/oracles/stage4/duplicate-schema-field.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "missing-value-field"
+fixture = "portable/spec/v0/fixtures/negative/records/missing-value-field.neu"
+oracle = "conformance/oracles/stage4/missing-value-field.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "unknown-value-field"
+fixture = "portable/spec/v0/fixtures/negative/records/unknown-value-field.neu"
+oracle = "conformance/oracles/stage4/unknown-value-field.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "duplicate-value-field"
+fixture = "portable/spec/v0/fixtures/negative/records/duplicate-value-field.neu"
+oracle = "conformance/oracles/stage4/duplicate-value-field.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "wrong-kind-type"
+fixture = "portable/spec/v0/fixtures/negative/records/wrong-kind-type.neu"
+oracle = "conformance/oracles/stage4/wrong-kind-type.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "embedded-recursion"
+fixture = "portable/spec/v0/fixtures/negative/records/embedded-recursion.neu"
+oracle = "conformance/oracles/stage4/embedded-recursion.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "field-shorthand"
+fixture = "portable/spec/v0/fixtures/negative/records/field-shorthand.neu"
+oracle = "conformance/oracles/stage4/field-shorthand.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "wrong-field-type"
+fixture = "portable/spec/v0/fixtures/negative/records/wrong-field-type.neu"
+oracle = "conformance/oracles/stage4/wrong-field-type.toml"
+active_from_stage = 4
 status = "frozen"

@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module wrong_kind_type
+
+string value = "neutral"
+
+record Holder {
+    value item,
+}

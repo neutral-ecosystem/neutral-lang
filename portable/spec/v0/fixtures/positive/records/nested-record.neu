@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module nested_records
+
+record Package {
+    Metadata metadata,
+}
+
+record Metadata {
+    string name,
+}
+
+Package package = {
+    metadata: {
+        name: "neutral",
+    },
+}

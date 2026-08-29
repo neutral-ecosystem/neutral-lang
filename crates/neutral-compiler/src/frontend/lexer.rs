@@ -50,12 +50,9 @@ pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
                 tokens.push(token(TokenKind::PhysicalLineEnd(kind), index, end));
                 index = end;
             }
-            b'=' => {
-                tokens.push(token(TokenKind::Equals, index, index + 1));
-                index += 1;
-            }
-            b'?' => {
-                tokens.push(token(TokenKind::Question, index, index + 1));
+            byte if punctuation_token(byte).is_some() => {
+                let kind = punctuation_token(byte).expect("matched punctuation must classify");
+                tokens.push(token(kind, index, index + 1));
                 index += 1;
             }
             b'/' if source.get(index + 1) == Some(&b'/') => {
@@ -102,6 +99,19 @@ pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
     Ok(LexedSource { tokens, trivia })
 }
 
+/// Maps one active punctuation byte to its compiler-private token category.
+fn punctuation_token(byte: u8) -> Option<TokenKind> {
+    match byte {
+        b'=' => Some(TokenKind::Equals),
+        b'?' => Some(TokenKind::Question),
+        b'{' => Some(TokenKind::OpenBrace),
+        b'}' => Some(TokenKind::CloseBrace),
+        b':' => Some(TokenKind::Colon),
+        b',' => Some(TokenKind::Comma),
+        _ => None,
+    }
+}
+
 /// Returns whether `byte` begins a candidate frozen numeric literal.
 fn starts_number(source: &[u8], index: usize, byte: u8) -> bool {
     byte.is_ascii_digit()
@@ -121,6 +131,8 @@ fn word_token(text: String) -> TokenKind {
         TokenKind::Neu
     } else if text == names::MODULE {
         TokenKind::Module
+    } else if text == names::RECORD {
+        TokenKind::Record
     } else if text == names::NUM {
         TokenKind::Num
     } else if text == names::STRING {

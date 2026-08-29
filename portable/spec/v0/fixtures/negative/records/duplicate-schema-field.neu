@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module duplicate_schema_field
+
+record Item {
+    string name,
+    bool name,
+}

@@ -100,9 +100,10 @@ fn verify_environment() -> Result<(), String> {
     }
 
     let rustc_version = command_output(constants::RUSTC_COMMAND, &["--version"])?;
-    if !rustc_version.starts_with("rustc 1.97.1 ") {
+    let pinned_rust = pinned_rust_channel()?;
+    if !rustc_version.starts_with(&format!("rustc {pinned_rust} ")) {
         return Err(format!(
-            "pinned Rust 1.97.1 is required; found {rustc_version}"
+            "pinned Rust {pinned_rust} is required; found {rustc_version}"
         ));
     }
 
@@ -121,21 +122,37 @@ fn environment_manifest() -> Result<String, String> {
     let workspace_root = workspace_root()?;
     let rustc_version = command_output(constants::RUSTC_COMMAND, &["--version"])?;
     let cargo_version = command_output(constants::CARGO_COMMAND, &["--version"])?;
+    let pinned_rust = pinned_rust_channel()?;
     let active_stage = active_stage()?;
     Ok(format!(
         concat!(
             "{{\n",
             "  \"workspace_root\": \"{}\",\n",
+            "  \"pinned_rust\": \"{}\",\n",
             "  \"rustc\": \"{}\",\n",
             "  \"cargo\": \"{}\",\n",
             "  \"active_stage\": {}\n",
             "}}"
         ),
         json_string(&workspace_root.display().to_string()),
+        json_string(&pinned_rust),
         json_string(&rustc_version),
         json_string(&cargo_version),
         active_stage,
     ))
+}
+
+/// Reads the pinned Rust channel from the repository toolchain manifest.
+fn pinned_rust_channel() -> Result<String, String> {
+    let path = workspace_root()?.join("rust-toolchain.toml");
+    let manifest = fs::read_to_string(&path)
+        .map_err(|error| format!("could not read {}: {error}", path.display()))?;
+    manifest
+        .lines()
+        .map(str::trim)
+        .find_map(|line| line.strip_prefix("channel = \"")?.strip_suffix('"'))
+        .map(str::to_owned)
+        .ok_or_else(|| "rust-toolchain.toml has no quoted channel".to_owned())
 }
 
 /// Reads the active implementation stage from the repository configuration.
@@ -701,8 +718,10 @@ mod tests {
     fn environment_manifest_identifies_the_pinned_toolchain() {
         let manifest =
             super::environment_manifest().expect("environment manifest should be available");
-        assert!(manifest.contains("rustc 1.97.1"));
-        assert!(manifest.contains("\"active_stage\": 3"));
+        let pinned = super::pinned_rust_channel().expect("pinned channel should be readable");
+        let stage = super::active_stage().expect("active stage should be readable");
+        assert!(manifest.contains(&format!("\"pinned_rust\": \"{pinned}\"")));
+        assert!(manifest.contains(&format!("\"active_stage\": {stage}")));
     }
 
     #[test]

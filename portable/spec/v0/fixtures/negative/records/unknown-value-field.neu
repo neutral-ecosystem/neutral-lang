@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module unknown_value_field
+
+record Item {
+    string name,
+}
+
+Item item = {
+    name: "neutral",
+    extra: true,
+}
