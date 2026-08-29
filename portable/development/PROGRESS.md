@@ -1,22 +1,31 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Neutral v0 development progress
 
-Status: Stage 4 Slice 4.1 complete.
+Status: Stage 4 Slice 4.2 complete.
 
 ## Current focus
 
-- Stage: Stage 4, Slice 4.1
-- Status: Nominal records and contextual values complete; validation passing
+- Stage: Stage 4, Slice 4.2
+- Status: Closed defaults and omission complete; validation passing
 - Last updated: 2026-08-29
 
 ## Next actions
 
-- [ ] Continue with Stage 4, Slice 4.2: closed defaults and omission.
+- [ ] Continue with Stage 4, Slice 4.3: ordered homogeneous lists.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-08-29: Completed Stage 4, Slice 4.2. Added closed scalar, null, and
+  recursively contextual record defaults; omission materialization; schema and
+  definition fingerprint defaults; explicit versus user-default field
+  provenance; reader/probe validation and exposure; retained-string resource
+  accounting; stable non-constant/type/syntax rejection; and frozen grouped
+  fixtures/oracles.
 
 - [*] 2026-08-29: Completed Stage 4, Slice 4.1. Added bounded record grammar,
   two-pass root collection, nominal schema resolution, contextual and nested

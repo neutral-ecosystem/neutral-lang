@@ -1,8 +1,0 @@
-neu "0.1"
-module fixture_nonconstant_default
-
-string default_image = "example.invalid/tool:1"
-
-record Config {
-    string image = default_image,
-}

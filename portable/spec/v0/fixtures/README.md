@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Neutral v0 conformance fixtures
 
 These fixtures cover the reduced, domain-neutral v0 language.
@@ -14,7 +16,9 @@ fixtures/
 │   ├── booleans/     # valid Boolean literals
 │   ├── numbers/      # valid exact-number spellings and normalization
 │   ├── nullability/  # nullable scalars, explicit null, and outer widening
-│   ├── values/       # value reuse and defaults
+│   ├── records/      # valid nominal schemas and contextual values
+│   ├── defaults/     # valid closed defaults and omission
+│   ├── values/       # future value reuse and combined cases
 │   └── vocabulary/   # data-only vocabulary integration
 └── negative/
     ├── syntax/       # rejected syntax, boundaries, and versions
@@ -23,7 +27,9 @@ fixtures/
     ├── booleans/     # rejected Boolean forms
     ├── numbers/      # rejected exact-number spellings and limits
     ├── nullability/  # rejected null placement and nullable type shapes
-    ├── values/       # rejected value semantics
+    ├── records/      # rejected nominal and contextual record behavior
+    ├── defaults/     # rejected closed-default behavior
+    ├── values/       # future rejected value semantics
     └── vocabulary/   # rejected vocabulary/module features
 ```
 
@@ -46,6 +52,8 @@ fixtures/
   scalar types, explicit typed null, and outer scalar widening.
 - The [positive record fixtures](positive/records/) freeze nominal schemas,
   contextual values, forward collection, nesting, and canonical field order.
+- The [positive default fixtures](positive/defaults/) freeze closed scalar,
+  null, and record defaults, omission materialization, and field provenance.
 - [immutable-value-reuse.neu](positive/values/immutable-value-reuse.neu) distinguishes
   ordinary value reuse from identity references and proves forward resolution.
 - [defaults-compatibility.neu](positive/values/defaults-compatibility.neu) covers
@@ -68,13 +76,16 @@ fixtures/
 - The [negative record fixtures](negative/records/) freeze duplicate roots and
   fields, missing/unknown fields, type/kind mismatches, shorthand, and embedded
   recursion.
+- The [negative default fixtures](negative/defaults/) freeze non-constant,
+  reference, expression, inactive-list, wrong-type, and incomplete-record
+  default failures.
 - [generic-covariance.neu](negative/vocabulary/generic-covariance.neu): invariant generic
   argument violation.
 - [module-path.neu](negative/vocabulary/module-path.neu): module qualification is absent.
 - [mut-modifier.neu](negative/vocabulary/mut-modifier.neu): mutation is absent.
 - [namespace-declaration.neu](negative/vocabulary/namespace-declaration.neu): namespaces
   are absent.
-- [nonconstant-default.neu](negative/values/nonconstant-default.neu): defaults cannot
+- [nonconstant-default.neu](negative/defaults/nonconstant-default.neu): defaults cannot
   read bindings.
 - [reassignment.neu](negative/values/reassignment.neu): reassignment is absent.
 - [value-cycle.neu](negative/values/value-cycle.neu): immutable value cycle.

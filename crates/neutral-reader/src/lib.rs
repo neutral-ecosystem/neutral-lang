@@ -9,6 +9,7 @@
 use neutral_core::SourceLocation;
 use neutral_ir::{
     CompilationArtifacts, Declaration, LogicalValue, RecordTypeDefinition, ResolvedType,
+    ValueOrigin,
 };
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -101,6 +102,8 @@ pub enum ReaderError {
     TypeValueMismatch,
     /// A nominal record schema violated ownership, ordering, or recursion rules.
     InvalidRecordSchema,
+    /// Field provenance was dangling, duplicated, or used an invalid origin.
+    InvalidFieldProvenance,
 }
 
 /// Validates relationships among logical declarations and companion artifacts.
@@ -150,7 +153,140 @@ fn validate_artifacts(artifacts: &CompilationArtifacts) -> Result<(), ReaderErro
             return Err(ReaderError::MissingProvenanceRecord);
         }
     }
+    validate_field_provenance(artifacts, &records)?;
     Ok(())
+}
+
+/// Validates field provenance ownership, paths, uniqueness, and origin kinds.
+fn validate_field_provenance(
+    artifacts: &CompilationArtifacts,
+    records: &BTreeMap<&str, &RecordTypeDefinition>,
+) -> Result<(), ReaderError> {
+    let declarations = artifacts
+        .logical_document()
+        .declarations()
+        .iter()
+        .map(|declaration| (declaration.element_id(), declaration))
+        .collect::<BTreeMap<_, _>>();
+    let mut observed = BTreeMap::new();
+    for provenance in artifacts.field_provenance() {
+        let Some(declaration) = declarations.get(&provenance.element_id()) else {
+            return Err(ReaderError::InvalidFieldProvenance);
+        };
+        if provenance.field_path().is_empty()
+            || !matches!(
+                provenance.origin(),
+                ValueOrigin::ExplicitRecordField | ValueOrigin::UserRecordDefault
+            )
+            || observed
+                .insert(
+                    (provenance.element_id(), provenance.field_path().to_vec()),
+                    provenance.origin(),
+                )
+                .is_some()
+            || !field_path_exists(
+                declaration.resolved_type(),
+                declaration.value(),
+                provenance.field_path(),
+                records,
+            )
+        {
+            return Err(ReaderError::InvalidFieldProvenance);
+        }
+    }
+    for declaration in declarations.values() {
+        if !field_provenance_is_complete(
+            declaration.element_id(),
+            declaration.resolved_type(),
+            declaration.value(),
+            &mut Vec::new(),
+            records,
+            &observed,
+        ) {
+            return Err(ReaderError::InvalidFieldProvenance);
+        }
+    }
+    Ok(())
+}
+
+/// Returns whether every final record field has exact explicit/default evidence.
+fn field_provenance_is_complete(
+    element_id: ElementId,
+    expected: &ResolvedType,
+    value: &LogicalValue,
+    path: &mut Vec<String>,
+    records: &BTreeMap<&str, &RecordTypeDefinition>,
+    observed: &BTreeMap<(ElementId, Vec<String>), ValueOrigin>,
+) -> bool {
+    let expected = match expected {
+        ResolvedType::Nullable(inner) => inner.as_ref(),
+        expected => expected,
+    };
+    let (ResolvedType::Record(identity), LogicalValue::Record(value)) = (expected, value) else {
+        return true;
+    };
+    let Some(schema) = records.get(identity.name()) else {
+        return false;
+    };
+    for (schema_field, value_field) in schema.fields().iter().zip(value.fields()) {
+        path.push(schema_field.name().to_owned());
+        let key = (element_id, path.clone());
+        let Some(origin) = observed.get(&key) else {
+            return false;
+        };
+        if *origin == ValueOrigin::ExplicitRecordField
+            && !field_provenance_is_complete(
+                element_id,
+                schema_field.resolved_type(),
+                value_field.value(),
+                path,
+                records,
+                observed,
+            )
+        {
+            return false;
+        }
+        path.pop();
+    }
+    true
+}
+
+/// Returns whether a path identifies a final field in a typed record value.
+fn field_path_exists(
+    expected: &ResolvedType,
+    value: &LogicalValue,
+    path: &[String],
+    records: &BTreeMap<&str, &RecordTypeDefinition>,
+) -> bool {
+    let expected = match expected {
+        ResolvedType::Nullable(inner) => inner.as_ref(),
+        expected => expected,
+    };
+    let (ResolvedType::Record(identity), LogicalValue::Record(value)) = (expected, value) else {
+        return false;
+    };
+    let Some(schema) = records.get(identity.name()) else {
+        return false;
+    };
+    let Some((head, tail)) = path.split_first() else {
+        return false;
+    };
+    let Some(index) = schema
+        .fields()
+        .iter()
+        .position(|field| field.name() == head)
+    else {
+        return false;
+    };
+    if tail.is_empty() {
+        return true;
+    }
+    field_path_exists(
+        schema.fields()[index].resolved_type(),
+        value.fields()[index].value(),
+        tail,
+        records,
+    )
 }
 
 /// Validates one recursively typed value against public record schemas.
@@ -203,6 +339,9 @@ fn validate_record_schemas(
         for field in record.fields() {
             if previous.is_some_and(|name| name >= field.name())
                 || !resolved_record_targets_exist(field.resolved_type(), records)
+                || field
+                    .default_value()
+                    .is_some_and(|value| !validate_value(field.resolved_type(), value, records))
             {
                 return Err(ReaderError::InvalidRecordSchema);
             }

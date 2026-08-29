@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "stage4-slice4.1-fixtures-frozen"
+status = "stage4-slice4.2-fixtures-frozen"
 
 # No source behavior is active in Stage 1. These entries are an inventory only;
 # they are not executable compiler expectations until their listed stage.
@@ -225,9 +225,10 @@ status = "planned"
 
 [[case]]
 id = "nonconstant-default"
-fixture = "portable/spec/v0/fixtures/negative/values/nonconstant-default.neu"
+fixture = "portable/spec/v0/fixtures/negative/defaults/nonconstant-default.neu"
+oracle = "conformance/oracles/stage4/nonconstant-default.toml"
 active_from_stage = 4
-status = "planned"
+status = "frozen"
 
 [[case]]
 id = "namespace-declaration"
@@ -453,5 +454,61 @@ status = "frozen"
 id = "wrong-field-type"
 fixture = "portable/spec/v0/fixtures/negative/records/wrong-field-type.neu"
 oracle = "conformance/oracles/stage4/wrong-field-type.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "field-state-matrix"
+fixture = "portable/spec/v0/fixtures/positive/defaults/field-state-matrix.neu"
+oracle = "conformance/oracles/stage4/field-state-matrix.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "nested-record-default"
+fixture = "portable/spec/v0/fixtures/positive/defaults/nested-record-default.neu"
+oracle = "conformance/oracles/stage4/nested-record-default.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "explicit-default-override"
+fixture = "portable/spec/v0/fixtures/positive/defaults/explicit-default-override.neu"
+oracle = "conformance/oracles/stage4/explicit-default-override.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "reference-default"
+fixture = "portable/spec/v0/fixtures/negative/defaults/reference-default.neu"
+oracle = "conformance/oracles/stage4/reference-default.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "expression-default"
+fixture = "portable/spec/v0/fixtures/negative/defaults/expression-default.neu"
+oracle = "conformance/oracles/stage4/expression-default.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "list-default-before-slice"
+fixture = "portable/spec/v0/fixtures/negative/defaults/list-default-before-slice.neu"
+oracle = "conformance/oracles/stage4/list-default-before-slice.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "wrong-default-type"
+fixture = "portable/spec/v0/fixtures/negative/defaults/wrong-default-type.neu"
+oracle = "conformance/oracles/stage4/wrong-default-type.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "missing-nested-required"
+fixture = "portable/spec/v0/fixtures/negative/defaults/missing-nested-required.neu"
+oracle = "conformance/oracles/stage4/missing-nested-required.toml"
 active_from_stage = 4
 status = "frozen"

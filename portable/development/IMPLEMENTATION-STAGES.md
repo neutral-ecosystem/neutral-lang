@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Neutral v0 implementation stages
 
 Status: ordered execution checklist
@@ -332,20 +334,20 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Slice 4.2: closed defaults and omission
 
-- [ ] Activate all required/defaulted × nullable/non-nullable combinations.
-- [ ] Add field-default grammar and closed-constant semantic validation.
-- [ ] Permit only scalar/null and recursively closed currently supported record
+- [*] Activate all required/defaulted × nullable/non-nullable combinations.
+- [*] Add field-default grammar and closed-constant semantic validation.
+- [*] Permit only scalar/null and recursively closed currently supported record
       constants; lists join when Slice 4.3 activates them.
-- [ ] Materialize final logical values for omitted defaulted fields.
-- [ ] Record explicit versus user-default provenance without changing logical
+- [*] Materialize final logical values for omitted defaulted fields.
+- [*] Record explicit versus user-default provenance without changing logical
       value kind.
-- [ ] Reject names, `ref`, and expressions in defaults.
+- [*] Reject names, `ref`, and expressions in defaults.
 
 #### Slice validation
 
-- [ ] Final values and provenance match frozen oracles.
-- [ ] Omission is not represented as `null`, `none`, or `absent`.
-- [ ] Defaults create no value/reference dependency edge.
+- [*] Final values and provenance match frozen oracles.
+- [*] Omission is not represented as `null`, `none`, or `absent`.
+- [*] Defaults create no value/reference dependency edge.
 
 ### Slice 4.3: ordered homogeneous lists
 

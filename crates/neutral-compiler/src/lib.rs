@@ -60,6 +60,8 @@ pub mod diagnostics {
     pub const UNKNOWN_RECORD_FIELD: &str = "NEU-VAL-003";
     /// Duplicate contextual-record value field diagnostic.
     pub const DUPLICATE_VALUE_FIELD: &str = "NEU-VAL-004";
+    /// A user-record default was not a closed constant.
+    pub const NON_CONSTANT_DEFAULT: &str = "NEU-VAL-005";
     /// Decoded string resource-limit diagnostic.
     pub const STRING_LIMIT_EXCEEDED: &str = "NEU-LIM-001";
     /// Record structure resource-limit diagnostic.

@@ -135,24 +135,41 @@ impl Parser<'_> {
         })
     }
 
-    /// Parses one required record field without a Stage 4.2 default.
+    /// Parses one required or closed-defaulted record field.
     fn parse_record_field(&mut self) -> Result<ParsedRecordField, FrontendError> {
         let (declared_type, type_span) = self.parse_type()?;
         let name_token = self.next().ok_or_else(|| self.other_here())?;
         let name = identifier_spelling(&name_token)
             .ok_or_else(|| FrontendError::malformed_boundary(name_token.span))?;
-        if self.at(&TokenKind::Equals) {
-            let equals = self.next().expect("looked-ahead equals token must exist");
-            return Err(FrontendError::malformed_boundary(equals.span));
-        }
+        let (default_value, default_span) = if self.at(&TokenKind::Equals) {
+            self.next().expect("looked-ahead equals token must exist");
+            let start = self.peek().ok_or_else(|| self.other_here())?.span.start();
+            let value = self.parse_value(0)?;
+            let end = self
+                .previous()
+                .expect("a parsed default consumes at least one token")
+                .span
+                .end();
+            (
+                Some(value),
+                Some(
+                    ByteSpan::new(start, end)
+                        .expect("ordered default tokens must form a valid span"),
+                ),
+            )
+        } else {
+            (None, None)
+        };
         let comma = self.expect_field_delimiter(&TokenKind::Comma)?;
         Ok(ParsedRecordField {
             declared_type,
             name,
+            default_value,
             span: ByteSpan::new(type_span.start(), comma.span.end())
                 .expect("ordered field tokens must form a valid span"),
             type_span,
             name_span: name_token.span,
+            default_span,
         })
     }
 
@@ -226,6 +243,9 @@ impl Parser<'_> {
             TokenKind::False => Ok(ParsedValue::Boolean(false)),
             TokenKind::Null => Ok(ParsedValue::Null),
             TokenKind::OpenBrace => self.parse_record_value(token.span, depth),
+            TokenKind::Identifier(value) | TokenKind::ProtectedName(value) => {
+                Ok(ParsedValue::Name(value))
+            }
             _ => Err(FrontendError::other(token.span)),
         }
     }

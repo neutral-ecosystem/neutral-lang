@@ -14,10 +14,12 @@ mod tests {
         capture, compile, compile_captured, diagnostics,
     };
     use neutral_core::{CancellationToken, ResultClass, StructuralLimits};
-    use neutral_ir::{LOGICAL_IR_SCHEMA_VERSION, PROVENANCE_VERSION, SOURCE_MAP_VERSION};
+    use neutral_ir::{
+        LOGICAL_IR_SCHEMA_VERSION, PROVENANCE_VERSION, SOURCE_MAP_VERSION, ValueOrigin,
+    };
     use neutral_probe::diagnostics as probe_diagnostics;
     use neutral_probe::{source_linked_diagnostic, summarize};
-    use neutral_reader::ValidatedDocument;
+    use neutral_reader::{ReaderError, ValidatedDocument};
     use std::{sync::Arc, thread};
 
     /// Compact expected rejection tuple used by frozen negative cases.
@@ -117,6 +119,18 @@ mod tests {
     /// Frozen nested contextual-record positive fixture.
     const NESTED_RECORD: &[u8] =
         include_bytes!("../../../portable/spec/v0/fixtures/positive/records/nested-record.neu");
+    /// Frozen required/defaulted and nullable/non-nullable field-state fixture.
+    const FIELD_STATE_DEFAULTS: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/positive/defaults/field-state-matrix.neu"
+    );
+    /// Frozen recursively closed contextual-record default fixture.
+    const NESTED_RECORD_DEFAULT: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/positive/defaults/nested-record-default.neu"
+    );
+    /// Frozen explicit override of a defaulted field fixture.
+    const EXPLICIT_DEFAULT_OVERRIDE: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/positive/defaults/explicit-default-override.neu"
+    );
 
     /// Returns deterministic bounds for active scalar source slices.
     fn limits() -> StructuralLimits {
@@ -571,6 +585,179 @@ mod tests {
             assert_eq!(
                 failure.diagnostics()[0].code().as_str(),
                 diagnostics::RECORD_LIMIT_EXCEEDED
+            );
+        }
+    }
+
+    #[test]
+    /// Verifies every required/defaulted and nullable/non-nullable field state.
+    fn conformance_stage4_closed_defaults_positive_oracles() {
+        let matrix = compile_artifacts(FIELD_STATE_DEFAULTS);
+        let schema = &matrix.logical_document().record_types()[0];
+        assert_eq!(
+            schema
+                .fields()
+                .iter()
+                .map(|field| (field.name(), field.is_required()))
+                .collect::<Vec<_>>(),
+            [
+                ("default_name", false),
+                ("default_note", false),
+                ("required_name", true),
+                ("required_note", true),
+            ]
+        );
+        assert_eq!(
+            matrix.logical_document().declarations()[0]
+                .value()
+                .to_string(),
+            "{default_name: \"fallback\", default_note: null, required_name: \"given\", required_note: null}"
+        );
+        assert_eq!(
+            matrix
+                .field_provenance()
+                .iter()
+                .map(|record| (record.field_path().join("."), record.origin()))
+                .collect::<Vec<_>>(),
+            [
+                ("default_name".to_owned(), ValueOrigin::UserRecordDefault),
+                ("default_note".to_owned(), ValueOrigin::UserRecordDefault),
+                ("required_name".to_owned(), ValueOrigin::ExplicitRecordField),
+                ("required_note".to_owned(), ValueOrigin::ExplicitRecordField),
+            ]
+        );
+
+        let nested = compile_artifacts(NESTED_RECORD_DEFAULT);
+        assert_eq!(
+            nested.logical_document().declarations()[0]
+                .value()
+                .to_string(),
+            "{metadata: {label: \"nested\"}}"
+        );
+        assert_eq!(
+            nested.logical_document().record_types()[0].fields()[0]
+                .default_value()
+                .expect("closed record default must be materialized")
+                .to_string(),
+            "{label: \"nested\"}"
+        );
+    }
+
+    #[test]
+    /// Verifies explicit and omitted fields retain final values and distinct provenance.
+    fn property_default_omission_changes_provenance_not_value_kind() {
+        let omitted = compile_artifacts(
+            b"neu \"0.1\"\nmodule same_default\nrecord Config { string name = \"same\", }\nConfig config = {}\n",
+        );
+        let explicit = compile_artifacts(
+            b"neu \"0.1\"\nmodule same_default\nrecord Config { string name = \"same\", }\nConfig config = { name: \"same\", }\n",
+        );
+        assert!(
+            omitted
+                .logical_document()
+                .logically_equivalent(explicit.logical_document())
+        );
+        assert_eq!(
+            omitted.field_provenance()[0].origin(),
+            ValueOrigin::UserRecordDefault
+        );
+        assert_eq!(
+            explicit.field_provenance()[0].origin(),
+            ValueOrigin::ExplicitRecordField
+        );
+    }
+
+    #[test]
+    /// Verifies reader and probe expose final values and field provenance.
+    fn system_closed_defaults_cross_reader_and_probe() {
+        let document = compile_reader(EXPLICIT_DEFAULT_OVERRIDE);
+        let summary = summarize(&document);
+        assert_eq!(
+            summary.declarations(),
+            ["config: Config = {name: \"explicit\"}"]
+        );
+        assert_eq!(
+            summary.record_types(),
+            ["record Config { name: string = \"fallback\" }"]
+        );
+        assert_eq!(summary.field_provenance().len(), 1);
+        assert!(summary.field_provenance()[0].ends_with(":name:explicit-record-field"));
+    }
+
+    #[test]
+    /// Verifies the reader rejects record values with missing field evidence.
+    fn security_reader_rejects_incomplete_field_provenance() {
+        let artifacts = compile_artifacts(FIELD_STATE_DEFAULTS)
+            .as_ref()
+            .clone()
+            .with_field_provenance(Vec::new());
+        assert_eq!(
+            ValidatedDocument::from_compiler_output(Arc::new(artifacts))
+                .expect_err("record fields without provenance must fail closed"),
+            ReaderError::InvalidFieldProvenance
+        );
+    }
+
+    #[test]
+    /// Verifies non-closed and ill-typed defaults fail with frozen ownership.
+    fn conformance_stage4_closed_defaults_negative_oracles() {
+        let cases: [FailureOracle<'_>; 6] = [
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/defaults/nonconstant-default.neu"
+                ),
+                ResultClass::Semantics,
+                diagnostics::NON_CONSTANT_DEFAULT,
+                (137, 143),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/defaults/reference-default.neu"
+                ),
+                ResultClass::Syntax,
+                diagnostics::UNSUPPORTED_SYMBOL,
+                (113, 114),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/defaults/expression-default.neu"
+                ),
+                ResultClass::Syntax,
+                diagnostics::UNSUPPORTED_SYMBOL,
+                (111, 112),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/defaults/list-default-before-slice.neu"
+                ),
+                ResultClass::Syntax,
+                diagnostics::UNSUPPORTED_SYMBOL,
+                (114, 115),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/defaults/wrong-default-type.neu"
+                ),
+                ResultClass::Semantics,
+                diagnostics::TYPE_MISMATCH,
+                (111, 115),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/defaults/missing-nested-required.neu"
+                ),
+                ResultClass::Semantics,
+                diagnostics::MISSING_RECORD_FIELD,
+                (159, 161),
+            ),
+        ];
+        for (source, class, code, expected_span) in cases {
+            let failure = compile_failure(source);
+            assert_eq!(failure.class(), class);
+            assert_eq!(failure.diagnostics()[0].code().as_str(), code);
+            assert_eq!(
+                span_pair(failure.diagnostics()[0].primary().span()),
+                expected_span
             );
         }
     }
@@ -1107,9 +1294,9 @@ mod tests {
     }
 
     #[test]
-    /// Verifies grammar beyond Slice 4.1 remains rejected until its own slice.
+    /// Verifies grammar beyond Slice 4.2 remains rejected until its own slice.
     fn security_future_grammar_is_not_accepted_by_source_text_work() {
-        let future: [&[u8]; 11] = [
+        let future: [&[u8]; 10] = [
             include_bytes!(
                 "../../../portable/spec/v0/fixtures/negative/vocabulary/visibility-modifier.neu"
             ),
@@ -1126,7 +1313,6 @@ mod tests {
             b"neu \"0.1\"\nmodule future\nuse vocabulary core\n",
             b"neu \"0.1\"\nmodule future\n{ name: \"anonymous\", }\n",
             b"neu \"0.1\"\nmodule future\nrecord Left { string name, }\nrecord Right { string name, }\nLeft value = Right { name: \"structural\", }\n",
-            b"neu \"0.1\"\nmodule future\nrecord Config { string name = \"default\", }\n",
         ];
         for source in future {
             assert!(matches!(

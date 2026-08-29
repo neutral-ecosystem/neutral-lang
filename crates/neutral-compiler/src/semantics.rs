@@ -14,10 +14,10 @@ use neutral_core::{
 };
 use neutral_ir::{
     AcceptancePartition, CompilationArtifacts, Declaration, DeclarationFingerprint,
-    DerivationManifest, ElementId, ExactNumber, LogicalDocument, LogicalModuleIdentity,
-    LogicalValue, ModuleSymbolIdentity, NominalTypeIdentity, Normalization, ProvenanceRecord,
-    RecordFieldSchema, RecordTypeDefinition, RecordValue, RecordValueField, ResolvedType,
-    ResourceFacts, SourceMap, SourceMapEntry, ValueOrigin,
+    DerivationManifest, ElementId, ExactNumber, FieldProvenanceRecord, LogicalDocument,
+    LogicalModuleIdentity, LogicalValue, ModuleSymbolIdentity, NominalTypeIdentity, Normalization,
+    ProvenanceRecord, RecordFieldSchema, RecordTypeDefinition, RecordValue, RecordValueField,
+    ResolvedType, ResourceFacts, SourceMap, SourceMapEntry, ValueOrigin,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -97,8 +97,34 @@ type LoweredBindings = (
     Vec<Declaration>,
     Vec<SourceMapEntry>,
     Vec<ProvenanceRecord>,
+    Vec<FieldProvenanceRecord>,
     u64,
 );
+
+/// One compiler-private resolved field plus its closed-default candidate.
+#[derive(Clone, Debug)]
+struct ResolvedSchemaField {
+    /// Validated field name.
+    name: String,
+    /// Fully resolved field type.
+    resolved_type: ResolvedType,
+    /// Parsed closed-default candidate.
+    default_value: Option<ParsedValue>,
+    /// Exact default span, when present.
+    default_span: Option<ByteSpan>,
+}
+
+/// Mutable context shared while lowering one binding value tree.
+struct BindingValueContext<'a> {
+    /// Public nominal record schemas indexed by name.
+    records: &'a BTreeMap<String, &'a RecordTypeDefinition>,
+    /// Captured deterministic limits.
+    limits: StructuralLimits,
+    /// Owning binding element identifier.
+    element_id: ElementId,
+    /// Accumulated canonical field provenance.
+    field_provenance: &'a mut Vec<FieldProvenanceRecord>,
+}
 
 /// Validates the private model and lowers complete immutable artifacts.
 pub(super) fn lower(
@@ -116,16 +142,22 @@ pub(super) fn lower(
     validate_embedded_record_graph(&records)?;
     let resolved_schemas = resolve_record_schemas(&records, &root_kinds, &module_identity)?;
     let element_ids = allocate_element_ids(&root_kinds);
-    let (record_definitions, mut source_entries) =
-        lower_record_definitions(&records, &resolved_schemas, &module_identity, &element_ids)?;
-    let (declarations, binding_entries, mut provenance, decoded_string_bytes) = lower_bindings(
-        &bindings,
-        &root_kinds,
+    let (record_definitions, mut source_entries, default_string_bytes) = lower_record_definitions(
+        &records,
+        &resolved_schemas,
         &module_identity,
         &element_ids,
-        &record_definitions,
         limits,
     )?;
+    let (declarations, binding_entries, mut provenance, field_provenance, decoded_string_bytes) =
+        lower_bindings(
+            &bindings,
+            &root_kinds,
+            &module_identity,
+            &element_ids,
+            &record_definitions,
+            limits,
+        )?;
     source_entries.extend(binding_entries);
     source_entries.sort_by_key(|entry| entry.element_id());
     provenance.sort_by_key(|record| record.element_id());
@@ -143,7 +175,7 @@ pub(super) fn lower(
         source_byte_length,
         declaration_count,
         0,
-        decoded_string_bytes,
+        decoded_string_bytes.saturating_add(default_string_bytes),
     );
     let derivation = DerivationManifest::new(
         LANGUAGE_BEHAVIOR_VERSION,
@@ -151,12 +183,10 @@ pub(super) fn lower(
         AcceptancePartition::from_limits(limits),
         resource_facts,
     );
-    Ok(CompilationArtifacts::new(
-        logical_document,
-        source_map,
-        provenance,
-        derivation,
-    ))
+    Ok(
+        CompilationArtifacts::new(logical_document, source_map, provenance, derivation)
+            .with_field_provenance(field_provenance),
+    )
 }
 
 /// Collects all root names before nominal resolution and enforces one scope.
@@ -213,14 +243,33 @@ fn allocate_element_ids(root_kinds: &BTreeMap<String, RootKind>) -> BTreeMap<Str
 /// Lowers canonical public record definitions and their source entries.
 fn lower_record_definitions(
     records: &BTreeMap<String, ParsedRecord>,
-    schemas: &BTreeMap<String, Vec<RecordFieldSchema>>,
+    schemas: &BTreeMap<String, Vec<ResolvedSchemaField>>,
     module: &LogicalModuleIdentity,
     element_ids: &BTreeMap<String, ElementId>,
-) -> Result<(Vec<RecordTypeDefinition>, Vec<SourceMapEntry>), SemanticError> {
+    limits: StructuralLimits,
+) -> Result<(Vec<RecordTypeDefinition>, Vec<SourceMapEntry>, u64), SemanticError> {
     let mut definitions = Vec::new();
     let mut source_entries = Vec::new();
+    let mut decoded_string_bytes = 0_u64;
     for (name, record) in records {
-        let fields = schemas[name].clone();
+        let fields = schemas[name]
+            .iter()
+            .map(|field| {
+                let schema =
+                    RecordFieldSchema::new(field.name.clone(), field.resolved_type.clone());
+                match (&field.default_value, field.default_span) {
+                    (Some(default), Some(span)) => {
+                        lower_closed_default(&field.resolved_type, default, span, schemas, limits)
+                            .map(|(value, bytes)| {
+                                decoded_string_bytes = decoded_string_bytes.saturating_add(bytes);
+                                schema.with_default(value)
+                            })
+                    }
+                    (None, None) => Ok(schema),
+                    _ => unreachable!("parsed defaults always carry matching spans"),
+                }
+            })
+            .collect::<Result<Vec<_>, SemanticError>>()?;
         let fingerprint = DeclarationFingerprint::for_record(&fields)
             .map_err(|_| SemanticError::semantic(diagnostics::TYPE_MISMATCH, record.body_span))?;
         let element_id = element_ids[name];
@@ -239,7 +288,7 @@ fn lower_record_definitions(
             record.body_span,
         ));
     }
-    Ok((definitions, source_entries))
+    Ok((definitions, source_entries, decoded_string_bytes))
 }
 
 /// Lowers canonical binding values and all binding-owned companion evidence.
@@ -258,6 +307,7 @@ fn lower_bindings(
     let mut declarations = Vec::new();
     let mut source_entries = Vec::new();
     let mut provenance = Vec::new();
+    let mut field_provenance = Vec::new();
     let mut decoded_string_bytes = 0_u64;
     for (name, binding) in bindings {
         let resolved_type = resolve_type(
@@ -266,12 +316,19 @@ fn lower_bindings(
             root_kinds,
             module,
         )?;
+        let mut context = BindingValueContext {
+            records: &record_lookup,
+            limits,
+            element_id: element_ids[name],
+            field_provenance: &mut field_provenance,
+        };
+        let mut field_path = Vec::new();
         let (value, normalization, decoded_bytes) = lower_value(
             &resolved_type,
             &binding.value,
             binding.value_span,
-            &record_lookup,
-            limits,
+            &mut field_path,
+            &mut context,
         )?;
         decoded_string_bytes = decoded_string_bytes.saturating_add(decoded_bytes);
         let fingerprint = DeclarationFingerprint::for_binding(&resolved_type, &value)
@@ -302,6 +359,7 @@ fn lower_bindings(
         declarations,
         source_entries,
         provenance,
+        field_provenance,
         decoded_string_bytes,
     ))
 }
@@ -356,7 +414,7 @@ fn resolve_record_schemas(
     records: &BTreeMap<String, ParsedRecord>,
     root_kinds: &BTreeMap<String, RootKind>,
     module: &LogicalModuleIdentity,
-) -> Result<BTreeMap<String, Vec<RecordFieldSchema>>, SemanticError> {
+) -> Result<BTreeMap<String, Vec<ResolvedSchemaField>>, SemanticError> {
     records
         .iter()
         .map(|(name, record)| {
@@ -364,11 +422,17 @@ fn resolve_record_schemas(
                 .fields
                 .iter()
                 .map(|field| {
-                    resolve_type(&field.declared_type, field.type_span, root_kinds, module)
-                        .map(|resolved| RecordFieldSchema::new(field.name.clone(), resolved))
+                    resolve_type(&field.declared_type, field.type_span, root_kinds, module).map(
+                        |resolved_type| ResolvedSchemaField {
+                            name: field.name.clone(),
+                            resolved_type,
+                            default_value: field.default_value.clone(),
+                            default_span: field.default_span,
+                        },
+                    )
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            fields.sort_by(|left, right| left.name().cmp(right.name()));
+            fields.sort_by(|left, right| left.name.cmp(&right.name));
             Ok((name.clone(), fields))
         })
         .collect()
@@ -457,20 +521,22 @@ fn embedded_record_target(parsed: &ParsedType) -> Option<&str> {
     }
 }
 
-/// Lowers one value against its completely resolved expected type.
-fn lower_value(
+/// Lowers one closed default without creating value or reference dependencies.
+fn lower_closed_default(
     expected: &ResolvedType,
     value: &ParsedValue,
     value_span: ByteSpan,
-    records: &BTreeMap<String, &RecordTypeDefinition>,
+    schemas: &BTreeMap<String, Vec<ResolvedSchemaField>>,
     limits: StructuralLimits,
-) -> Result<(LogicalValue, Normalization, u64), SemanticError> {
+) -> Result<(LogicalValue, u64), SemanticError> {
     match (expected, value) {
-        (ResolvedType::Nullable(_), ParsedValue::Null) => {
-            Ok((LogicalValue::Null, Normalization::NullIdentity, 0))
-        }
+        (_, ParsedValue::Name(_)) => Err(SemanticError::semantic(
+            diagnostics::NON_CONSTANT_DEFAULT,
+            value_span,
+        )),
+        (ResolvedType::Nullable(_), ParsedValue::Null) => Ok((LogicalValue::Null, 0)),
         (ResolvedType::Nullable(inner), value) => {
-            lower_value(inner, value, value_span, records, limits)
+            lower_closed_default(inner, value, value_span, schemas, limits)
         }
         (ResolvedType::Num, ParsedValue::Number(spelling)) => {
             let number =
@@ -483,6 +549,116 @@ fn lower_value(
                             SemanticError::resource(diagnostics::NUMBER_LIMIT_EXCEEDED, value_span)
                         }
                     })?;
+            Ok((LogicalValue::Number(number), 0))
+        }
+        (ResolvedType::String, ParsedValue::String(value)) => {
+            let decoded_bytes = u64::try_from(value.len()).unwrap_or(u64::MAX);
+            if decoded_bytes > limits.string_bytes() {
+                return Err(SemanticError::resource(
+                    diagnostics::STRING_LIMIT_EXCEEDED,
+                    value_span,
+                ));
+            }
+            Ok((LogicalValue::String(value.clone()), decoded_bytes))
+        }
+        (ResolvedType::Bool, ParsedValue::Boolean(value)) => Ok((LogicalValue::Boolean(*value), 0)),
+        (ResolvedType::Record(identity), ParsedValue::Record(fields)) => {
+            lower_closed_record_default(identity, fields, value_span, schemas, limits)
+        }
+        _ => Err(SemanticError::semantic(
+            diagnostics::TYPE_MISMATCH,
+            value_span,
+        )),
+    }
+}
+
+/// Materializes one recursively closed contextual record default.
+fn lower_closed_record_default(
+    identity: &NominalTypeIdentity,
+    fields: &[ParsedValueField],
+    value_span: ByteSpan,
+    schemas: &BTreeMap<String, Vec<ResolvedSchemaField>>,
+    limits: StructuralLimits,
+) -> Result<(LogicalValue, u64), SemanticError> {
+    let schema = &schemas[identity.name()];
+    let expected = schema
+        .iter()
+        .map(|field| (field.name.as_str(), field))
+        .collect::<BTreeMap<_, _>>();
+    let mut supplied = BTreeMap::new();
+    for field in fields {
+        if !expected.contains_key(field.name.as_str()) {
+            return Err(SemanticError::semantic(
+                diagnostics::UNKNOWN_RECORD_FIELD,
+                field.name_span,
+            ));
+        }
+        if supplied.insert(field.name.as_str(), field).is_some() {
+            return Err(SemanticError::semantic(
+                diagnostics::DUPLICATE_VALUE_FIELD,
+                field.name_span,
+            ));
+        }
+    }
+    let mut lowered_fields = Vec::with_capacity(schema.len());
+    let mut decoded_string_bytes = 0_u64;
+    for schema_field in schema {
+        let (value, decoded_bytes) = if let Some(field) = supplied.get(schema_field.name.as_str()) {
+            lower_closed_default(
+                &schema_field.resolved_type,
+                &field.value,
+                field.value_span,
+                schemas,
+                limits,
+            )?
+        } else if let (Some(default), Some(span)) =
+            (&schema_field.default_value, schema_field.default_span)
+        {
+            lower_closed_default(&schema_field.resolved_type, default, span, schemas, limits)?
+        } else {
+            return Err(SemanticError::semantic(
+                diagnostics::MISSING_RECORD_FIELD,
+                value_span,
+            ));
+        };
+        decoded_string_bytes = decoded_string_bytes.saturating_add(decoded_bytes);
+        lowered_fields.push(RecordValueField::new(&schema_field.name, value));
+    }
+    Ok((
+        LogicalValue::Record(RecordValue::new(identity.clone(), lowered_fields)),
+        decoded_string_bytes,
+    ))
+}
+
+/// Lowers one value against its completely resolved expected type.
+fn lower_value(
+    expected: &ResolvedType,
+    value: &ParsedValue,
+    value_span: ByteSpan,
+    field_path: &mut Vec<String>,
+    context: &mut BindingValueContext<'_>,
+) -> Result<(LogicalValue, Normalization, u64), SemanticError> {
+    match (expected, value) {
+        (ResolvedType::Nullable(_), ParsedValue::Null) => {
+            Ok((LogicalValue::Null, Normalization::NullIdentity, 0))
+        }
+        (ResolvedType::Nullable(inner), value) => {
+            lower_value(inner, value, value_span, field_path, context)
+        }
+        (ResolvedType::Num, ParsedValue::Number(spelling)) => {
+            let number = ExactNumber::from_source(
+                spelling,
+                context.limits.numeric_digits(),
+                context.limits.numeric_scale(),
+            )
+            .map_err(|error| match error {
+                neutral_ir::IrError::InvalidExactNumber => {
+                    SemanticError::semantic(diagnostics::INVALID_NUMBER, value_span)
+                }
+                neutral_ir::IrError::ExactNumberLimitExceeded => {
+                    SemanticError::resource(diagnostics::NUMBER_LIMIT_EXCEEDED, value_span)
+                }
+            })?;
             Ok((
                 LogicalValue::Number(number),
                 Normalization::ExactNumberCanonicalization,
@@ -491,7 +667,7 @@ fn lower_value(
         }
         (ResolvedType::String, ParsedValue::String(value)) => {
             let decoded_bytes = u64::try_from(value.len()).unwrap_or(u64::MAX);
-            if decoded_bytes > limits.string_bytes() {
+            if decoded_bytes > context.limits.string_bytes() {
                 return Err(SemanticError::resource(
                     diagnostics::STRING_LIMIT_EXCEEDED,
                     value_span,
@@ -509,7 +685,7 @@ fn lower_value(
             0,
         )),
         (ResolvedType::Record(identity), ParsedValue::Record(fields)) => {
-            lower_record_value(identity, fields, value_span, records, limits)
+            lower_record_value(identity, fields, value_span, field_path, context)
         }
         _ => Err(SemanticError::semantic(
             diagnostics::TYPE_MISMATCH,
@@ -523,10 +699,11 @@ fn lower_record_value(
     identity: &NominalTypeIdentity,
     fields: &[ParsedValueField],
     value_span: ByteSpan,
-    records: &BTreeMap<String, &RecordTypeDefinition>,
-    limits: StructuralLimits,
+    field_path: &mut Vec<String>,
+    context: &mut BindingValueContext<'_>,
 ) -> Result<(LogicalValue, Normalization, u64), SemanticError> {
-    let schema = records
+    let schema = context
+        .records
         .get(identity.name())
         .expect("resolved record identities must have schemas");
     let expected = schema
@@ -550,7 +727,7 @@ fn lower_record_value(
         }
     }
     for field in schema.fields() {
-        if !supplied.contains_key(field.name()) {
+        if !supplied.contains_key(field.name()) && field.is_required() {
             return Err(SemanticError::semantic(
                 diagnostics::MISSING_RECORD_FIELD,
                 value_span,
@@ -558,17 +735,39 @@ fn lower_record_value(
         }
     }
 
-    let mut lowered_fields = Vec::with_capacity(fields.len());
+    let mut lowered_fields = Vec::with_capacity(schema.fields().len());
     let mut decoded_string_bytes = 0_u64;
     for schema_field in schema.fields() {
-        let supplied_field = supplied[schema_field.name()];
-        let (value, _, decoded_bytes) = lower_value(
-            schema_field.resolved_type(),
-            &supplied_field.value,
-            supplied_field.value_span,
-            records,
-            limits,
-        )?;
+        field_path.push(schema_field.name().to_owned());
+        let (value, decoded_bytes) = if let Some(supplied_field) = supplied.get(schema_field.name())
+        {
+            context.field_provenance.push(FieldProvenanceRecord::new(
+                context.element_id,
+                field_path.clone(),
+                ValueOrigin::ExplicitRecordField,
+            ));
+            let (value, _, decoded_bytes) = lower_value(
+                schema_field.resolved_type(),
+                &supplied_field.value,
+                supplied_field.value_span,
+                field_path,
+                context,
+            )?;
+            (value, decoded_bytes)
+        } else {
+            let default = schema_field
+                .default_value()
+                .expect("only defaulted fields may be omitted after validation")
+                .clone();
+            context.field_provenance.push(FieldProvenanceRecord::new(
+                context.element_id,
+                field_path.clone(),
+                ValueOrigin::UserRecordDefault,
+            ));
+            let decoded_bytes = logical_string_bytes(&default);
+            (default, decoded_bytes)
+        };
+        field_path.pop();
         decoded_string_bytes = decoded_string_bytes.saturating_add(decoded_bytes);
         lowered_fields.push(RecordValueField::new(schema_field.name(), value));
     }
@@ -577,6 +776,19 @@ fn lower_record_value(
         Normalization::RecordContextualization,
         decoded_string_bytes,
     ))
+}
+
+/// Counts decoded string bytes retained recursively by one final logical value.
+fn logical_string_bytes(value: &LogicalValue) -> u64 {
+    match value {
+        LogicalValue::String(value) => u64::try_from(value.len()).unwrap_or(u64::MAX),
+        LogicalValue::Record(record) => record
+            .fields()
+            .iter()
+            .map(|field| logical_string_bytes(field.value()))
+            .fold(0_u64, u64::saturating_add),
+        LogicalValue::Number(_) | LogicalValue::Boolean(_) | LogicalValue::Null => 0,
+    }
 }
 
 /// Complete frozen ASCII identifier categories, independent of locale behavior.

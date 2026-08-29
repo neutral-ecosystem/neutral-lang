@@ -24,6 +24,8 @@ pub struct ProbeSummary {
     record_types: Vec<String>,
     /// Typed declaration summaries in reader order.
     declarations: Vec<String>,
+    /// Explicit/default field-provenance summaries in compiler order.
+    field_provenance: Vec<String>,
     /// Safe diagnostic-code summaries.
     diagnostics: Vec<String>,
 }
@@ -47,6 +49,12 @@ impl ProbeSummary {
         &self.record_types
     }
 
+    /// Returns deterministic explicit/default record-field provenance.
+    #[must_use]
+    pub fn field_provenance(&self) -> &[String] {
+        &self.field_provenance
+    }
+
     /// Returns safe probe diagnostic-code summaries.
     #[must_use]
     pub fn diagnostics(&self) -> &[String] {
@@ -64,7 +72,12 @@ pub fn summarize(document: &ValidatedDocument) -> ProbeSummary {
             let fields = record
                 .fields()
                 .iter()
-                .map(|field| format!("{}: {}", field.name(), field.resolved_type()))
+                .map(|field| match field.default_value() {
+                    Some(default) => {
+                        format!("{}: {} = {}", field.name(), field.resolved_type(), default)
+                    }
+                    None => format!("{}: {}", field.name(), field.resolved_type()),
+                })
                 .collect::<Vec<_>>()
                 .join(", ");
             format!("record {} {{ {fields} }}", record.name())
@@ -82,10 +95,24 @@ pub fn summarize(document: &ValidatedDocument) -> ProbeSummary {
             )
         })
         .collect();
+    let field_provenance = document
+        .artifacts()
+        .field_provenance()
+        .iter()
+        .map(|record| {
+            format!(
+                "{}:{}:{}",
+                record.element_id().get(),
+                record.field_path().join("."),
+                record.origin().as_str()
+            )
+        })
+        .collect();
     ProbeSummary {
         module: document.module_name().to_owned(),
         record_types,
         declarations,
+        field_provenance,
         diagnostics: Vec::new(),
     }
 }

@@ -7,7 +7,7 @@ schema_version = 1
 status = "approved"
 source_fixture_root = "portable/spec/v0/fixtures"
 reviewers = ["repository owner"]
-unresolved_oracle_count = 12
+unresolved_oracle_count = 11
 
 [[fixture]]
 id = "number-fraction"
@@ -380,12 +380,12 @@ review_status = "oracle-unassigned"
 
 [[fixture]]
 id = "nonconstant-default"
-source = "portable/spec/v0/fixtures/negative/values/nonconstant-default.neu"
-source_sha256 = "a8139702c0c9e18d5939e6296aad5b3d3f46a98fa0507a7c8c90d0d6eaef8129"
+source = "portable/spec/v0/fixtures/negative/defaults/nonconstant-default.neu"
+source_sha256 = "5232d8ce443d0086f6fe47fba21e956241a4f7f477628afba69034d30cbf7943"
 expected_outcome = "reject"
 active_from_stage = 4
 required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
-review_status = "oracle-unassigned"
+review_status = "oracle-approved"
 
 [[fixture]]
 id = "minimal-core"
@@ -598,6 +598,78 @@ review_status = "oracle-approved"
 id = "wrong-field-type"
 source = "portable/spec/v0/fixtures/negative/records/wrong-field-type.neu"
 source_sha256 = "779df949f8d3873dbc67901b7d5885076a7d506cc8139f81bdfba6f62cb2cec6"
+expected_outcome = "reject"
+active_from_stage = 4
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "field-state-matrix"
+source = "portable/spec/v0/fixtures/positive/defaults/field-state-matrix.neu"
+source_sha256 = "f0e6b4ad4db46b0449d88e3f8bcf9c5e4b963ad45f2018b77c60a0f163704bc7"
+expected_outcome = "accept"
+active_from_stage = 4
+required_oracles = ["logical-ir", "field-provenance", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "nested-record-default"
+source = "portable/spec/v0/fixtures/positive/defaults/nested-record-default.neu"
+source_sha256 = "679930e1d2a8e43beafbb5082f496e9cfc7847ab87f4b1386ab93079c149c119"
+expected_outcome = "accept"
+active_from_stage = 4
+required_oracles = ["logical-ir", "field-provenance", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "explicit-default-override"
+source = "portable/spec/v0/fixtures/positive/defaults/explicit-default-override.neu"
+source_sha256 = "1f417efbb167a7d077fa24e01499f05738484aed08d574dd023bf7a7ed6f43de"
+expected_outcome = "accept"
+active_from_stage = 4
+required_oracles = ["logical-ir", "field-provenance", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "reference-default"
+source = "portable/spec/v0/fixtures/negative/defaults/reference-default.neu"
+source_sha256 = "6425e0f2e1fc7857abdf98d54a4828dd103317224333c23b63789691ab7dc991"
+expected_outcome = "reject"
+active_from_stage = 4
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "expression-default"
+source = "portable/spec/v0/fixtures/negative/defaults/expression-default.neu"
+source_sha256 = "d467b73cfd5c8b522275ede2536935fb1557ed384111c20566c34ee6cc13b081"
+expected_outcome = "reject"
+active_from_stage = 4
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "list-default-before-slice"
+source = "portable/spec/v0/fixtures/negative/defaults/list-default-before-slice.neu"
+source_sha256 = "2c6eb7cf72bb0552ba778b7391f0e8ce82eacae3cd5aa5a3c7b4113ddb5dbb26"
+expected_outcome = "reject"
+active_from_stage = 4
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "wrong-default-type"
+source = "portable/spec/v0/fixtures/negative/defaults/wrong-default-type.neu"
+source_sha256 = "2265830d1089e4bcd4014950c820ff12665ded5c009d7f2aebcdf7002f34d6cd"
+expected_outcome = "reject"
+active_from_stage = 4
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "missing-nested-required"
+source = "portable/spec/v0/fixtures/negative/defaults/missing-nested-required.neu"
+source_sha256 = "8afb03d4350ae664fc50c793c2346e500bb20106b659b34ed98a747556c21d05"
 expected_outcome = "reject"
 active_from_stage = 4
 required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]

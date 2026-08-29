@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module default_states
+
+record Settings {
+    string required_name,
+    string? required_note,
+    string default_name = "fallback",
+    string? default_note = null,
+}
+
+Settings settings = {
+    required_name: "given",
+    required_note: null,
+}

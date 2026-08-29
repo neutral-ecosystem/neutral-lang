@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module nested_defaults
+
+record Metadata {
+    string label = "nested",
+}
+
+record Config {
+    Metadata metadata = {},
+}
+
+Config config = {}

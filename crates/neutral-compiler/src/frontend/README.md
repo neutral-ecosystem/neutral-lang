@@ -8,7 +8,8 @@ parser. Stage 3 adds exact trivia, identifiers, bounded string escape
 decoding, Unicode scalar validation, exact numbers, Boolean literals, postfix
 scalar nullability, and explicit null. Stage 4 Slice 4.1 adds bounded multiline
 record declarations, nominal types, required fields, and recursively contextual
-record values while keeping later defaults and lists inactive.
+record values. Slice 4.2 adds field defaults and closed scalar/null/record
+constant syntax while keeping lists, reuse, references, and expressions inactive.
 
 Nothing here is a public Neutral contract. Public consumers receive only
 bounded diagnostics and validated public IR. A partial or

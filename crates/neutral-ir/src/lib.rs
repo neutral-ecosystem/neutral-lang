@@ -645,6 +645,11 @@ impl DeclarationFingerprint {
                 "field-type",
                 field.resolved_type().to_string().as_bytes(),
             )?);
+            let default = match field.default_value() {
+                Some(value) => logical_value_payload(value)?,
+                None => nht_frame("required", &[])?,
+            };
+            definition.extend(nht_frame("field-default", &default)?);
             payload.extend(nht_frame("record-field", &definition)?);
         }
         SemanticDigest::from_nht("neutral/declaration-fingerprint/v1", &payload).map(Self)
@@ -691,6 +696,8 @@ pub struct RecordFieldSchema {
     name: String,
     /// Fully resolved field type.
     resolved_type: ResolvedType,
+    /// Final closed default value, or `None` when the field is required.
+    default_value: Option<LogicalValue>,
 }
 
 impl RecordFieldSchema {
@@ -700,7 +707,15 @@ impl RecordFieldSchema {
         Self {
             name: name.into(),
             resolved_type,
+            default_value: None,
         }
+    }
+
+    /// Attaches one validated closed logical default to this field contract.
+    #[must_use]
+    pub fn with_default(mut self, default_value: LogicalValue) -> Self {
+        self.default_value = Some(default_value);
+        self
     }
 
     /// Returns the validated field name.
@@ -713,6 +728,18 @@ impl RecordFieldSchema {
     #[must_use]
     pub const fn resolved_type(&self) -> &ResolvedType {
         &self.resolved_type
+    }
+
+    /// Returns the final closed default, or `None` when this field is required.
+    #[must_use]
+    pub const fn default_value(&self) -> Option<&LogicalValue> {
+        self.default_value.as_ref()
+    }
+
+    /// Returns whether this field must be supplied explicitly.
+    #[must_use]
+    pub const fn is_required(&self) -> bool {
+        self.default_value.is_none()
     }
 }
 
@@ -1077,6 +1104,22 @@ impl SourceMap {
 pub enum ValueOrigin {
     /// Value was written explicitly in captured source.
     ExplicitSource,
+    /// A contextual record field was written explicitly.
+    ExplicitRecordField,
+    /// An omitted contextual field was materialized from a user-record default.
+    UserRecordDefault,
+}
+
+impl ValueOrigin {
+    /// Returns the stable vocabulary spelling used by generic consumers.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ExplicitSource => "explicit-source",
+            Self::ExplicitRecordField => "explicit-record-field",
+            Self::UserRecordDefault => "user-record-default",
+        }
+    }
 }
 
 /// Logical normalization applied while lowering one value.
@@ -1136,6 +1179,47 @@ impl ProvenanceRecord {
     #[must_use]
     pub const fn normalization(self) -> Normalization {
         self.normalization
+    }
+}
+
+/// Provenance for one final field inside a binding's contextual record value.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FieldProvenanceRecord {
+    /// Graph-local binding element that owns the record value.
+    element_id: ElementId,
+    /// Canonical field path from the binding value root.
+    field_path: Vec<String>,
+    /// Whether the field was explicit or supplied by a user default.
+    origin: ValueOrigin,
+}
+
+impl FieldProvenanceRecord {
+    /// Creates one validated record-field provenance entry.
+    #[must_use]
+    pub fn new(element_id: ElementId, field_path: Vec<String>, origin: ValueOrigin) -> Self {
+        Self {
+            element_id,
+            field_path,
+            origin,
+        }
+    }
+
+    /// Returns the owning binding element.
+    #[must_use]
+    pub const fn element_id(&self) -> ElementId {
+        self.element_id
+    }
+
+    /// Returns the canonical field path from the binding root.
+    #[must_use]
+    pub fn field_path(&self) -> &[String] {
+        &self.field_path
+    }
+
+    /// Returns why this final field value exists.
+    #[must_use]
+    pub const fn origin(&self) -> ValueOrigin {
+        self.origin
     }
 }
 
@@ -1403,6 +1487,8 @@ pub struct CompilationArtifacts {
     source_map: SourceMap,
     /// Value provenance records.
     provenance: Vec<ProvenanceRecord>,
+    /// Field-level explicit/default provenance records.
+    field_provenance: Vec<FieldProvenanceRecord>,
     /// Partitioned derivation manifest.
     derivation: DerivationManifest,
 }
@@ -1420,8 +1506,16 @@ impl CompilationArtifacts {
             logical_document,
             source_map,
             provenance,
+            field_provenance: Vec::new(),
             derivation,
         }
+    }
+
+    /// Attaches validated field-level provenance to successful artifacts.
+    #[must_use]
+    pub fn with_field_provenance(mut self, field_provenance: Vec<FieldProvenanceRecord>) -> Self {
+        self.field_provenance = field_provenance;
+        self
     }
 
     /// Returns the authoritative logical document.
@@ -1440,6 +1534,12 @@ impl CompilationArtifacts {
     #[must_use]
     pub fn provenance(&self) -> &[ProvenanceRecord] {
         &self.provenance
+    }
+
+    /// Returns deterministic explicit/default record-field provenance.
+    #[must_use]
+    pub fn field_provenance(&self) -> &[FieldProvenanceRecord] {
+        &self.field_provenance
     }
 
     /// Returns the partitioned derivation manifest.

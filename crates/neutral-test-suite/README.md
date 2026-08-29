@@ -10,8 +10,9 @@ boundaries with the normative fixture/oracle corpus to verify complete vertical
 slices, while package-local unit tests remain next to their implementation.
 
 Its active tests cover the minimal compiler-to-reader-to-probe path, all
-Stage 3 slices, and Stage 4 Slice 4.1: identifier/comment boundaries, exact numbers, bounded strings,
-Booleans, nullable scalars, explicit null, typed reader traversal, safe probe
-rendering, frozen oracles, determinism, malformed input, limits, future syntax
-exclusion, nominal records, contextual field validation, recursive record
-values, record limits, and bounded mutation smoke.
+Stage 3 slices, and Stage 4 Slices 4.1–4.2: identifier/comment boundaries,
+exact numbers, bounded strings, Booleans, nullable scalars, explicit null,
+nominal records, contextual field validation, recursive record values, closed
+defaults, omission materialization, field provenance, typed reader traversal,
+safe probe rendering, frozen oracles, determinism, malformed input, limits,
+future syntax exclusion, and bounded mutation smoke.

@@ -183,12 +183,16 @@ pub(super) struct ParsedRecordField {
     pub(super) declared_type: ParsedType,
     /// Required field name.
     pub(super) name: String,
+    /// Optional parsed closed-default candidate.
+    pub(super) default_value: Option<ParsedValue>,
     /// Complete field span.
     pub(super) span: ByteSpan,
     /// Exact type span.
     pub(super) type_span: ByteSpan,
     /// Exact field-name span.
     pub(super) name_span: ByteSpan,
+    /// Exact default value span, when present.
+    pub(super) default_span: Option<ByteSpan>,
 }
 
 impl ParsedUnit {
@@ -256,6 +260,8 @@ pub(super) enum ParsedValue {
     Null,
     /// Contextual record value with explicit fields.
     Record(Vec<ParsedValueField>),
+    /// Unqualified name candidate, accepted only for later semantic rejection.
+    Name(String),
 }
 
 /// One compiler-private explicit contextual-record value field.
