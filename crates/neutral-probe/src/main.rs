@@ -2,8 +2,8 @@
 
 //! Standalone Neutral artifact probe.
 //!
-//! The Stage 1 binary is deliberately inert: encoded artifact input and probe
-//! behavior are introduced only at their scheduled implementation stages.
+//! The binary shell remains deliberately inert until Stage 8 activates encoded
+//! artifact input and standalone probe behavior.
 
 /// Error output category prefix.
 const ERROR_PREFIX: &str = "[error]";
@@ -18,7 +18,7 @@ fn main() {
     }
 }
 
-/// Validates the Stage 1 probe shell without linking the compiler.
+/// Validates the pre-Stage-8 probe shell without linking the compiler.
 fn run(arguments: impl IntoIterator<Item = String>) -> Result<(), String> {
     match arguments.into_iter().collect::<Vec<_>>().as_slice() {
         [argument] if argument == "--help" => {
@@ -39,12 +39,12 @@ fn run(arguments: impl IntoIterator<Item = String>) -> Result<(), String> {
             Ok(())
         }
         [] => Err("an artifact is required; run neutral-probe --help".to_owned()),
-        _ => Err("encoded artifact probing is not active during Stage 1".to_owned()),
+        _ => Err("encoded artifact probing is not active before Stage 8".to_owned()),
     }
 }
 
 #[cfg(test)]
-/// Tests the Stage 1 probe shell.
+/// Tests the pre-Stage-8 probe shell.
 mod tests {
     use super::run;
 

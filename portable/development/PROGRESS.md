@@ -20,6 +20,11 @@ None recorded.
 
 ## Completed log
 
+- [*] 2026-08-29: Relocated the obsolete `portable/conformance` README to the
+  root conformance asset directory, clarified manifest/oracle/report ownership,
+  and replaced stale Stage 1 CLI/probe shell wording with the scheduled Stage 8
+  activation boundary.
+
 - [*] 2026-08-29: Completed Stage 4, Slice 4.2. Added closed scalar, null, and
   recursively contextual record defaults; omission materialization; schema and
   definition fingerprint defaults; explicit versus user-default field
