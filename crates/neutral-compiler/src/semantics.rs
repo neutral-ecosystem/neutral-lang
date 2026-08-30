@@ -449,6 +449,9 @@ fn resolve_type(
         ParsedType::Num => Ok(ResolvedType::Num),
         ParsedType::String => Ok(ResolvedType::String),
         ParsedType::Bool => Ok(ResolvedType::Bool),
+        ParsedType::List(inner) => {
+            resolve_type(inner, span, root_kinds, module).map(ResolvedType::list)
+        }
         ParsedType::Record(name) => match root_kinds.get(name) {
             Some(RootKind::Record) => Ok(ResolvedType::Record(NominalTypeIdentity::new(
                 module.clone(),
@@ -516,7 +519,7 @@ fn visit_record(
 fn embedded_record_target(parsed: &ParsedType) -> Option<&str> {
     match parsed {
         ParsedType::Record(name) => Some(name),
-        ParsedType::Nullable(inner) => embedded_record_target(inner),
+        ParsedType::Nullable(inner) | ParsedType::List(inner) => embedded_record_target(inner),
         ParsedType::Num | ParsedType::String | ParsedType::Bool => None,
     }
 }
@@ -564,6 +567,17 @@ fn lower_closed_default(
         (ResolvedType::Bool, ParsedValue::Boolean(value)) => Ok((LogicalValue::Boolean(*value), 0)),
         (ResolvedType::Record(identity), ParsedValue::Record(fields)) => {
             lower_closed_record_default(identity, fields, value_span, schemas, limits)
+        }
+        (ResolvedType::List(inner), ParsedValue::List(items)) => {
+            let mut lowered = Vec::with_capacity(items.len());
+            let mut decoded_string_bytes = 0_u64;
+            for item in items {
+                let (value, bytes) =
+                    lower_closed_default(inner, &item.value, item.span, schemas, limits)?;
+                decoded_string_bytes = decoded_string_bytes.saturating_add(bytes);
+                lowered.push(value);
+            }
+            Ok((LogicalValue::List(lowered), decoded_string_bytes))
         }
         _ => Err(SemanticError::semantic(
             diagnostics::TYPE_MISMATCH,
@@ -687,6 +701,23 @@ fn lower_value(
         (ResolvedType::Record(identity), ParsedValue::Record(fields)) => {
             lower_record_value(identity, fields, value_span, field_path, context)
         }
+        (ResolvedType::List(inner), ParsedValue::List(items)) => {
+            let mut lowered = Vec::with_capacity(items.len());
+            let mut decoded_string_bytes = 0_u64;
+            for (index, item) in items.iter().enumerate() {
+                field_path.push(index.to_string());
+                let (value, _, bytes) =
+                    lower_value(inner, &item.value, item.span, field_path, context)?;
+                field_path.pop();
+                decoded_string_bytes = decoded_string_bytes.saturating_add(bytes);
+                lowered.push(value);
+            }
+            Ok((
+                LogicalValue::List(lowered),
+                Normalization::ListContextualization,
+                decoded_string_bytes,
+            ))
+        }
         _ => Err(SemanticError::semantic(
             diagnostics::TYPE_MISMATCH,
             value_span,
@@ -786,6 +817,10 @@ fn logical_string_bytes(value: &LogicalValue) -> u64 {
             .fields()
             .iter()
             .map(|field| logical_string_bytes(field.value()))
+            .fold(0_u64, u64::saturating_add),
+        LogicalValue::List(items) => items
+            .iter()
+            .map(logical_string_bytes)
             .fold(0_u64, u64::saturating_add),
         LogicalValue::Number(_) | LogicalValue::Boolean(_) | LogicalValue::Null => 0,
     }

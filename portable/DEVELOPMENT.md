@@ -99,15 +99,17 @@ Stage 10: release qualification
 ## Current gate status
 
 Stage 1, the mandatory normative contract freeze, Stage 2, all Stage 3 slices,
-and Stage 4 Slices 4.1–4.2 are complete. The private frontend retains exact
+and all Stage 4 slices are complete. The private frontend retains exact
 nonsemantic trivia, enforces frozen ASCII/token boundaries, decodes bounded
 Unicode strings, normalizes signed decimal exact numbers without floating-point
 conversion, and supports nullable scalar values with explicit typed null. It
 collects one root scope before resolving nominal record schemas and contextual
 values, then validates closed scalar/null/record field defaults and materializes
-omitted fields. Typed IR, source facts, explicit/default field provenance,
-reader validation, and probe output are covered by frozen oracles. The next
-work is Stage 4, Slice 4.3: ordered homogeneous lists. The approved
+omitted fields. It also contextually types invariant ordered lists, including
+empty, nested, nullable-element, and closed-default forms, under explicit item,
+depth, and traversal limits. Typed IR, source facts, provenance, reader
+validation, and probe output are covered by frozen oracles. The next work is
+Stage 5, Slice 5.1: ordinary immutable value reuse. The approved
 [freeze manifest](spec/v0/freeze.toml) identifies
 the v0 contract family, and the
 [contract question ledger](development/CONTRACT-QUESTION-LEDGER.md) records the

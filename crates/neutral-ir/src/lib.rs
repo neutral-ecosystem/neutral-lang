@@ -423,6 +423,8 @@ pub enum ResolvedType {
     Bool,
     /// Exact module-owned nominal record type.
     Record(NominalTypeIdentity),
+    /// Ordered homogeneous list with one invariant element type.
+    List(Box<ResolvedType>),
     /// One outer nullable layer around an otherwise resolved type.
     Nullable(Box<ResolvedType>),
 }
@@ -432,6 +434,12 @@ impl ResolvedType {
     #[must_use]
     pub fn nullable(inner: Self) -> Self {
         Self::Nullable(Box::new(inner))
+    }
+
+    /// Wraps one resolved type as an invariant ordered list element type.
+    #[must_use]
+    pub fn list(inner: Self) -> Self {
+        Self::List(Box::new(inner))
     }
 
     /// Returns whether this type has an outer nullable layer.
@@ -460,6 +468,9 @@ impl ResolvedType {
             (Self::Record(expected), LogicalValue::Record(value)) => {
                 expected == value.nominal_type()
             }
+            (Self::List(expected), LogicalValue::List(items)) => {
+                items.iter().all(|item| expected.accepts_value(item))
+            }
             (Self::Nullable(inner), value) => inner.accepts_value(value),
             _ => false,
         }
@@ -474,6 +485,7 @@ impl fmt::Display for ResolvedType {
             Self::String => formatter.write_str("string"),
             Self::Bool => formatter.write_str("bool"),
             Self::Record(identity) => formatter.write_str(identity.name()),
+            Self::List(inner) => write!(formatter, "List<{inner}>"),
             Self::Nullable(inner) => write!(formatter, "{inner}?"),
         }
     }
@@ -492,6 +504,8 @@ pub enum LogicalValue {
     Null,
     /// Contextually typed nominal record value with canonical field order.
     Record(RecordValue),
+    /// Ordered homogeneous logical values.
+    List(Vec<LogicalValue>),
 }
 
 impl fmt::Display for LogicalValue {
@@ -503,6 +517,16 @@ impl fmt::Display for LogicalValue {
             Self::Boolean(value) => value.fmt(formatter),
             Self::Null => formatter.write_str("null"),
             Self::Record(value) => value.fmt(formatter),
+            Self::List(items) => {
+                formatter.write_str("[")?;
+                for (index, item) in items.iter().enumerate() {
+                    if index > 0 {
+                        formatter.write_str(", ")?;
+                    }
+                    item.fmt(formatter)?;
+                }
+                formatter.write_str("]")
+            }
         }
     }
 }
@@ -685,6 +709,13 @@ fn logical_value_payload(value: &LogicalValue) -> Result<Vec<u8>, CoreError> {
                 payload.extend(nht_frame("record-field", &definition)?);
             }
             nht_frame("record", &payload)
+        }
+        LogicalValue::List(items) => {
+            let mut payload = Vec::new();
+            for item in items {
+                payload.extend(nht_frame("list-item", &logical_value_payload(item)?)?);
+            }
+            nht_frame("list", &payload)
         }
     }
 }
@@ -1135,6 +1166,8 @@ pub enum Normalization {
     NullIdentity,
     /// Explicit record fields were matched to one nominal contextual schema.
     RecordContextualization,
+    /// Ordered list items were checked against one contextual element type.
+    ListContextualization,
 }
 
 /// Provenance record for one minimal binding value.
@@ -1312,6 +1345,10 @@ pub struct AcceptancePartition {
     record_fields: u64,
     /// Maximum contextual-record nesting depth.
     nesting_depth: u64,
+    /// Maximum list items per value.
+    list_items: u64,
+    /// Maximum recursively traversed value nodes.
+    traversal_nodes: u64,
 }
 
 impl AcceptancePartition {
@@ -1327,6 +1364,8 @@ impl AcceptancePartition {
             declarations: limits.declarations(),
             record_fields: limits.record_fields(),
             nesting_depth: limits.nesting_depth(),
+            list_items: limits.list_items(),
+            traversal_nodes: limits.traversal_nodes(),
         }
     }
 
@@ -1376,6 +1415,18 @@ impl AcceptancePartition {
     #[must_use]
     pub const fn nesting_depth_limit(self) -> u64 {
         self.nesting_depth
+    }
+
+    /// Returns the per-list item-count limit.
+    #[must_use]
+    pub const fn list_item_limit(self) -> u64 {
+        self.list_items
+    }
+
+    /// Returns the recursive value traversal-node limit.
+    #[must_use]
+    pub const fn traversal_node_limit(self) -> u64 {
+        self.traversal_nodes
     }
 }
 

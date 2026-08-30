@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Recovery-free parser for active scalar and nominal-record document shapes.
+//! Recovery-free parser for active scalar, record, default, and list shapes.
 
 use super::{
-    FrontendError, LexedSource, ParsedBinding, ParsedDeclaration, ParsedModule, ParsedRecord,
-    ParsedRecordField, ParsedType, ParsedUnit, ParsedValue, ParsedValueField, Token, TokenKind,
-    span,
+    FrontendError, LexedSource, ParsedBinding, ParsedDeclaration, ParsedListItem, ParsedModule,
+    ParsedRecord, ParsedRecordField, ParsedType, ParsedUnit, ParsedValue, ParsedValueField, Token,
+    TokenKind, span,
 };
 use crate::language::names;
 use neutral_core::{ByteSpan, StructuralLimits};
@@ -19,6 +19,7 @@ pub(super) fn parse(
         tokens: &source.tokens,
         index: 0,
         limits,
+        value_nodes: 0,
     };
     let mut unit = parser.parse_unit()?;
     unit.trivia = source.trivia;
@@ -33,6 +34,8 @@ struct Parser<'a> {
     index: usize,
     /// Captured deterministic structural limits.
     limits: StructuralLimits,
+    /// Total recursively parsed values for traversal bounding.
+    value_nodes: u64,
 }
 
 impl Parser<'_> {
@@ -211,6 +214,14 @@ impl Parser<'_> {
             TokenKind::Num => ParsedType::Num,
             TokenKind::StringType => ParsedType::String,
             TokenKind::BoolType => ParsedType::Bool,
+            TokenKind::List => {
+                self.expect_simple(&TokenKind::Less)?;
+                let (inner, _) = self.parse_type()?;
+                let close = self.expect_simple(&TokenKind::Greater)?;
+                type_span = ByteSpan::new(type_span.start(), close.span.end())
+                    .expect("ordered list type tokens must form a valid span");
+                ParsedType::List(Box::new(inner))
+            }
             TokenKind::Identifier(name) | TokenKind::ProtectedName(name) => {
                 ParsedType::Record(name)
             }
@@ -236,6 +247,10 @@ impl Parser<'_> {
     /// Parses one scalar or recursively contextual record value.
     fn parse_value(&mut self, depth: u64) -> Result<ParsedValue, FrontendError> {
         let token = self.next().ok_or_else(|| self.other_here())?;
+        self.value_nodes = self.value_nodes.saturating_add(1);
+        if self.value_nodes > self.limits.traversal_nodes() {
+            return Err(FrontendError::list_limit_exceeded(token.span));
+        }
         match token.kind {
             TokenKind::Number(value) => Ok(ParsedValue::Number(value)),
             TokenKind::StringLiteral(value) => Ok(ParsedValue::String(value.value)),
@@ -243,11 +258,56 @@ impl Parser<'_> {
             TokenKind::False => Ok(ParsedValue::Boolean(false)),
             TokenKind::Null => Ok(ParsedValue::Null),
             TokenKind::OpenBrace => self.parse_record_value(token.span, depth),
+            TokenKind::OpenBracket => self.parse_list_value(token.span, depth),
             TokenKind::Identifier(value) | TokenKind::ProtectedName(value) => {
                 Ok(ParsedValue::Name(value))
             }
             _ => Err(FrontendError::other(token.span)),
         }
+    }
+
+    /// Parses an ordered, bounded list value with an optional trailing comma.
+    fn parse_list_value(
+        &mut self,
+        open_span: ByteSpan,
+        depth: u64,
+    ) -> Result<ParsedValue, FrontendError> {
+        let nested_depth = depth.saturating_add(1);
+        if nested_depth > self.limits.nesting_depth() {
+            return Err(FrontendError::list_limit_exceeded(open_span));
+        }
+        let mut items = Vec::new();
+        while !self.at(&TokenKind::CloseBracket) {
+            if u64::try_from(items.len()).unwrap_or(u64::MAX) >= self.limits.list_items() {
+                return Err(FrontendError::list_limit_exceeded(
+                    self.peek().map_or(open_span, |token| token.span),
+                ));
+            }
+            let start = self.peek().ok_or_else(|| self.other_here())?.span.start();
+            let value = self.parse_value(nested_depth)?;
+            let end = self
+                .previous()
+                .expect("a parsed list item consumes at least one token")
+                .span
+                .end();
+            items.push(ParsedListItem {
+                value,
+                span: ByteSpan::new(start, end)
+                    .expect("ordered list item tokens must form a valid span"),
+            });
+            if self.at(&TokenKind::Comma) {
+                self.next().expect("looked-ahead list comma must exist");
+                if self.at(&TokenKind::CloseBracket) {
+                    break;
+                }
+            } else if !self.at(&TokenKind::CloseBracket) {
+                return Err(FrontendError::malformed_boundary(
+                    self.peek().map_or(open_span, |token| token.span),
+                ));
+            }
+        }
+        self.expect_simple(&TokenKind::CloseBracket)?;
+        Ok(ParsedValue::List(items))
     }
 
     /// Parses explicit fields in one contextual record value.
@@ -376,6 +436,7 @@ fn identifier_spelling(token: &Token) -> Option<String> {
         TokenKind::Neu => Some(names::NEU.to_owned()),
         TokenKind::Module => Some(names::MODULE.to_owned()),
         TokenKind::Record => Some(names::RECORD.to_owned()),
+        TokenKind::List => Some(names::LIST.to_owned()),
         TokenKind::Num => Some(names::NUM.to_owned()),
         TokenKind::StringType => Some(names::STRING.to_owned()),
         TokenKind::BoolType => Some(names::BOOL.to_owned()),

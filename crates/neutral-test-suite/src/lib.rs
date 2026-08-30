@@ -131,6 +131,19 @@ mod tests {
     const EXPLICIT_DEFAULT_OVERRIDE: &[u8] = include_bytes!(
         "../../../portable/spec/v0/fixtures/positive/defaults/explicit-default-override.neu"
     );
+    /// Frozen ordered string-list fixture.
+    const ORDERED_STRINGS: &[u8] =
+        include_bytes!("../../../portable/spec/v0/fixtures/positive/lists/ordered-strings.neu");
+    /// Frozen empty contextual-list fixture.
+    const EMPTY_LIST: &[u8] =
+        include_bytes!("../../../portable/spec/v0/fixtures/positive/lists/empty-list.neu");
+    /// Frozen nested list with nullable elements fixture.
+    const NESTED_NULLABLE_LIST: &[u8] = include_bytes!(
+        "../../../portable/spec/v0/fixtures/positive/lists/nested-nullable-list.neu"
+    );
+    /// Frozen record/list/default combined fixture.
+    const RECORD_LIST_DEFAULT: &[u8] =
+        include_bytes!("../../../portable/spec/v0/fixtures/positive/lists/record-list-default.neu");
 
     /// Returns deterministic bounds for active scalar source slices.
     fn limits() -> StructuralLimits {
@@ -341,7 +354,7 @@ mod tests {
     #[test]
     /// Verifies null and malformed nullability fail at their frozen boundaries.
     fn conformance_stage3_nullable_scalar_negative_oracles() {
-        let cases: [FailureOracle<'_>; 3] = [
+        let cases: [FailureOracle<'_>; 2] = [
             (
                 include_bytes!(
                     "../../../portable/spec/v0/fixtures/negative/nullability/nonnullable-null.neu"
@@ -357,14 +370,6 @@ mod tests {
                 ResultClass::Syntax,
                 diagnostics::MALFORMED_BOUNDARY,
                 (80, 81),
-            ),
-            (
-                include_bytes!(
-                    "../../../portable/spec/v0/fixtures/negative/nullability/inner-generic-widening.neu"
-                ),
-                ResultClass::Syntax,
-                diagnostics::UNSUPPORTED_SYMBOL,
-                (84, 85),
             ),
         ];
         for (source, class, code, expected_span) in cases {
@@ -701,7 +706,7 @@ mod tests {
     #[test]
     /// Verifies non-closed and ill-typed defaults fail with frozen ownership.
     fn conformance_stage4_closed_defaults_negative_oracles() {
-        let cases: [FailureOracle<'_>; 6] = [
+        let cases: [FailureOracle<'_>; 5] = [
             (
                 include_bytes!(
                     "../../../portable/spec/v0/fixtures/negative/defaults/nonconstant-default.neu"
@@ -725,14 +730,6 @@ mod tests {
                 ResultClass::Syntax,
                 diagnostics::UNSUPPORTED_SYMBOL,
                 (111, 112),
-            ),
-            (
-                include_bytes!(
-                    "../../../portable/spec/v0/fixtures/negative/defaults/list-default-before-slice.neu"
-                ),
-                ResultClass::Syntax,
-                diagnostics::UNSUPPORTED_SYMBOL,
-                (114, 115),
             ),
             (
                 include_bytes!(
@@ -760,6 +757,164 @@ mod tests {
                 expected_span
             );
         }
+    }
+
+    #[test]
+    /// Verifies ordered, empty, nested, nullable, and defaulted list values.
+    fn conformance_stage4_ordered_lists_positive_oracles() {
+        let ordered = compile_artifacts(ORDERED_STRINGS);
+        assert_eq!(
+            ordered.logical_document().declarations()[0]
+                .resolved_type()
+                .to_string(),
+            "List<string>"
+        );
+        assert_eq!(
+            ordered.logical_document().declarations()[0]
+                .value()
+                .to_string(),
+            "[\"first\", \"second\", \"third\"]"
+        );
+        assert_eq!(
+            compile_artifacts(EMPTY_LIST)
+                .logical_document()
+                .declarations()[0]
+                .value()
+                .to_string(),
+            "[]"
+        );
+        assert_eq!(
+            compile_artifacts(NESTED_NULLABLE_LIST)
+                .logical_document()
+                .declarations()[0]
+                .value()
+                .to_string(),
+            "[[\"first\", null], [], [\"last\"]]"
+        );
+        let combined = compile_artifacts(RECORD_LIST_DEFAULT);
+        assert_eq!(
+            combined.logical_document().declarations()[0]
+                .value()
+                .to_string(),
+            "{items: [{name: \"default\"}], labels: []}"
+        );
+    }
+
+    #[test]
+    /// Verifies malformed and heterogeneous list items have stable ownership.
+    fn conformance_stage4_ordered_lists_negative_oracles() {
+        let cases: [FailureOracle<'_>; 2] = [
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/lists/wrong-item-type.neu"
+                ),
+                ResultClass::Semantics,
+                diagnostics::TYPE_MISMATCH,
+                (105, 109),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/lists/missing-comma.neu"
+                ),
+                ResultClass::Syntax,
+                diagnostics::MALFORMED_BOUNDARY,
+                (107, 115),
+            ),
+        ];
+        for (source, class, code, expected_span) in cases {
+            let failure = compile_failure(source);
+            assert_eq!(failure.class(), class);
+            assert_eq!(failure.diagnostics()[0].code().as_str(), code);
+            assert_eq!(
+                span_pair(failure.diagnostics()[0].primary().span()),
+                expected_span
+            );
+        }
+    }
+
+    #[test]
+    /// Verifies item, nesting, and traversal limits fail before excess growth.
+    fn security_list_limits_fail_before_proportional_allocation() {
+        let cases = [
+            (
+                include_bytes!("../../../portable/spec/v0/fixtures/negative/lists/item-limit.neu")
+                    as &[u8],
+                limits()
+                    .with_list_items(2)
+                    .expect("list item limit should be valid"),
+                (100, 101),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/lists/nesting-limit.neu"
+                ),
+                limits()
+                    .with_nesting_depth(1)
+                    .expect("list depth limit should be valid"),
+                (103, 104),
+            ),
+            (
+                include_bytes!(
+                    "../../../portable/spec/v0/fixtures/negative/lists/traversal-limit.neu"
+                ),
+                limits()
+                    .with_traversal_nodes(2)
+                    .expect("traversal limit should be valid"),
+                (102, 103),
+            ),
+        ];
+        for (source, limits, expected_span) in cases {
+            let result = compile(CompilationRequest::new(
+                source.to_vec(),
+                limits,
+                CancellationToken::new(),
+            ))
+            .expect("bounded list fixture should capture");
+            let CompilationResult::Failure(failure) = result else {
+                panic!("over-limit list must produce no IR");
+            };
+            assert_eq!(failure.class(), ResultClass::Resource);
+            assert_eq!(
+                failure.diagnostics()[0].code().as_str(),
+                diagnostics::LIST_LIMIT_EXCEEDED
+            );
+            assert_eq!(
+                span_pair(failure.diagnostics()[0].primary().span()),
+                expected_span
+            );
+        }
+    }
+
+    #[test]
+    /// Verifies list order is logical and generic arguments are invariant.
+    fn property_list_order_and_invariant_types_are_logical() {
+        let first =
+            compile_artifacts(b"neu \"0.1\"\nmodule order\nList<string> values = [\"a\", \"b\"]\n");
+        let second =
+            compile_artifacts(b"neu \"0.1\"\nmodule order\nList<string> values = [\"b\", \"a\"]\n");
+        assert_ne!(
+            first.logical_document().declarations()[0].fingerprint(),
+            second.logical_document().declarations()[0].fingerprint()
+        );
+        assert_ne!(
+            neutral_ir::ResolvedType::list(neutral_ir::ResolvedType::String),
+            neutral_ir::ResolvedType::list(neutral_ir::ResolvedType::nullable(
+                neutral_ir::ResolvedType::String,
+            ))
+        );
+    }
+
+    #[test]
+    /// Verifies lists and closed list defaults cross reader and probe boundaries.
+    fn system_ordered_lists_cross_reader_and_probe() {
+        let document = compile_reader(RECORD_LIST_DEFAULT);
+        let summary = summarize(&document);
+        assert_eq!(
+            summary.declarations(),
+            ["config: Config = {items: [{name: \"default\"}], labels: []}"]
+        );
+        assert!(summary.record_types()[0].contains("List<Item>"));
+        assert!(summary.record_types()[0].contains("List<string> = []"));
     }
 
     #[test]
@@ -1296,7 +1451,7 @@ mod tests {
     #[test]
     /// Verifies grammar beyond Slice 4.2 remains rejected until its own slice.
     fn security_future_grammar_is_not_accepted_by_source_text_work() {
-        let future: [&[u8]; 10] = [
+        let future: [&[u8]; 9] = [
             include_bytes!(
                 "../../../portable/spec/v0/fixtures/negative/vocabulary/visibility-modifier.neu"
             ),
@@ -1307,7 +1462,6 @@ mod tests {
             include_bytes!(
                 "../../../portable/spec/v0/fixtures/negative/vocabulary/mut-modifier.neu"
             ),
-            b"neu \"0.1\"\nmodule future\nList<string> values = []\n",
             b"neu \"0.1\"\nmodule future\nstring first = \"x\"\nstring second = first\n",
             b"neu \"0.1\"\nmodule future\nstring value = \"x\"\nRef<string> link = ref(value)\n",
             b"neu \"0.1\"\nmodule future\nuse vocabulary core\n",

@@ -66,6 +66,8 @@ pub mod diagnostics {
     pub const STRING_LIMIT_EXCEEDED: &str = "NEU-LIM-001";
     /// Record structure resource-limit diagnostic.
     pub const RECORD_LIMIT_EXCEEDED: &str = "NEU-LIM-003";
+    /// List item, nesting, or traversal resource-limit diagnostic.
+    pub const LIST_LIMIT_EXCEEDED: &str = "NEU-LIM-004";
 }
 
 /// The frozen v0 language-behavior contract used for captured compilation.

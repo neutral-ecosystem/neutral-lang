@@ -9,7 +9,8 @@ decoding, Unicode scalar validation, exact numbers, Boolean literals, postfix
 scalar nullability, and explicit null. Stage 4 Slice 4.1 adds bounded multiline
 record declarations, nominal types, required fields, and recursively contextual
 record values. Slice 4.2 adds field defaults and closed scalar/null/record
-constant syntax while keeping lists, reuse, references, and expressions inactive.
+constant syntax. Slice 4.3 adds invariant list types and bounded ordered list
+values while keeping reuse, references, and expressions inactive.
 
 Nothing here is a public Neutral contract. Public consumers receive only
 bounded diagnostics and validated public IR. A partial or

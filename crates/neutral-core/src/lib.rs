@@ -414,6 +414,10 @@ pub struct StructuralLimits {
     record_fields: u64,
     /// Maximum nested contextual-record value depth.
     nesting_depth: u64,
+    /// Maximum items in one list value.
+    list_items: u64,
+    /// Maximum total recursively parsed value nodes.
+    traversal_nodes: u64,
 }
 
 impl StructuralLimits {
@@ -435,6 +439,8 @@ impl StructuralLimits {
             declarations: source_bytes,
             record_fields: source_bytes,
             nesting_depth: source_bytes,
+            list_items: source_bytes,
+            traversal_nodes: source_bytes,
         })
     }
 
@@ -516,6 +522,32 @@ impl StructuralLimits {
         Ok(self)
     }
 
+    /// Overrides the maximum items in one list value.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CoreError::ZeroLimit`] when `list_items` is zero.
+    pub const fn with_list_items(mut self, list_items: u64) -> Result<Self, CoreError> {
+        if list_items == 0 {
+            return Err(CoreError::ZeroLimit);
+        }
+        self.list_items = list_items;
+        Ok(self)
+    }
+
+    /// Overrides the maximum total recursively parsed value nodes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CoreError::ZeroLimit`] when `traversal_nodes` is zero.
+    pub const fn with_traversal_nodes(mut self, traversal_nodes: u64) -> Result<Self, CoreError> {
+        if traversal_nodes == 0 {
+            return Err(CoreError::ZeroLimit);
+        }
+        self.traversal_nodes = traversal_nodes;
+        Ok(self)
+    }
+
     /// Returns the maximum exact captured source-byte count.
     #[must_use]
     pub const fn source_bytes(self) -> u64 {
@@ -562,6 +594,18 @@ impl StructuralLimits {
     #[must_use]
     pub const fn nesting_depth(self) -> u64 {
         self.nesting_depth
+    }
+
+    /// Returns the maximum items in one list value.
+    #[must_use]
+    pub const fn list_items(self) -> u64 {
+        self.list_items
+    }
+
+    /// Returns the maximum total recursively parsed value nodes.
+    #[must_use]
+    pub const fn traversal_nodes(self) -> u64 {
+        self.traversal_nodes
     }
 }
 
@@ -744,8 +788,8 @@ mod tests {
     }
 
     #[test]
-    /// Verifies declaration, record-field, and nesting budgets are explicit.
-    fn structural_limits_capture_record_budgets() {
+    /// Verifies declaration, record, list, and traversal budgets are explicit.
+    fn structural_limits_capture_collection_budgets() {
         let limits = StructuralLimits::new(1_024, 16)
             .expect("base limits should be valid")
             .with_declarations(8)
@@ -753,12 +797,20 @@ mod tests {
             .with_record_fields(16)
             .expect("record field limit should be valid")
             .with_nesting_depth(4)
-            .expect("nesting depth limit should be valid");
+            .expect("nesting depth limit should be valid")
+            .with_list_items(32)
+            .expect("list item limit should be valid")
+            .with_traversal_nodes(64)
+            .expect("traversal node limit should be valid");
         assert_eq!(limits.declarations(), 8);
         assert_eq!(limits.record_fields(), 16);
         assert_eq!(limits.nesting_depth(), 4);
+        assert_eq!(limits.list_items(), 32);
+        assert_eq!(limits.traversal_nodes(), 64);
         assert!(limits.with_declarations(0).is_err());
         assert!(limits.with_record_fields(0).is_err());
         assert!(limits.with_nesting_depth(0).is_err());
+        assert!(limits.with_list_items(0).is_err());
+        assert!(limits.with_traversal_nodes(0).is_err());
     }
 }

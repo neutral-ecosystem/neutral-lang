@@ -18,6 +18,7 @@ fixtures/
 │   ├── nullability/  # nullable scalars, explicit null, and outer widening
 │   ├── records/      # valid nominal schemas and contextual values
 │   ├── defaults/     # valid closed defaults and omission
+│   ├── lists/        # valid ordered, nested, and defaulted lists
 │   ├── values/       # future value reuse and combined cases
 │   └── vocabulary/   # data-only vocabulary integration
 └── negative/
@@ -29,6 +30,7 @@ fixtures/
     ├── nullability/  # rejected null placement and nullable type shapes
     ├── records/      # rejected nominal and contextual record behavior
     ├── defaults/     # rejected closed-default behavior
+    ├── lists/        # rejected list values and resource limits
     ├── values/       # future rejected value semantics
     └── vocabulary/   # rejected vocabulary/module features
 ```
@@ -54,6 +56,8 @@ fixtures/
   contextual values, forward collection, nesting, and canonical field order.
 - The [positive default fixtures](positive/defaults/) freeze closed scalar,
   null, and record defaults, omission materialization, and field provenance.
+- The [positive list fixtures](positive/lists/) freeze ordered, empty, nested,
+  nullable-element, and defaulted lists.
 - [immutable-value-reuse.neu](positive/values/immutable-value-reuse.neu) distinguishes
   ordinary value reuse from identity references and proves forward resolution.
 - [defaults-compatibility.neu](positive/values/defaults-compatibility.neu) covers
@@ -79,6 +83,8 @@ fixtures/
 - The [negative default fixtures](negative/defaults/) freeze non-constant,
   reference, expression, inactive-list, wrong-type, and incomplete-record
   default failures.
+- The [negative list fixtures](negative/lists/) freeze item typing, delimiters,
+  and item/depth/traversal resource limits.
 - [generic-covariance.neu](negative/vocabulary/generic-covariance.neu): invariant generic
   argument violation.
 - [module-path.neu](negative/vocabulary/module-path.neu): module qualification is absent.

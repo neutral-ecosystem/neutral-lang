@@ -1,0 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module list_nesting_limit
+
+List<List<num>> values = [[1]]

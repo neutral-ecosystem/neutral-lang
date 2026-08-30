@@ -1,8 +1,0 @@
-# SPDX-License-Identifier: Apache-2.0
-
-fixture = "portable/spec/v0/fixtures/negative/defaults/list-default-before-slice.neu"
-fixture_sha256 = "2c6eb7cf72bb0552ba778b7391f0e8ce82eacae3cd5aa5a3c7b4113ddb5dbb26"
-expected_outcome = "reject"
-failure_class = "syntax"
-diagnostic = "NEU-SYN-002"
-primary_span = [114, 115]

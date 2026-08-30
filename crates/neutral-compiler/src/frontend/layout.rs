@@ -8,11 +8,11 @@ use super::{FrontendError, LexedSource, Token, TokenKind};
 pub(super) fn normalize(raw: LexedSource) -> Result<LexedSource, FrontendError> {
     let mut normalized = Vec::with_capacity(raw.tokens.len().saturating_add(1));
     let mut construct_start = 0_usize;
-    let mut brace_depth = 0_u64;
+    let mut delimiter_depth = 0_u64;
     for token in raw.tokens {
         match token.kind {
             TokenKind::PhysicalLineEnd(_) => {
-                if brace_depth > 0 {
+                if delimiter_depth > 0 {
                     continue;
                 }
                 if construct_start == normalized.len() {
@@ -28,7 +28,7 @@ pub(super) fn normalize(raw: LexedSource) -> Result<LexedSource, FrontendError> 
                 construct_start = normalized.len();
             }
             TokenKind::EndOfFile => {
-                if brace_depth != 0 {
+                if delimiter_depth != 0 {
                     return Err(FrontendError::malformed_boundary(token.span));
                 }
                 if construct_start < normalized.len() {
@@ -42,12 +42,12 @@ pub(super) fn normalize(raw: LexedSource) -> Result<LexedSource, FrontendError> 
                 }
                 normalized.push(token);
             }
-            TokenKind::OpenBrace => {
-                brace_depth = brace_depth.saturating_add(1);
+            TokenKind::OpenBrace | TokenKind::OpenBracket => {
+                delimiter_depth = delimiter_depth.saturating_add(1);
                 normalized.push(token);
             }
-            TokenKind::CloseBrace => {
-                brace_depth = brace_depth
+            TokenKind::CloseBrace | TokenKind::CloseBracket => {
+                delimiter_depth = delimiter_depth
                     .checked_sub(1)
                     .ok_or_else(|| FrontendError::malformed_boundary(token.span))?;
                 normalized.push(token);
@@ -86,7 +86,8 @@ fn is_complete_construct(tokens: &[Token]) -> bool {
             tokens
                 .iter()
                 .any(|token| matches!(token.kind, TokenKind::Equals))
-                && (is_scalar_value(&last.kind) || matches!(last.kind, TokenKind::CloseBrace))
+                && (is_scalar_value(&last.kind)
+                    || matches!(last.kind, TokenKind::CloseBrace | TokenKind::CloseBracket))
         }
         _ => false,
     }
@@ -94,7 +95,7 @@ fn is_complete_construct(tokens: &[Token]) -> bool {
 
 /// Returns whether a token can begin an active scalar or nominal type.
 fn is_type_start(kind: &TokenKind) -> bool {
-    is_scalar_type(kind) || matches!(kind, TokenKind::Identifier(_))
+    is_scalar_type(kind) || matches!(kind, TokenKind::Identifier(_) | TokenKind::List)
 }
 
 /// Returns whether a token is an active explicit scalar type.

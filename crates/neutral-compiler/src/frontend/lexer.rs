@@ -108,6 +108,10 @@ fn punctuation_token(byte: u8) -> Option<TokenKind> {
         b'}' => Some(TokenKind::CloseBrace),
         b':' => Some(TokenKind::Colon),
         b',' => Some(TokenKind::Comma),
+        b'<' => Some(TokenKind::Less),
+        b'>' => Some(TokenKind::Greater),
+        b'[' => Some(TokenKind::OpenBracket),
+        b']' => Some(TokenKind::CloseBracket),
         _ => None,
     }
 }
@@ -133,6 +137,8 @@ fn word_token(text: String) -> TokenKind {
         TokenKind::Module
     } else if text == names::RECORD {
         TokenKind::Record
+    } else if text == names::LIST {
+        TokenKind::List
     } else if text == names::NUM {
         TokenKind::Num
     } else if text == names::STRING {

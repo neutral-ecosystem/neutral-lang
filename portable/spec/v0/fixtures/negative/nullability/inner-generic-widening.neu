@@ -1,5 +1,0 @@
-// SPDX-License-Identifier: Apache-2.0
-
-neu "0.1"
-module inner_generic_widening
-List<string?> value = []

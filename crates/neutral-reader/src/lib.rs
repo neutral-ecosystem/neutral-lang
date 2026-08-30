@@ -222,6 +222,16 @@ fn field_provenance_is_complete(
         ResolvedType::Nullable(inner) => inner.as_ref(),
         expected => expected,
     };
+    if let (ResolvedType::List(inner), LogicalValue::List(items)) = (expected, value) {
+        for (index, item) in items.iter().enumerate() {
+            path.push(index.to_string());
+            if !field_provenance_is_complete(element_id, inner, item, path, records, observed) {
+                return false;
+            }
+            path.pop();
+        }
+        return true;
+    }
     let (ResolvedType::Record(identity), LogicalValue::Record(value)) = (expected, value) else {
         return true;
     };
@@ -262,13 +272,22 @@ fn field_path_exists(
         ResolvedType::Nullable(inner) => inner.as_ref(),
         expected => expected,
     };
+    let Some((head, tail)) = path.split_first() else {
+        return false;
+    };
+    if let (ResolvedType::List(inner), LogicalValue::List(items)) = (expected, value) {
+        let Ok(index) = head.parse::<usize>() else {
+            return false;
+        };
+        let Some(item) = items.get(index) else {
+            return false;
+        };
+        return field_path_exists(inner, item, tail, records);
+    }
     let (ResolvedType::Record(identity), LogicalValue::Record(value)) = (expected, value) else {
         return false;
     };
     let Some(schema) = records.get(identity.name()) else {
-        return false;
-    };
-    let Some((head, tail)) = path.split_first() else {
         return false;
     };
     let Some(index) = schema
@@ -322,6 +341,9 @@ fn validate_value(
                             )
                     })
         }
+        (ResolvedType::List(inner), LogicalValue::List(items)) => items
+            .iter()
+            .all(|item| validate_value(inner, item, records)),
         _ => expected.accepts_value(value),
     }
 }
@@ -367,7 +389,9 @@ fn resolved_record_targets_exist(
         ResolvedType::Record(identity) => records
             .get(identity.name())
             .is_some_and(|record| record.nominal_identity() == identity),
-        ResolvedType::Nullable(inner) => resolved_record_targets_exist(inner, records),
+        ResolvedType::Nullable(inner) | ResolvedType::List(inner) => {
+            resolved_record_targets_exist(inner, records)
+        }
         ResolvedType::Num | ResolvedType::String | ResolvedType::Bool => true,
     }
 }
@@ -401,7 +425,7 @@ fn record_schema_has_cycle(
 fn resolved_record_target(resolved_type: &ResolvedType) -> Option<&str> {
     match resolved_type {
         ResolvedType::Record(identity) => Some(identity.name()),
-        ResolvedType::Nullable(inner) => resolved_record_target(inner),
+        ResolvedType::Nullable(inner) | ResolvedType::List(inner) => resolved_record_target(inner),
         ResolvedType::Num | ResolvedType::String | ResolvedType::Bool => None,
     }
 }

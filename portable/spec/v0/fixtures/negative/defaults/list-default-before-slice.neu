@@ -1,8 +1,0 @@
-// SPDX-License-Identifier: Apache-2.0
-
-neu "0.1"
-module inactive_list_default
-
-record Config {
-    string name = [],
-}

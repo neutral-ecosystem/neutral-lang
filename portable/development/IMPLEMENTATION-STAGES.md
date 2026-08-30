@@ -351,26 +351,26 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Slice 4.3: ordered homogeneous lists
 
-- [ ] Activate `List<T>`, list values, empty context, nested/default list,
+- [*] Activate `List<T>`, list values, empty context, nested/default list,
       invariance, order, and size/depth fixtures.
-- [ ] Add list type/value grammar only now.
-- [ ] Implement invariant generic resolution and contextual element typing.
-- [ ] Extend closed defaults to lists.
-- [ ] Preserve logical list order through IR/reader/probe/fingerprints.
-- [ ] Enforce item/depth/traversal limits.
+- [*] Add list type/value grammar only now.
+- [*] Implement invariant generic resolution and contextual element typing.
+- [*] Extend closed defaults to lists.
+- [*] Preserve logical list order through IR/reader/probe/fingerprints.
+- [*] Enforce item/depth/traversal limits.
 
 #### Slice validation
 
-- [ ] Empty lists require expected type.
-- [ ] Generic covariance remains rejected.
-- [ ] Large lists fail before proportional allocation.
-- [ ] Record/default/list combined fixture passes end to end.
+- [*] Empty lists require expected type.
+- [*] Generic covariance remains rejected.
+- [*] Large lists fail before proportional allocation.
+- [*] Record/default/list combined fixture passes end to end.
 
 ### Stage 4 validation
 
-- [ ] Records, defaults, nullability, and lists are complete vertical slices.
-- [ ] Every newly accepted parser form has public reader/probe evidence.
-- [ ] Stage 2–3 suites remain green.
+- [*] Records, defaults, nullability, and lists are complete vertical slices.
+- [*] Every newly accepted parser form has public reader/probe evidence.
+- [*] Stage 2–3 suites remain green.
 
 ---
 

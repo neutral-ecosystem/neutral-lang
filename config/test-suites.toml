@@ -32,10 +32,10 @@ fuzz_smoke = 1
 unit = 1
 smoke = 1
 integration = 2
-system = 5
-conformance = 14
-property = 10
-security = 8
+system = 6
+conformance = 16
+property = 11
+security = 9
 fuzz_smoke = 1
 
 [planned]

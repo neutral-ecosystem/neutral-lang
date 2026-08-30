@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# The active stage selects the completed Stage 4 Slice 4.2 vertical extension.
+# The active stage selects the completed Stage 4 Slice 4.3 vertical extension.
 # Advancing this value requires its complete vertical slice and reviewed evidence.
 active_stage = 4
-active_step = 2
+active_step = 3

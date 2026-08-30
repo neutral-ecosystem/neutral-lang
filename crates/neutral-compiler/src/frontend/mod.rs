@@ -59,6 +59,8 @@ enum TokenKind {
     Module,
     /// The `record` nominal-type declaration keyword.
     Record,
+    /// The `List` invariant generic type constructor.
+    List,
     /// The `num` core-type keyword.
     Num,
     /// The `string` core-type keyword.
@@ -89,6 +91,14 @@ enum TokenKind {
     CloseBrace,
     /// Record value field-name separator.
     Colon,
+    /// Generic type-argument opening delimiter.
+    Less,
+    /// Generic type-argument closing delimiter.
+    Greater,
+    /// List value opening delimiter.
+    OpenBracket,
+    /// List value closing delimiter.
+    CloseBracket,
     /// Required record field terminator.
     Comma,
     /// An original physical newline before layout normalization.
@@ -232,7 +242,7 @@ pub(super) struct ParsedBinding {
     pub(super) value_span: ByteSpan,
 }
 
-/// Compiler-private scalar type syntax active through Slice 3.4.
+/// Compiler-private type syntax active through Slice 4.3.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum ParsedType {
     /// Exact numeric type.
@@ -245,9 +255,11 @@ pub(super) enum ParsedType {
     Record(String),
     /// Exactly one outer nullable layer around a supported type.
     Nullable(Box<ParsedType>),
+    /// Invariant ordered list element type.
+    List(Box<ParsedType>),
 }
 
-/// Compiler-private scalar literal active through Slice 3.4.
+/// Compiler-private contextual value syntax active through Slice 4.3.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum ParsedValue {
     /// Minimal digits-only number spelling.
@@ -260,8 +272,19 @@ pub(super) enum ParsedValue {
     Null,
     /// Contextual record value with explicit fields.
     Record(Vec<ParsedValueField>),
+    /// Ordered list value with contextually typed items.
+    List(Vec<ParsedListItem>),
     /// Unqualified name candidate, accepted only for later semantic rejection.
     Name(String),
+}
+
+/// One compiler-private list item with its exact source ownership.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct ParsedListItem {
+    /// Recursively parsed contextual item value.
+    pub(super) value: ParsedValue,
+    /// Exact item value span.
+    pub(super) span: ByteSpan,
 }
 
 /// One compiler-private explicit contextual-record value field.
@@ -307,6 +330,8 @@ enum FrontendErrorKind {
     UnterminatedStringLiteral,
     /// A record/declaration/depth limit was exceeded during bounded parsing.
     RecordLimitExceeded,
+    /// A list item/depth/traversal limit was exceeded during bounded parsing.
+    ListLimitExceeded,
     /// Source is invalid or beyond the currently active minimal slice.
     Other,
 }
@@ -384,10 +409,20 @@ impl FrontendError {
         }
     }
 
+    /// Creates a stable list-structure resource-limit failure.
+    fn list_limit_exceeded(span: ByteSpan) -> Self {
+        Self {
+            kind: FrontendErrorKind::ListLimitExceeded,
+            span,
+        }
+    }
+
     /// Returns the broad public failure class.
     pub(super) const fn class(&self) -> neutral_core::ResultClass {
         match self.kind {
-            FrontendErrorKind::RecordLimitExceeded => neutral_core::ResultClass::Resource,
+            FrontendErrorKind::RecordLimitExceeded | FrontendErrorKind::ListLimitExceeded => {
+                neutral_core::ResultClass::Resource
+            }
             _ => neutral_core::ResultClass::Syntax,
         }
     }
@@ -404,7 +439,7 @@ impl FrontendError {
             | FrontendErrorKind::UnterminatedStringLiteral => {
                 crate::CompilationFailureDetail::SyntaxRejected
             }
-            FrontendErrorKind::RecordLimitExceeded => {
+            FrontendErrorKind::RecordLimitExceeded | FrontendErrorKind::ListLimitExceeded => {
                 crate::CompilationFailureDetail::ResourceLimitExceeded
             }
             FrontendErrorKind::Other => crate::CompilationFailureDetail::FrontendUnavailable,
@@ -426,12 +461,16 @@ impl FrontendError {
                 diagnostics::UNTERMINATED_STRING_LITERAL
             }
             FrontendErrorKind::RecordLimitExceeded => diagnostics::RECORD_LIMIT_EXCEEDED,
+            FrontendErrorKind::ListLimitExceeded => diagnostics::LIST_LIMIT_EXCEEDED,
             FrontendErrorKind::Other => return Vec::new(),
         };
         let code = DiagnosticCode::new(code).expect("frozen diagnostic code must be valid ASCII");
         vec![Diagnostic::new(
             code,
-            if self.kind == FrontendErrorKind::RecordLimitExceeded {
+            if matches!(
+                self.kind,
+                FrontendErrorKind::RecordLimitExceeded | FrontendErrorKind::ListLimitExceeded
+            ) {
                 DiagnosticLayer::Resource
             } else {
                 DiagnosticLayer::Syntax

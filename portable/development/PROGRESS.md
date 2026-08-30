@@ -2,23 +2,29 @@
 
 # Neutral v0 development progress
 
-Status: Stage 4 Slice 4.2 complete.
+Status: Stage 4 complete through Slice 4.3.
 
 ## Current focus
 
-- Stage: Stage 4, Slice 4.2
-- Status: Closed defaults and omission complete; validation passing
-- Last updated: 2026-08-29
+- Stage: Stage 4, Slice 4.3
+- Status: Ordered lists and Stage 4 validation complete
+- Last updated: 2026-08-30
 
 ## Next actions
 
-- [ ] Continue with Stage 4, Slice 4.3: ordered homogeneous lists.
+- [ ] Continue with Stage 5, Slice 5.1: ordinary immutable value reuse.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-08-30: Completed Stage 4, Slice 4.3 and Stage 4 validation. Added
+  invariant `List<T>` grammar and IR, ordered/empty/nested/nullable lists,
+  closed record-list defaults, list fingerprints and reader/probe traversal,
+  item/depth/traversal limits, grouped fixtures/oracles, and removal of
+  transitional negative cases whose list syntax is now valid v0.
 
 - [*] 2026-08-29: Relocated the obsolete `portable/conformance` README to the
   root conformance asset directory, clarified manifest/oracle/report ownership,
