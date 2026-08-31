@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module reuse_nested
+
+record Config {
+    string image,
+    List<string> labels,
+}
+
+Config config = {
+    image: image,
+    labels: [first_label, second_label],
+}
+string second_label = first_label
+string first_label = "portable"
+string image = "example.invalid/tool:1"

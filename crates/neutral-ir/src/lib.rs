@@ -1135,6 +1135,8 @@ impl SourceMap {
 pub enum ValueOrigin {
     /// Value was written explicitly in captured source.
     ExplicitSource,
+    /// A binding's final logical value was reused from another immutable binding.
+    OrdinaryReuse,
     /// A contextual record field was written explicitly.
     ExplicitRecordField,
     /// An omitted contextual field was materialized from a user-record default.
@@ -1147,6 +1149,7 @@ impl ValueOrigin {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::ExplicitSource => "explicit-source",
+            Self::OrdinaryReuse => "ordinary-reuse",
             Self::ExplicitRecordField => "explicit-record-field",
             Self::UserRecordDefault => "user-record-default",
         }
@@ -1168,6 +1171,8 @@ pub enum Normalization {
     RecordContextualization,
     /// Ordered list items were checked against one contextual element type.
     ListContextualization,
+    /// An ordinary immutable binding name was replaced by its final logical value.
+    ImmutableValueReuse,
 }
 
 /// Provenance record for one minimal binding value.
@@ -1224,6 +1229,51 @@ pub struct FieldProvenanceRecord {
     field_path: Vec<String>,
     /// Whether the field was explicit or supplied by a user default.
     origin: ValueOrigin,
+}
+
+/// Provenance for one ordinary immutable-value reuse edge.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReuseProvenanceRecord {
+    /// Graph-local binding element that owns the reused value occurrence.
+    element_id: ElementId,
+    /// Canonical record-field/list-index path from the binding value root.
+    value_path: Vec<String>,
+    /// Graph-local binding element whose final logical value was reused.
+    source_element_id: ElementId,
+}
+
+impl ReuseProvenanceRecord {
+    /// Creates one validated ordinary immutable-value reuse edge.
+    #[must_use]
+    pub fn new(
+        element_id: ElementId,
+        value_path: Vec<String>,
+        source_element_id: ElementId,
+    ) -> Self {
+        Self {
+            element_id,
+            value_path,
+            source_element_id,
+        }
+    }
+
+    /// Returns the binding that owns the reused value occurrence.
+    #[must_use]
+    pub const fn element_id(&self) -> ElementId {
+        self.element_id
+    }
+
+    /// Returns the canonical path from the owning binding value root.
+    #[must_use]
+    pub fn value_path(&self) -> &[String] {
+        &self.value_path
+    }
+
+    /// Returns the binding whose final logical value was reused.
+    #[must_use]
+    pub const fn source_element_id(&self) -> ElementId {
+        self.source_element_id
+    }
 }
 
 impl FieldProvenanceRecord {
@@ -1540,6 +1590,8 @@ pub struct CompilationArtifacts {
     provenance: Vec<ProvenanceRecord>,
     /// Field-level explicit/default provenance records.
     field_provenance: Vec<FieldProvenanceRecord>,
+    /// Ordinary immutable-value reuse edges.
+    reuse_provenance: Vec<ReuseProvenanceRecord>,
     /// Partitioned derivation manifest.
     derivation: DerivationManifest,
 }
@@ -1558,6 +1610,7 @@ impl CompilationArtifacts {
             source_map,
             provenance,
             field_provenance: Vec::new(),
+            reuse_provenance: Vec::new(),
             derivation,
         }
     }
@@ -1566,6 +1619,13 @@ impl CompilationArtifacts {
     #[must_use]
     pub fn with_field_provenance(mut self, field_provenance: Vec<FieldProvenanceRecord>) -> Self {
         self.field_provenance = field_provenance;
+        self
+    }
+
+    /// Attaches validated ordinary immutable-value reuse provenance.
+    #[must_use]
+    pub fn with_reuse_provenance(mut self, reuse_provenance: Vec<ReuseProvenanceRecord>) -> Self {
+        self.reuse_provenance = reuse_provenance;
         self
     }
 
@@ -1591,6 +1651,12 @@ impl CompilationArtifacts {
     #[must_use]
     pub fn field_provenance(&self) -> &[FieldProvenanceRecord] {
         &self.field_provenance
+    }
+
+    /// Returns deterministic ordinary immutable-value reuse edges.
+    #[must_use]
+    pub fn reuse_provenance(&self) -> &[ReuseProvenanceRecord] {
+        &self.reuse_provenance
     }
 
     /// Returns the partitioned derivation manifest.

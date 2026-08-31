@@ -5,8 +5,8 @@
 //! This crate owns capture contracts, the private frontend and semantic model,
 //! and lowering into public logical IR. Its pure captured-input compilation
 //! path must not use filesystem, process, environment, network, locale, or clock
-//! authority. Stage 2 established captured-input contracts; Stages 3 and 4
-//! extend the private frontend while preserving the same effect-free boundary.
+//! authority. Stage 2 established captured-input contracts; Stages 3 through
+//! 5.1 extend the private frontend while preserving the same effect-free boundary.
 
 use neutral_core::{
     CancellationToken, Diagnostic, ResultClass, SourceContentDigest, StructuralLimits,
@@ -62,12 +62,18 @@ pub mod diagnostics {
     pub const DUPLICATE_VALUE_FIELD: &str = "NEU-VAL-004";
     /// A user-record default was not a closed constant.
     pub const NON_CONSTANT_DEFAULT: &str = "NEU-VAL-005";
+    /// An ordinary immutable value name did not resolve to a declaration.
+    pub const UNKNOWN_VALUE: &str = "NEU-VAL-006";
+    /// Ordinary immutable-value dependencies formed a cycle.
+    pub const VALUE_CYCLE: &str = "NEU-VAL-007";
     /// Decoded string resource-limit diagnostic.
     pub const STRING_LIMIT_EXCEEDED: &str = "NEU-LIM-001";
     /// Record structure resource-limit diagnostic.
     pub const RECORD_LIMIT_EXCEEDED: &str = "NEU-LIM-003";
     /// List item, nesting, or traversal resource-limit diagnostic.
     pub const LIST_LIMIT_EXCEEDED: &str = "NEU-LIM-004";
+    /// Immutable-value dependency traversal exceeded the captured bound.
+    pub const VALUE_TRAVERSAL_LIMIT_EXCEEDED: &str = "NEU-LIM-005";
 }
 
 /// The frozen v0 language-behavior contract used for captured compilation.

@@ -242,7 +242,7 @@ pub(super) struct ParsedBinding {
     pub(super) value_span: ByteSpan,
 }
 
-/// Compiler-private type syntax active through Slice 4.3.
+/// Compiler-private type syntax active through Slice 5.1.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum ParsedType {
     /// Exact numeric type.
@@ -259,7 +259,7 @@ pub(super) enum ParsedType {
     List(Box<ParsedType>),
 }
 
-/// Compiler-private contextual value syntax active through Slice 4.3.
+/// Compiler-private contextual value syntax active through Slice 5.1.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum ParsedValue {
     /// Minimal digits-only number spelling.

@@ -17,7 +17,7 @@ use neutral_ir::{
     DerivationManifest, ElementId, ExactNumber, FieldProvenanceRecord, LogicalDocument,
     LogicalModuleIdentity, LogicalValue, ModuleSymbolIdentity, NominalTypeIdentity, Normalization,
     ProvenanceRecord, RecordFieldSchema, RecordTypeDefinition, RecordValue, RecordValueField,
-    ResolvedType, ResourceFacts, SourceMap, SourceMapEntry, ValueOrigin,
+    ResolvedType, ResourceFacts, ReuseProvenanceRecord, SourceMap, SourceMapEntry, ValueOrigin,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -33,6 +33,8 @@ pub(super) struct SemanticError {
     detail: CompilationFailureDetail,
     /// Diagnostic ownership layer.
     layer: DiagnosticLayer,
+    /// Stable original-byte locations related to the primary failure.
+    related_spans: Vec<ByteSpan>,
 }
 
 impl SemanticError {
@@ -44,6 +46,7 @@ impl SemanticError {
             class: ResultClass::Semantics,
             detail: CompilationFailureDetail::SemanticRejected,
             layer: DiagnosticLayer::Semantics,
+            related_spans: Vec::new(),
         }
     }
 
@@ -55,23 +58,38 @@ impl SemanticError {
             class: ResultClass::Resource,
             detail: CompilationFailureDetail::ResourceLimitExceeded,
             layer: DiagnosticLayer::Resource,
+            related_spans: Vec::new(),
         }
+    }
+
+    /// Attaches deterministic original-byte locations related to the failure.
+    fn with_related_spans(mut self, related_spans: Vec<ByteSpan>) -> Self {
+        self.related_spans = related_spans;
+        self
     }
 
     /// Converts a private semantic failure into a bounded public failure.
     pub(super) fn into_failure(self, source: SourceContentDigest) -> CompilationFailure {
         let code = DiagnosticCode::new(self.code).expect("semantic diagnostic code must be ASCII");
+        let related = self
+            .related_spans
+            .into_iter()
+            .map(|span| SourceLocation::new(source, span))
+            .collect();
         CompilationFailure {
             class: self.class,
             detail: self.detail,
-            diagnostics: vec![Diagnostic::new(
-                code,
-                self.layer,
-                DiagnosticSeverity::Error,
-                SourceLocation::new(source, self.span),
-                Vec::new(),
-                false,
-            )],
+            diagnostics: vec![
+                Diagnostic::new(
+                    code,
+                    self.layer,
+                    DiagnosticSeverity::Error,
+                    SourceLocation::new(source, self.span),
+                    Vec::new(),
+                    false,
+                )
+                .with_related(related),
+            ],
         }
     }
 }
@@ -98,8 +116,18 @@ type LoweredBindings = (
     Vec<SourceMapEntry>,
     Vec<ProvenanceRecord>,
     Vec<FieldProvenanceRecord>,
+    Vec<ReuseProvenanceRecord>,
     u64,
 );
+
+/// One ordinary immutable-value dependency discovered in parsed value syntax.
+#[derive(Clone, Debug)]
+struct ValueDependency {
+    /// Referenced root name.
+    target: String,
+    /// Exact source span of the unqualified name occurrence.
+    span: ByteSpan,
+}
 
 /// One compiler-private resolved field plus its closed-default candidate.
 #[derive(Clone, Debug)]
@@ -124,6 +152,14 @@ struct BindingValueContext<'a> {
     element_id: ElementId,
     /// Accumulated canonical field provenance.
     field_provenance: &'a mut Vec<FieldProvenanceRecord>,
+    /// Final logical values already resolved in dependency order.
+    resolved_values: &'a BTreeMap<String, LogicalValue>,
+    /// Fully resolved binding types indexed by source name.
+    resolved_types: &'a BTreeMap<String, ResolvedType>,
+    /// Stable graph-local identifiers indexed by root name.
+    element_ids: &'a BTreeMap<String, ElementId>,
+    /// Accumulated ordinary immutable-value reuse provenance.
+    reuse_provenance: &'a mut Vec<ReuseProvenanceRecord>,
 }
 
 /// Validates the private model and lowers complete immutable artifacts.
@@ -149,18 +185,35 @@ pub(super) fn lower(
         &element_ids,
         limits,
     )?;
-    let (declarations, binding_entries, mut provenance, field_provenance, decoded_string_bytes) =
-        lower_bindings(
-            &bindings,
-            &root_kinds,
-            &module_identity,
-            &element_ids,
-            &record_definitions,
-            limits,
-        )?;
+    let (
+        declarations,
+        binding_entries,
+        mut provenance,
+        mut field_provenance,
+        mut reuse_provenance,
+        decoded_string_bytes,
+    ) = lower_bindings(
+        &bindings,
+        &root_kinds,
+        &module_identity,
+        &element_ids,
+        &record_definitions,
+        limits,
+    )?;
     source_entries.extend(binding_entries);
     source_entries.sort_by_key(|entry| entry.element_id());
     provenance.sort_by_key(|record| record.element_id());
+    field_provenance.sort_by(|left, right| {
+        left.element_id()
+            .cmp(&right.element_id())
+            .then_with(|| left.field_path().cmp(right.field_path()))
+    });
+    reuse_provenance.sort_by(|left, right| {
+        left.element_id()
+            .cmp(&right.element_id())
+            .then_with(|| left.value_path().cmp(right.value_path()))
+            .then_with(|| left.source_element_id().cmp(&right.source_element_id()))
+    });
     let logical_document =
         LogicalDocument::with_record_types(module_identity, record_definitions, declarations);
     let source_byte_length = u64::try_from(source_length).unwrap_or(u64::MAX);
@@ -185,7 +238,8 @@ pub(super) fn lower(
     );
     Ok(
         CompilationArtifacts::new(logical_document, source_map, provenance, derivation)
-            .with_field_provenance(field_provenance),
+            .with_field_provenance(field_provenance)
+            .with_reuse_provenance(reuse_provenance),
     )
 }
 
@@ -308,28 +362,53 @@ fn lower_bindings(
     let mut source_entries = Vec::new();
     let mut provenance = Vec::new();
     let mut field_provenance = Vec::new();
+    let mut reuse_provenance = Vec::new();
     let mut decoded_string_bytes = 0_u64;
-    for (name, binding) in bindings {
-        let resolved_type = resolve_type(
-            &binding.declared_type,
-            binding.type_span,
-            root_kinds,
-            module,
-        )?;
+    let resolved_types = bindings
+        .iter()
+        .map(|(name, binding)| {
+            resolve_type(
+                &binding.declared_type,
+                binding.type_span,
+                root_kinds,
+                module,
+            )
+            .map(|resolved| (name.clone(), resolved))
+        })
+        .collect::<Result<BTreeMap<_, _>, _>>()?;
+    let dependencies = collect_dependency_graph(bindings, root_kinds)?;
+    let order = dependency_order(&dependencies, bindings, limits)?;
+    let mut resolved_values = BTreeMap::new();
+    let mut lowered = BTreeMap::new();
+    for name in order {
+        let binding = &bindings[&name];
+        let resolved_type = &resolved_types[&name];
         let mut context = BindingValueContext {
             records: &record_lookup,
             limits,
-            element_id: element_ids[name],
+            element_id: element_ids[&name],
             field_provenance: &mut field_provenance,
+            resolved_values: &resolved_values,
+            resolved_types: &resolved_types,
+            element_ids,
+            reuse_provenance: &mut reuse_provenance,
         };
         let mut field_path = Vec::new();
         let (value, normalization, decoded_bytes) = lower_value(
-            &resolved_type,
+            resolved_type,
             &binding.value,
             binding.value_span,
             &mut field_path,
             &mut context,
         )?;
+        resolved_values.insert(name.clone(), value.clone());
+        lowered.insert(name, (value, normalization, decoded_bytes));
+    }
+    for (name, binding) in bindings {
+        let resolved_type = resolved_types[name].clone();
+        let (value, normalization, decoded_bytes) = lowered
+            .remove(name)
+            .expect("dependency ordering must lower every collected binding");
         decoded_string_bytes = decoded_string_bytes.saturating_add(decoded_bytes);
         let fingerprint = DeclarationFingerprint::for_binding(&resolved_type, &value)
             .map_err(|_| SemanticError::semantic(diagnostics::TYPE_MISMATCH, binding.value_span))?;
@@ -351,7 +430,11 @@ fn lower_bindings(
         ));
         provenance.push(ProvenanceRecord::new(
             element_id,
-            ValueOrigin::ExplicitSource,
+            if matches!(binding.value, ParsedValue::Name(_)) {
+                ValueOrigin::OrdinaryReuse
+            } else {
+                ValueOrigin::ExplicitSource
+            },
             normalization,
         ));
     }
@@ -360,8 +443,137 @@ fn lower_bindings(
         source_entries,
         provenance,
         field_provenance,
+        reuse_provenance,
         decoded_string_bytes,
     ))
+}
+
+/// Collects and validates every ordinary immutable-value dependency edge.
+fn collect_dependency_graph(
+    bindings: &BTreeMap<String, ParsedBinding>,
+    root_kinds: &BTreeMap<String, RootKind>,
+) -> Result<BTreeMap<String, Vec<ValueDependency>>, SemanticError> {
+    bindings
+        .iter()
+        .map(|(name, binding)| {
+            let mut dependencies = Vec::new();
+            collect_value_dependencies(&binding.value, binding.value_span, &mut dependencies);
+            for dependency in &dependencies {
+                match root_kinds.get(&dependency.target) {
+                    Some(RootKind::Binding) => {}
+                    Some(RootKind::Record) => {
+                        return Err(SemanticError::semantic(
+                            diagnostics::WRONG_DECLARATION_KIND,
+                            dependency.span,
+                        ));
+                    }
+                    None => {
+                        return Err(SemanticError::semantic(
+                            diagnostics::UNKNOWN_VALUE,
+                            dependency.span,
+                        ));
+                    }
+                }
+            }
+            Ok((name.clone(), dependencies))
+        })
+        .collect()
+}
+
+/// Collects name occurrences recursively while preserving deterministic source order.
+fn collect_value_dependencies(
+    value: &ParsedValue,
+    span: ByteSpan,
+    dependencies: &mut Vec<ValueDependency>,
+) {
+    match value {
+        ParsedValue::Name(target) => dependencies.push(ValueDependency {
+            target: target.clone(),
+            span,
+        }),
+        ParsedValue::Record(fields) => {
+            for field in fields {
+                collect_value_dependencies(&field.value, field.value_span, dependencies);
+            }
+        }
+        ParsedValue::List(items) => {
+            for item in items {
+                collect_value_dependencies(&item.value, item.span, dependencies);
+            }
+        }
+        ParsedValue::Number(_)
+        | ParsedValue::String(_)
+        | ParsedValue::Boolean(_)
+        | ParsedValue::Null => {}
+    }
+}
+
+/// Produces a deterministic dependency-first binding order and rejects cycles.
+fn dependency_order(
+    graph: &BTreeMap<String, Vec<ValueDependency>>,
+    bindings: &BTreeMap<String, ParsedBinding>,
+    limits: StructuralLimits,
+) -> Result<Vec<String>, SemanticError> {
+    let mut visiting = BTreeSet::new();
+    let mut visited = BTreeSet::new();
+    let mut order = Vec::new();
+    let mut traversed = 0_u64;
+    for root in graph.keys() {
+        if visited.contains(root) {
+            continue;
+        }
+        traversed = traversed.saturating_add(1);
+        if traversed > limits.traversal_nodes() {
+            return Err(SemanticError::resource(
+                diagnostics::VALUE_TRAVERSAL_LIMIT_EXCEEDED,
+                bindings[root].value_span,
+            ));
+        }
+        visiting.insert(root.clone());
+        let mut stack = vec![(root.clone(), 0_usize)];
+        while let Some((name, dependency_index)) = stack.last().cloned() {
+            let dependencies = &graph[&name];
+            if dependency_index == dependencies.len() {
+                stack.pop();
+                visiting.remove(&name);
+                visited.insert(name.clone());
+                order.push(name);
+                continue;
+            }
+            stack
+                .last_mut()
+                .expect("the inspected dependency frame must remain active")
+                .1 += 1;
+            let dependency = dependencies[dependency_index].clone();
+            if visited.contains(&dependency.target) {
+                continue;
+            }
+            if visiting.contains(&dependency.target) {
+                let cycle_start = stack
+                    .iter()
+                    .position(|(candidate, _)| candidate == &dependency.target)
+                    .expect("visiting dependency must occur in the active stack");
+                let related_spans = stack[cycle_start..]
+                    .iter()
+                    .map(|(cycle_name, _)| bindings[cycle_name].value_span)
+                    .collect();
+                return Err(
+                    SemanticError::semantic(diagnostics::VALUE_CYCLE, dependency.span)
+                        .with_related_spans(related_spans),
+                );
+            }
+            traversed = traversed.saturating_add(1);
+            if traversed > limits.traversal_nodes() {
+                return Err(SemanticError::resource(
+                    diagnostics::VALUE_TRAVERSAL_LIMIT_EXCEEDED,
+                    dependency.span,
+                ));
+            }
+            visiting.insert(dependency.target.clone());
+            stack.push((dependency.target, 0));
+        }
+    }
+    Ok(order)
 }
 
 /// Validates one root name against its required frozen category.
@@ -653,6 +865,34 @@ fn lower_value(
     context: &mut BindingValueContext<'_>,
 ) -> Result<(LogicalValue, Normalization, u64), SemanticError> {
     match (expected, value) {
+        (_, ParsedValue::Name(name)) => {
+            let source_type = context
+                .resolved_types
+                .get(name)
+                .expect("dependency collection validates every reused binding name");
+            if !reuse_type_is_compatible(expected, source_type) {
+                return Err(SemanticError::semantic(
+                    diagnostics::TYPE_MISMATCH,
+                    value_span,
+                ));
+            }
+            let source_value = context
+                .resolved_values
+                .get(name)
+                .expect("dependency order resolves reused values before their consumers")
+                .clone();
+            context.reuse_provenance.push(ReuseProvenanceRecord::new(
+                context.element_id,
+                field_path.clone(),
+                context.element_ids[name],
+            ));
+            let decoded_bytes = logical_string_bytes(&source_value);
+            Ok((
+                source_value,
+                Normalization::ImmutableValueReuse,
+                decoded_bytes,
+            ))
+        }
         (ResolvedType::Nullable(_), ParsedValue::Null) => {
             Ok((LogicalValue::Null, Normalization::NullIdentity, 0))
         }
@@ -723,6 +963,12 @@ fn lower_value(
             value_span,
         )),
     }
+}
+
+/// Returns whether one final binding type may be reused at a contextual type.
+fn reuse_type_is_compatible(expected: &ResolvedType, source: &ResolvedType) -> bool {
+    expected == source
+        || matches!(expected, ResolvedType::Nullable(inner) if inner.as_ref() == source)
 }
 
 /// Validates and lowers one contextual record value in canonical field order.

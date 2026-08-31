@@ -378,20 +378,20 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Slice 5.1: ordinary immutable value reuse
 
-- [ ] Activate forward/transitive/nested reuse, unknown/wrong-kind, cycle, and
+- [*] Activate forward/transitive/nested reuse, unknown/wrong-kind, cycle, and
       traversal-limit fixtures.
-- [ ] Add unqualified name value grammar only now.
-- [ ] Resolve after declaration collection and build the value-dependency graph.
-- [ ] Detect every cycle deterministically with stable primary/related spans.
-- [ ] Lower the final logical value and reuse provenance, not a reuse value kind.
-- [ ] Expose final value/provenance through reader/probe.
+- [*] Add unqualified name value grammar only now.
+- [*] Resolve after declaration collection and build the value-dependency graph.
+- [*] Detect every cycle deterministically with stable primary/related spans.
+- [*] Lower the final logical value and reuse provenance, not a reuse value kind.
+- [*] Expose final value/provenance through reader/probe.
 
 #### Slice validation
 
-- [ ] Forward reuse works independent of declaration order.
-- [ ] Direct/indirect cycles fail with no IR.
-- [ ] Deep chains are bounded.
-- [ ] Fingerprints use final logical definitions as frozen.
+- [*] Forward reuse works independent of declaration order.
+- [*] Direct/indirect cycles fail with no IR.
+- [*] Deep chains are bounded.
+- [*] Fingerprints use final logical definitions as frozen.
 
 ### Slice 5.2: typed identity references and recursion boundary
 

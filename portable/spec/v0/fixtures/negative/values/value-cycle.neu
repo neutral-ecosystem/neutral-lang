@@ -1,5 +1,0 @@
-neu "0.1"
-module fixture_value_cycle
-
-string first = second
-string second = first

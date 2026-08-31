@@ -2,23 +2,33 @@
 
 # Neutral v0 development progress
 
-Status: Stage 4 complete through Slice 4.3.
+Status: Stage 5 complete through Slice 5.1.
 
 ## Current focus
 
-- Stage: Stage 4, Slice 4.3
-- Status: Ordered lists and Stage 4 validation complete
-- Last updated: 2026-08-30
+- Stage: Stage 5, Slice 5.1
+- Status: Ordinary immutable-value reuse complete
+- Last updated: 2026-08-31
 
 ## Next actions
 
-- [ ] Continue with Stage 5, Slice 5.1: ordinary immutable value reuse.
+- [ ] Continue with Stage 5, Slice 5.2: typed identity references and the
+      recursion boundary.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-08-31: Completed Stage 5, Slice 5.1. Activated unqualified immutable
+  value reuse after full declaration collection; added deterministic dependency
+  ordering, forward/transitive/nested reuse, exact outer-nullable widening,
+  invariant container checks, bounded chains, stable unknown/wrong-kind/cycle
+  diagnostics with primary and related locations, final-value fingerprints,
+  explicit reuse provenance, hostile-reader validation, probe exposure, and
+  frozen grouped Stage 5 fixtures/oracles. Identity references remain inactive
+  for Slice 5.2.
 
 - [*] 2026-08-30: Completed Stage 4, Slice 4.3 and Stage 4 validation. Added
   invariant `List<T>` grammar and IR, ordered/empty/nested/nullable lists,

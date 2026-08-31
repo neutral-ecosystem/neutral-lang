@@ -7,7 +7,7 @@ schema_version = 1
 status = "approved"
 source_fixture_root = "portable/spec/v0/fixtures"
 reviewers = ["repository owner"]
-unresolved_oracle_count = 11
+unresolved_oracle_count = 8
 
 [[fixture]]
 id = "number-fraction"
@@ -331,7 +331,7 @@ source_sha256 = "c0b88e7b8f1cbf1c1e9ae77f30487ec9894eab9c6b662e791295f654afe2817
 expected_outcome = "accept"
 active_from_stage = 4
 required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "probe-summary"]
-review_status = "oracle-unassigned"
+review_status = "oracle-approved"
 
 [[fixture]]
 id = "immutable-value-reuse"
@@ -344,21 +344,21 @@ review_status = "oracle-unassigned"
 
 [[fixture]]
 id = "generic-covariance"
-source = "portable/spec/v0/fixtures/negative/vocabulary/generic-covariance.neu"
-source_sha256 = "eabec5f32ecfc44f2dc3d329bce521ef448a68402b88bb7764dfc85c7a9702dc"
+source = "portable/spec/v0/fixtures/negative/reuse/generic-covariance.neu"
+source_sha256 = "d6c42e928c9928e37bb6d0afa24368bf2117e2f964796d22cc7e24ead93061c8"
 expected_outcome = "reject"
 active_from_stage = 5
 required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
-review_status = "oracle-unassigned"
+review_status = "oracle-approved"
 
 [[fixture]]
 id = "value-cycle"
-source = "portable/spec/v0/fixtures/negative/values/value-cycle.neu"
-source_sha256 = "b42852f08784010b5c50388f94c288705c8c741f1fff6f73356208755bf5caab"
+source = "portable/spec/v0/fixtures/negative/reuse/indirect-cycle.neu"
+source_sha256 = "1220fc95cc27e48888839b71cd3dcf7d128a3dddc884883c07480b72c65b9067"
 expected_outcome = "reject"
 active_from_stage = 5
 required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
-review_status = "oracle-unassigned"
+review_status = "oracle-approved"
 
 [[fixture]]
 id = "vocabulary-name-collision"
@@ -736,4 +736,67 @@ source_sha256 = "7349d28e27ea28ed2faa6f13ae6cda5b2be73795383a9bd41deb990c8def371
 expected_outcome = "reject"
 active_from_stage = 4
 required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "forward-transitive-reuse"
+source = "portable/spec/v0/fixtures/positive/reuse/forward-transitive.neu"
+source_sha256 = "628ad15a6f2355fcfdc439da780bc25c5d1b33951cc80377498712ee6342e470"
+expected_outcome = "accept"
+active_from_stage = 5
+required_oracles = ["logical-ir", "reuse-provenance", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "nested-reuse"
+source = "portable/spec/v0/fixtures/positive/reuse/nested-reuse.neu"
+source_sha256 = "c21d93406f49bb8fdb8fc5e9575570c1021f2d069b74acc68f07d2babe8a5113"
+expected_outcome = "accept"
+active_from_stage = 5
+required_oracles = ["logical-ir", "reuse-provenance", "field-provenance", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "nullable-reuse"
+source = "portable/spec/v0/fixtures/positive/reuse/nullable-widening.neu"
+source_sha256 = "2c94f7e750f47e4b5a415ad9725a4407d385e9ec870d97c961a3ee1d160ba5ea"
+expected_outcome = "accept"
+active_from_stage = 5
+required_oracles = ["logical-ir", "reuse-provenance", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "unknown-reused-value"
+source = "portable/spec/v0/fixtures/negative/reuse/unknown-value.neu"
+source_sha256 = "4a049688dc395a58d53dd52f883b20b32a4d6722eb8edcd96b8934498c534b8d"
+expected_outcome = "reject"
+active_from_stage = 5
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "wrong-kind-reused-value"
+source = "portable/spec/v0/fixtures/negative/reuse/wrong-kind.neu"
+source_sha256 = "8a0526b2f2860ae9287443b3df2f7935f614089c2e2a46ec918175df8cf00d15"
+expected_outcome = "reject"
+active_from_stage = 5
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "direct-value-cycle"
+source = "portable/spec/v0/fixtures/negative/reuse/direct-cycle.neu"
+source_sha256 = "e51e7b4f81c332469004fea19adb287c22a9be093f58bdfad9994fa0592f801a"
+expected_outcome = "reject"
+active_from_stage = 5
+required_oracles = ["failure-class", "stable-diagnostic", "primary-related-spans"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "reuse-traversal-limit"
+source = "portable/spec/v0/fixtures/negative/reuse/traversal-limit.neu"
+source_sha256 = "c6b803de99d0a22d0933fb3a6a81aacb5100b88527e3484563bd8525140b7570"
+expected_outcome = "reject"
+active_from_stage = 5
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span", "resource-limit"]
 review_status = "oracle-approved"

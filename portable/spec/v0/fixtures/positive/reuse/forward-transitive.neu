@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module reuse_forward
+
+string final_image = intermediate_image
+string intermediate_image = image
+string image = "example.invalid/tool:1"

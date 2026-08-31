@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "stage4-complete-fixtures-frozen"
+status = "stage5-slice1-complete-fixtures-frozen"
 
 # No source behavior is active in Stage 1. These entries are an inventory only;
 # they are not executable compiler expectations until their listed stage.
@@ -182,8 +182,9 @@ status = "planned"
 [[case]]
 id = "defaults-compatibility"
 fixture = "portable/spec/v0/fixtures/positive/values/defaults-compatibility.neu"
+oracle = "conformance/oracles/stage5/defaults-compatibility.toml"
 active_from_stage = 4
-status = "planned"
+status = "frozen"
 
 [[case]]
 id = "vocabulary-name-collision"
@@ -213,9 +214,10 @@ status = "frozen"
 
 [[case]]
 id = "value-cycle"
-fixture = "portable/spec/v0/fixtures/negative/values/value-cycle.neu"
+fixture = "portable/spec/v0/fixtures/negative/reuse/indirect-cycle.neu"
+oracle = "conformance/oracles/stage5/indirect-cycle.toml"
 active_from_stage = 5
-status = "planned"
+status = "frozen"
 
 [[case]]
 id = "reassignment"
@@ -250,9 +252,10 @@ status = "planned"
 
 [[case]]
 id = "generic-covariance"
-fixture = "portable/spec/v0/fixtures/negative/vocabulary/generic-covariance.neu"
+fixture = "portable/spec/v0/fixtures/negative/reuse/generic-covariance.neu"
+oracle = "conformance/oracles/stage5/generic-covariance.toml"
 active_from_stage = 5
-status = "planned"
+status = "frozen"
 
 [[case]]
 id = "number-fraction"
@@ -560,4 +563,53 @@ id = "list-traversal-limit"
 fixture = "portable/spec/v0/fixtures/negative/lists/traversal-limit.neu"
 oracle = "conformance/oracles/stage4/list-traversal-limit.toml"
 active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "forward-transitive-reuse"
+fixture = "portable/spec/v0/fixtures/positive/reuse/forward-transitive.neu"
+oracle = "conformance/oracles/stage5/forward-transitive.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "nested-reuse"
+fixture = "portable/spec/v0/fixtures/positive/reuse/nested-reuse.neu"
+oracle = "conformance/oracles/stage5/nested-reuse.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "nullable-reuse"
+fixture = "portable/spec/v0/fixtures/positive/reuse/nullable-widening.neu"
+oracle = "conformance/oracles/stage5/nullable-widening.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "unknown-reused-value"
+fixture = "portable/spec/v0/fixtures/negative/reuse/unknown-value.neu"
+oracle = "conformance/oracles/stage5/unknown-value.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "wrong-kind-reused-value"
+fixture = "portable/spec/v0/fixtures/negative/reuse/wrong-kind.neu"
+oracle = "conformance/oracles/stage5/wrong-kind.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "direct-value-cycle"
+fixture = "portable/spec/v0/fixtures/negative/reuse/direct-cycle.neu"
+oracle = "conformance/oracles/stage5/direct-cycle.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reuse-traversal-limit"
+fixture = "portable/spec/v0/fixtures/negative/reuse/traversal-limit.neu"
+oracle = "conformance/oracles/stage5/traversal-limit.toml"
+active_from_stage = 5
 status = "frozen"

@@ -311,6 +311,8 @@ pub struct Diagnostic {
     severity: DiagnosticSeverity,
     /// The primary exact source location.
     primary: SourceLocation,
+    /// Deterministically ordered source locations related to the primary failure.
+    related: Vec<SourceLocation>,
     /// Deterministic safe values used to render the diagnostic.
     parameters: Vec<String>,
     /// Whether detail was bounded by a configured limit.
@@ -323,6 +325,7 @@ impl Ord for Diagnostic {
         self.primary
             .cmp(&other.primary)
             .then_with(|| self.code.cmp(&other.code))
+            .then_with(|| self.related.cmp(&other.related))
             .then_with(|| self.parameters.cmp(&other.parameters))
             .then_with(|| self.layer.cmp(&other.layer))
             .then_with(|| self.severity.cmp(&other.severity))
@@ -353,9 +356,25 @@ impl Diagnostic {
             layer,
             severity,
             primary,
+            related: Vec::new(),
             parameters,
             truncated,
         }
+    }
+
+    /// Attaches deterministic source locations related to the primary failure.
+    #[must_use]
+    pub fn with_related(mut self, mut related: Vec<SourceLocation>) -> Self {
+        related.sort();
+        related.dedup();
+        self.related = related;
+        self
+    }
+
+    /// Returns deterministic source locations related to the primary failure.
+    #[must_use]
+    pub fn related(&self) -> &[SourceLocation] {
+        &self.related
     }
 
     /// Returns the stable diagnostic code.

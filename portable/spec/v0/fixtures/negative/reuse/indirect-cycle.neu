@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module reuse_indirect_cycle
+
+string first = second
+string second = third
+string third = first

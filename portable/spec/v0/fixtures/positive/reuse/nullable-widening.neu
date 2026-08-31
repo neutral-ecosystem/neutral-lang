@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module reuse_nullable
+
+string? optional_image = image
+string image = "example.invalid/tool:1"

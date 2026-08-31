@@ -104,6 +104,8 @@ pub enum ReaderError {
     InvalidRecordSchema,
     /// Field provenance was dangling, duplicated, or used an invalid origin.
     InvalidFieldProvenance,
+    /// Reuse provenance was dangling, duplicated, or inconsistent with final values.
+    InvalidReuseProvenance,
 }
 
 /// Validates relationships among logical declarations and companion artifacts.
@@ -154,7 +156,106 @@ fn validate_artifacts(artifacts: &CompilationArtifacts) -> Result<(), ReaderErro
         }
     }
     validate_field_provenance(artifacts, &records)?;
+    validate_reuse_provenance(artifacts, &records)?;
     Ok(())
+}
+
+/// Validates immutable-value reuse ownership, paths, targets, types, and values.
+fn validate_reuse_provenance(
+    artifacts: &CompilationArtifacts,
+    records: &BTreeMap<&str, &RecordTypeDefinition>,
+) -> Result<(), ReaderError> {
+    let declarations = artifacts
+        .logical_document()
+        .declarations()
+        .iter()
+        .map(|declaration| (declaration.element_id(), declaration))
+        .collect::<BTreeMap<_, _>>();
+    let mut observed = BTreeSet::new();
+    for provenance in artifacts.reuse_provenance() {
+        let Some(owner) = declarations.get(&provenance.element_id()) else {
+            return Err(ReaderError::InvalidReuseProvenance);
+        };
+        let Some(source) = declarations.get(&provenance.source_element_id()) else {
+            return Err(ReaderError::InvalidReuseProvenance);
+        };
+        let Some((expected, value)) = value_at_path(
+            owner.resolved_type(),
+            owner.value(),
+            provenance.value_path(),
+            records,
+        ) else {
+            return Err(ReaderError::InvalidReuseProvenance);
+        };
+        if !observed.insert((provenance.element_id(), provenance.value_path().to_vec()))
+            || !reuse_type_is_compatible(expected, source.resolved_type())
+            || value != source.value()
+        {
+            return Err(ReaderError::InvalidReuseProvenance);
+        }
+    }
+    for provenance in artifacts.provenance() {
+        let root_reuse = observed.contains(&(provenance.element_id(), Vec::new()));
+        if matches!(
+            (provenance.origin(), provenance.normalization(), root_reuse),
+            (
+                ValueOrigin::OrdinaryReuse,
+                neutral_ir::Normalization::ImmutableValueReuse,
+                true
+            )
+        ) {
+            continue;
+        }
+        if provenance.origin() == ValueOrigin::OrdinaryReuse
+            || provenance.normalization() == neutral_ir::Normalization::ImmutableValueReuse
+            || root_reuse
+        {
+            return Err(ReaderError::InvalidReuseProvenance);
+        }
+    }
+    Ok(())
+}
+
+/// Resolves one canonical value path to its contextual type and final value.
+fn value_at_path<'a>(
+    expected: &'a ResolvedType,
+    value: &'a LogicalValue,
+    path: &[String],
+    records: &BTreeMap<&str, &'a RecordTypeDefinition>,
+) -> Option<(&'a ResolvedType, &'a LogicalValue)> {
+    if path.is_empty() {
+        return Some((expected, value));
+    }
+    let expected = match expected {
+        ResolvedType::Nullable(inner) => inner.as_ref(),
+        expected => expected,
+    };
+    let (head, tail) = path.split_first()?;
+    if let (ResolvedType::List(inner), LogicalValue::List(items)) = (expected, value) {
+        let index = head.parse::<usize>().ok()?;
+        return value_at_path(inner, items.get(index)?, tail, records);
+    }
+    let (ResolvedType::Record(identity), LogicalValue::Record(record_value)) = (expected, value)
+    else {
+        return None;
+    };
+    let schema = records.get(identity.name())?;
+    let index = schema
+        .fields()
+        .iter()
+        .position(|field| field.name() == head)?;
+    value_at_path(
+        schema.fields()[index].resolved_type(),
+        record_value.fields()[index].value(),
+        tail,
+        records,
+    )
+}
+
+/// Returns whether a source binding type may satisfy one reuse occurrence.
+fn reuse_type_is_compatible(expected: &ResolvedType, source: &ResolvedType) -> bool {
+    expected == source
+        || matches!(expected, ResolvedType::Nullable(inner) if inner.as_ref() == source)
 }
 
 /// Validates field provenance ownership, paths, uniqueness, and origin kinds.

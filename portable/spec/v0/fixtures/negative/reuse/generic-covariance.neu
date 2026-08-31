@@ -1,5 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+
 neu "0.1"
-module fixture_generic_covariance
+module reuse_generic_covariance
 
 List<string> names = ["one"]
 List<string?> nullable_names = names

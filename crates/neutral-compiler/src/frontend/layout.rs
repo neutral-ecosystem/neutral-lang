@@ -86,7 +86,7 @@ fn is_complete_construct(tokens: &[Token]) -> bool {
             tokens
                 .iter()
                 .any(|token| matches!(token.kind, TokenKind::Equals))
-                && (is_scalar_value(&last.kind)
+                && (is_value_end(&last.kind)
                     || matches!(last.kind, TokenKind::CloseBrace | TokenKind::CloseBracket))
         }
         _ => false,
@@ -106,8 +106,8 @@ fn is_scalar_type(kind: &TokenKind) -> bool {
     )
 }
 
-/// Returns whether a token is an active explicit scalar literal.
-fn is_scalar_value(kind: &TokenKind) -> bool {
+/// Returns whether a token can end one active Stage 5.1 value construct.
+fn is_value_end(kind: &TokenKind) -> bool {
     matches!(
         kind,
         TokenKind::Number(_)
@@ -115,6 +115,8 @@ fn is_scalar_value(kind: &TokenKind) -> bool {
             | TokenKind::True
             | TokenKind::False
             | TokenKind::Null
+            | TokenKind::Identifier(_)
+            | TokenKind::ProtectedName(_)
     )
 }
 
