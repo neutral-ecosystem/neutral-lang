@@ -14,10 +14,11 @@ use neutral_core::{
 };
 use neutral_ir::{
     AcceptancePartition, CompilationArtifacts, Declaration, DeclarationFingerprint,
-    DerivationManifest, ElementId, ExactNumber, FieldProvenanceRecord, LogicalDocument,
-    LogicalModuleIdentity, LogicalValue, ModuleSymbolIdentity, NominalTypeIdentity, Normalization,
-    ProvenanceRecord, RecordFieldSchema, RecordTypeDefinition, RecordValue, RecordValueField,
-    ResolvedType, ResourceFacts, ReuseProvenanceRecord, SourceMap, SourceMapEntry, ValueOrigin,
+    DerivationManifest, ElementId, ExactNumber, FieldProvenanceRecord, IdentityReference,
+    LogicalDocument, LogicalModuleIdentity, LogicalValue, ModuleSymbolIdentity,
+    NominalTypeIdentity, Normalization, ProvenanceRecord, RecordFieldSchema, RecordTypeDefinition,
+    RecordValue, RecordValueField, ReferenceProvenanceRecord, ResolvedType, ResourceFacts,
+    ReuseProvenanceRecord, SourceMap, SourceMapEntry, ValueOrigin,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -58,6 +59,18 @@ impl SemanticError {
             class: ResultClass::Resource,
             detail: CompilationFailureDetail::ResourceLimitExceeded,
             layer: DiagnosticLayer::Resource,
+            related_spans: Vec::new(),
+        }
+    }
+
+    /// Creates one typed identity-reference target failure.
+    fn reference(code: &'static str, span: ByteSpan) -> Self {
+        Self {
+            code,
+            span,
+            class: ResultClass::Reference,
+            detail: CompilationFailureDetail::ReferenceRejected,
+            layer: DiagnosticLayer::Reference,
             related_spans: Vec::new(),
         }
     }
@@ -117,6 +130,7 @@ type LoweredBindings = (
     Vec<ProvenanceRecord>,
     Vec<FieldProvenanceRecord>,
     Vec<ReuseProvenanceRecord>,
+    Vec<ReferenceProvenanceRecord>,
     u64,
 );
 
@@ -160,6 +174,12 @@ struct BindingValueContext<'a> {
     element_ids: &'a BTreeMap<String, ElementId>,
     /// Accumulated ordinary immutable-value reuse provenance.
     reuse_provenance: &'a mut Vec<ReuseProvenanceRecord>,
+    /// Accumulated typed identity-reference provenance.
+    reference_provenance: &'a mut Vec<ReferenceProvenanceRecord>,
+    /// Collected root declaration kinds indexed by source name.
+    root_kinds: &'a BTreeMap<String, RootKind>,
+    /// Owning logical module identity used for target symbol identities.
+    module: &'a LogicalModuleIdentity,
 }
 
 /// Validates the private model and lowers complete immutable artifacts.
@@ -191,6 +211,7 @@ pub(super) fn lower(
         mut provenance,
         mut field_provenance,
         mut reuse_provenance,
+        mut reference_provenance,
         decoded_string_bytes,
     ) = lower_bindings(
         &bindings,
@@ -213,6 +234,12 @@ pub(super) fn lower(
             .cmp(&right.element_id())
             .then_with(|| left.value_path().cmp(right.value_path()))
             .then_with(|| left.source_element_id().cmp(&right.source_element_id()))
+    });
+    reference_provenance.sort_by(|left, right| {
+        left.element_id()
+            .cmp(&right.element_id())
+            .then_with(|| left.value_path().cmp(right.value_path()))
+            .then_with(|| left.target_element_id().cmp(&right.target_element_id()))
     });
     let logical_document =
         LogicalDocument::with_record_types(module_identity, record_definitions, declarations);
@@ -239,7 +266,8 @@ pub(super) fn lower(
     Ok(
         CompilationArtifacts::new(logical_document, source_map, provenance, derivation)
             .with_field_provenance(field_provenance)
-            .with_reuse_provenance(reuse_provenance),
+            .with_reuse_provenance(reuse_provenance)
+            .with_reference_provenance(reference_provenance),
     )
 }
 
@@ -363,6 +391,7 @@ fn lower_bindings(
     let mut provenance = Vec::new();
     let mut field_provenance = Vec::new();
     let mut reuse_provenance = Vec::new();
+    let mut reference_provenance = Vec::new();
     let mut decoded_string_bytes = 0_u64;
     let resolved_types = bindings
         .iter()
@@ -392,6 +421,9 @@ fn lower_bindings(
             resolved_types: &resolved_types,
             element_ids,
             reuse_provenance: &mut reuse_provenance,
+            reference_provenance: &mut reference_provenance,
+            root_kinds,
+            module,
         };
         let mut field_path = Vec::new();
         let (value, normalization, decoded_bytes) = lower_value(
@@ -430,10 +462,10 @@ fn lower_bindings(
         ));
         provenance.push(ProvenanceRecord::new(
             element_id,
-            if matches!(binding.value, ParsedValue::Name(_)) {
-                ValueOrigin::OrdinaryReuse
-            } else {
-                ValueOrigin::ExplicitSource
+            match binding.value {
+                ParsedValue::Name(_) => ValueOrigin::OrdinaryReuse,
+                ParsedValue::Reference { .. } => ValueOrigin::IdentityReference,
+                _ => ValueOrigin::ExplicitSource,
             },
             normalization,
         ));
@@ -444,6 +476,7 @@ fn lower_bindings(
         provenance,
         field_provenance,
         reuse_provenance,
+        reference_provenance,
         decoded_string_bytes,
     ))
 }
@@ -504,7 +537,8 @@ fn collect_value_dependencies(
         ParsedValue::Number(_)
         | ParsedValue::String(_)
         | ParsedValue::Boolean(_)
-        | ParsedValue::Null => {}
+        | ParsedValue::Null
+        | ParsedValue::Reference { .. } => {}
     }
 }
 
@@ -664,6 +698,9 @@ fn resolve_type(
         ParsedType::List(inner) => {
             resolve_type(inner, span, root_kinds, module).map(ResolvedType::list)
         }
+        ParsedType::Ref(inner) => {
+            resolve_type(inner, span, root_kinds, module).map(ResolvedType::reference)
+        }
         ParsedType::Record(name) => match root_kinds.get(name) {
             Some(RootKind::Record) => Ok(ResolvedType::Record(NominalTypeIdentity::new(
                 module.clone(),
@@ -732,7 +769,7 @@ fn embedded_record_target(parsed: &ParsedType) -> Option<&str> {
     match parsed {
         ParsedType::Record(name) => Some(name),
         ParsedType::Nullable(inner) | ParsedType::List(inner) => embedded_record_target(inner),
-        ParsedType::Num | ParsedType::String | ParsedType::Bool => None,
+        ParsedType::Ref(_) | ParsedType::Num | ParsedType::String | ParsedType::Bool => None,
     }
 }
 
@@ -745,7 +782,7 @@ fn lower_closed_default(
     limits: StructuralLimits,
 ) -> Result<(LogicalValue, u64), SemanticError> {
     match (expected, value) {
-        (_, ParsedValue::Name(_)) => Err(SemanticError::semantic(
+        (_, ParsedValue::Name(_) | ParsedValue::Reference { .. }) => Err(SemanticError::semantic(
             diagnostics::NON_CONSTANT_DEFAULT,
             value_span,
         )),
@@ -866,32 +903,7 @@ fn lower_value(
 ) -> Result<(LogicalValue, Normalization, u64), SemanticError> {
     match (expected, value) {
         (_, ParsedValue::Name(name)) => {
-            let source_type = context
-                .resolved_types
-                .get(name)
-                .expect("dependency collection validates every reused binding name");
-            if !reuse_type_is_compatible(expected, source_type) {
-                return Err(SemanticError::semantic(
-                    diagnostics::TYPE_MISMATCH,
-                    value_span,
-                ));
-            }
-            let source_value = context
-                .resolved_values
-                .get(name)
-                .expect("dependency order resolves reused values before their consumers")
-                .clone();
-            context.reuse_provenance.push(ReuseProvenanceRecord::new(
-                context.element_id,
-                field_path.clone(),
-                context.element_ids[name],
-            ));
-            let decoded_bytes = logical_string_bytes(&source_value);
-            Ok((
-                source_value,
-                Normalization::ImmutableValueReuse,
-                decoded_bytes,
-            ))
+            lower_reused_value(expected, name, value_span, field_path, context)
         }
         (ResolvedType::Nullable(_), ParsedValue::Null) => {
             Ok((LogicalValue::Null, Normalization::NullIdentity, 0))
@@ -899,6 +911,19 @@ fn lower_value(
         (ResolvedType::Nullable(inner), value) => {
             lower_value(inner, value, value_span, field_path, context)
         }
+        (
+            ResolvedType::Ref(expected_target_type),
+            ParsedValue::Reference {
+                target,
+                target_span,
+            },
+        ) => lower_reference_value(
+            expected_target_type,
+            target,
+            *target_span,
+            field_path,
+            context,
+        ),
         (ResolvedType::Num, ParsedValue::Number(spelling)) => {
             let number = ExactNumber::from_source(
                 spelling,
@@ -962,6 +987,131 @@ fn lower_value(
             diagnostics::TYPE_MISMATCH,
             value_span,
         )),
+    }
+}
+
+/// Lowers one ordinary binding name to its already-resolved final logical value.
+fn lower_reused_value(
+    expected: &ResolvedType,
+    name: &str,
+    value_span: ByteSpan,
+    field_path: &mut Vec<String>,
+    context: &mut BindingValueContext<'_>,
+) -> Result<(LogicalValue, Normalization, u64), SemanticError> {
+    let source_type = context
+        .resolved_types
+        .get(name)
+        .expect("dependency collection validates every reused binding name");
+    if !reuse_type_is_compatible(expected, source_type) {
+        return Err(SemanticError::semantic(
+            diagnostics::TYPE_MISMATCH,
+            value_span,
+        ));
+    }
+    let source_value = context
+        .resolved_values
+        .get(name)
+        .expect("dependency order resolves reused values before their consumers")
+        .clone();
+    context.reuse_provenance.push(ReuseProvenanceRecord::new(
+        context.element_id,
+        field_path.clone(),
+        context.element_ids[name],
+    ));
+    append_reference_provenance(
+        &source_value,
+        field_path,
+        context.element_id,
+        context.reference_provenance,
+    );
+    let decoded_bytes = logical_string_bytes(&source_value);
+    Ok((
+        source_value,
+        Normalization::ImmutableValueReuse,
+        decoded_bytes,
+    ))
+}
+
+/// Resolves one exact typed identity-reference target without value evaluation.
+fn lower_reference_value(
+    expected_target_type: &ResolvedType,
+    target: &str,
+    target_span: ByteSpan,
+    field_path: &[String],
+    context: &mut BindingValueContext<'_>,
+) -> Result<(LogicalValue, Normalization, u64), SemanticError> {
+    match context.root_kinds.get(target) {
+        Some(RootKind::Binding) => {}
+        Some(RootKind::Record) => {
+            return Err(SemanticError::reference(
+                diagnostics::WRONG_REFERENCE_TARGET_KIND,
+                target_span,
+            ));
+        }
+        None => {
+            return Err(SemanticError::reference(
+                diagnostics::UNKNOWN_REFERENCE_TARGET,
+                target_span,
+            ));
+        }
+    }
+    let actual_target_type = &context.resolved_types[target];
+    if expected_target_type != actual_target_type {
+        return Err(SemanticError::reference(
+            diagnostics::REFERENCE_TARGET_TYPE_MISMATCH,
+            target_span,
+        ));
+    }
+    let target_element_id = context.element_ids[target];
+    context
+        .reference_provenance
+        .push(ReferenceProvenanceRecord::new(
+            context.element_id,
+            field_path.to_vec(),
+            target_element_id,
+        ));
+    Ok((
+        LogicalValue::Reference(IdentityReference::new(
+            target_element_id,
+            ModuleSymbolIdentity::new(context.module.clone(), target),
+            actual_target_type.clone(),
+        )),
+        Normalization::IdentityReferenceResolution,
+        0,
+    ))
+}
+
+/// Copies final identity-edge provenance when an immutable value is reused.
+fn append_reference_provenance(
+    value: &LogicalValue,
+    path: &mut Vec<String>,
+    element_id: ElementId,
+    provenance: &mut Vec<ReferenceProvenanceRecord>,
+) {
+    match value {
+        LogicalValue::Reference(reference) => provenance.push(ReferenceProvenanceRecord::new(
+            element_id,
+            path.clone(),
+            reference.target_element_id(),
+        )),
+        LogicalValue::Record(record) => {
+            for field in record.fields() {
+                path.push(field.name().to_owned());
+                append_reference_provenance(field.value(), path, element_id, provenance);
+                path.pop();
+            }
+        }
+        LogicalValue::List(items) => {
+            for (index, item) in items.iter().enumerate() {
+                path.push(index.to_string());
+                append_reference_provenance(item, path, element_id, provenance);
+                path.pop();
+            }
+        }
+        LogicalValue::Number(_)
+        | LogicalValue::String(_)
+        | LogicalValue::Boolean(_)
+        | LogicalValue::Null => {}
     }
 }
 
@@ -1068,7 +1218,10 @@ fn logical_string_bytes(value: &LogicalValue) -> u64 {
             .iter()
             .map(logical_string_bytes)
             .fold(0_u64, u64::saturating_add),
-        LogicalValue::Number(_) | LogicalValue::Boolean(_) | LogicalValue::Null => 0,
+        LogicalValue::Number(_)
+        | LogicalValue::Boolean(_)
+        | LogicalValue::Null
+        | LogicalValue::Reference(_) => 0,
     }
 }
 

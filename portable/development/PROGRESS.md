@@ -2,24 +2,31 @@
 
 # Neutral v0 development progress
 
-Status: Stage 5 complete through Slice 5.1.
+Status: Stage 5 complete through Slice 5.2.
 
 ## Current focus
 
-- Stage: Stage 5, Slice 5.1
-- Status: Ordinary immutable-value reuse complete
+- Stage: Stage 5, Slice 5.2
+- Status: Typed identity references and recursion boundary complete
 - Last updated: 2026-08-31
 
 ## Next actions
 
-- [ ] Continue with Stage 5, Slice 5.2: typed identity references and the
-      recursion boundary.
+- [ ] Continue with Stage 5, Slice 5.3: alpha-equivalence and graph identity.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-08-31: Completed Stage 5, Slice 5.2. Added invariant `Ref<T>` and
+  `ref(name)` grammar, forward exact-type target resolution, a distinct
+  reference failure class and stable diagnostics, reference-only nominal
+  recursion, identity cycles outside value dependencies, graph-local IR edges
+  with durable-symbol fingerprints, reference provenance, hostile-reader edge
+  validation, ID-based probe traversal, and frozen grouped fixtures/oracles.
+  Ordinary reuse and typed identity references remain distinct end to end.
 
 - [*] 2026-08-31: Completed Stage 5, Slice 5.1. Activated unqualified immutable
   value reuse after full declaration collection; added deterministic dependency

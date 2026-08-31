@@ -6,7 +6,7 @@
 //! and lowering into public logical IR. Its pure captured-input compilation
 //! path must not use filesystem, process, environment, network, locale, or clock
 //! authority. Stage 2 established captured-input contracts; Stages 3 through
-//! 5.1 extend the private frontend while preserving the same effect-free boundary.
+//! 5.2 extend the private frontend while preserving the same effect-free boundary.
 
 use neutral_core::{
     CancellationToken, Diagnostic, ResultClass, SourceContentDigest, StructuralLimits,
@@ -66,6 +66,12 @@ pub mod diagnostics {
     pub const UNKNOWN_VALUE: &str = "NEU-VAL-006";
     /// Ordinary immutable-value dependencies formed a cycle.
     pub const VALUE_CYCLE: &str = "NEU-VAL-007";
+    /// An identity-reference target name did not resolve to a declaration.
+    pub const UNKNOWN_REFERENCE_TARGET: &str = "NEU-REF-001";
+    /// An identity reference targeted a non-binding declaration.
+    pub const WRONG_REFERENCE_TARGET_KIND: &str = "NEU-REF-002";
+    /// An identity-reference target binding had a non-exact resolved type.
+    pub const REFERENCE_TARGET_TYPE_MISMATCH: &str = "NEU-REF-003";
     /// Decoded string resource-limit diagnostic.
     pub const STRING_LIMIT_EXCEEDED: &str = "NEU-LIM-001";
     /// Record structure resource-limit diagnostic.
@@ -225,6 +231,8 @@ pub enum CompilationFailureDetail {
     SyntaxRejected,
     /// Parsed source was rejected by semantic validation.
     SemanticRejected,
+    /// A typed identity-reference target was rejected.
+    ReferenceRejected,
     /// A deterministic captured structural limit was exceeded.
     ResourceLimitExceeded,
 }

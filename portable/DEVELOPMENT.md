@@ -99,22 +99,25 @@ Stage 10: release qualification
 ## Current gate status
 
 Stage 1, the mandatory normative contract freeze, Stage 2, all Stage 3 slices,
-all Stage 4 slices, and Stage 5 Slice 5.1 are complete. The private frontend
+all Stage 4 slices, and Stage 5 Slices 5.1–5.2 are complete. The private frontend
 retains exact nonsemantic trivia, enforces frozen ASCII/token boundaries,
 decodes bounded Unicode strings, and normalizes signed decimal exact numbers
 without floating-point conversion. It supports nullable scalar values with
 explicit typed null and collects one root scope before resolving nominal record
-schemas and contextual
-values, then validates closed scalar/null/record field defaults and materializes
-omitted fields. It also contextually types invariant ordered lists, including
+schemas and contextual values. It validates closed scalar/null/record field
+defaults and materializes omitted fields. It also contextually types invariant
+ordered lists, including
 empty, nested, nullable-element, and closed-default forms, under explicit item,
 depth, and traversal limits. Ordinary immutable values now resolve after root
 collection through a deterministic dependency graph, including forward,
 transitive, nested, and outer-nullable reuse; cycles fail with stable related
 locations, while final values and reuse edges cross IR, reader, and probe
-boundaries. Typed IR, source facts, provenance, reader validation, and probe
-output are covered by frozen oracles. The next work is Stage 5, Slice 5.2:
-typed identity references and the recursion boundary. The approved
+boundaries. Typed identity references now resolve exact binding targets to
+document-local `ElementId` edges without entering value dependencies; only
+`Ref<T>` breaks nominal embedding cycles, and reader/probe consumers validate
+and traverse those typed edges by ID. Typed IR, source facts, provenance,
+reader validation, and probe output are covered by frozen oracles. The next
+work is Stage 5, Slice 5.3: alpha-equivalence and graph identity. The approved
 [freeze manifest](spec/v0/freeze.toml) identifies
 the v0 contract family, and the
 [contract question ledger](development/CONTRACT-QUESTION-LEDGER.md) records the

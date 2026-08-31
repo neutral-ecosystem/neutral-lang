@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module reference_cycle
+
+record Node {
+    Ref<Node>? next,
+}
+
+Node first = { next: ref(second), }
+Node second = { next: ref(first), }

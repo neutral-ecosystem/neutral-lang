@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module reference_wrong_type
+
+record Config {
+    string image,
+}
+
+Ref<Config> selected = ref(label)
+string label = "not a config"

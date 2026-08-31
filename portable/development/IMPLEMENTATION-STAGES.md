@@ -395,21 +395,21 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Slice 5.2: typed identity references and recursion boundary
 
-- [ ] Activate `Ref<T>`, `ref(name)`, forward target, unknown/wrong-kind/type,
+- [*] Activate `Ref<T>`, `ref(name)`, forward target, unknown/wrong-kind/type,
       recursion, and edge-integrity fixtures.
-- [ ] Add reference type/value grammar only now.
-- [ ] Require exact target binding type and exclude identity edges from value
+- [*] Add reference type/value grammar only now.
+- [*] Require exact target binding type and exclude identity edges from value
       dependency.
-- [ ] Permit nominal recursive cycles only through `Ref<T>`.
-- [ ] Lower typed identity edges using graph-local `ElementId` plus provenance.
-- [ ] Expose typed edge traversal through reader/probe.
+- [*] Permit nominal recursive cycles only through `Ref<T>`.
+- [*] Lower typed identity edges using graph-local `ElementId` plus provenance.
+- [*] Expose typed edge traversal through reader/probe.
 
 #### Slice validation
 
-- [ ] Field names/source position add no relationship meaning.
-- [ ] Reader validates target existence/kind/type.
-- [ ] Identity cycles do not become value cycles.
-- [ ] Probe traverses IDs, not parsed strings.
+- [*] Field names/source position add no relationship meaning.
+- [*] Reader validates target existence/kind/type.
+- [*] Identity cycles do not become value cycles.
+- [*] Probe traverses IDs, not parsed strings.
 
 ### Slice 5.3: alpha-equivalence and graph identity
 

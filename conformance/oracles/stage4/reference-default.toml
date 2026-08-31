@@ -4,5 +4,5 @@ fixture = "portable/spec/v0/fixtures/negative/defaults/reference-default.neu"
 fixture_sha256 = "6425e0f2e1fc7857abdf98d54a4828dd103317224333c23b63789691ab7dc991"
 expected_outcome = "reject"
 failure_class = "syntax"
-diagnostic = "NEU-SYN-002"
-primary_span = [113, 114]
+diagnostic = "NEU-SYN-003"
+primary_span = [114, 124]

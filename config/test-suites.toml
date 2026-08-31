@@ -42,9 +42,9 @@ fuzz_smoke = 1
 unit = 1
 smoke = 1
 integration = 2
-system = 7
-conformance = 18
-property = 12
+system = 8
+conformance = 20
+property = 14
 security = 10
 fuzz_smoke = 1
 

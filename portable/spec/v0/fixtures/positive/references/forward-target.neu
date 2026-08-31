@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module reference_forward
+
+record Config {
+    string image,
+}
+
+Ref<Config> selected = ref(config)
+Config config = { image: "example.invalid/tool:1", }

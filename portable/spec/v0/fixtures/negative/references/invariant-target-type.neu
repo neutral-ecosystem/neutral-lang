@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module reference_invariant
+
+Ref<string?> selected = ref(label)
+string label = "not nullable"

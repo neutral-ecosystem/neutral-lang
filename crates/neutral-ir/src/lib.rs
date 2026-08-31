@@ -425,6 +425,8 @@ pub enum ResolvedType {
     Record(NominalTypeIdentity),
     /// Ordered homogeneous list with one invariant element type.
     List(Box<ResolvedType>),
+    /// Typed document-local identity reference with one invariant target type.
+    Ref(Box<ResolvedType>),
     /// One outer nullable layer around an otherwise resolved type.
     Nullable(Box<ResolvedType>),
 }
@@ -440,6 +442,12 @@ impl ResolvedType {
     #[must_use]
     pub fn list(inner: Self) -> Self {
         Self::List(Box::new(inner))
+    }
+
+    /// Wraps one exact resolved target type as a document-local identity reference.
+    #[must_use]
+    pub fn reference(inner: Self) -> Self {
+        Self::Ref(Box::new(inner))
     }
 
     /// Returns whether this type has an outer nullable layer.
@@ -471,6 +479,9 @@ impl ResolvedType {
             (Self::List(expected), LogicalValue::List(items)) => {
                 items.iter().all(|item| expected.accepts_value(item))
             }
+            (Self::Ref(expected), LogicalValue::Reference(reference)) => {
+                expected.as_ref() == reference.target_type()
+            }
             (Self::Nullable(inner), value) => inner.accepts_value(value),
             _ => false,
         }
@@ -486,6 +497,7 @@ impl fmt::Display for ResolvedType {
             Self::Bool => formatter.write_str("bool"),
             Self::Record(identity) => formatter.write_str(identity.name()),
             Self::List(inner) => write!(formatter, "List<{inner}>"),
+            Self::Ref(inner) => write!(formatter, "Ref<{inner}>"),
             Self::Nullable(inner) => write!(formatter, "{inner}?"),
         }
     }
@@ -506,6 +518,8 @@ pub enum LogicalValue {
     Record(RecordValue),
     /// Ordered homogeneous logical values.
     List(Vec<LogicalValue>),
+    /// Typed document-local identity edge to one binding declaration.
+    Reference(IdentityReference),
 }
 
 impl fmt::Display for LogicalValue {
@@ -527,7 +541,55 @@ impl fmt::Display for LogicalValue {
                 }
                 formatter.write_str("]")
             }
+            Self::Reference(reference) => {
+                write!(formatter, "ref(#{})", reference.target_element_id().get())
+            }
         }
+    }
+}
+
+/// One typed document-local identity edge retained in logical IR.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct IdentityReference {
+    /// Authoritative document-local target binding identifier.
+    element_id: ElementId,
+    /// Durable target identity used by fingerprints instead of the local ID.
+    symbol_identity: ModuleSymbolIdentity,
+    /// Redundant exact target-type constraint validated against the declaration.
+    resolved_type: ResolvedType,
+}
+
+impl IdentityReference {
+    /// Creates one typed identity edge after target validation.
+    #[must_use]
+    pub fn new(
+        target_element_id: ElementId,
+        target_symbol_identity: ModuleSymbolIdentity,
+        target_type: ResolvedType,
+    ) -> Self {
+        Self {
+            element_id: target_element_id,
+            symbol_identity: target_symbol_identity,
+            resolved_type: target_type,
+        }
+    }
+
+    /// Returns the authoritative document-local target identifier.
+    #[must_use]
+    pub const fn target_element_id(&self) -> ElementId {
+        self.element_id
+    }
+
+    /// Returns the target's module-symbol continuity identity.
+    #[must_use]
+    pub const fn target_symbol_identity(&self) -> &ModuleSymbolIdentity {
+        &self.symbol_identity
+    }
+
+    /// Returns the redundant exact target-type constraint.
+    #[must_use]
+    pub const fn target_type(&self) -> &ResolvedType {
+        &self.resolved_type
     }
 }
 
@@ -716,6 +778,37 @@ fn logical_value_payload(value: &LogicalValue) -> Result<Vec<u8>, CoreError> {
                 payload.extend(nht_frame("list-item", &logical_value_payload(item)?)?);
             }
             nht_frame("list", &payload)
+        }
+        LogicalValue::Reference(reference) => {
+            let mut payload = Vec::new();
+            payload.extend(nht_frame(
+                "target-language-version",
+                reference
+                    .target_symbol_identity()
+                    .module()
+                    .language_behavior_version()
+                    .as_bytes(),
+            )?);
+            payload.extend(nht_frame(
+                "target-module",
+                reference
+                    .target_symbol_identity()
+                    .module()
+                    .module_name()
+                    .as_bytes(),
+            )?);
+            payload.extend(nht_frame(
+                "target-declaration",
+                reference
+                    .target_symbol_identity()
+                    .declaration_name()
+                    .as_bytes(),
+            )?);
+            payload.extend(nht_frame(
+                "target-type",
+                reference.target_type().to_string().as_bytes(),
+            )?);
+            nht_frame("identity-reference", &payload)
         }
     }
 }
@@ -1137,6 +1230,8 @@ pub enum ValueOrigin {
     ExplicitSource,
     /// A binding's final logical value was reused from another immutable binding.
     OrdinaryReuse,
+    /// A typed identity edge was resolved from explicit `ref(name)` source.
+    IdentityReference,
     /// A contextual record field was written explicitly.
     ExplicitRecordField,
     /// An omitted contextual field was materialized from a user-record default.
@@ -1150,6 +1245,7 @@ impl ValueOrigin {
         match self {
             Self::ExplicitSource => "explicit-source",
             Self::OrdinaryReuse => "ordinary-reuse",
+            Self::IdentityReference => "identity-reference",
             Self::ExplicitRecordField => "explicit-record-field",
             Self::UserRecordDefault => "user-record-default",
         }
@@ -1173,6 +1269,8 @@ pub enum Normalization {
     ListContextualization,
     /// An ordinary immutable binding name was replaced by its final logical value.
     ImmutableValueReuse,
+    /// A `ref(name)` target was resolved to a typed document-local identity edge.
+    IdentityReferenceResolution,
 }
 
 /// Provenance record for one minimal binding value.
@@ -1273,6 +1371,51 @@ impl ReuseProvenanceRecord {
     #[must_use]
     pub const fn source_element_id(&self) -> ElementId {
         self.source_element_id
+    }
+}
+
+/// Provenance for one typed identity-reference edge occurrence.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReferenceProvenanceRecord {
+    /// Graph-local binding element that owns the reference occurrence.
+    element_id: ElementId,
+    /// Canonical record-field/list-index path from the binding value root.
+    value_path: Vec<String>,
+    /// Authoritative graph-local target binding identifier.
+    target_element_id: ElementId,
+}
+
+impl ReferenceProvenanceRecord {
+    /// Creates one validated typed identity-reference provenance edge.
+    #[must_use]
+    pub fn new(
+        element_id: ElementId,
+        value_path: Vec<String>,
+        target_element_id: ElementId,
+    ) -> Self {
+        Self {
+            element_id,
+            value_path,
+            target_element_id,
+        }
+    }
+
+    /// Returns the binding that owns the reference occurrence.
+    #[must_use]
+    pub const fn element_id(&self) -> ElementId {
+        self.element_id
+    }
+
+    /// Returns the canonical path from the owning binding value root.
+    #[must_use]
+    pub fn value_path(&self) -> &[String] {
+        &self.value_path
+    }
+
+    /// Returns the authoritative document-local target binding identifier.
+    #[must_use]
+    pub const fn target_element_id(&self) -> ElementId {
+        self.target_element_id
     }
 }
 
@@ -1592,6 +1735,8 @@ pub struct CompilationArtifacts {
     field_provenance: Vec<FieldProvenanceRecord>,
     /// Ordinary immutable-value reuse edges.
     reuse_provenance: Vec<ReuseProvenanceRecord>,
+    /// Typed identity-reference provenance edges.
+    reference_provenance: Vec<ReferenceProvenanceRecord>,
     /// Partitioned derivation manifest.
     derivation: DerivationManifest,
 }
@@ -1611,6 +1756,7 @@ impl CompilationArtifacts {
             provenance,
             field_provenance: Vec::new(),
             reuse_provenance: Vec::new(),
+            reference_provenance: Vec::new(),
             derivation,
         }
     }
@@ -1626,6 +1772,16 @@ impl CompilationArtifacts {
     #[must_use]
     pub fn with_reuse_provenance(mut self, reuse_provenance: Vec<ReuseProvenanceRecord>) -> Self {
         self.reuse_provenance = reuse_provenance;
+        self
+    }
+
+    /// Attaches validated typed identity-reference provenance.
+    #[must_use]
+    pub fn with_reference_provenance(
+        mut self,
+        reference_provenance: Vec<ReferenceProvenanceRecord>,
+    ) -> Self {
+        self.reference_provenance = reference_provenance;
         self
     }
 
@@ -1659,6 +1815,12 @@ impl CompilationArtifacts {
         &self.reuse_provenance
     }
 
+    /// Returns deterministic typed identity-reference provenance edges.
+    #[must_use]
+    pub fn reference_provenance(&self) -> &[ReferenceProvenanceRecord] {
+        &self.reference_provenance
+    }
+
     /// Returns the partitioned derivation manifest.
     #[must_use]
     pub const fn derivation(&self) -> &DerivationManifest {
@@ -1679,8 +1841,9 @@ pub enum IrError {
 /// Unit tests for public logical IR identity and equality contracts.
 mod tests {
     use super::{
-        DeclarationFingerprint, ExactNumber, LogicalModuleIdentity, LogicalValue,
-        NominalTypeIdentity, RecordValue, RecordValueField, ResolvedType,
+        DeclarationFingerprint, ElementId, ExactNumber, IdentityReference, LogicalModuleIdentity,
+        LogicalValue, ModuleSymbolIdentity, NominalTypeIdentity, RecordValue, RecordValueField,
+        ResolvedType,
     };
 
     #[test]
@@ -1797,5 +1960,29 @@ mod tests {
             )],
         ));
         assert!(!ResolvedType::Record(left).accepts_value(&value));
+    }
+
+    #[test]
+    /// Verifies reference fingerprints use durable target identity, never local IDs.
+    fn reference_fingerprints_ignore_graph_local_element_ids() {
+        let module = LogicalModuleIdentity::new("0.1.0", "references");
+        let symbol = ModuleSymbolIdentity::new(module, "target");
+        let first = LogicalValue::Reference(IdentityReference::new(
+            ElementId::new(1),
+            symbol.clone(),
+            ResolvedType::String,
+        ));
+        let second = LogicalValue::Reference(IdentityReference::new(
+            ElementId::new(99),
+            symbol,
+            ResolvedType::String,
+        ));
+        let reference_type = ResolvedType::reference(ResolvedType::String);
+        assert_eq!(
+            DeclarationFingerprint::for_binding(&reference_type, &first)
+                .expect("first reference fingerprint should succeed"),
+            DeclarationFingerprint::for_binding(&reference_type, &second)
+                .expect("second reference fingerprint should succeed")
+        );
     }
 }

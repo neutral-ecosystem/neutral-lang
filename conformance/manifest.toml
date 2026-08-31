@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "stage5-slice1-complete-fixtures-frozen"
+status = "stage5-slice2-complete-fixtures-frozen"
 
 # No source behavior is active in Stage 1. These entries are an inventory only;
 # they are not executable compiler expectations until their listed stage.
@@ -176,8 +176,9 @@ status = "planned"
 [[case]]
 id = "immutable-value-reuse"
 fixture = "portable/spec/v0/fixtures/positive/values/immutable-value-reuse.neu"
+oracle = "conformance/oracles/stage5/reuse-reference-combined.toml"
 active_from_stage = 5
-status = "planned"
+status = "frozen"
 
 [[case]]
 id = "defaults-compatibility"
@@ -611,5 +612,61 @@ status = "frozen"
 id = "reuse-traversal-limit"
 fixture = "portable/spec/v0/fixtures/negative/reuse/traversal-limit.neu"
 oracle = "conformance/oracles/stage5/traversal-limit.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-forward-target"
+fixture = "portable/spec/v0/fixtures/positive/references/forward-target.neu"
+oracle = "conformance/oracles/stage5/reference-forward-target.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-recursive-cycle"
+fixture = "portable/spec/v0/fixtures/positive/references/recursive-identity-cycle.neu"
+oracle = "conformance/oracles/stage5/reference-recursive-cycle.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-field-neutrality"
+fixture = "portable/spec/v0/fixtures/positive/references/field-name-neutrality.neu"
+oracle = "conformance/oracles/stage5/reference-field-neutrality.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-unknown-target"
+fixture = "portable/spec/v0/fixtures/negative/references/unknown-target.neu"
+oracle = "conformance/oracles/stage5/reference-unknown-target.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-wrong-kind"
+fixture = "portable/spec/v0/fixtures/negative/references/wrong-kind-target.neu"
+oracle = "conformance/oracles/stage5/reference-wrong-kind.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-wrong-type"
+fixture = "portable/spec/v0/fixtures/negative/references/wrong-target-type.neu"
+oracle = "conformance/oracles/stage5/reference-wrong-type.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-invariant-type"
+fixture = "portable/spec/v0/fixtures/negative/references/invariant-target-type.neu"
+oracle = "conformance/oracles/stage5/reference-invariant-type.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-missing-constructor"
+fixture = "portable/spec/v0/fixtures/negative/references/missing-constructor.neu"
+oracle = "conformance/oracles/stage5/reference-missing-constructor.toml"
 active_from_stage = 5
 status = "frozen"

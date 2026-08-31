@@ -60,8 +60,10 @@ fixtures/
   nullable-element, and defaulted lists.
 - The [positive immutable-value reuse fixtures](positive/reuse/) freeze
   forward/transitive resolution, nested reuse, and outer-nullable widening.
-- [immutable-value-reuse.neu](positive/values/immutable-value-reuse.neu) is the
-  planned combined reuse/reference case for Slice 5.2.
+- The [positive typed-reference fixtures](positive/references/) freeze forward
+  targets, nested edges, field-name neutrality, and reference-only recursion.
+- [immutable-value-reuse.neu](positive/values/immutable-value-reuse.neu) freezes
+  the combined ordinary-reuse/reference boundary.
 - [defaults-compatibility.neu](positive/values/defaults-compatibility.neu) covers
   defaults, nullability, lists, and outer nullable widening.
 - [minimal-vocabulary.neu](positive/vocabulary/minimal-vocabulary.neu) proves one captured
@@ -89,6 +91,8 @@ fixtures/
   and item/depth/traversal resource limits.
 - The [negative immutable-value reuse fixtures](negative/reuse/) freeze unknown
   and wrong-kind names, direct/indirect cycles, and invariant list arguments.
+- The [negative typed-reference fixtures](negative/references/) freeze unknown,
+  wrong-kind, wrong-type, invariant-target, and missing-constructor failures.
 - [module-path.neu](negative/vocabulary/module-path.neu): module qualification is absent.
 - [mut-modifier.neu](negative/vocabulary/mut-modifier.neu): mutation is absent.
 - [namespace-declaration.neu](negative/vocabulary/namespace-declaration.neu): namespaces

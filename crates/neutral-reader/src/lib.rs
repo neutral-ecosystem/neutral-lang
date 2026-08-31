@@ -106,6 +106,8 @@ pub enum ReaderError {
     InvalidFieldProvenance,
     /// Reuse provenance was dangling, duplicated, or inconsistent with final values.
     InvalidReuseProvenance,
+    /// A typed identity edge or its provenance was dangling or inconsistent.
+    InvalidReferenceEdge,
 }
 
 /// Validates relationships among logical declarations and companion artifacts.
@@ -157,7 +159,123 @@ fn validate_artifacts(artifacts: &CompilationArtifacts) -> Result<(), ReaderErro
     }
     validate_field_provenance(artifacts, &records)?;
     validate_reuse_provenance(artifacts, &records)?;
+    validate_reference_provenance(artifacts, &records)?;
     Ok(())
+}
+
+/// Validates every typed identity edge and requires exact provenance coverage.
+fn validate_reference_provenance(
+    artifacts: &CompilationArtifacts,
+    records: &BTreeMap<&str, &RecordTypeDefinition>,
+) -> Result<(), ReaderError> {
+    let declarations = artifacts
+        .logical_document()
+        .declarations()
+        .iter()
+        .map(|declaration| (declaration.element_id(), declaration))
+        .collect::<BTreeMap<_, _>>();
+    let root_reuses = artifacts
+        .reuse_provenance()
+        .iter()
+        .filter(|record| record.value_path().is_empty())
+        .map(neutral_ir::ReuseProvenanceRecord::element_id)
+        .collect::<BTreeSet<_>>();
+    let mut observed = BTreeMap::new();
+    for provenance in artifacts.reference_provenance() {
+        let Some(owner) = declarations.get(&provenance.element_id()) else {
+            return Err(ReaderError::InvalidReferenceEdge);
+        };
+        let Some(target) = declarations.get(&provenance.target_element_id()) else {
+            return Err(ReaderError::InvalidReferenceEdge);
+        };
+        let Some((expected, value)) = value_at_path(
+            owner.resolved_type(),
+            owner.value(),
+            provenance.value_path(),
+            records,
+        ) else {
+            return Err(ReaderError::InvalidReferenceEdge);
+        };
+        let expected = match expected {
+            ResolvedType::Nullable(inner) => inner.as_ref(),
+            expected => expected,
+        };
+        let (ResolvedType::Ref(expected_target), LogicalValue::Reference(reference)) =
+            (expected, value)
+        else {
+            return Err(ReaderError::InvalidReferenceEdge);
+        };
+        if reference.target_element_id() != provenance.target_element_id()
+            || reference.target_symbol_identity() != target.symbol_identity()
+            || reference.target_type() != target.resolved_type()
+            || expected_target.as_ref() != target.resolved_type()
+            || observed
+                .insert(
+                    (provenance.element_id(), provenance.value_path().to_vec()),
+                    provenance.target_element_id(),
+                )
+                .is_some()
+        {
+            return Err(ReaderError::InvalidReferenceEdge);
+        }
+    }
+    for declaration in declarations.values() {
+        if !reference_provenance_is_complete(
+            declaration.element_id(),
+            declaration.value(),
+            &mut Vec::new(),
+            &observed,
+        ) {
+            return Err(ReaderError::InvalidReferenceEdge);
+        }
+    }
+    for provenance in artifacts.provenance() {
+        let has_root_reference = observed.contains_key(&(provenance.element_id(), Vec::new()));
+        let expected_direct = has_root_reference && !root_reuses.contains(&provenance.element_id());
+        if expected_direct
+            != matches!(
+                (provenance.origin(), provenance.normalization()),
+                (
+                    ValueOrigin::IdentityReference,
+                    neutral_ir::Normalization::IdentityReferenceResolution
+                )
+            )
+        {
+            return Err(ReaderError::InvalidReferenceEdge);
+        }
+    }
+    Ok(())
+}
+
+/// Returns whether every final logical identity edge has one provenance entry.
+fn reference_provenance_is_complete(
+    element_id: ElementId,
+    value: &LogicalValue,
+    path: &mut Vec<String>,
+    observed: &BTreeMap<(ElementId, Vec<String>), ElementId>,
+) -> bool {
+    match value {
+        LogicalValue::Reference(reference) => observed
+            .get(&(element_id, path.clone()))
+            .is_some_and(|target| *target == reference.target_element_id()),
+        LogicalValue::Record(record) => record.fields().iter().all(|field| {
+            path.push(field.name().to_owned());
+            let complete =
+                reference_provenance_is_complete(element_id, field.value(), path, observed);
+            path.pop();
+            complete
+        }),
+        LogicalValue::List(items) => items.iter().enumerate().all(|(index, item)| {
+            path.push(index.to_string());
+            let complete = reference_provenance_is_complete(element_id, item, path, observed);
+            path.pop();
+            complete
+        }),
+        LogicalValue::Number(_)
+        | LogicalValue::String(_)
+        | LogicalValue::Boolean(_)
+        | LogicalValue::Null => true,
+    }
 }
 
 /// Validates immutable-value reuse ownership, paths, targets, types, and values.
@@ -462,9 +580,10 @@ fn validate_record_schemas(
         for field in record.fields() {
             if previous.is_some_and(|name| name >= field.name())
                 || !resolved_record_targets_exist(field.resolved_type(), records)
-                || field
-                    .default_value()
-                    .is_some_and(|value| !validate_value(field.resolved_type(), value, records))
+                || field.default_value().is_some_and(|value| {
+                    !is_closed_default(value)
+                        || !validate_value(field.resolved_type(), value, records)
+                })
             {
                 return Err(ReaderError::InvalidRecordSchema);
             }
@@ -481,6 +600,22 @@ fn validate_record_schemas(
     Ok(())
 }
 
+/// Returns whether one schema default is recursively closed and reference-free.
+fn is_closed_default(value: &LogicalValue) -> bool {
+    match value {
+        LogicalValue::Record(record) => record
+            .fields()
+            .iter()
+            .all(|field| is_closed_default(field.value())),
+        LogicalValue::List(items) => items.iter().all(is_closed_default),
+        LogicalValue::Reference(_) => false,
+        LogicalValue::Number(_)
+        | LogicalValue::String(_)
+        | LogicalValue::Boolean(_)
+        | LogicalValue::Null => true,
+    }
+}
+
 /// Returns whether every nominal target in one resolved type has an exact schema.
 fn resolved_record_targets_exist(
     resolved_type: &ResolvedType,
@@ -490,7 +625,7 @@ fn resolved_record_targets_exist(
         ResolvedType::Record(identity) => records
             .get(identity.name())
             .is_some_and(|record| record.nominal_identity() == identity),
-        ResolvedType::Nullable(inner) | ResolvedType::List(inner) => {
+        ResolvedType::Nullable(inner) | ResolvedType::List(inner) | ResolvedType::Ref(inner) => {
             resolved_record_targets_exist(inner, records)
         }
         ResolvedType::Num | ResolvedType::String | ResolvedType::Bool => true,
@@ -527,6 +662,8 @@ fn resolved_record_target(resolved_type: &ResolvedType) -> Option<&str> {
     match resolved_type {
         ResolvedType::Record(identity) => Some(identity.name()),
         ResolvedType::Nullable(inner) | ResolvedType::List(inner) => resolved_record_target(inner),
-        ResolvedType::Num | ResolvedType::String | ResolvedType::Bool => None,
+        ResolvedType::Ref(_) | ResolvedType::Num | ResolvedType::String | ResolvedType::Bool => {
+            None
+        }
     }
 }

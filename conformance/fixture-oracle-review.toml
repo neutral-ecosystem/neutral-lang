@@ -7,7 +7,7 @@ schema_version = 1
 status = "approved"
 source_fixture_root = "portable/spec/v0/fixtures"
 reviewers = ["repository owner"]
-unresolved_oracle_count = 8
+unresolved_oracle_count = 7
 
 [[fixture]]
 id = "number-fraction"
@@ -340,7 +340,7 @@ source_sha256 = "5d4c01965db14c30e4696b6a471923df0c2ec1c0e9b89768fc2dffa75b76284
 expected_outcome = "accept"
 active_from_stage = 5
 required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "probe-summary"]
-review_status = "oracle-unassigned"
+review_status = "oracle-approved"
 
 [[fixture]]
 id = "generic-covariance"
@@ -799,4 +799,76 @@ source_sha256 = "c6b803de99d0a22d0933fb3a6a81aacb5100b88527e3484563bd8525140b757
 expected_outcome = "reject"
 active_from_stage = 5
 required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span", "resource-limit"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "reference-forward-target"
+source = "portable/spec/v0/fixtures/positive/references/forward-target.neu"
+source_sha256 = "127315554df67df0216bccd4f921430bc948ed9f7f6c82bf5a74ad5d6022bacb"
+expected_outcome = "accept"
+active_from_stage = 5
+required_oracles = ["logical-ir", "reference-provenance", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "reference-recursive-cycle"
+source = "portable/spec/v0/fixtures/positive/references/recursive-identity-cycle.neu"
+source_sha256 = "10c40bb91ea525dd7967c8c9a400897db6440269c08069926674e2d0b64380fc"
+expected_outcome = "accept"
+active_from_stage = 5
+required_oracles = ["logical-ir", "reference-provenance", "recursion-boundary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "reference-field-neutrality"
+source = "portable/spec/v0/fixtures/positive/references/field-name-neutrality.neu"
+source_sha256 = "1308d6852cbc7ff59e62ecc35d7b1449f321aaeaad71f69cbdc627c2372941df"
+expected_outcome = "accept"
+active_from_stage = 5
+required_oracles = ["logical-ir", "reference-provenance", "probe-summary"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "reference-unknown-target"
+source = "portable/spec/v0/fixtures/negative/references/unknown-target.neu"
+source_sha256 = "eda520663ca34b884eb1f5099464b6176f5b3fc74f9f6016fcc8449845effc72"
+expected_outcome = "reject"
+active_from_stage = 5
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "reference-wrong-kind"
+source = "portable/spec/v0/fixtures/negative/references/wrong-kind-target.neu"
+source_sha256 = "0f6a434b7cdc4b27cd721421ef10e4063e01e26e1dd8065ac586db1fb578bdf4"
+expected_outcome = "reject"
+active_from_stage = 5
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "reference-wrong-type"
+source = "portable/spec/v0/fixtures/negative/references/wrong-target-type.neu"
+source_sha256 = "4af4c8c3488a05a676612871761dffec21132155fe7e17ef5af02f6382529447"
+expected_outcome = "reject"
+active_from_stage = 5
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "reference-invariant-type"
+source = "portable/spec/v0/fixtures/negative/references/invariant-target-type.neu"
+source_sha256 = "4bcd501e5e86e93d4afeba5f5622b7982df2143773f2e0cb254dcf3cfd7c20d0"
+expected_outcome = "reject"
+active_from_stage = 5
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "reference-missing-constructor"
+source = "portable/spec/v0/fixtures/negative/references/missing-constructor.neu"
+source_sha256 = "1eafd994c536daca7e31ca1fe9acab7eebb15a06d2bdd8e2fe47bd48022e8597"
+expected_outcome = "reject"
+active_from_stage = 5
+required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
 review_status = "oracle-approved"

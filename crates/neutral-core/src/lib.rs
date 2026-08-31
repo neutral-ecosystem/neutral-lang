@@ -283,6 +283,8 @@ pub enum DiagnosticLayer {
     Syntax,
     /// Semantic validation.
     Semantics,
+    /// Typed identity-reference target validation.
+    Reference,
     /// Reader-facing consumer or probe observation.
     Consumer,
     /// Resource limits or cancellation.
@@ -662,6 +664,8 @@ pub enum ResultClass {
     Syntax,
     /// Parsed source was rejected by name, type, or value semantics.
     Semantics,
+    /// A typed identity-reference target or edge was invalid.
+    Reference,
     /// The caller cancelled bounded work.
     Cancellation,
     /// A compiler invariant failed without authoritative output.

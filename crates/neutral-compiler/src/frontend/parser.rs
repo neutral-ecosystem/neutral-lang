@@ -222,6 +222,14 @@ impl Parser<'_> {
                     .expect("ordered list type tokens must form a valid span");
                 ParsedType::List(Box::new(inner))
             }
+            TokenKind::RefType => {
+                self.expect_simple(&TokenKind::Less)?;
+                let (inner, _) = self.parse_type()?;
+                let close = self.expect_simple(&TokenKind::Greater)?;
+                type_span = ByteSpan::new(type_span.start(), close.span.end())
+                    .expect("identity-reference type tokens must form a valid span");
+                ParsedType::Ref(Box::new(inner))
+            }
             TokenKind::Identifier(name) | TokenKind::ProtectedName(name) => {
                 ParsedType::Record(name)
             }
@@ -259,11 +267,25 @@ impl Parser<'_> {
             TokenKind::Null => Ok(ParsedValue::Null),
             TokenKind::OpenBrace => self.parse_record_value(token.span, depth),
             TokenKind::OpenBracket => self.parse_list_value(token.span, depth),
+            TokenKind::RefValue => self.parse_reference_value(),
             TokenKind::Identifier(value) | TokenKind::ProtectedName(value) => {
                 Ok(ParsedValue::Name(value))
             }
             _ => Err(FrontendError::other(token.span)),
         }
+    }
+
+    /// Parses the only identity-reference constructor, `ref(name)`.
+    fn parse_reference_value(&mut self) -> Result<ParsedValue, FrontendError> {
+        self.expect_simple(&TokenKind::OpenParen)?;
+        let target_token = self.next().ok_or_else(|| self.other_here())?;
+        let target = identifier_spelling(&target_token)
+            .ok_or_else(|| FrontendError::malformed_boundary(target_token.span))?;
+        self.expect_simple(&TokenKind::CloseParen)?;
+        Ok(ParsedValue::Reference {
+            target,
+            target_span: target_token.span,
+        })
     }
 
     /// Parses an ordered, bounded list value with an optional trailing comma.
@@ -443,6 +465,8 @@ fn identifier_spelling(token: &Token) -> Option<String> {
         TokenKind::True => Some(names::TRUE.to_owned()),
         TokenKind::False => Some(names::FALSE.to_owned()),
         TokenKind::Null => Some(names::NULL.to_owned()),
+        TokenKind::RefType => Some(names::REF_TYPE.to_owned()),
+        TokenKind::RefValue => Some(names::REF.to_owned()),
         _ => None,
     }
 }

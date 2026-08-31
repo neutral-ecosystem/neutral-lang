@@ -61,6 +61,10 @@ enum TokenKind {
     Record,
     /// The `List` invariant generic type constructor.
     List,
+    /// The `Ref` invariant identity-reference type constructor.
+    RefType,
+    /// The `ref` identity-reference value constructor.
+    RefValue,
     /// The `num` core-type keyword.
     Num,
     /// The `string` core-type keyword.
@@ -99,6 +103,10 @@ enum TokenKind {
     OpenBracket,
     /// List value closing delimiter.
     CloseBracket,
+    /// Identity-reference target opening delimiter.
+    OpenParen,
+    /// Identity-reference target closing delimiter.
+    CloseParen,
     /// Required record field terminator.
     Comma,
     /// An original physical newline before layout normalization.
@@ -242,7 +250,7 @@ pub(super) struct ParsedBinding {
     pub(super) value_span: ByteSpan,
 }
 
-/// Compiler-private type syntax active through Slice 5.1.
+/// Compiler-private type syntax active through Slice 5.2.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum ParsedType {
     /// Exact numeric type.
@@ -257,9 +265,11 @@ pub(super) enum ParsedType {
     Nullable(Box<ParsedType>),
     /// Invariant ordered list element type.
     List(Box<ParsedType>),
+    /// Typed document-local identity reference target type.
+    Ref(Box<ParsedType>),
 }
 
-/// Compiler-private contextual value syntax active through Slice 5.1.
+/// Compiler-private contextual value syntax active through Slice 5.2.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum ParsedValue {
     /// Minimal digits-only number spelling.
@@ -276,6 +286,13 @@ pub(super) enum ParsedValue {
     List(Vec<ParsedListItem>),
     /// Unqualified name candidate, accepted only for later semantic rejection.
     Name(String),
+    /// Identity-only edge to one unqualified binding name.
+    Reference {
+        /// Unresolved target binding name.
+        target: String,
+        /// Exact target-name source span.
+        target_span: ByteSpan,
+    },
 }
 
 /// One compiler-private list item with its exact source ownership.

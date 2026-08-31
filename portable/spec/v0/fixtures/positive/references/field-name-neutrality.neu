@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module reference_fields
+
+record Config {
+    string image,
+}
+
+record Selection {
+    Ref<Config> owner,
+    Ref<Config> dependency,
+}
+
+Selection selected = {
+    owner: ref(config),
+    dependency: ref(config),
+}
+Config config = { image: "example.invalid/tool:1", }

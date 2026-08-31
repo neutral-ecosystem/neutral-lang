@@ -28,6 +28,8 @@ pub struct ProbeSummary {
     field_provenance: Vec<String>,
     /// Ordinary immutable-value reuse edges in compiler order.
     reuse_provenance: Vec<String>,
+    /// Typed identity-reference edges in compiler order.
+    reference_provenance: Vec<String>,
     /// Safe diagnostic-code summaries.
     diagnostics: Vec<String>,
 }
@@ -61,6 +63,12 @@ impl ProbeSummary {
     #[must_use]
     pub fn reuse_provenance(&self) -> &[String] {
         &self.reuse_provenance
+    }
+
+    /// Returns deterministic typed identity-reference edges traversed by ID.
+    #[must_use]
+    pub fn reference_provenance(&self) -> &[String] {
+        &self.reference_provenance
     }
 
     /// Returns safe probe diagnostic-code summaries.
@@ -129,12 +137,26 @@ pub fn summarize(document: &ValidatedDocument) -> ProbeSummary {
             )
         })
         .collect();
+    let reference_provenance = document
+        .artifacts()
+        .reference_provenance()
+        .iter()
+        .map(|record| {
+            format!(
+                "{}:{}:{}",
+                record.element_id().get(),
+                record.value_path().join("."),
+                record.target_element_id().get()
+            )
+        })
+        .collect();
     ProbeSummary {
         module: document.module_name().to_owned(),
         record_types,
         declarations,
         field_provenance,
         reuse_provenance,
+        reference_provenance,
         diagnostics: Vec::new(),
     }
 }

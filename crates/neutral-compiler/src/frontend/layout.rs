@@ -42,11 +42,11 @@ pub(super) fn normalize(raw: LexedSource) -> Result<LexedSource, FrontendError> 
                 }
                 normalized.push(token);
             }
-            TokenKind::OpenBrace | TokenKind::OpenBracket => {
+            TokenKind::OpenBrace | TokenKind::OpenBracket | TokenKind::OpenParen => {
                 delimiter_depth = delimiter_depth.saturating_add(1);
                 normalized.push(token);
             }
-            TokenKind::CloseBrace | TokenKind::CloseBracket => {
+            TokenKind::CloseBrace | TokenKind::CloseBracket | TokenKind::CloseParen => {
                 delimiter_depth = delimiter_depth
                     .checked_sub(1)
                     .ok_or_else(|| FrontendError::malformed_boundary(token.span))?;
@@ -87,7 +87,10 @@ fn is_complete_construct(tokens: &[Token]) -> bool {
                 .iter()
                 .any(|token| matches!(token.kind, TokenKind::Equals))
                 && (is_value_end(&last.kind)
-                    || matches!(last.kind, TokenKind::CloseBrace | TokenKind::CloseBracket))
+                    || matches!(
+                        last.kind,
+                        TokenKind::CloseBrace | TokenKind::CloseBracket | TokenKind::CloseParen
+                    ))
         }
         _ => false,
     }
@@ -95,7 +98,11 @@ fn is_complete_construct(tokens: &[Token]) -> bool {
 
 /// Returns whether a token can begin an active scalar or nominal type.
 fn is_type_start(kind: &TokenKind) -> bool {
-    is_scalar_type(kind) || matches!(kind, TokenKind::Identifier(_) | TokenKind::List)
+    is_scalar_type(kind)
+        || matches!(
+            kind,
+            TokenKind::Identifier(_) | TokenKind::List | TokenKind::RefType
+        )
 }
 
 /// Returns whether a token is an active explicit scalar type.
@@ -106,7 +113,7 @@ fn is_scalar_type(kind: &TokenKind) -> bool {
     )
 }
 
-/// Returns whether a token can end one active Stage 5.1 value construct.
+/// Returns whether a token can end one active Stage 5.2 value construct.
 fn is_value_end(kind: &TokenKind) -> bool {
     matches!(
         kind,
@@ -117,6 +124,7 @@ fn is_value_end(kind: &TokenKind) -> bool {
             | TokenKind::Null
             | TokenKind::Identifier(_)
             | TokenKind::ProtectedName(_)
+            | TokenKind::CloseParen
     )
 }
 
@@ -135,5 +143,7 @@ fn is_name_token(kind: &TokenKind) -> bool {
             | TokenKind::True
             | TokenKind::False
             | TokenKind::Null
+            | TokenKind::RefType
+            | TokenKind::RefValue
     )
 }
