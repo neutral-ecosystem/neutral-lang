@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "stage5-slice2-complete-fixtures-frozen"
+status = "stage5-complete-fixtures-frozen"
 
 # No source behavior is active in Stage 1. These entries are an inventory only;
 # they are not executable compiler expectations until their listed stage.

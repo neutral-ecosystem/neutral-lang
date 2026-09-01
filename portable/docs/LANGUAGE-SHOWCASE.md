@@ -260,7 +260,8 @@ Source maps record where elements came from. Provenance records explicit source,
 value reuse, and defaults. Derivation records the captured compilation inputs.
 
 `ElementId` is a graph-local label. Logical equality and deterministic output are
-defined modulo consistent `ElementId` renaming.
+defined modulo consistent `ElementId` renaming. It must never be retained as a
+cross-document identity; consumers use module-symbol identity for continuity.
 
 ## What v0 deliberately omits
 

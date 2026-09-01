@@ -44,8 +44,8 @@ smoke = 1
 integration = 2
 system = 8
 conformance = 20
-property = 14
-security = 10
+property = 17
+security = 11
 fuzz_smoke = 1
 
 [planned]

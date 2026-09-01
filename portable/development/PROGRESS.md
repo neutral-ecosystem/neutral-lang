@@ -2,23 +2,35 @@
 
 # Neutral v0 development progress
 
-Status: Stage 5 complete through Slice 5.2.
+Status: Stage 5 complete.
 
 ## Current focus
 
-- Stage: Stage 5, Slice 5.2
-- Status: Typed identity references and recursion boundary complete
-- Last updated: 2026-08-31
+- Stage: Stage 5, Slice 5.3
+- Status: Alpha-equivalence, graph identity, and Stage 5 validation complete
+- Last updated: 2026-09-01
 
 ## Next actions
 
-- [ ] Continue with Stage 5, Slice 5.3: alpha-equivalence and graph identity.
+- [ ] Continue with Stage 6, Slice 6.1: captured vocabulary bundle decoding and
+      logical contract.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-09-01: Completed Stage 5, Slice 5.3 and Stage 5 validation. Replaced
+  literal graph-ID equality with a one-to-one whole-document mapping across
+  record and binding nodes; recursively compares identity edges by mapped IDs;
+  separated logical-payload comparison from exact companion/envelope equality;
+  made the hostile reader independently recompute logical fingerprints;
+  documented the cross-document `ElementId` prohibition; and added reflexive,
+  symmetric, transitive, generated-renaming, changed payload/edge/fingerprint,
+  duplicate-ID, dangling-ID, and hostile-reader property vectors. All Stage 2–5
+  compiler, reader, probe, boundary, conformance, property, and security suites
+  remain green.
 
 - [*] 2026-08-31: Completed Stage 5, Slice 5.2. Added invariant `Ref<T>` and
   `ref(name)` grammar, forward exact-type target resolution, a distinct

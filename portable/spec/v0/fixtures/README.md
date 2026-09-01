@@ -118,7 +118,7 @@ fixtures/
 
 ## Required additions
 
-The corpus still needs fixtures for malformed UTF-8, layout recovery,
-wrong-kind references, resource
-boundaries, invalid encoded IR, logical alpha-equivalence, source maps,
-provenance, and deterministic concurrent compilation.
+The corpus still needs fixtures for malformed UTF-8, layout recovery, resource
+boundaries, invalid encoded IR, source maps, provenance, and deterministic
+concurrent compilation. Logical alpha-equivalence uses generated in-memory graph
+vectors because `ElementId` has no Neutral source spelling.

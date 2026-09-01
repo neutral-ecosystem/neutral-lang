@@ -7,7 +7,7 @@
 //! not provide production APIs or duplicate normative fixtures.
 
 #[cfg(test)]
-/// Cross-package tests for active Stage 2 through Stage 5.1 vertical slices.
+/// Cross-package tests for active Stage 2 through Stage 5.3 vertical slices.
 mod tests {
     use neutral_compiler::{
         CompilationFailureDetail, CompilationRequest, CompilationResult, LANGUAGE_BEHAVIOR_VERSION,
@@ -15,8 +15,8 @@ mod tests {
     };
     use neutral_core::{CancellationToken, ResultClass, StructuralLimits};
     use neutral_ir::{
-        LOGICAL_IR_SCHEMA_VERSION, PROVENANCE_VERSION, ReferenceProvenanceRecord,
-        SOURCE_MAP_VERSION, ValueOrigin,
+        CompilationArtifacts, Declaration, LOGICAL_IR_SCHEMA_VERSION, LogicalDocument,
+        PROVENANCE_VERSION, ReferenceProvenanceRecord, SOURCE_MAP_VERSION, ValueOrigin,
     };
     use neutral_probe::diagnostics as probe_diagnostics;
     use neutral_probe::{source_linked_diagnostic, summarize};
@@ -207,6 +207,22 @@ mod tests {
             CompilationResult::Failure(failure) => failure,
             CompilationResult::Success(_) => panic!("negative source unexpectedly produced IR"),
         }
+    }
+
+    /// Replaces only the logical payload while retaining companion artifacts for hostile tests.
+    fn replace_logical_document(
+        artifacts: &CompilationArtifacts,
+        logical_document: LogicalDocument,
+    ) -> CompilationArtifacts {
+        CompilationArtifacts::new(
+            logical_document,
+            artifacts.source_map().clone(),
+            artifacts.provenance().to_vec(),
+            artifacts.derivation().clone(),
+        )
+        .with_field_provenance(artifacts.field_provenance().to_vec())
+        .with_reuse_provenance(artifacts.reuse_provenance().to_vec())
+        .with_reference_provenance(artifacts.reference_provenance().to_vec())
     }
 
     #[test]
@@ -1306,6 +1322,56 @@ mod tests {
     }
 
     #[test]
+    /// Verifies duplicate IDs and stale fingerprints never produce validated views.
+    fn security_reader_rejects_invalid_graph_identity_states() {
+        let artifacts = compile_artifacts(FORWARD_REFERENCE);
+        let document = artifacts.logical_document();
+        let mut declarations = document.declarations().to_vec();
+        let duplicate_id = declarations[0].element_id();
+        let original = declarations[1].clone();
+        declarations[1] = Declaration::new(
+            duplicate_id,
+            original.symbol_identity().clone(),
+            original.fingerprint(),
+            original.name(),
+            original.resolved_type().clone(),
+            original.value().clone(),
+        );
+        let invalid_document = LogicalDocument::with_record_types(
+            document.module().clone(),
+            document.record_types().to_vec(),
+            declarations,
+        );
+        let invalid = replace_logical_document(&artifacts, invalid_document);
+        assert!(matches!(
+            ValidatedDocument::from_compiler_output(Arc::new(invalid)),
+            Err(ReaderError::DuplicateElementId)
+        ));
+
+        let mut declarations = document.declarations().to_vec();
+        assert_ne!(declarations[0].fingerprint(), declarations[1].fingerprint());
+        let original = declarations[1].clone();
+        declarations[1] = Declaration::new(
+            original.element_id(),
+            original.symbol_identity().clone(),
+            declarations[0].fingerprint(),
+            original.name(),
+            original.resolved_type().clone(),
+            original.value().clone(),
+        );
+        let invalid_document = LogicalDocument::with_record_types(
+            document.module().clone(),
+            document.record_types().to_vec(),
+            declarations,
+        );
+        let invalid = replace_logical_document(&artifacts, invalid_document);
+        assert!(matches!(
+            ValidatedDocument::from_compiler_output(Arc::new(invalid)),
+            Err(ReaderError::InvalidDeclarationFingerprint)
+        ));
+    }
+
+    #[test]
     /// Verifies generic probe traversal and consumer diagnostics use reader views.
     fn system_minimal_reader_to_probe() {
         let document = compile_reader(MINIMAL_SOURCE);
@@ -1789,11 +1855,8 @@ mod tests {
     fn property_comment_insertion_and_removal_preserves_logical_ir() {
         let plain = compile_artifacts(MINIMAL_SOURCE);
         let commented = compile_artifacts(COMMENTS_SOURCE);
-        assert!(
-            plain
-                .logical_document()
-                .logically_equivalent(commented.logical_document())
-        );
+        assert!(plain.logically_equivalent(&commented));
+        assert_ne!(plain, commented);
         assert_ne!(plain.source_map(), commented.source_map());
     }
 
@@ -1886,6 +1949,12 @@ mod tests {
             alternative.source_map().source_digest()
         );
         assert_ne!(canonical.source_map(), alternative.source_map());
+
+        let canonical_reader = ValidatedDocument::from_compiler_output(canonical)
+            .expect("canonical artifacts must validate");
+        let alternative_reader = ValidatedDocument::from_compiler_output(alternative)
+            .expect("formatted artifacts must validate");
+        assert!(canonical_reader.logically_equivalent(&alternative_reader));
     }
 
     #[test]

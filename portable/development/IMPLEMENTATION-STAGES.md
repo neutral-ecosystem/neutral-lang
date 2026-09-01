@@ -413,24 +413,24 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Slice 5.3: alpha-equivalence and graph identity
 
-- [ ] Implement one-to-one whole-graph `ElementId` mapping comparison.
-- [ ] Keep logical payload equality separate from companion/envelope comparison.
-- [ ] Add property vectors for reflexivity, symmetry, transitivity, random ID
+- [*] Implement one-to-one whole-graph `ElementId` mapping comparison.
+- [*] Keep logical payload equality separate from companion/envelope comparison.
+- [*] Add property vectors for reflexivity, symmetry, transitivity, random ID
       renaming, changed edge/value/type, duplicate ID, and dangling edge.
-- [ ] Prohibit cross-document persistence of `ElementId` in public docs/APIs.
+- [*] Prohibit cross-document persistence of `ElementId` in public docs/APIs.
 
 #### Slice validation
 
-- [ ] All alpha-equivalence properties pass.
-- [ ] Fingerprints and structural equality agree on their documented scopes.
-- [ ] Invalid graph states never produce validated reader views.
+- [*] All alpha-equivalence properties pass.
+- [*] Fingerprints and structural equality agree on their documented scopes.
+- [*] Invalid graph states never produce validated reader views.
 
 ### Stage 5 validation
 
-- [ ] Reuse and identity references remain semantically distinct end to end.
-- [ ] Full core fixtures pass compiler/reader/probe and all graph adversarial
+- [*] Reuse and identity references remain semantically distinct end to end.
+- [*] Full core fixtures pass compiler/reader/probe and all graph adversarial
       cases fail closed.
-- [ ] Stage 2–4 suites remain green.
+- [*] Stage 2–4 suites remain green.
 
 ---
 

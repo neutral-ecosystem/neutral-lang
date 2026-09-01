@@ -55,11 +55,11 @@ the affected gate.
 - [ ] Treat source, vocabulary, and encoded IR bytes as untrusted even after a
       digest matches.
 - [ ] Enforce structural limits before proportional allocation or conversion.
-- [ ] Keep logical IR equality independent of map order, thread scheduling,
+- [*] Keep logical IR equality independent of map order, thread scheduling,
       pretty printing, encoding bytes, and graph-local `ElementId` spelling.
-- [ ] Keep ordinary reuse/default origin in provenance, not new logical value
+- [*] Keep ordinary reuse/default origin in provenance, not new logical value
       kinds.
-- [ ] Give `Ref<T>` identity-only meaning; infer no ownership, containment,
+- [*] Give `Ref<T>` identity-only meaning; infer no ownership, containment,
       dependency, readiness, order, or runtime behavior.
 - [ ] Add no excluded syntax through parser convenience, private IR, vocabulary,
       CLI, formatter, or probe conventions.
@@ -99,7 +99,7 @@ Stage 10: release qualification
 ## Current gate status
 
 Stage 1, the mandatory normative contract freeze, Stage 2, all Stage 3 slices,
-all Stage 4 slices, and Stage 5 Slices 5.1–5.2 are complete. The private frontend
+all Stage 4 slices, and all Stage 5 slices are complete. The private frontend
 retains exact nonsemantic trivia, enforces frozen ASCII/token boundaries,
 decodes bounded Unicode strings, and normalizes signed decimal exact numbers
 without floating-point conversion. It supports nullable scalar values with
@@ -115,9 +115,12 @@ locations, while final values and reuse edges cross IR, reader, and probe
 boundaries. Typed identity references now resolve exact binding targets to
 document-local `ElementId` edges without entering value dependencies; only
 `Ref<T>` breaks nominal embedding cycles, and reader/probe consumers validate
-and traverse those typed edges by ID. Typed IR, source facts, provenance,
-reader validation, and probe output are covered by frozen oracles. The next
-work is Stage 5, Slice 5.3: alpha-equivalence and graph identity. The approved
+and traverse those typed edges by ID. Whole logical documents now compare by a
+one-to-one graph mapping independent of local ID spelling and companion records;
+duplicate and dangling graphs fail closed. Typed IR, source facts, provenance,
+reader validation, and probe output are covered by frozen oracles and generated
+property vectors. The next work is Stage 6, Slice 6.1: the strict captured
+vocabulary bundle decoder and logical contract. The approved
 [freeze manifest](spec/v0/freeze.toml) identifies
 the v0 contract family, and the
 [contract question ledger](development/CONTRACT-QUESTION-LEDGER.md) records the

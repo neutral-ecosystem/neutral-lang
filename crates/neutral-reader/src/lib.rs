@@ -8,8 +8,8 @@
 
 use neutral_core::SourceLocation;
 use neutral_ir::{
-    CompilationArtifacts, Declaration, LogicalValue, RecordTypeDefinition, ResolvedType,
-    ValueOrigin,
+    CompilationArtifacts, Declaration, DeclarationFingerprint, LogicalValue, RecordTypeDefinition,
+    ResolvedType, ValueOrigin,
 };
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -85,6 +85,16 @@ impl ValidatedDocument {
     pub const fn artifacts(&self) -> &Arc<CompilationArtifacts> {
         &self.artifacts
     }
+
+    /// Compares validated logical payloads under document-local ID renaming.
+    ///
+    /// Source locations, provenance, derivation, and numeric ID spellings are
+    /// companion facts and do not participate. Callers must use durable symbol
+    /// identities, never retain an `ElementId` for cross-document continuity.
+    #[must_use]
+    pub fn logically_equivalent(&self, other: &Self) -> bool {
+        self.artifacts.logically_equivalent(&other.artifacts)
+    }
 }
 
 /// A fail-closed in-process reader validation failure.
@@ -108,6 +118,8 @@ pub enum ReaderError {
     InvalidReuseProvenance,
     /// A typed identity edge or its provenance was dangling or inconsistent.
     InvalidReferenceEdge,
+    /// A declaration fingerprint did not match its complete logical definition.
+    InvalidDeclarationFingerprint,
 }
 
 /// Validates relationships among logical declarations and companion artifacts.
@@ -122,6 +134,12 @@ fn validate_artifacts(artifacts: &CompilationArtifacts) -> Result<(), ReaderErro
         .collect::<BTreeMap<_, _>>();
     validate_record_schemas(artifacts, &records)?;
     for record in artifacts.logical_document().record_types() {
+        if DeclarationFingerprint::for_record(record.fields())
+            .map_err(|_| ReaderError::InvalidDeclarationFingerprint)?
+            != record.fingerprint()
+        {
+            return Err(ReaderError::InvalidDeclarationFingerprint);
+        }
         if !element_ids.insert(record.element_id()) {
             return Err(ReaderError::DuplicateElementId);
         }
@@ -133,6 +151,12 @@ fn validate_artifacts(artifacts: &CompilationArtifacts) -> Result<(), ReaderErro
         }
     }
     for declaration in artifacts.logical_document().declarations() {
+        if DeclarationFingerprint::for_binding(declaration.resolved_type(), declaration.value())
+            .map_err(|_| ReaderError::InvalidDeclarationFingerprint)?
+            != declaration.fingerprint()
+        {
+            return Err(ReaderError::InvalidDeclarationFingerprint);
+        }
         if !validate_value(declaration.resolved_type(), declaration.value(), &records) {
             return Err(ReaderError::TypeValueMismatch);
         }

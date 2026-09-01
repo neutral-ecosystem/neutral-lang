@@ -9,7 +9,7 @@
 use neutral_core::{
     ByteSpan, CoreError, SemanticDigest, SourceContentDigest, StructuralLimits, nht_frame,
 };
-use std::fmt;
+use std::{collections::BTreeMap, fmt};
 
 /// Frozen logical IR schema version for the minimal v0 artifact.
 pub const LOGICAL_IR_SCHEMA_VERSION: &str = "0.1.0";
@@ -120,6 +120,10 @@ impl ModuleSymbolIdentity {
 }
 
 /// An opaque graph-local element label without cross-document meaning.
+///
+/// This label is valid only inside its owning logical document. Persist
+/// [`ModuleSymbolIdentity`] for continuity; never serialize or compare this
+/// numeric spelling as a durable external identity.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ElementId(u64);
 
@@ -130,7 +134,7 @@ impl ElementId {
         Self(value)
     }
 
-    /// Returns the local integer label for indexing within one document.
+    /// Returns the local integer label for indexing within one document only.
     #[must_use]
     pub const fn get(self) -> u64 {
         self.0
@@ -1075,23 +1079,210 @@ impl LogicalDocument {
         &self.declarations
     }
 
-    /// Compares logical meaning while ignoring graph-local element labels.
+    /// Compares the complete logical payload under one bijective element-ID mapping.
+    ///
+    /// Companion source maps, provenance, derivation facts, and graph-local ID
+    /// spellings are intentionally outside this comparison. Both documents must
+    /// still contain unique node IDs and references to declared binding nodes.
     #[must_use]
     pub fn logically_equivalent(&self, other: &Self) -> bool {
+        let Some(mapping) = ElementIdMapping::between(self, other) else {
+            return false;
+        };
         self.module == other.module
-            && self.record_types == other.record_types
-            && self.declarations.len() == other.declarations.len()
-            && self
-                .declarations
-                .iter()
-                .zip(&other.declarations)
-                .all(|(left, right)| {
-                    left.symbol_identity == right.symbol_identity
-                        && left.fingerprint == right.fingerprint
-                        && left.name == right.name
-                        && left.resolved_type == right.resolved_type
-                        && left.value == right.value
+            && logical_record_types_equal(self, other)
+            && logical_declarations_equal(self, other, &mapping)
+    }
+}
+
+/// One temporary bijection between graph-local IDs in two logical documents.
+struct ElementIdMapping {
+    /// Left-to-right graph-node mapping.
+    forward: BTreeMap<ElementId, ElementId>,
+    /// Right-to-left graph-node mapping proving injectivity.
+    reverse: BTreeMap<ElementId, ElementId>,
+}
+
+impl ElementIdMapping {
+    /// Builds one complete mapping by matching durable module-symbol identities.
+    fn between(left: &LogicalDocument, right: &LogicalDocument) -> Option<Self> {
+        if left.record_types.len() != right.record_types.len()
+            || left.declarations.len() != right.declarations.len()
+        {
+            return None;
+        }
+        let mut mapping = Self {
+            forward: BTreeMap::new(),
+            reverse: BTreeMap::new(),
+        };
+        let right_records = unique_records_by_symbol(right)?;
+        for record in &left.record_types {
+            mapping.insert(
+                record.element_id(),
+                right_records.get(record.symbol_identity())?.element_id(),
+            )?;
+        }
+        let right_declarations = unique_declarations_by_symbol(right)?;
+        for declaration in &left.declarations {
+            mapping.insert(
+                declaration.element_id(),
+                right_declarations
+                    .get(declaration.symbol_identity())?
+                    .element_id(),
+            )?;
+        }
+        (mapping.forward.len() == left.record_types.len() + left.declarations.len())
+            .then_some(mapping)
+    }
+
+    /// Adds one pair only when both graph labels remain one-to-one.
+    fn insert(&mut self, left: ElementId, right: ElementId) -> Option<()> {
+        if self.forward.insert(left, right).is_some() || self.reverse.insert(right, left).is_some()
+        {
+            return None;
+        }
+        Some(())
+    }
+
+    /// Maps one left document label into the right document.
+    fn target(&self, source: ElementId) -> Option<ElementId> {
+        self.forward.get(&source).copied()
+    }
+}
+
+/// Indexes record declarations by durable identity while rejecting duplicates.
+fn unique_records_by_symbol(
+    document: &LogicalDocument,
+) -> Option<BTreeMap<&ModuleSymbolIdentity, &RecordTypeDefinition>> {
+    let mut records = BTreeMap::new();
+    for record in &document.record_types {
+        if records.insert(record.symbol_identity(), record).is_some() {
+            return None;
+        }
+    }
+    Some(records)
+}
+
+/// Indexes binding declarations by durable identity while rejecting duplicates.
+fn unique_declarations_by_symbol(
+    document: &LogicalDocument,
+) -> Option<BTreeMap<&ModuleSymbolIdentity, &Declaration>> {
+    let mut declarations = BTreeMap::new();
+    for declaration in &document.declarations {
+        if declarations
+            .insert(declaration.symbol_identity(), declaration)
+            .is_some()
+        {
+            return None;
+        }
+    }
+    Some(declarations)
+}
+
+/// Compares nominal record payloads without graph-local IDs or vector order.
+fn logical_record_types_equal(left: &LogicalDocument, right: &LogicalDocument) -> bool {
+    let (Some(left_records), Some(right_records)) = (
+        unique_records_by_symbol(left),
+        unique_records_by_symbol(right),
+    ) else {
+        return false;
+    };
+    left_records.iter().all(|(identity, left_record)| {
+        right_records.get(identity).is_some_and(|right_record| {
+            left_record.fingerprint == right_record.fingerprint
+                && left_record.nominal_identity == right_record.nominal_identity
+                && left_record.fields == right_record.fields
+        })
+    })
+}
+
+/// Compares binding payloads and every nested identity edge under one mapping.
+fn logical_declarations_equal(
+    left: &LogicalDocument,
+    right: &LogicalDocument,
+    mapping: &ElementIdMapping,
+) -> bool {
+    let (Some(left_declarations), Some(right_declarations)) = (
+        unique_declarations_by_symbol(left),
+        unique_declarations_by_symbol(right),
+    ) else {
+        return false;
+    };
+    left_declarations
+        .iter()
+        .all(|(identity, left_declaration)| {
+            right_declarations
+                .get(identity)
+                .is_some_and(|right_declaration| {
+                    left_declaration.fingerprint == right_declaration.fingerprint
+                        && left_declaration.name == right_declaration.name
+                        && left_declaration.resolved_type == right_declaration.resolved_type
+                        && logical_values_equal(
+                            &left_declaration.value,
+                            &right_declaration.value,
+                            mapping,
+                            &left_declarations,
+                            &right_declarations,
+                        )
                 })
+        })
+}
+
+/// Compares recursively nested values while translating identity-edge targets.
+fn logical_values_equal(
+    left: &LogicalValue,
+    right: &LogicalValue,
+    mapping: &ElementIdMapping,
+    left_declarations: &BTreeMap<&ModuleSymbolIdentity, &Declaration>,
+    right_declarations: &BTreeMap<&ModuleSymbolIdentity, &Declaration>,
+) -> bool {
+    match (left, right) {
+        (LogicalValue::Number(left), LogicalValue::Number(right)) => left == right,
+        (LogicalValue::String(left), LogicalValue::String(right)) => left == right,
+        (LogicalValue::Boolean(left), LogicalValue::Boolean(right)) => left == right,
+        (LogicalValue::Null, LogicalValue::Null) => true,
+        (LogicalValue::Record(left), LogicalValue::Record(right)) => {
+            left.nominal_type == right.nominal_type
+                && left.fields.len() == right.fields.len()
+                && left
+                    .fields
+                    .iter()
+                    .zip(&right.fields)
+                    .all(|(left_field, right_field)| {
+                        left_field.name == right_field.name
+                            && logical_values_equal(
+                                &left_field.value,
+                                &right_field.value,
+                                mapping,
+                                left_declarations,
+                                right_declarations,
+                            )
+                    })
+        }
+        (LogicalValue::List(left), LogicalValue::List(right)) => {
+            left.len() == right.len()
+                && left.iter().zip(right).all(|(left_item, right_item)| {
+                    logical_values_equal(
+                        left_item,
+                        right_item,
+                        mapping,
+                        left_declarations,
+                        right_declarations,
+                    )
+                })
+        }
+        (LogicalValue::Reference(left), LogicalValue::Reference(right)) => {
+            left_declarations
+                .get(left.target_symbol_identity())
+                .is_some_and(|target| target.element_id() == left.target_element_id())
+                && right_declarations
+                    .get(right.target_symbol_identity())
+                    .is_some_and(|target| target.element_id() == right.target_element_id())
+                && mapping.target(left.target_element_id()) == Some(right.target_element_id())
+                && left.target_symbol_identity() == right.target_symbol_identity()
+                && left.target_type() == right.target_type()
+        }
+        _ => false,
     }
 }
 
@@ -1761,6 +1952,17 @@ impl CompilationArtifacts {
         }
     }
 
+    /// Compares only logical payloads under graph-local ID alpha-renaming.
+    ///
+    /// This deliberately excludes source maps, provenance, derivation facts,
+    /// and other companion or envelope records. Exact artifact equality remains
+    /// available through `PartialEq` when those records must also match.
+    #[must_use]
+    pub fn logically_equivalent(&self, other: &Self) -> bool {
+        self.logical_document
+            .logically_equivalent(&other.logical_document)
+    }
+
     /// Attaches validated field-level provenance to successful artifacts.
     #[must_use]
     pub fn with_field_provenance(mut self, field_provenance: Vec<FieldProvenanceRecord>) -> Self {
@@ -1841,10 +2043,81 @@ pub enum IrError {
 /// Unit tests for public logical IR identity and equality contracts.
 mod tests {
     use super::{
-        DeclarationFingerprint, ElementId, ExactNumber, IdentityReference, LogicalModuleIdentity,
-        LogicalValue, ModuleSymbolIdentity, NominalTypeIdentity, RecordValue, RecordValueField,
-        ResolvedType,
+        Declaration, DeclarationFingerprint, ElementId, ExactNumber, IdentityReference,
+        LogicalDocument, LogicalModuleIdentity, LogicalValue, ModuleSymbolIdentity,
+        NominalTypeIdentity, RecordFieldSchema, RecordTypeDefinition, RecordValue,
+        RecordValueField, ResolvedType,
     };
+
+    /// Frozen language behavior version used by standalone IR test graphs.
+    const TEST_LANGUAGE_BEHAVIOR_VERSION: &str = "0.1.0";
+
+    /// Builds one complete reference graph with caller-selected local ID spellings.
+    fn reference_document(ids: [u64; 4]) -> LogicalDocument {
+        let module = LogicalModuleIdentity::new(TEST_LANGUAGE_BEHAVIOR_VERSION, "alpha_graph");
+        let record_identity = NominalTypeIdentity::new(module.clone(), "Container");
+        let record_fields = vec![RecordFieldSchema::new("name", ResolvedType::String)];
+        let record_fingerprint = DeclarationFingerprint::for_record(&record_fields)
+            .expect("bounded record should fingerprint");
+        let record = RecordTypeDefinition::new(
+            ElementId::new(ids[0]),
+            ModuleSymbolIdentity::new(module.clone(), "Container"),
+            record_fingerprint,
+            record_identity,
+            record_fields,
+        );
+        let target_value = LogicalValue::String("target".to_owned());
+        let alternate_value = LogicalValue::String("alternate".to_owned());
+        let target_symbol = ModuleSymbolIdentity::new(module.clone(), "target");
+        let target = Declaration::new(
+            ElementId::new(ids[1]),
+            target_symbol.clone(),
+            DeclarationFingerprint::for_binding(&ResolvedType::String, &target_value)
+                .expect("target should fingerprint"),
+            "target",
+            ResolvedType::String,
+            target_value,
+        );
+        let alternate = Declaration::new(
+            ElementId::new(ids[2]),
+            ModuleSymbolIdentity::new(module.clone(), "alternate"),
+            DeclarationFingerprint::for_binding(&ResolvedType::String, &alternate_value)
+                .expect("alternate should fingerprint"),
+            "alternate",
+            ResolvedType::String,
+            alternate_value,
+        );
+        let reference_type = ResolvedType::reference(ResolvedType::String);
+        let reference_value = LogicalValue::Reference(IdentityReference::new(
+            ElementId::new(ids[1]),
+            target_symbol,
+            ResolvedType::String,
+        ));
+        let selected = Declaration::new(
+            ElementId::new(ids[3]),
+            ModuleSymbolIdentity::new(module.clone(), "selected"),
+            DeclarationFingerprint::for_binding(&reference_type, &reference_value)
+                .expect("reference should fingerprint"),
+            "selected",
+            reference_type,
+            reference_value,
+        );
+        LogicalDocument::with_record_types(module, vec![record], vec![target, alternate, selected])
+    }
+
+    /// Produces one deterministic pseudo-random permutation for property coverage.
+    fn permuted_ids(seed: u64) -> [u64; 4] {
+        let mut values = [101, 211, 307, 401];
+        let mut state = seed.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        for index in (1..values.len()).rev() {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            let swap = usize::try_from(state % u64::try_from(index + 1).unwrap_or(1)).unwrap_or(0);
+            values.swap(index, swap);
+        }
+        values
+    }
 
     #[test]
     /// Verifies minimal integer normalization does not use host numeric types.
@@ -1949,7 +2222,7 @@ mod tests {
     #[test]
     /// Verifies equal record shapes cannot substitute for distinct nominal identities.
     fn nominal_record_values_reject_structural_compatibility() {
-        let module = LogicalModuleIdentity::new("0.1.0", "records");
+        let module = LogicalModuleIdentity::new(TEST_LANGUAGE_BEHAVIOR_VERSION, "records");
         let left = NominalTypeIdentity::new(module.clone(), "Left");
         let right = NominalTypeIdentity::new(module, "Right");
         let value = LogicalValue::Record(RecordValue::new(
@@ -1965,7 +2238,7 @@ mod tests {
     #[test]
     /// Verifies reference fingerprints use durable target identity, never local IDs.
     fn reference_fingerprints_ignore_graph_local_element_ids() {
-        let module = LogicalModuleIdentity::new("0.1.0", "references");
+        let module = LogicalModuleIdentity::new(TEST_LANGUAGE_BEHAVIOR_VERSION, "references");
         let symbol = ModuleSymbolIdentity::new(module, "target");
         let first = LogicalValue::Reference(IdentityReference::new(
             ElementId::new(1),
@@ -1984,5 +2257,73 @@ mod tests {
             DeclarationFingerprint::for_binding(&reference_type, &second)
                 .expect("second reference fingerprint should succeed")
         );
+    }
+
+    #[test]
+    /// Verifies reflexivity, symmetry, transitivity, and generated ID-renaming cases.
+    fn property_graph_alpha_equivalence_obeys_equivalence_laws() {
+        let canonical = reference_document([0, 1, 2, 3]);
+        assert!(canonical.logically_equivalent(&canonical));
+        for seed in 0..64 {
+            let renamed = reference_document(permuted_ids(seed));
+            let third = reference_document(permuted_ids(seed.wrapping_add(97)));
+            assert!(canonical.logically_equivalent(&renamed));
+            assert!(renamed.logically_equivalent(&canonical));
+            assert!(renamed.logically_equivalent(&third));
+            assert!(canonical.logically_equivalent(&third));
+        }
+    }
+
+    #[test]
+    /// Verifies values, types, fingerprints, and reference targets remain semantic.
+    fn property_graph_alpha_equivalence_rejects_payload_changes() {
+        let canonical = reference_document([0, 1, 2, 3]);
+
+        let mut changed_value = canonical.clone();
+        changed_value.declarations[0].value = LogicalValue::String("changed".to_owned());
+        assert!(!canonical.logically_equivalent(&changed_value));
+
+        let mut changed_type = canonical.clone();
+        changed_type.declarations[0].resolved_type = ResolvedType::Bool;
+        assert!(!canonical.logically_equivalent(&changed_type));
+
+        let mut changed_fingerprint = canonical.clone();
+        changed_fingerprint.declarations[0].fingerprint =
+            changed_fingerprint.declarations[1].fingerprint;
+        assert!(!canonical.logically_equivalent(&changed_fingerprint));
+
+        let mut changed_edge = canonical.clone();
+        let alternate = changed_edge.declarations[1].clone();
+        let reference = IdentityReference::new(
+            alternate.element_id(),
+            alternate.symbol_identity().clone(),
+            alternate.resolved_type().clone(),
+        );
+        changed_edge.declarations[2].value = LogicalValue::Reference(reference);
+        changed_edge.declarations[2].fingerprint = DeclarationFingerprint::for_binding(
+            changed_edge.declarations[2].resolved_type(),
+            changed_edge.declarations[2].value(),
+        )
+        .expect("changed edge should fingerprint");
+        assert!(!canonical.logically_equivalent(&changed_edge));
+    }
+
+    #[test]
+    /// Verifies duplicate and dangling graph IDs cannot compare as valid payloads.
+    fn property_graph_alpha_equivalence_rejects_invalid_graphs() {
+        let canonical = reference_document([0, 1, 2, 3]);
+
+        let mut duplicate = canonical.clone();
+        duplicate.declarations[1].element_id = duplicate.declarations[0].element_id;
+        assert!(!duplicate.logically_equivalent(&duplicate));
+        assert!(!canonical.logically_equivalent(&duplicate));
+
+        let mut dangling = canonical.clone();
+        let LogicalValue::Reference(reference) = &mut dangling.declarations[2].value else {
+            panic!("test graph must contain a reference")
+        };
+        reference.element_id = ElementId::new(999);
+        assert!(!dangling.logically_equivalent(&dangling));
+        assert!(!canonical.logically_equivalent(&dangling));
     }
 }
