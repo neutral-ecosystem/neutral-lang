@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+fixture_sha256 = "9170c7565faa9c7855b4f9863ec39eb4d969ecbc0aae94c4987404e5113d7de8"
+outcome = "reject"
+error = "UnknownRequiredFeature"

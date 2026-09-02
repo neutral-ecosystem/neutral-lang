@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+fixture_sha256 = "917aaea9f6222000e93b36051cc8b4c065946d50d4210dc878213e071bcbcabf"
+outcome = "reject"
+error = "InvalidTypeRecursion"

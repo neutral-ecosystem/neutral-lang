@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+fixture_sha256 = "bd95cd7f1a972d1626401b63949d0cd4368edd5e2a795c9527376dd09fdc456d"
+outcome = "accept"
+logical_equivalent_to = "vocabulary-comprehensive"
+byte_identity_equal = false

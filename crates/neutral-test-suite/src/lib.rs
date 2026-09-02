@@ -7,7 +7,7 @@
 //! not provide production APIs or duplicate normative fixtures.
 
 #[cfg(test)]
-/// Cross-package tests for active Stage 2 through Stage 5.3 vertical slices.
+/// Cross-package tests for active Stage 2 through Stage 6.1 vertical slices.
 mod tests {
     use neutral_compiler::{
         CompilationFailureDetail, CompilationRequest, CompilationResult, LANGUAGE_BEHAVIOR_VERSION,
@@ -1900,7 +1900,7 @@ mod tests {
     }
 
     #[test]
-    /// Verifies grammar beyond Slice 5.2 remains rejected until its own slice.
+    /// Verifies grammar beyond the Slice 6.1 source boundary remains rejected.
     fn security_future_grammar_is_not_accepted_by_source_text_work() {
         let future: [&[u8]; 7] = [
             include_bytes!(

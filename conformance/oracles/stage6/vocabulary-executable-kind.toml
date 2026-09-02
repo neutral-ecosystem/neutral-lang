@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+fixture_sha256 = "721fe221eafe181be5f52a26bff2a94c0d5ea9aaa69432ec247e3c2e21c862dc"
+outcome = "reject"
+error = "ExecutableShapeForbidden"

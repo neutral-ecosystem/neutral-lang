@@ -10,6 +10,8 @@ the matching fixture and oracle.
 
 ```text
 fixtures/
+├── vocabulary/
+│   └── bundles/      # exact captured JSON bytes, grouped by outcome
 ├── positive/
 │   ├── syntax/       # headers, comments, identifiers, and core source shape
 │   ├── strings/      # valid string decoding
@@ -62,12 +64,15 @@ fixtures/
   forward/transitive resolution, nested reuse, and outer-nullable widening.
 - The [positive typed-reference fixtures](positive/references/) freeze forward
   targets, nested edges, field-name neutrality, and reference-only recursion.
+- The [accepted captured vocabulary bundles](vocabulary/bundles/positive/)
+  freeze strict JSON, all v0 type/default forms, exact byte identity, normalized
+  logical equality, and reference-only vocabulary recursion.
 - [immutable-value-reuse.neu](positive/values/immutable-value-reuse.neu) freezes
   the combined ordinary-reuse/reference boundary.
 - [defaults-compatibility.neu](positive/values/defaults-compatibility.neu) covers
   defaults, nullability, lists, and outer nullable widening.
-- [minimal-vocabulary.neu](positive/vocabulary/minimal-vocabulary.neu) proves one captured
-  data-only vocabulary through the generic source-to-IR boundary.
+- [minimal-vocabulary.neu](positive/vocabulary/minimal-vocabulary.neu) is the
+  planned Slice 6.2 source-to-IR integration fixture.
 
 ## Negative source
 
@@ -93,6 +98,9 @@ fixtures/
   and wrong-kind names, direct/indirect cycles, and invariant list arguments.
 - The [negative typed-reference fixtures](negative/references/) freeze unknown,
   wrong-kind, wrong-type, invariant-target, and missing-constructor failures.
+- The [hostile captured vocabulary bundles](vocabulary/bundles/negative/) freeze
+  duplicate, unknown, executable, raw-number, malformed, target, recursion,
+  default, and feature rejection.
 - [module-path.neu](negative/vocabulary/module-path.neu): module qualification is absent.
 - [mut-modifier.neu](negative/vocabulary/mut-modifier.neu): mutation is absent.
 - [namespace-declaration.neu](negative/vocabulary/namespace-declaration.neu): namespaces

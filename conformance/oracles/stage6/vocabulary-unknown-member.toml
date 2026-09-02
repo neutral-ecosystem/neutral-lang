@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+fixture_sha256 = "53027d0a49d6e5c881a0287e1944af2f7ae55e9b7039ac017dcdf83017eeeb53"
+outcome = "reject"
+error = "UnknownMember"

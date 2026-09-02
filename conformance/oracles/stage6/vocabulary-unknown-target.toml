@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+fixture_sha256 = "b10d988846d33cd0efc09e8d03e0d2a21a0e0e0ad21ce4764a528f8bb7e3b1e9"
+outcome = "reject"
+error = "UnknownTypeTarget"

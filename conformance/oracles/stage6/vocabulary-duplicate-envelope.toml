@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+fixture_sha256 = "0162a0cbe67d7e958b251732b1c5829c796acda2a1a8b94c062e073f54978d54"
+outcome = "reject"
+error = "DuplicateJsonMember"

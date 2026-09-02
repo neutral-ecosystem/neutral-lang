@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+fixture_sha256 = "805c1d4e57cad3f9994edcce2bceda80d1795a81b7c07ec9c191b701fc334df1"
+outcome = "reject"
+error = "InvalidDefault"

@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+fixture_sha256 = "8c520ba189d1fb089e09510e03fb7db95fdaab5c0a383f13ef5d65d65d76e454"
+outcome = "reject"
+error = "RawJsonNumberForbidden"

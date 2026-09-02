@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "stage5-complete-fixtures-frozen"
+status = "stage6-slice1-complete-fixtures-frozen"
 
 # No source behavior is active in Stage 1. These entries are an inventory only;
 # they are not executable compiler expectations until their listed stage.
@@ -669,4 +669,109 @@ id = "reference-missing-constructor"
 fixture = "portable/spec/v0/fixtures/negative/references/missing-constructor.neu"
 oracle = "conformance/oracles/stage5/reference-missing-constructor.toml"
 active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "vocabulary-comprehensive"
+fixture = "portable/spec/v0/fixtures/vocabulary/bundles/positive/comprehensive.json"
+oracle = "conformance/oracles/stage6/vocabulary-comprehensive.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-reordered"
+fixture = "portable/spec/v0/fixtures/vocabulary/bundles/positive/reordered.json"
+oracle = "conformance/oracles/stage6/vocabulary-reordered.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-duplicate-envelope"
+fixture = "portable/spec/v0/fixtures/vocabulary/bundles/negative/duplicate-envelope-key.json"
+oracle = "conformance/oracles/stage6/vocabulary-duplicate-envelope.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-duplicate-nested"
+fixture = "portable/spec/v0/fixtures/vocabulary/bundles/negative/duplicate-nested-key.json"
+oracle = "conformance/oracles/stage6/vocabulary-duplicate-nested.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-embedded-recursion"
+fixture = "portable/spec/v0/fixtures/vocabulary/bundles/negative/embedded-recursion.json"
+oracle = "conformance/oracles/stage6/vocabulary-embedded-recursion.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-executable-member"
+fixture = "portable/spec/v0/fixtures/vocabulary/bundles/negative/executable-member.json"
+oracle = "conformance/oracles/stage6/vocabulary-executable-member.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-raw-number"
+fixture = "portable/spec/v0/fixtures/vocabulary/bundles/negative/raw-json-number.json"
+oracle = "conformance/oracles/stage6/vocabulary-raw-number.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-reference-default"
+fixture = "portable/spec/v0/fixtures/vocabulary/bundles/negative/reference-default.json"
+oracle = "conformance/oracles/stage6/vocabulary-reference-default.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-truncated"
+fixture = "portable/spec/v0/fixtures/vocabulary/bundles/negative/truncated.json"
+oracle = "conformance/oracles/stage6/vocabulary-truncated.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-unknown-member"
+fixture = "portable/spec/v0/fixtures/vocabulary/bundles/negative/unknown-envelope-member.json"
+oracle = "conformance/oracles/stage6/vocabulary-unknown-member.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-unknown-feature"
+fixture = "portable/spec/v0/fixtures/vocabulary/bundles/negative/unknown-feature.json"
+oracle = "conformance/oracles/stage6/vocabulary-unknown-feature.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-executable-kind"
+fixture = "portable/spec/v0/fixtures/vocabulary/bundles/negative/unknown-type-kind.json"
+oracle = "conformance/oracles/stage6/vocabulary-executable-kind.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-unknown-target"
+fixture = "portable/spec/v0/fixtures/vocabulary/bundles/negative/unknown-type-target.json"
+oracle = "conformance/oracles/stage6/vocabulary-unknown-target.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-incompatible-default"
+fixture = "portable/spec/v0/fixtures/vocabulary/bundles/negative/incompatible-default.json"
+oracle = "conformance/oracles/stage6/vocabulary-incompatible-default.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-incomplete-record-default"
+fixture = "portable/spec/v0/fixtures/vocabulary/bundles/negative/incomplete-record-default.json"
+oracle = "conformance/oracles/stage6/vocabulary-incomplete-record-default.toml"
+active_from_stage = 6
 status = "frozen"

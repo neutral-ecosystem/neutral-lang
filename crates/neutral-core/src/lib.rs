@@ -16,6 +16,11 @@ use std::{
     },
 };
 
+/// Frozen prefix for v0 SHA-256 digest text.
+const SHA256_TEXT_PREFIX: &str = "sha256:";
+/// Exact character length of one prefixed SHA-256 digest.
+const SHA256_TEXT_LENGTH: usize = SHA256_TEXT_PREFIX.len() + 64;
+
 /// A typed SHA-256 digest of exact captured source bytes.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct SourceContentDigest([u8; 32]);
@@ -32,6 +37,87 @@ impl SourceContentDigest {
     #[must_use]
     pub const fn as_bytes(self) -> [u8; 32] {
         self.0
+    }
+}
+
+/// A typed SHA-256 digest of exact captured vocabulary-bundle bytes.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct VocabularyContentDigest([u8; 32]);
+
+impl VocabularyContentDigest {
+    /// Computes the digest over exactly `bytes`, without JSON normalization.
+    #[must_use]
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        let bytes: [u8; 32] = Sha256::digest(bytes).into();
+        Self(bytes)
+    }
+
+    /// Parses the frozen lowercase `sha256:` textual representation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DigestTextError::InvalidSha256Text`] for any prefix, length,
+    /// case, or hexadecimal deviation.
+    pub fn parse_text(value: &str) -> Result<Self, DigestTextError> {
+        if value.len() != SHA256_TEXT_LENGTH || !value.starts_with(SHA256_TEXT_PREFIX) {
+            return Err(DigestTextError::InvalidSha256Text);
+        }
+        let mut bytes = [0_u8; 32];
+        let hexadecimal = &value.as_bytes()[SHA256_TEXT_PREFIX.len()..];
+        for (index, byte) in bytes.iter_mut().enumerate() {
+            let offset = index * 2;
+            let high = lowercase_hex_value(hexadecimal[offset])
+                .ok_or(DigestTextError::InvalidSha256Text)?;
+            let low = lowercase_hex_value(hexadecimal[offset + 1])
+                .ok_or(DigestTextError::InvalidSha256Text)?;
+            *byte = (high << 4) | low;
+        }
+        Ok(Self(bytes))
+    }
+
+    /// Returns the raw SHA-256 bytes for typed integrity comparison.
+    #[must_use]
+    pub const fn as_bytes(self) -> [u8; 32] {
+        self.0
+    }
+
+    /// Compares digest bytes without data-dependent early exit.
+    #[must_use]
+    pub fn securely_matches(self, other: Self) -> bool {
+        self.0
+            .iter()
+            .zip(other.0)
+            .fold(0_u8, |difference, (left, right)| {
+                difference | (left ^ right)
+            })
+            == 0
+    }
+}
+
+impl fmt::Display for VocabularyContentDigest {
+    /// Formats the digest using the frozen lowercase textual representation.
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(SHA256_TEXT_PREFIX)?;
+        for byte in self.0 {
+            write!(formatter, "{byte:02x}")?;
+        }
+        Ok(())
+    }
+}
+
+/// A malformed frozen digest textual representation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DigestTextError {
+    /// Text was not exactly `sha256:` followed by 64 lowercase hexadecimal digits.
+    InvalidSha256Text,
+}
+
+/// Converts one lowercase ASCII hexadecimal digit to its numeric value.
+fn lowercase_hex_value(value: u8) -> Option<u8> {
+    match value {
+        b'0'..=b'9' => Some(value - b'0'),
+        b'a'..=b'f' => Some(value - b'a' + 10),
+        _ => None,
     }
 }
 
@@ -703,8 +789,9 @@ pub enum CoreError {
 /// Unit tests for foundational value contracts.
 mod tests {
     use super::{
-        ByteSpan, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity, SemanticDigest,
-        SourceContentDigest, SourceLocation, StructuralLimits, line_column_at, nht_frame,
+        ByteSpan, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity, DigestTextError,
+        SemanticDigest, SourceContentDigest, SourceLocation, StructuralLimits,
+        VocabularyContentDigest, line_column_at, nht_frame,
     };
 
     #[test]
@@ -727,6 +814,33 @@ mod tests {
             SourceContentDigest::from_bytes(b"abc").to_string(),
             "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
         );
+    }
+
+    #[test]
+    /// Verifies vocabulary byte identity and strict lowercase digest text parsing.
+    fn vocabulary_digest_uses_exact_bytes_and_strict_text() {
+        let digest = VocabularyContentDigest::from_bytes(b"abc");
+        let expected = "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+        assert_eq!(digest.to_string(), expected);
+        assert_eq!(
+            VocabularyContentDigest::parse_text(expected).expect("frozen digest should parse"),
+            digest
+        );
+        assert!(digest.securely_matches(digest));
+        assert!(!digest.securely_matches(VocabularyContentDigest::from_bytes(b"abd")));
+        for invalid in [
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            "sha256:BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD",
+            "sha512:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            "sha256:ba78",
+            "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0",
+            "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ag",
+        ] {
+            assert_eq!(
+                VocabularyContentDigest::parse_text(invalid),
+                Err(DigestTextError::InvalidSha256Text)
+            );
+        }
     }
 
     #[test]

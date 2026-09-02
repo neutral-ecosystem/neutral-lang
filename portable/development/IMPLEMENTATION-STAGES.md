@@ -438,21 +438,21 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Slice 6.1: strict captured bundle decoder and logical contract
 
-- [ ] Implement the accepted JSON byte/schema contract and exact digest checks
+- [*] Implement the accepted JSON byte/schema contract and exact digest checks
       from [IDENTITY-AND-VOCABULARY.md](IDENTITY-AND-VOCABULARY.md).
-- [ ] Activate duplicate/unknown/executable/malformed/limit/default/recursion and
+- [*] Activate duplicate/unknown/executable/malformed/limit/default/recursion and
       independent digest/transcript vectors.
-- [ ] Decode into untrusted intermediate data, then validate closed schema,
+- [*] Decode into untrusted intermediate data, then validate closed schema,
       features, names, types, fields, defaults, and recursion.
-- [ ] Expose only immutable validated logical vocabulary contracts.
-- [ ] Perform no code loading or external I/O.
+- [*] Expose only immutable validated logical vocabulary contracts.
+- [*] Perform no code loading or external I/O.
 
 #### Slice validation
 
-- [ ] All accepted/hostile bundle vectors pass.
-- [ ] Duplicate keys are detected before map collapse.
-- [ ] Raw JSON numbers and executable shapes fail closed.
-- [ ] Allocation-before-validation review passes.
+- [*] All accepted/hostile bundle vectors pass.
+- [*] Duplicate keys are detected before map collapse.
+- [*] Raw JSON numbers and executable shapes fail closed.
+- [*] Allocation-before-validation review passes.
 
 ### Slice 6.2: captured `use` and qualified values
 

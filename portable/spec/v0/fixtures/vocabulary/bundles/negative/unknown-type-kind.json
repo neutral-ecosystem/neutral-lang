@@ -1,0 +1,1 @@
+{"format":"neutral-vocabulary-bundle","encoding_version":"0.1","schema_version":"0.1","identity":"Fixture","version":"0.1.0","required_features":[],"types":[{"name":"Metadata","fields":[{"name":"label","type":{"kind":"callback"},"default":null}]}]}

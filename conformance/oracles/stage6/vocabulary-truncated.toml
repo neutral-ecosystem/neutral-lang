@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+fixture_sha256 = "8d46dc9aee3d27b6967f5ef6d238c923c643ea04f021e0a35c8c1f0413400951"
+outcome = "reject"
+error = "MalformedJson"

@@ -2,24 +2,33 @@
 
 # Neutral v0 development progress
 
-Status: Stage 5 complete.
+Status: Stage 6 complete through Slice 6.1.
 
 ## Current focus
 
-- Stage: Stage 5, Slice 5.3
-- Status: Alpha-equivalence, graph identity, and Stage 5 validation complete
-- Last updated: 2026-09-01
+- Stage: Stage 6, Slice 6.1
+- Status: Strict captured vocabulary bundle decoder and logical contract complete
+- Last updated: 2026-09-02
 
 ## Next actions
 
-- [ ] Continue with Stage 6, Slice 6.1: captured vocabulary bundle decoding and
-      logical contract.
+- [ ] Continue with Stage 6, Slice 6.2: captured `use` and qualified values.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-09-02: Completed Stage 6, Slice 6.1. Added typed exact vocabulary
+  digests and strict lowercase digest parsing; exact lock verification before
+  parsing; a dependency-free bounded JSON decoder that retains object members
+  until duplicate detection; closed envelope, feature, name, type, field,
+  default, and recursion validation; immutable separate captured/logical bundle
+  projections; reference-only recursive type graphs; and grouped accepted and
+  hostile fixtures with frozen oracles. Raw numbers, BOM/UTF-8/surrogate errors,
+  unknown or executable shapes, bad defaults/targets, embedded cycles, digest
+  mismatch, and allocation limits fail closed without code loading or I/O.
 
 - [*] 2026-09-01: Completed Stage 5, Slice 5.3 and Stage 5 validation. Replaced
   literal graph-ID equality with a one-to-one whole-document mapping across

@@ -1,0 +1,33 @@
+{
+  "format": "neutral-vocabulary-bundle",
+  "encoding_version": "0.1",
+  "schema_version": "0.1",
+  "identity": "Fixture",
+  "version": "0.1.0",
+  "required_features": [],
+  "types": [
+    {
+      "name": "Node",
+      "fields": [
+        { "name": "next", "type": { "kind": "ref", "target": "Node" }, "default": null }
+      ]
+    },
+    {
+      "name": "Address",
+      "fields": [
+        { "name": "city", "type": { "kind": "string" }, "default": null }
+      ]
+    },
+    {
+      "name": "Metadata",
+      "fields": [
+        { "name": "tags", "type": { "kind": "list", "element": { "kind": "string" } }, "default": { "kind": "list", "items": [{ "kind": "string", "value": "alpha" }, { "kind": "string", "value": "beta" }] } },
+        { "name": "note", "type": { "kind": "nullable", "inner": { "kind": "string" } }, "default": { "kind": "null" } },
+        { "name": "label", "type": { "kind": "string" }, "default": { "kind": "string", "value": "sample" } },
+        { "name": "count", "type": { "kind": "num" }, "default": { "kind": "num", "value": "10.50" } },
+        { "name": "active", "type": { "kind": "bool" }, "default": { "kind": "bool", "value": true } },
+        { "name": "address", "type": { "kind": "record", "target": "Address" }, "default": { "kind": "record", "fields": [{ "name": "city", "value": { "kind": "string", "value": "Rabat" } }] } }
+      ]
+    }
+  ]
+}

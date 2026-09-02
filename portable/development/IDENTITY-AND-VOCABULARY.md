@@ -31,11 +31,11 @@ HashAlgorithmId = "sha256"
 DigestText       = "sha256:" + 64 lowercase hexadecimal digits
 ```
 
-- [ ] Decoders reject uppercase, truncated, overlong, unprefixed, unknown, and
+- [*] Decoders reject uppercase, truncated, overlong, unprefixed, unknown, and
       nonhex digest text.
-- [ ] Internal storage keeps algorithm and 32 digest bytes as separate typed
+- [*] Internal storage keeps algorithm and 32 digest bytes as separate typed
       fields rather than repeatedly parsing text.
-- [ ] Constant-time comparison is required where a digest gates integrity or
+- [*] Constant-time comparison is required where a digest gates integrity or
       trust-sensitive processing; digest comparison alone still grants no
       authority.
 - [ ] Test vectors include empty, one-byte, UTF-8, large, and adversarial inputs.
@@ -378,12 +378,12 @@ or network.
 - [ ] NHT framing and every identity/fingerprint domain.
 - [ ] Formatting/order changes that preserve or change each identity as defined.
 - [ ] Digest mismatch and synthetic collision-handling paths.
-- [ ] Duplicate JSON keys at every nesting level.
-- [ ] Unknown envelope/type/value fields and unknown tagged kinds.
-- [ ] Raw JSON numbers, BOM, invalid UTF-8, surrogates, depth/count/size limits,
+- [*] Duplicate JSON keys at every nesting level.
+- [*] Unknown envelope/type/value fields and unknown tagged kinds.
+- [*] Raw JSON numbers, BOM, invalid UTF-8, surrogates, depth/count/size limits,
       and truncated input.
-- [ ] Every allowed type/default form and every prohibited executable form.
-- [ ] Logical equality for differently formatted bundles with different byte
+- [*] Every allowed type/default form and every prohibited executable form.
+- [*] Logical equality for differently formatted bundles with different byte
       digests.
 - [ ] External reader behavior with exact, missing, stale, and mismatched
       contracts.

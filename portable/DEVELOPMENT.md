@@ -99,7 +99,8 @@ Stage 10: release qualification
 ## Current gate status
 
 Stage 1, the mandatory normative contract freeze, Stage 2, all Stage 3 slices,
-all Stage 4 slices, and all Stage 5 slices are complete. The private frontend
+all Stage 4 slices, all Stage 5 slices, and Stage 6 Slice 6.1 are complete. The
+private frontend
 retains exact nonsemantic trivia, enforces frozen ASCII/token boundaries,
 decodes bounded Unicode strings, and normalizes signed decimal exact numbers
 without floating-point conversion. It supports nullable scalar values with
@@ -119,8 +120,12 @@ and traverse those typed edges by ID. Whole logical documents now compare by a
 one-to-one graph mapping independent of local ID spelling and companion records;
 duplicate and dangling graphs fail closed. Typed IR, source facts, provenance,
 reader validation, and probe output are covered by frozen oracles and generated
-property vectors. The next work is Stage 6, Slice 6.1: the strict captured
-vocabulary bundle decoder and logical contract. The approved
+property vectors. Captured vocabulary bundles now pass an exact typed-digest
+gate before a strict bounded JSON decoder validates the closed schema, immutable
+feature set, nominal type graph, and closed defaults. Captured byte identity is
+kept separate from the normalized logical vocabulary contract, and no bundle
+content can trigger code loading or external I/O. The next work is Stage 6,
+Slice 6.2: captured `use` and qualified values. The approved
 [freeze manifest](spec/v0/freeze.toml) identifies
 the v0 contract family, and the
 [contract question ledger](development/CONTRACT-QUESTION-LEDGER.md) records the

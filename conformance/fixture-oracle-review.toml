@@ -872,3 +872,138 @@ expected_outcome = "reject"
 active_from_stage = 5
 required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
 review_status = "oracle-approved"
+
+[[fixture]]
+id = "vocabulary-comprehensive"
+source = "portable/spec/v0/fixtures/vocabulary/bundles/positive/comprehensive.json"
+source_sha256 = "b067cfb1d8e253bc5ce2173c129098858104040bc8787a1208eb8da06c19b727"
+expected_outcome = "accept"
+active_from_stage = 6
+required_oracles = ["content-digest", "logical-vocabulary", "closed-defaults"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "vocabulary-reordered"
+source = "portable/spec/v0/fixtures/vocabulary/bundles/positive/reordered.json"
+source_sha256 = "bd95cd7f1a972d1626401b63949d0cd4368edd5e2a795c9527376dd09fdc456d"
+expected_outcome = "accept"
+active_from_stage = 6
+required_oracles = ["content-digest", "logical-equivalence"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "vocabulary-duplicate-envelope"
+source = "portable/spec/v0/fixtures/vocabulary/bundles/negative/duplicate-envelope-key.json"
+source_sha256 = "0162a0cbe67d7e958b251732b1c5829c796acda2a1a8b94c062e073f54978d54"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["duplicate-key", "bounded-failure"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "vocabulary-duplicate-nested"
+source = "portable/spec/v0/fixtures/vocabulary/bundles/negative/duplicate-nested-key.json"
+source_sha256 = "2607c027fee86f7c0da149e72ccdbbe1327076df134e73d2bfd606904737ed42"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["duplicate-key", "bounded-failure"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "vocabulary-embedded-recursion"
+source = "portable/spec/v0/fixtures/vocabulary/bundles/negative/embedded-recursion.json"
+source_sha256 = "917aaea9f6222000e93b36051cc8b4c065946d50d4210dc878213e071bcbcabf"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["recursion-boundary", "bounded-failure"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "vocabulary-executable-member"
+source = "portable/spec/v0/fixtures/vocabulary/bundles/negative/executable-member.json"
+source_sha256 = "1d3dbcaeda77c7aa610a3f1f9bca9ab0e4a5f73bdece1df0beeaa5905fb35737"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["closed-schema", "no-code-loading"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "vocabulary-raw-number"
+source = "portable/spec/v0/fixtures/vocabulary/bundles/negative/raw-json-number.json"
+source_sha256 = "8c520ba189d1fb089e09510e03fb7db95fdaab5c0a383f13ef5d65d65d76e454"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["strict-json", "exact-number"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "vocabulary-reference-default"
+source = "portable/spec/v0/fixtures/vocabulary/bundles/negative/reference-default.json"
+source_sha256 = "5964a364302eeaef8bc6f53ba1cd55f35e28e8ece36aabd96b160deb89b560e9"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["closed-default", "bounded-failure"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "vocabulary-truncated"
+source = "portable/spec/v0/fixtures/vocabulary/bundles/negative/truncated.json"
+source_sha256 = "8d46dc9aee3d27b6967f5ef6d238c923c643ea04f021e0a35c8c1f0413400951"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["strict-json", "bounded-failure"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "vocabulary-unknown-member"
+source = "portable/spec/v0/fixtures/vocabulary/bundles/negative/unknown-envelope-member.json"
+source_sha256 = "53027d0a49d6e5c881a0287e1944af2f7ae55e9b7039ac017dcdf83017eeeb53"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["closed-schema", "bounded-failure"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "vocabulary-unknown-feature"
+source = "portable/spec/v0/fixtures/vocabulary/bundles/negative/unknown-feature.json"
+source_sha256 = "9170c7565faa9c7855b4f9863ec39eb4d969ecbc0aae94c4987404e5113d7de8"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["feature-lock", "bounded-failure"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "vocabulary-executable-kind"
+source = "portable/spec/v0/fixtures/vocabulary/bundles/negative/unknown-type-kind.json"
+source_sha256 = "721fe221eafe181be5f52a26bff2a94c0d5ea9aaa69432ec247e3c2e21c862dc"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["closed-schema", "no-code-loading"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "vocabulary-unknown-target"
+source = "portable/spec/v0/fixtures/vocabulary/bundles/negative/unknown-type-target.json"
+source_sha256 = "b10d988846d33cd0efc09e8d03e0d2a21a0e0e0ad21ce4764a528f8bb7e3b1e9"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["type-target", "bounded-failure"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "vocabulary-incompatible-default"
+source = "portable/spec/v0/fixtures/vocabulary/bundles/negative/incompatible-default.json"
+source_sha256 = "f6c6aa35d058f17e07183a206074c43726884d6b40b9baadd0dd94a18e206d91"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["closed-default", "type-compatibility"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "vocabulary-incomplete-record-default"
+source = "portable/spec/v0/fixtures/vocabulary/bundles/negative/incomplete-record-default.json"
+source_sha256 = "805c1d4e57cad3f9994edcce2bceda80d1795a81b7c07ec9c191b701fc334df1"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["closed-default", "required-field"]
+review_status = "oracle-approved"
