@@ -115,6 +115,14 @@ fixtures/
   is absent.
 - [vocabulary-name-collision.neu](negative/vocabulary/vocabulary-name-collision.neu): the
   imported vocabulary namespace cannot be redeclared.
+- [missing-capture.neu](negative/vocabulary/missing-capture.neu) and
+  [unknown-type.neu](negative/vocabulary/unknown-type.neu) freeze exact captured
+  resolution and qualified-type failures.
+- [missing-payload-field.neu](negative/vocabulary/missing-payload-field.neu),
+  [duplicate-payload-field.neu](negative/vocabulary/duplicate-payload-field.neu),
+  [unknown-payload-field.neu](negative/vocabulary/unknown-payload-field.neu), and
+  [wrong-payload-type.neu](negative/vocabulary/wrong-payload-type.neu) freeze the
+  closed vocabulary payload diagnostics.
 
 ## Contract matrix
 

@@ -7,7 +7,7 @@ schema_version = 1
 status = "approved"
 source_fixture_root = "portable/spec/v0/fixtures"
 reviewers = ["repository owner"]
-unresolved_oracle_count = 7
+unresolved_oracle_count = 4
 
 [[fixture]]
 id = "number-fraction"
@@ -158,9 +158,9 @@ id = "minimal-vocabulary"
 source = "portable/spec/v0/fixtures/positive/vocabulary/minimal-vocabulary.neu"
 source_sha256 = "cd13edee8bfbe559255cdbb0ee8bbd919f628247216e4320d21c757b04721ba8"
 expected_outcome = "accept"
-active_from_stage = 2
-required_oracles = ["logical-ir", "source-map", "provenance", "derivation", "probe-summary"]
-review_status = "oracle-unassigned"
+active_from_stage = 6
+required_oracles = ["exact-capture", "qualified-type", "vocabulary-default", "reader"]
+review_status = "oracle-approved"
 
 [[fixture]]
 id = "version-leading-zero"
@@ -286,7 +286,7 @@ source_sha256 = "6128820de6ee539cddeea3a9deb96dce72b2030f64c83c466bde567ab490df3
 expected_outcome = "reject"
 active_from_stage = 2
 required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
-review_status = "oracle-unassigned"
+review_status = "oracle-approved"
 
 [[fixture]]
 id = "visibility-modifier"
@@ -367,7 +367,7 @@ source_sha256 = "a5ddd7d80ceec463f7c5771741b1bb1453e3794e313eba3b72a21898d1bc064
 expected_outcome = "reject"
 active_from_stage = 6
 required_oracles = ["failure-class", "stable-diagnostic", "original-byte-span"]
-review_status = "oracle-unassigned"
+review_status = "oracle-approved"
 
 [[fixture]]
 id = "nonconstant-default"
@@ -1006,4 +1006,58 @@ source_sha256 = "805c1d4e57cad3f9994edcce2bceda80d1795a81b7c07ec9c191b701fc334df
 expected_outcome = "reject"
 active_from_stage = 6
 required_oracles = ["closed-default", "required-field"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "missing-vocabulary-capture"
+source = "portable/spec/v0/fixtures/negative/vocabulary/missing-capture.neu"
+source_sha256 = "6febacd246a7a4a7e940eb4950c33b7310189c0ff4e421ee2fcd96f71b117971"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["missing-capture", "no-acquisition"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "unknown-vocabulary-type"
+source = "portable/spec/v0/fixtures/negative/vocabulary/unknown-type.neu"
+source_sha256 = "88cd43057f75b489493444737aee881db1a96190ddfe7660fd244510345d43df"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["qualified-type", "bounded-failure"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "unknown-vocabulary-field"
+source = "portable/spec/v0/fixtures/negative/vocabulary/unknown-payload-field.neu"
+source_sha256 = "275768680fde093be639fa1028b8600436c58fd0962e1fa072897a8a9525d885"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["closed-payload", "bounded-failure"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "wrong-vocabulary-field-type"
+source = "portable/spec/v0/fixtures/negative/vocabulary/wrong-payload-type.neu"
+source_sha256 = "d27f9b90538f8bb285cd87c49e93bf5c74abdeb2dc052d34ae3bae6482b04584"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["payload-type", "bounded-failure"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "missing-vocabulary-field"
+source = "portable/spec/v0/fixtures/negative/vocabulary/missing-payload-field.neu"
+source_sha256 = "a52ef9eb0a8f1c01bef4101504cdaff1b37e36b9c91b502487f09d3663150e7c"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["required-field", "bounded-failure"]
+review_status = "oracle-approved"
+
+[[fixture]]
+id = "duplicate-vocabulary-field"
+source = "portable/spec/v0/fixtures/negative/vocabulary/duplicate-payload-field.neu"
+source_sha256 = "409fcd6f3eddb88fceeadd51000eec7d1a6615197bac46a4a74f197b8b9a585e"
+expected_outcome = "reject"
+active_from_stage = 6
+required_oracles = ["duplicate-field", "bounded-failure"]
 review_status = "oracle-approved"

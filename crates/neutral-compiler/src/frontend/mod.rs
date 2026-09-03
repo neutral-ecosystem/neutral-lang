@@ -57,6 +57,8 @@ enum TokenKind {
     Neu,
     /// The `module` header keyword.
     Module,
+    /// The `use` vocabulary-requirement keyword.
+    Use,
     /// The `record` nominal-type declaration keyword.
     Record,
     /// The `List` invariant generic type constructor.
@@ -95,6 +97,8 @@ enum TokenKind {
     CloseBrace,
     /// Record value field-name separator.
     Colon,
+    /// Vocabulary qualification delimiter.
+    DoubleColon,
     /// Generic type-argument opening delimiter.
     Less,
     /// Generic type-argument closing delimiter.
@@ -146,10 +150,23 @@ pub(super) struct ParsedUnit {
     pub(super) version_span: ByteSpan,
     /// Parsed module header.
     pub(super) module: ParsedModule,
+    /// Optional captured vocabulary requirement.
+    pub(super) vocabulary_use: Option<ParsedVocabularyUse>,
     /// Parsed root declarations in source order.
     pub(super) declarations: Vec<ParsedDeclaration>,
     /// Exact compiler-private trivia, never lowered into logical IR.
     trivia: Vec<Trivia>,
+}
+
+/// One compiler-private captured vocabulary requirement.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct ParsedVocabularyUse {
+    /// Required uppercase vocabulary identity.
+    pub(super) name: String,
+    /// Complete `use` declaration span.
+    pub(super) span: ByteSpan,
+    /// Exact vocabulary-name span.
+    pub(super) name_span: ByteSpan,
 }
 
 /// One compiler-private root declaration.
@@ -261,6 +278,13 @@ pub(super) enum ParsedType {
     Bool,
     /// Unresolved user nominal record name.
     Record(String),
+    /// Qualified nominal type owned by the captured vocabulary.
+    VocabularyRecord {
+        /// Required vocabulary namespace.
+        namespace: String,
+        /// Required vocabulary-owned nominal type.
+        name: String,
+    },
     /// Exactly one outer nullable layer around a supported type.
     Nullable(Box<ParsedType>),
     /// Invariant ordered list element type.

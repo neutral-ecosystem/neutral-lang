@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module fixture_missing_vocabulary
+
+use Fixture
+
+Fixture::Metadata metadata = {
+    label: "missing",
+}

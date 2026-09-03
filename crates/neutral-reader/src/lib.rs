@@ -7,6 +7,7 @@
 //! not acquire inputs or depend on compiler-private representations.
 
 use neutral_core::SourceLocation;
+pub use neutral_ir::VocabularyContract;
 use neutral_ir::{
     CompilationArtifacts, Declaration, DeclarationFingerprint, LogicalValue, RecordTypeDefinition,
     ResolvedType, ValueOrigin,
@@ -53,6 +54,12 @@ impl ValidatedDocument {
     #[must_use]
     pub fn record_types(&self) -> &[RecordTypeDefinition] {
         self.artifacts.logical_document().record_types()
+    }
+
+    /// Returns the exact captured vocabulary contract, when present.
+    #[must_use]
+    pub fn vocabulary(&self) -> Option<&VocabularyContract> {
+        self.artifacts.logical_document().vocabulary()
     }
 
     /// Finds one nominal record schema by its validated name.
@@ -120,6 +127,8 @@ pub enum ReaderError {
     InvalidReferenceEdge,
     /// A declaration fingerprint did not match its complete logical definition.
     InvalidDeclarationFingerprint,
+    /// Logical and derivation vocabulary contracts were missing or inconsistent.
+    InvalidVocabularyContract,
 }
 
 /// Validates relationships among logical declarations and companion artifacts.
@@ -133,6 +142,12 @@ fn validate_artifacts(artifacts: &CompilationArtifacts) -> Result<(), ReaderErro
         .map(|record| (record.name(), record))
         .collect::<BTreeMap<_, _>>();
     validate_record_schemas(artifacts, &records)?;
+    let logical_vocabulary = artifacts.logical_document().vocabulary();
+    let derivation_vocabulary = artifacts.derivation().vocabulary();
+    if logical_vocabulary.map(VocabularyContract::identity) != derivation_vocabulary {
+        return Err(ReaderError::InvalidVocabularyContract);
+    }
+    validate_vocabulary_contract(logical_vocabulary)?;
     for record in artifacts.logical_document().record_types() {
         if DeclarationFingerprint::for_record(record.fields())
             .map_err(|_| ReaderError::InvalidDeclarationFingerprint)?
@@ -160,6 +175,13 @@ fn validate_artifacts(artifacts: &CompilationArtifacts) -> Result<(), ReaderErro
         if !validate_value(declaration.resolved_type(), declaration.value(), &records) {
             return Err(ReaderError::TypeValueMismatch);
         }
+        if !validate_vocabulary_value(
+            declaration.resolved_type(),
+            declaration.value(),
+            artifacts.logical_document().vocabulary(),
+        ) {
+            return Err(ReaderError::TypeValueMismatch);
+        }
         if !element_ids.insert(declaration.element_id()) {
             return Err(ReaderError::DuplicateElementId);
         }
@@ -185,6 +207,80 @@ fn validate_artifacts(artifacts: &CompilationArtifacts) -> Result<(), ReaderErro
     validate_reuse_provenance(artifacts, &records)?;
     validate_reference_provenance(artifacts, &records)?;
     Ok(())
+}
+
+/// Validates canonical shape and closed defaults in an embedded vocabulary contract.
+fn validate_vocabulary_contract(contract: Option<&VocabularyContract>) -> Result<(), ReaderError> {
+    let Some(contract) = contract else {
+        return Ok(());
+    };
+    let mut previous_type = None;
+    for definition in contract.types() {
+        if definition.identity().vocabulary() != contract.identity().identity()
+            || previous_type.is_some_and(|name| name >= definition.identity().name())
+        {
+            return Err(ReaderError::InvalidRecordSchema);
+        }
+        previous_type = Some(definition.identity().name());
+        let mut previous_field = None;
+        for field in definition.fields() {
+            if previous_field.is_some_and(|name| name >= field.name())
+                || field.default_value().is_some_and(|value| {
+                    !is_closed_default(value)
+                        || !validate_vocabulary_value(field.resolved_type(), value, Some(contract))
+                })
+            {
+                return Err(ReaderError::InvalidRecordSchema);
+            }
+            previous_field = Some(field.name());
+        }
+    }
+    Ok(())
+}
+
+/// Validates qualified values solely against the embedded exact contract.
+fn validate_vocabulary_value(
+    expected: &ResolvedType,
+    value: &LogicalValue,
+    contract: Option<&VocabularyContract>,
+) -> bool {
+    match (expected, value) {
+        (ResolvedType::Nullable(_), LogicalValue::Null) => true,
+        (ResolvedType::Nullable(inner), value) => validate_vocabulary_value(inner, value, contract),
+        (ResolvedType::List(inner), LogicalValue::List(items)) => items
+            .iter()
+            .all(|item| validate_vocabulary_value(inner, item, contract)),
+        (ResolvedType::VocabularyRecord(identity), LogicalValue::VocabularyRecord(value)) => {
+            let Some(contract) = contract else {
+                return false;
+            };
+            let Some(schema) = contract.type_by_name(identity.name()) else {
+                return false;
+            };
+            identity == value.nominal_type()
+                && identity.vocabulary() == contract.identity().identity()
+                && schema.fields().len() == value.fields().len()
+                && schema
+                    .fields()
+                    .iter()
+                    .zip(value.fields())
+                    .all(|(field, actual)| {
+                        field.name() == actual.name()
+                            && validate_value(
+                                field.resolved_type(),
+                                actual.value(),
+                                &BTreeMap::new(),
+                            )
+                            && validate_vocabulary_value(
+                                field.resolved_type(),
+                                actual.value(),
+                                Some(contract),
+                            )
+                    })
+        }
+        (ResolvedType::VocabularyRecord(_), _) => false,
+        _ => true,
+    }
 }
 
 /// Validates every typed identity edge and requires exact provenance coverage.
@@ -217,6 +313,7 @@ fn validate_reference_provenance(
             owner.value(),
             provenance.value_path(),
             records,
+            artifacts.logical_document().vocabulary(),
         ) else {
             return Err(ReaderError::InvalidReferenceEdge);
         };
@@ -289,6 +386,13 @@ fn reference_provenance_is_complete(
             path.pop();
             complete
         }),
+        LogicalValue::VocabularyRecord(record) => record.fields().iter().all(|field| {
+            path.push(field.name().to_owned());
+            let complete =
+                reference_provenance_is_complete(element_id, field.value(), path, observed);
+            path.pop();
+            complete
+        }),
         LogicalValue::List(items) => items.iter().enumerate().all(|(index, item)| {
             path.push(index.to_string());
             let complete = reference_provenance_is_complete(element_id, item, path, observed);
@@ -326,6 +430,7 @@ fn validate_reuse_provenance(
             owner.value(),
             provenance.value_path(),
             records,
+            artifacts.logical_document().vocabulary(),
         ) else {
             return Err(ReaderError::InvalidReuseProvenance);
         };
@@ -364,6 +469,7 @@ fn value_at_path<'a>(
     value: &'a LogicalValue,
     path: &[String],
     records: &BTreeMap<&str, &'a RecordTypeDefinition>,
+    vocabulary: Option<&'a VocabularyContract>,
 ) -> Option<(&'a ResolvedType, &'a LogicalValue)> {
     if path.is_empty() {
         return Some((expected, value));
@@ -375,7 +481,25 @@ fn value_at_path<'a>(
     let (head, tail) = path.split_first()?;
     if let (ResolvedType::List(inner), LogicalValue::List(items)) = (expected, value) {
         let index = head.parse::<usize>().ok()?;
-        return value_at_path(inner, items.get(index)?, tail, records);
+        return value_at_path(inner, items.get(index)?, tail, records, vocabulary);
+    }
+    if let (
+        ResolvedType::VocabularyRecord(identity),
+        LogicalValue::VocabularyRecord(record_value),
+    ) = (expected, value)
+    {
+        let schema = vocabulary?.type_by_name(identity.name())?;
+        let index = schema
+            .fields()
+            .iter()
+            .position(|field| field.name() == head)?;
+        return value_at_path(
+            schema.fields()[index].resolved_type(),
+            record_value.fields()[index].value(),
+            tail,
+            records,
+            vocabulary,
+        );
     }
     let (ResolvedType::Record(identity), LogicalValue::Record(record_value)) = (expected, value)
     else {
@@ -391,6 +515,7 @@ fn value_at_path<'a>(
         record_value.fields()[index].value(),
         tail,
         records,
+        vocabulary,
     )
 }
 
@@ -419,7 +544,9 @@ fn validate_field_provenance(
         if provenance.field_path().is_empty()
             || !matches!(
                 provenance.origin(),
-                ValueOrigin::ExplicitRecordField | ValueOrigin::UserRecordDefault
+                ValueOrigin::ExplicitRecordField
+                    | ValueOrigin::UserRecordDefault
+                    | ValueOrigin::VocabularyDefault
             )
             || observed
                 .insert(
@@ -432,6 +559,7 @@ fn validate_field_provenance(
                 declaration.value(),
                 provenance.field_path(),
                 records,
+                artifacts.logical_document().vocabulary(),
             )
         {
             return Err(ReaderError::InvalidFieldProvenance);
@@ -444,6 +572,7 @@ fn validate_field_provenance(
             declaration.value(),
             &mut Vec::new(),
             records,
+            artifacts.logical_document().vocabulary(),
             &observed,
         ) {
             return Err(ReaderError::InvalidFieldProvenance);
@@ -459,6 +588,7 @@ fn field_provenance_is_complete(
     value: &LogicalValue,
     path: &mut Vec<String>,
     records: &BTreeMap<&str, &RecordTypeDefinition>,
+    vocabulary: Option<&VocabularyContract>,
     observed: &BTreeMap<(ElementId, Vec<String>), ValueOrigin>,
 ) -> bool {
     let expected = match expected {
@@ -468,7 +598,38 @@ fn field_provenance_is_complete(
     if let (ResolvedType::List(inner), LogicalValue::List(items)) = (expected, value) {
         for (index, item) in items.iter().enumerate() {
             path.push(index.to_string());
-            if !field_provenance_is_complete(element_id, inner, item, path, records, observed) {
+            if !field_provenance_is_complete(
+                element_id, inner, item, path, records, vocabulary, observed,
+            ) {
+                return false;
+            }
+            path.pop();
+        }
+        return true;
+    }
+    if let (ResolvedType::VocabularyRecord(identity), LogicalValue::VocabularyRecord(value)) =
+        (expected, value)
+    {
+        let Some(schema) = vocabulary.and_then(|contract| contract.type_by_name(identity.name()))
+        else {
+            return false;
+        };
+        for (schema_field, value_field) in schema.fields().iter().zip(value.fields()) {
+            path.push(schema_field.name().to_owned());
+            let Some(origin) = observed.get(&(element_id, path.clone())) else {
+                return false;
+            };
+            if *origin == ValueOrigin::ExplicitRecordField
+                && !field_provenance_is_complete(
+                    element_id,
+                    schema_field.resolved_type(),
+                    value_field.value(),
+                    path,
+                    records,
+                    vocabulary,
+                    observed,
+                )
+            {
                 return false;
             }
             path.pop();
@@ -494,6 +655,7 @@ fn field_provenance_is_complete(
                 value_field.value(),
                 path,
                 records,
+                vocabulary,
                 observed,
             )
         {
@@ -510,6 +672,7 @@ fn field_path_exists(
     value: &LogicalValue,
     path: &[String],
     records: &BTreeMap<&str, &RecordTypeDefinition>,
+    vocabulary: Option<&VocabularyContract>,
 ) -> bool {
     let expected = match expected {
         ResolvedType::Nullable(inner) => inner.as_ref(),
@@ -525,7 +688,32 @@ fn field_path_exists(
         let Some(item) = items.get(index) else {
             return false;
         };
-        return field_path_exists(inner, item, tail, records);
+        return field_path_exists(inner, item, tail, records, vocabulary);
+    }
+    if let (ResolvedType::VocabularyRecord(identity), LogicalValue::VocabularyRecord(value)) =
+        (expected, value)
+    {
+        let Some(schema) = vocabulary.and_then(|contract| contract.type_by_name(identity.name()))
+        else {
+            return false;
+        };
+        let Some(index) = schema
+            .fields()
+            .iter()
+            .position(|field| field.name() == head)
+        else {
+            return false;
+        };
+        if tail.is_empty() {
+            return true;
+        }
+        return field_path_exists(
+            schema.fields()[index].resolved_type(),
+            value.fields()[index].value(),
+            tail,
+            records,
+            vocabulary,
+        );
     }
     let (ResolvedType::Record(identity), LogicalValue::Record(value)) = (expected, value) else {
         return false;
@@ -548,6 +736,7 @@ fn field_path_exists(
         value.fields()[index].value(),
         tail,
         records,
+        vocabulary,
     )
 }
 
@@ -631,6 +820,10 @@ fn is_closed_default(value: &LogicalValue) -> bool {
             .fields()
             .iter()
             .all(|field| is_closed_default(field.value())),
+        LogicalValue::VocabularyRecord(record) => record
+            .fields()
+            .iter()
+            .all(|field| is_closed_default(field.value())),
         LogicalValue::List(items) => items.iter().all(is_closed_default),
         LogicalValue::Reference(_) => false,
         LogicalValue::Number(_)
@@ -652,7 +845,10 @@ fn resolved_record_targets_exist(
         ResolvedType::Nullable(inner) | ResolvedType::List(inner) | ResolvedType::Ref(inner) => {
             resolved_record_targets_exist(inner, records)
         }
-        ResolvedType::Num | ResolvedType::String | ResolvedType::Bool => true,
+        ResolvedType::VocabularyRecord(_)
+        | ResolvedType::Num
+        | ResolvedType::String
+        | ResolvedType::Bool => true,
     }
 }
 
@@ -685,6 +881,7 @@ fn record_schema_has_cycle(
 fn resolved_record_target(resolved_type: &ResolvedType) -> Option<&str> {
     match resolved_type {
         ResolvedType::Record(identity) => Some(identity.name()),
+        ResolvedType::VocabularyRecord(_) => None,
         ResolvedType::Nullable(inner) | ResolvedType::List(inner) => resolved_record_target(inner),
         ResolvedType::Ref(_) | ResolvedType::Num | ResolvedType::String | ResolvedType::Bool => {
             None

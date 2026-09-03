@@ -10,7 +10,8 @@ that artifacts can be inspected through public reader contracts alone; it must
 not import the compiler, private parser/semantic models, capture logic, or a
 filesystem resolver. It reports observations, not application-specific meaning.
 
-The active probe implements deterministic binding and nominal-record schema
-summaries plus one consumer-owned diagnostic mapped through the public reader
-source map. The standalone binary remains an encoded-input shell and does not
-link the compiler.
+The active probe implements deterministic binding, nominal-record, exact
+vocabulary-contract, and qualified-schema summaries plus one consumer-owned
+diagnostic mapped through the public reader source map. Its traversal remains
+generic and contains no `Fixture`-specific interpretation. The standalone binary
+remains an encoded-input shell and does not link the compiler.

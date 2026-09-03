@@ -6,12 +6,16 @@
 //! and lowering into public logical IR. Its pure captured-input compilation
 //! path must not use filesystem, process, environment, network, locale, or clock
 //! authority. Stage 2 established captured-input contracts; Stages 3 through
-//! 5.2 extend the private frontend while preserving the same effect-free boundary.
+//! 6.2 extend the private frontend while preserving the same effect-free boundary.
 
 use neutral_core::{
-    CancellationToken, Diagnostic, ResultClass, SourceContentDigest, StructuralLimits,
+    ByteSpan, CancellationToken, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity,
+    ResultClass, SourceContentDigest, SourceLocation, StructuralLimits,
 };
 use neutral_ir::CompilationArtifacts;
+use neutral_vocabulary::{
+    VocabularyError, VocabularyLimits, VocabularyLock, validate_captured_bundle,
+};
 use std::sync::Arc;
 
 mod frontend;
@@ -20,6 +24,28 @@ mod semantics;
 
 /// Stable diagnostic identifiers emitted by compiler validation.
 pub mod diagnostics {
+    /// A source vocabulary requirement had no exact captured input.
+    pub const MISSING_VOCABULARY: &str = "NEU-VOC-001";
+    /// Captured bytes or identity facts disagreed with the exact lock.
+    pub const VOCABULARY_LOCK_MISMATCH: &str = "NEU-VOC-002";
+    /// A captured bundle violated its closed data-only schema.
+    pub const INVALID_VOCABULARY_BUNDLE: &str = "NEU-VOC-003";
+    /// A captured bundle required an unknown structural feature.
+    pub const UNKNOWN_VOCABULARY_FEATURE: &str = "NEU-VOC-004";
+    /// A qualified source type was absent from the captured contract.
+    pub const UNKNOWN_VOCABULARY_TYPE: &str = "NEU-VOC-005";
+    /// Captured bundle content attempted to introduce executable behavior.
+    pub const EXECUTABLE_VOCABULARY_MEMBER: &str = "NEU-VOC-006";
+    /// A vocabulary payload contained an unknown field.
+    pub const UNKNOWN_VOCABULARY_FIELD: &str = "NEU-VOC-007";
+    /// A vocabulary payload omitted a required field.
+    pub const MISSING_VOCABULARY_FIELD: &str = "NEU-VOC-008";
+    /// A vocabulary payload repeated one field.
+    pub const DUPLICATE_VOCABULARY_FIELD: &str = "NEU-VOC-009";
+    /// A vocabulary payload field did not satisfy its captured type.
+    pub const VOCABULARY_FIELD_TYPE_MISMATCH: &str = "NEU-VOC-010";
+    /// A vocabulary namespace collided with a root declaration.
+    pub const VOCABULARY_NAME_COLLISION: &str = "NEU-VOC-011";
     /// Missing module header diagnostic.
     pub const MISSING_MODULE_HEADER: &str = "NEU-SYN-001";
     /// Unsupported language version diagnostic.
@@ -96,6 +122,8 @@ pub struct CompilationRequest {
     limits: StructuralLimits,
     /// Cooperative cancellation signal supplied by the caller.
     cancellation: CancellationToken,
+    /// Optional exact bundle bytes and lock supplied by the host.
+    vocabulary: Option<CapturedVocabularyInput>,
 }
 
 impl CompilationRequest {
@@ -107,6 +135,7 @@ impl CompilationRequest {
             expected_source_digest: None,
             limits,
             cancellation,
+            vocabulary: None,
         }
     }
 
@@ -116,6 +145,25 @@ impl CompilationRequest {
         self.expected_source_digest = Some(expected);
         self
     }
+
+    /// Supplies one exact already-captured vocabulary bundle and lock.
+    #[must_use]
+    pub fn with_captured_vocabulary(mut self, bytes: Vec<u8>, lock: VocabularyLock) -> Self {
+        self.vocabulary = Some(CapturedVocabularyInput {
+            bytes: Arc::from(bytes),
+            lock,
+        });
+        self
+    }
+}
+
+/// Exact host-supplied vocabulary input with no acquisition authority.
+#[derive(Clone, Debug)]
+struct CapturedVocabularyInput {
+    /// Exact captured bundle bytes.
+    bytes: Arc<[u8]>,
+    /// Exact immutable lock facts.
+    lock: VocabularyLock,
 }
 
 /// Immutable, replayable input for the I/O-free compilation boundary.
@@ -129,6 +177,8 @@ pub struct CapturedCompilation {
     limits: StructuralLimits,
     /// Cooperative cancellation signal preserved from the request.
     cancellation: CancellationToken,
+    /// Optional exact captured vocabulary bytes and lock.
+    vocabulary: Option<CapturedVocabularyInput>,
 }
 
 impl CapturedCompilation {
@@ -154,6 +204,12 @@ impl CapturedCompilation {
     #[must_use]
     pub const fn limits(&self) -> StructuralLimits {
         self.limits
+    }
+
+    /// Returns whether the host supplied one exact vocabulary capture.
+    #[must_use]
+    pub const fn has_captured_vocabulary(&self) -> bool {
+        self.vocabulary.is_some()
     }
 }
 
@@ -235,6 +291,8 @@ pub enum CompilationFailureDetail {
     ReferenceRejected,
     /// A deterministic captured structural limit was exceeded.
     ResourceLimitExceeded,
+    /// Captured vocabulary resolution, validation, or payload was rejected.
+    VocabularyRejected,
 }
 
 /// Captures exact host-supplied input without consulting ambient authority.
@@ -271,13 +329,14 @@ pub fn capture(request: CompilationRequest) -> Result<CapturedCompilation, Captu
         source_digest,
         limits: request.limits,
         cancellation: request.cancellation,
+        vocabulary: request.vocabulary,
     })
 }
 
 /// Compiles immutable captured input without any host acquisition or ambient I/O.
 ///
-/// Stage 2 Step 2 establishes this boundary but intentionally does not accept
-/// source until the minimal frontend slice is implemented.
+/// Any optional vocabulary bytes and lock were supplied by the host during
+/// capture; this boundary performs no registry, path, cache, or network lookup.
 #[must_use]
 pub fn compile_captured(captured: &CapturedCompilation) -> CompilationResult {
     if captured.cancellation.is_cancelled() {
@@ -288,9 +347,21 @@ pub fn compile_captured(captured: &CapturedCompilation) -> CompilationResult {
         });
     }
 
+    let vocabulary = match captured.vocabulary.as_ref() {
+        Some(input) => match validate_captured_bundle(
+            &input.bytes,
+            &input.lock,
+            VocabularyLimits::from_structural(captured.limits()),
+        ) {
+            Ok(bundle) => Some(bundle),
+            Err(error) => return vocabulary_bundle_failure(captured.source_digest(), error),
+        },
+        None => None,
+    };
     match frontend::parse(captured.source(), captured.limits()) {
         Ok(unit) => match semantics::lower(
             unit,
+            vocabulary.as_ref(),
             captured.source_digest(),
             captured.source().len(),
             captured.limits(),
@@ -304,6 +375,38 @@ pub fn compile_captured(captured: &CapturedCompilation) -> CompilationResult {
             diagnostics: error.into_diagnostics(captured.source_digest()),
         }),
     }
+}
+
+/// Converts one strict captured-bundle failure into stable bounded diagnostics.
+fn vocabulary_bundle_failure(
+    source: SourceContentDigest,
+    error: VocabularyError,
+) -> CompilationResult {
+    let code = match error {
+        VocabularyError::DigestMismatch
+        | VocabularyError::LockMismatch
+        | VocabularyError::UnsupportedEncodingVersion
+        | VocabularyError::UnsupportedSchemaVersion => diagnostics::VOCABULARY_LOCK_MISMATCH,
+        VocabularyError::UnknownRequiredFeature => diagnostics::UNKNOWN_VOCABULARY_FEATURE,
+        VocabularyError::ExecutableShapeForbidden => diagnostics::EXECUTABLE_VOCABULARY_MEMBER,
+        _ => diagnostics::INVALID_VOCABULARY_BUNDLE,
+    };
+    let diagnostic = Diagnostic::new(
+        DiagnosticCode::new(code).expect("vocabulary diagnostic code must be ASCII"),
+        DiagnosticLayer::Vocabulary,
+        DiagnosticSeverity::Error,
+        SourceLocation::new(
+            source,
+            ByteSpan::new(0, 0).expect("zero span must be valid"),
+        ),
+        Vec::new(),
+        false,
+    );
+    CompilationResult::Failure(CompilationFailure {
+        class: ResultClass::Vocabulary,
+        detail: CompilationFailureDetail::VocabularyRejected,
+        diagnostics: vec![diagnostic],
+    })
 }
 
 /// Captures then compiles one host-supplied request without exposing partial IR.

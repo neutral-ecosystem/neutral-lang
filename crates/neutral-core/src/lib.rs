@@ -371,6 +371,8 @@ pub enum DiagnosticLayer {
     Semantics,
     /// Typed identity-reference target validation.
     Reference,
+    /// Captured vocabulary contract and payload validation.
+    Vocabulary,
     /// Reader-facing consumer or probe observation.
     Consumer,
     /// Resource limits or cancellation.
@@ -752,6 +754,8 @@ pub enum ResultClass {
     Semantics,
     /// A typed identity-reference target or edge was invalid.
     Reference,
+    /// A captured vocabulary contract or payload was invalid.
+    Vocabulary,
     /// The caller cancelled bounded work.
     Cancellation,
     /// A compiler invariant failed without authoritative output.

@@ -11,6 +11,7 @@ vocabulary contract. The CLI and standalone probe use this boundary to inspect
 artifacts without depending on compiler internals.
 
 The active reader exposes validated in-process compiler artifacts through
-immutable scalar and nominal-record traversal, recursive type/value validation,
+immutable scalar, nominal-record, and qualified vocabulary traversal; recursive
+type/value/default-provenance validation; exact vocabulary-contract validation;
 and indexed source lookup. Hostile external decoding is introduced by its later
 owning stage.

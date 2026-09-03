@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module fixture_unknown_vocabulary_type
+
+use Fixture
+
+Fixture::Unknown metadata = {}

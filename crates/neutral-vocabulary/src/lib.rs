@@ -14,6 +14,11 @@ use neutral_core::{StructuralLimits, VocabularyContentDigest};
 use neutral_ir::ExactNumber;
 use std::collections::{BTreeMap, BTreeSet};
 
+/// Frozen captured vocabulary bundle encoding version.
+pub const VOCABULARY_ENCODING_VERSION: &str = schema::ENCODING_VERSION;
+/// Frozen logical vocabulary schema version.
+pub const VOCABULARY_SCHEMA_VERSION: &str = schema::SCHEMA_VERSION;
+
 /// Explicit resource limits for strict vocabulary decoding and validation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct VocabularyLimits {

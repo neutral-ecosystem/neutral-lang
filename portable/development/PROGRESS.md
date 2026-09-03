@@ -2,23 +2,33 @@
 
 # Neutral v0 development progress
 
-Status: Stage 6 complete through Slice 6.1.
+Status: Stage 6 complete.
 
 ## Current focus
 
-- Stage: Stage 6, Slice 6.1
-- Status: Strict captured vocabulary bundle decoder and logical contract complete
-- Last updated: 2026-09-02
+- Stage: Stage 6, Slice 6.2
+- Status: Captured vocabulary vertical boundary complete
+- Last updated: 2026-09-03
 
 ## Next actions
 
-- [ ] Continue with Stage 6, Slice 6.2: captured `use` and qualified values.
+- [ ] Continue with Stage 7, Step 1: accept the external IR encoding decision.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-09-03: Completed Stage 6, Slice 6.2 and Stage 6 validation. Activated
+  optional `use` and `Vocabulary::Type` grammar; exact host-captured bundle and
+  lock inputs; bundle-before-payload validation; qualified contextual values;
+  distinct captured-default provenance; exact vocabulary identity, version,
+  schema, encoding, digest, feature, logical schema, and derivation records;
+  fail-closed reader validation; and generic probe enumeration. Frozen cases
+  now cover missing and mismatched captures, namespace collisions, unknown
+  features/types, executable shapes, and missing, duplicate, unknown, and
+  incompatible payload fields without registry, path, or network acquisition.
 
 - [*] 2026-09-02: Completed Stage 6, Slice 6.1. Added typed exact vocabulary
   digests and strict lowercase digest parsing; exact lock verification before

@@ -7,7 +7,8 @@
 //! perform host I/O.
 
 use neutral_core::{
-    ByteSpan, CoreError, SemanticDigest, SourceContentDigest, StructuralLimits, nht_frame,
+    ByteSpan, CoreError, SemanticDigest, SourceContentDigest, StructuralLimits,
+    VocabularyContentDigest, nht_frame,
 };
 use std::{collections::BTreeMap, fmt};
 
@@ -416,6 +417,113 @@ impl fmt::Display for ExactNumber {
     }
 }
 
+/// Exact captured and logical identity of one vocabulary contract.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct VocabularyIdentity {
+    /// Logical vocabulary name used by source qualification.
+    identity: String,
+    /// Exact vocabulary release version.
+    version: String,
+    /// Exact logical vocabulary schema version.
+    schema_version: String,
+    /// Exact captured bundle encoding version.
+    encoding_version: String,
+    /// Digest of the exact captured bundle bytes.
+    content_digest: VocabularyContentDigest,
+    /// Required immutable structural feature IDs in canonical order.
+    required_features: Vec<String>,
+}
+
+impl VocabularyIdentity {
+    /// Creates an exact validated vocabulary identity contract.
+    #[must_use]
+    pub fn new(
+        identity: impl Into<String>,
+        version: impl Into<String>,
+        schema_version: impl Into<String>,
+        encoding_version: impl Into<String>,
+        content_digest: VocabularyContentDigest,
+        required_features: Vec<String>,
+    ) -> Self {
+        Self {
+            identity: identity.into(),
+            version: version.into(),
+            schema_version: schema_version.into(),
+            encoding_version: encoding_version.into(),
+            content_digest,
+            required_features,
+        }
+    }
+
+    /// Returns the logical vocabulary name.
+    #[must_use]
+    pub fn identity(&self) -> &str {
+        &self.identity
+    }
+    /// Returns the exact release version.
+    #[must_use]
+    pub fn version(&self) -> &str {
+        &self.version
+    }
+    /// Returns the logical schema version.
+    #[must_use]
+    pub fn schema_version(&self) -> &str {
+        &self.schema_version
+    }
+    /// Returns the captured encoding version.
+    #[must_use]
+    pub fn encoding_version(&self) -> &str {
+        &self.encoding_version
+    }
+    /// Returns the exact captured-byte digest.
+    #[must_use]
+    pub const fn content_digest(&self) -> VocabularyContentDigest {
+        self.content_digest
+    }
+    /// Returns canonical required structural feature IDs.
+    #[must_use]
+    pub fn required_features(&self) -> &[String] {
+        &self.required_features
+    }
+}
+
+/// Exact qualified identity of one vocabulary-owned nominal type.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct VocabularyTypeIdentity {
+    /// Logical vocabulary namespace.
+    vocabulary: String,
+    /// Vocabulary-owned nominal type name.
+    name: String,
+}
+
+impl VocabularyTypeIdentity {
+    /// Creates a validated qualified vocabulary type identity.
+    #[must_use]
+    pub fn new(vocabulary: impl Into<String>, name: impl Into<String>) -> Self {
+        Self {
+            vocabulary: vocabulary.into(),
+            name: name.into(),
+        }
+    }
+    /// Returns the vocabulary namespace.
+    #[must_use]
+    pub fn vocabulary(&self) -> &str {
+        &self.vocabulary
+    }
+    /// Returns the vocabulary-owned type name.
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl fmt::Display for VocabularyTypeIdentity {
+    /// Formats the stable qualified source type.
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}::{}", self.vocabulary, self.name)
+    }
+}
+
 /// Resolved minimal Neutral type identity.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ResolvedType {
@@ -427,6 +535,8 @@ pub enum ResolvedType {
     Bool,
     /// Exact module-owned nominal record type.
     Record(NominalTypeIdentity),
+    /// Exact nominal record type owned by a captured vocabulary.
+    VocabularyRecord(VocabularyTypeIdentity),
     /// Ordered homogeneous list with one invariant element type.
     List(Box<ResolvedType>),
     /// Typed document-local identity reference with one invariant target type.
@@ -480,6 +590,9 @@ impl ResolvedType {
             (Self::Record(expected), LogicalValue::Record(value)) => {
                 expected == value.nominal_type()
             }
+            (Self::VocabularyRecord(expected), LogicalValue::VocabularyRecord(value)) => {
+                expected == value.nominal_type()
+            }
             (Self::List(expected), LogicalValue::List(items)) => {
                 items.iter().all(|item| expected.accepts_value(item))
             }
@@ -500,6 +613,7 @@ impl fmt::Display for ResolvedType {
             Self::String => formatter.write_str("string"),
             Self::Bool => formatter.write_str("bool"),
             Self::Record(identity) => formatter.write_str(identity.name()),
+            Self::VocabularyRecord(identity) => identity.fmt(formatter),
             Self::List(inner) => write!(formatter, "List<{inner}>"),
             Self::Ref(inner) => write!(formatter, "Ref<{inner}>"),
             Self::Nullable(inner) => write!(formatter, "{inner}?"),
@@ -520,6 +634,8 @@ pub enum LogicalValue {
     Null,
     /// Contextually typed nominal record value with canonical field order.
     Record(RecordValue),
+    /// Contextually typed vocabulary-owned record value.
+    VocabularyRecord(VocabularyRecordValue),
     /// Ordered homogeneous logical values.
     List(Vec<LogicalValue>),
     /// Typed document-local identity edge to one binding declaration.
@@ -535,6 +651,7 @@ impl fmt::Display for LogicalValue {
             Self::Boolean(value) => value.fmt(formatter),
             Self::Null => formatter.write_str("null"),
             Self::Record(value) => value.fmt(formatter),
+            Self::VocabularyRecord(value) => value.fmt(formatter),
             Self::List(items) => {
                 formatter.write_str("[")?;
                 for (index, item) in items.iter().enumerate() {
@@ -549,6 +666,50 @@ impl fmt::Display for LogicalValue {
                 write!(formatter, "ref(#{})", reference.target_element_id().get())
             }
         }
+    }
+}
+
+/// One final vocabulary-owned contextual record value.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct VocabularyRecordValue {
+    /// Exact qualified nominal type supplied by context.
+    nominal_type: VocabularyTypeIdentity,
+    /// Final fields in canonical name order.
+    fields: Vec<RecordValueField>,
+}
+
+impl VocabularyRecordValue {
+    /// Creates one validated vocabulary-owned record value.
+    #[must_use]
+    pub fn new(nominal_type: VocabularyTypeIdentity, fields: Vec<RecordValueField>) -> Self {
+        Self {
+            nominal_type,
+            fields,
+        }
+    }
+    /// Returns the exact qualified nominal type.
+    #[must_use]
+    pub const fn nominal_type(&self) -> &VocabularyTypeIdentity {
+        &self.nominal_type
+    }
+    /// Returns final fields in canonical name order.
+    #[must_use]
+    pub fn fields(&self) -> &[RecordValueField] {
+        &self.fields
+    }
+}
+
+impl fmt::Display for VocabularyRecordValue {
+    /// Formats a deterministic generic reader-facing value.
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("{")?;
+        for (index, field) in self.fields.iter().enumerate() {
+            if index > 0 {
+                formatter.write_str(", ")?;
+            }
+            write!(formatter, "{}: {}", field.name(), field.value())?;
+        }
+        formatter.write_str("}")
     }
 }
 
@@ -775,6 +936,21 @@ fn logical_value_payload(value: &LogicalValue) -> Result<Vec<u8>, CoreError> {
                 payload.extend(nht_frame("record-field", &definition)?);
             }
             nht_frame("record", &payload)
+        }
+        LogicalValue::VocabularyRecord(value) => {
+            let mut payload = nht_frame(
+                "qualified-type",
+                value.nominal_type().to_string().as_bytes(),
+            )?;
+            for field in value.fields() {
+                let mut framed = nht_frame("field-name", field.name().as_bytes())?;
+                framed.extend(nht_frame(
+                    "field-value",
+                    &logical_value_payload(field.value())?,
+                )?);
+                payload.extend(nht_frame("field", &framed)?);
+            }
+            nht_frame("vocabulary-record", &payload)
         }
         LogicalValue::List(items) => {
             let mut payload = Vec::new();
@@ -1017,6 +1193,119 @@ impl Declaration {
     }
 }
 
+/// One immutable field in a captured vocabulary type contract.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VocabularyFieldContract {
+    /// Canonical field name.
+    name: String,
+    /// Fully resolved field type.
+    resolved_type: ResolvedType,
+    /// Final closed vocabulary default, when present.
+    default_value: Option<LogicalValue>,
+}
+
+impl VocabularyFieldContract {
+    /// Creates one validated vocabulary field contract.
+    #[must_use]
+    pub fn new(
+        name: impl Into<String>,
+        resolved_type: ResolvedType,
+        default_value: Option<LogicalValue>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            resolved_type,
+            default_value,
+        }
+    }
+    /// Returns the canonical field name.
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    /// Returns the fully resolved field type.
+    #[must_use]
+    pub const fn resolved_type(&self) -> &ResolvedType {
+        &self.resolved_type
+    }
+    /// Returns the final closed default, when present.
+    #[must_use]
+    pub const fn default_value(&self) -> Option<&LogicalValue> {
+        self.default_value.as_ref()
+    }
+}
+
+/// One immutable nominal type in a captured vocabulary contract.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VocabularyTypeContract {
+    /// Exact qualified type identity.
+    identity: VocabularyTypeIdentity,
+    /// Canonical field contracts.
+    fields: Vec<VocabularyFieldContract>,
+}
+
+impl VocabularyTypeContract {
+    /// Creates one validated vocabulary type contract.
+    #[must_use]
+    pub fn new(identity: VocabularyTypeIdentity, fields: Vec<VocabularyFieldContract>) -> Self {
+        Self { identity, fields }
+    }
+    /// Returns the exact qualified type identity.
+    #[must_use]
+    pub const fn identity(&self) -> &VocabularyTypeIdentity {
+        &self.identity
+    }
+    /// Returns canonical field contracts.
+    #[must_use]
+    pub fn fields(&self) -> &[VocabularyFieldContract] {
+        &self.fields
+    }
+}
+
+/// Complete exact captured vocabulary contract retained in logical IR.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VocabularyContract {
+    /// Exact captured and logical identity facts.
+    identity: VocabularyIdentity,
+    /// Canonical nominal type contracts.
+    types: Vec<VocabularyTypeContract>,
+}
+
+impl VocabularyContract {
+    /// Creates one validated exact vocabulary contract.
+    #[must_use]
+    pub fn new(identity: VocabularyIdentity, types: Vec<VocabularyTypeContract>) -> Self {
+        Self { identity, types }
+    }
+    /// Returns exact captured and logical identity facts.
+    #[must_use]
+    pub const fn identity(&self) -> &VocabularyIdentity {
+        &self.identity
+    }
+    /// Returns canonical nominal type contracts.
+    #[must_use]
+    pub fn types(&self) -> &[VocabularyTypeContract] {
+        &self.types
+    }
+    /// Finds a type without external acquisition.
+    #[must_use]
+    pub fn type_by_name(&self, name: &str) -> Option<&VocabularyTypeContract> {
+        self.types
+            .iter()
+            .find(|definition| definition.identity().name() == name)
+    }
+
+    /// Compares normalized logical vocabulary meaning without captured-byte facts.
+    #[must_use]
+    pub fn logically_equivalent(&self, other: &Self) -> bool {
+        self.identity.identity == other.identity.identity
+            && self.identity.version == other.identity.version
+            && self.identity.schema_version == other.identity.schema_version
+            && self.identity.required_features == other.identity.required_features
+            && self.types == other.types
+    }
+}
+
 /// Immutable validated logical Neutral document.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LogicalDocument {
@@ -1024,6 +1313,8 @@ pub struct LogicalDocument {
     module: LogicalModuleIdentity,
     /// Exported nominal record declarations in canonical name order.
     record_types: Vec<RecordTypeDefinition>,
+    /// Optional exact captured vocabulary contract.
+    vocabulary: Option<VocabularyContract>,
     /// Exported declarations in deterministic source order.
     declarations: Vec<Declaration>,
 }
@@ -1035,6 +1326,7 @@ impl LogicalDocument {
         Self {
             module,
             record_types: Vec::new(),
+            vocabulary: None,
             declarations,
         }
     }
@@ -1049,8 +1341,22 @@ impl LogicalDocument {
         Self {
             module,
             record_types,
+            vocabulary: None,
             declarations,
         }
+    }
+
+    /// Attaches the exact validated captured vocabulary contract.
+    #[must_use]
+    pub fn with_vocabulary(mut self, vocabulary: VocabularyContract) -> Self {
+        self.vocabulary = Some(vocabulary);
+        self
+    }
+
+    /// Returns the exact captured vocabulary contract, when used.
+    #[must_use]
+    pub const fn vocabulary(&self) -> Option<&VocabularyContract> {
+        self.vocabulary.as_ref()
     }
 
     /// Returns the logical module identity.
@@ -1090,6 +1396,11 @@ impl LogicalDocument {
             return false;
         };
         self.module == other.module
+            && match (&self.vocabulary, &other.vocabulary) {
+                (Some(left), Some(right)) => left.logically_equivalent(right),
+                (None, None) => true,
+                _ => false,
+            }
             && logical_record_types_equal(self, other)
             && logical_declarations_equal(self, other, &mapping)
     }
@@ -1242,6 +1553,24 @@ fn logical_values_equal(
         (LogicalValue::Boolean(left), LogicalValue::Boolean(right)) => left == right,
         (LogicalValue::Null, LogicalValue::Null) => true,
         (LogicalValue::Record(left), LogicalValue::Record(right)) => {
+            left.nominal_type == right.nominal_type
+                && left.fields.len() == right.fields.len()
+                && left
+                    .fields
+                    .iter()
+                    .zip(&right.fields)
+                    .all(|(left_field, right_field)| {
+                        left_field.name == right_field.name
+                            && logical_values_equal(
+                                &left_field.value,
+                                &right_field.value,
+                                mapping,
+                                left_declarations,
+                                right_declarations,
+                            )
+                    })
+        }
+        (LogicalValue::VocabularyRecord(left), LogicalValue::VocabularyRecord(right)) => {
             left.nominal_type == right.nominal_type
                 && left.fields.len() == right.fields.len()
                 && left
@@ -1427,6 +1756,8 @@ pub enum ValueOrigin {
     ExplicitRecordField,
     /// An omitted contextual field was materialized from a user-record default.
     UserRecordDefault,
+    /// An omitted vocabulary-owned field was materialized from its captured contract.
+    VocabularyDefault,
 }
 
 impl ValueOrigin {
@@ -1439,6 +1770,7 @@ impl ValueOrigin {
             Self::IdentityReference => "identity-reference",
             Self::ExplicitRecordField => "explicit-record-field",
             Self::UserRecordDefault => "user-record-default",
+            Self::VocabularyDefault => "vocabulary-default",
         }
     }
 }
@@ -1842,6 +2174,8 @@ pub struct DerivationManifest {
     diagnostics: DiagnosticPartition,
     /// Observed deterministic resource facts.
     resource_facts: ResourceFacts,
+    /// Exact vocabulary identity facts when the source uses one capture.
+    vocabulary: Option<VocabularyIdentity>,
 }
 
 impl DerivationManifest {
@@ -1861,7 +2195,21 @@ impl DerivationManifest {
                 safe_bounded_output: true,
             },
             resource_facts,
+            vocabulary: None,
         }
+    }
+
+    /// Attaches exact meaning-affecting captured vocabulary facts.
+    #[must_use]
+    pub fn with_vocabulary(mut self, vocabulary: VocabularyIdentity) -> Self {
+        self.vocabulary = Some(vocabulary);
+        self
+    }
+
+    /// Returns exact captured vocabulary derivation facts, when present.
+    #[must_use]
+    pub const fn vocabulary(&self) -> Option<&VocabularyIdentity> {
+        self.vocabulary.as_ref()
     }
 
     /// Returns the language behavior version.

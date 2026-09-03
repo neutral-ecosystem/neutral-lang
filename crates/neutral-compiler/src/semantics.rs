@@ -5,6 +5,7 @@
 use crate::diagnostics;
 use crate::frontend::{
     ParsedBinding, ParsedDeclaration, ParsedRecord, ParsedType, ParsedValue, ParsedValueField,
+    ParsedVocabularyUse,
 };
 use crate::language::names;
 use crate::{CompilationFailure, CompilationFailureDetail, LANGUAGE_BEHAVIOR_VERSION};
@@ -18,8 +19,11 @@ use neutral_ir::{
     LogicalDocument, LogicalModuleIdentity, LogicalValue, ModuleSymbolIdentity,
     NominalTypeIdentity, Normalization, ProvenanceRecord, RecordFieldSchema, RecordTypeDefinition,
     RecordValue, RecordValueField, ReferenceProvenanceRecord, ResolvedType, ResourceFacts,
-    ReuseProvenanceRecord, SourceMap, SourceMapEntry, ValueOrigin,
+    ReuseProvenanceRecord, SourceMap, SourceMapEntry, ValueOrigin, VocabularyContract,
+    VocabularyFieldContract, VocabularyIdentity, VocabularyRecordValue, VocabularyTypeContract,
+    VocabularyTypeIdentity,
 };
+use neutral_vocabulary::{ValidatedVocabularyBundle, VocabularyType, VocabularyValue};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// A private semantic failure before authoritative IR construction.
@@ -71,6 +75,18 @@ impl SemanticError {
             class: ResultClass::Reference,
             detail: CompilationFailureDetail::ReferenceRejected,
             layer: DiagnosticLayer::Reference,
+            related_spans: Vec::new(),
+        }
+    }
+
+    /// Creates one captured vocabulary resolution or payload failure.
+    fn vocabulary(code: &'static str, span: ByteSpan) -> Self {
+        Self {
+            code,
+            span,
+            class: ResultClass::Vocabulary,
+            detail: CompilationFailureDetail::VocabularyRejected,
+            layer: DiagnosticLayer::Vocabulary,
             related_spans: Vec::new(),
         }
     }
@@ -160,6 +176,8 @@ struct ResolvedSchemaField {
 struct BindingValueContext<'a> {
     /// Public nominal record schemas indexed by name.
     records: &'a BTreeMap<String, &'a RecordTypeDefinition>,
+    /// Exact captured vocabulary contract used by qualified values.
+    vocabulary: Option<&'a VocabularyContract>,
     /// Captured deterministic limits.
     limits: StructuralLimits,
     /// Owning binding element identifier.
@@ -185,18 +203,23 @@ struct BindingValueContext<'a> {
 /// Validates the private model and lowers complete immutable artifacts.
 pub(super) fn lower(
     unit: crate::frontend::ParsedUnit,
+    captured_vocabulary: Option<&ValidatedVocabularyBundle>,
     source_digest: SourceContentDigest,
     source_length: usize,
     limits: StructuralLimits,
 ) -> Result<CompilationArtifacts, SemanticError> {
     let _retained_private_trivia_count = unit.trivia_count();
     validate_root_name(&unit.module.name, unit.module.name_span, false)?;
+    let vocabulary_use = unit.vocabulary_use.clone();
     let (root_kinds, records, bindings) = collect_roots(unit.declarations)?;
+    let vocabulary =
+        resolve_vocabulary_requirement(vocabulary_use.as_ref(), captured_vocabulary, &root_kinds)?;
     let module_identity =
         LogicalModuleIdentity::new(LANGUAGE_BEHAVIOR_VERSION, unit.module.name.clone());
     validate_record_fields(&records)?;
     validate_embedded_record_graph(&records)?;
-    let resolved_schemas = resolve_record_schemas(&records, &root_kinds, &module_identity)?;
+    let resolved_schemas =
+        resolve_record_schemas(&records, &root_kinds, &module_identity, vocabulary.as_ref())?;
     let element_ids = allocate_element_ids(&root_kinds);
     let (record_definitions, mut source_entries, default_string_bytes) = lower_record_definitions(
         &records,
@@ -219,6 +242,7 @@ pub(super) fn lower(
         &module_identity,
         &element_ids,
         &record_definitions,
+        vocabulary.as_ref(),
         limits,
     )?;
     source_entries.extend(binding_entries);
@@ -241,8 +265,11 @@ pub(super) fn lower(
             .then_with(|| left.value_path().cmp(right.value_path()))
             .then_with(|| left.target_element_id().cmp(&right.target_element_id()))
     });
-    let logical_document =
+    let mut logical_document =
         LogicalDocument::with_record_types(module_identity, record_definitions, declarations);
+    if let Some(contract) = vocabulary.clone() {
+        logical_document = logical_document.with_vocabulary(contract);
+    }
     let source_byte_length = u64::try_from(source_length).unwrap_or(u64::MAX);
     let source_map = SourceMap::new(
         source_digest,
@@ -257,18 +284,176 @@ pub(super) fn lower(
         0,
         decoded_string_bytes.saturating_add(default_string_bytes),
     );
-    let derivation = DerivationManifest::new(
+    let mut derivation = DerivationManifest::new(
         LANGUAGE_BEHAVIOR_VERSION,
         source_digest,
         AcceptancePartition::from_limits(limits),
         resource_facts,
     );
+    if let Some(contract) = vocabulary {
+        derivation = derivation.with_vocabulary(contract.identity().clone());
+    }
     Ok(
         CompilationArtifacts::new(logical_document, source_map, provenance, derivation)
             .with_field_provenance(field_provenance)
             .with_reuse_provenance(reuse_provenance)
             .with_reference_provenance(reference_provenance),
     )
+}
+
+/// Resolves one source `use` exclusively against the supplied exact capture.
+fn resolve_vocabulary_requirement(
+    requirement: Option<&ParsedVocabularyUse>,
+    captured: Option<&ValidatedVocabularyBundle>,
+    roots: &BTreeMap<String, RootKind>,
+) -> Result<Option<VocabularyContract>, SemanticError> {
+    let Some(requirement) = requirement else {
+        return Ok(None);
+    };
+    if classify_ascii_name(&requirement.name) != AsciiNameCategory::Upper {
+        return Err(SemanticError::vocabulary(
+            diagnostics::MISSING_VOCABULARY,
+            requirement.name_span,
+        ));
+    }
+    if roots.contains_key(&requirement.name) {
+        return Err(SemanticError::vocabulary(
+            diagnostics::VOCABULARY_NAME_COLLISION,
+            requirement.name_span,
+        ));
+    }
+    let bundle = captured.ok_or_else(|| {
+        SemanticError::vocabulary(diagnostics::MISSING_VOCABULARY, requirement.span)
+    })?;
+    if bundle.logical().identity() != requirement.name {
+        return Err(SemanticError::vocabulary(
+            diagnostics::VOCABULARY_LOCK_MISMATCH,
+            requirement.name_span,
+        ));
+    }
+    Ok(Some(lower_vocabulary_contract(bundle)))
+}
+
+/// Converts one validated decoder contract into compiler-independent logical IR.
+fn lower_vocabulary_contract(bundle: &ValidatedVocabularyBundle) -> VocabularyContract {
+    let logical = bundle.logical();
+    let identity = VocabularyIdentity::new(
+        logical.identity(),
+        logical.version(),
+        logical.schema_version(),
+        bundle.encoding_version(),
+        bundle.content_digest(),
+        logical.required_features().to_vec(),
+    );
+    let types = logical
+        .types()
+        .iter()
+        .map(|definition| {
+            let type_identity = VocabularyTypeIdentity::new(logical.identity(), definition.name());
+            let fields = definition
+                .fields()
+                .iter()
+                .map(|field| {
+                    VocabularyFieldContract::new(
+                        field.name(),
+                        lower_vocabulary_type(logical.identity(), field.field_type()),
+                        field.default_value().map(|value| {
+                            lower_vocabulary_default(logical.identity(), field.field_type(), value)
+                        }),
+                    )
+                })
+                .collect();
+            VocabularyTypeContract::new(type_identity, fields)
+        })
+        .collect();
+    VocabularyContract::new(identity, types)
+}
+
+/// Converts one validated vocabulary type to its public resolved type identity.
+fn lower_vocabulary_type(namespace: &str, field_type: &VocabularyType) -> ResolvedType {
+    match field_type {
+        VocabularyType::Num => ResolvedType::Num,
+        VocabularyType::String => ResolvedType::String,
+        VocabularyType::Bool => ResolvedType::Bool,
+        VocabularyType::Nullable(inner) => {
+            ResolvedType::nullable(lower_vocabulary_type(namespace, inner))
+        }
+        VocabularyType::List(inner) => ResolvedType::list(lower_vocabulary_type(namespace, inner)),
+        VocabularyType::Ref(name) => ResolvedType::reference(ResolvedType::VocabularyRecord(
+            VocabularyTypeIdentity::new(namespace, name),
+        )),
+        VocabularyType::Record(name) => {
+            ResolvedType::VocabularyRecord(VocabularyTypeIdentity::new(namespace, name))
+        }
+    }
+}
+
+/// Converts one already-validated closed vocabulary default to logical IR.
+fn lower_vocabulary_default(
+    namespace: &str,
+    field_type: &VocabularyType,
+    value: &VocabularyValue,
+) -> LogicalValue {
+    match value {
+        VocabularyValue::Number(number) => LogicalValue::Number(number.clone()),
+        VocabularyValue::String(value) => LogicalValue::String(value.clone()),
+        VocabularyValue::Boolean(value) => LogicalValue::Boolean(*value),
+        VocabularyValue::Null => LogicalValue::Null,
+        VocabularyValue::List(items) => {
+            let VocabularyType::List(inner) = field_type else {
+                unreachable!("validated list defaults have list type context")
+            };
+            LogicalValue::List(
+                items
+                    .iter()
+                    .map(|item| lower_vocabulary_default(namespace, inner, item))
+                    .collect(),
+            )
+        }
+        VocabularyValue::Record { type_name, fields } => {
+            let record = VocabularyRecordValue::new(
+                VocabularyTypeIdentity::new(namespace, type_name),
+                fields
+                    .iter()
+                    .map(|field| {
+                        let value = lower_vocabulary_default_untyped(namespace, field.value());
+                        RecordValueField::new(field.name(), value)
+                    })
+                    .collect(),
+            );
+            LogicalValue::VocabularyRecord(record)
+        }
+    }
+}
+
+/// Converts a nested validated default whose type was already checked by the decoder.
+fn lower_vocabulary_default_untyped(namespace: &str, value: &VocabularyValue) -> LogicalValue {
+    match value {
+        VocabularyValue::Number(number) => LogicalValue::Number(number.clone()),
+        VocabularyValue::String(value) => LogicalValue::String(value.clone()),
+        VocabularyValue::Boolean(value) => LogicalValue::Boolean(*value),
+        VocabularyValue::Null => LogicalValue::Null,
+        VocabularyValue::List(items) => LogicalValue::List(
+            items
+                .iter()
+                .map(|item| lower_vocabulary_default_untyped(namespace, item))
+                .collect(),
+        ),
+        VocabularyValue::Record { type_name, fields } => {
+            LogicalValue::VocabularyRecord(VocabularyRecordValue::new(
+                VocabularyTypeIdentity::new(namespace, type_name),
+                fields
+                    .iter()
+                    .map(|field| {
+                        RecordValueField::new(
+                            field.name(),
+                            lower_vocabulary_default_untyped(namespace, field.value()),
+                        )
+                    })
+                    .collect(),
+            ))
+        }
+    }
 }
 
 /// Collects all root names before nominal resolution and enforces one scope.
@@ -380,6 +565,7 @@ fn lower_bindings(
     module: &LogicalModuleIdentity,
     element_ids: &BTreeMap<String, ElementId>,
     record_definitions: &[RecordTypeDefinition],
+    vocabulary: Option<&VocabularyContract>,
     limits: StructuralLimits,
 ) -> Result<LoweredBindings, SemanticError> {
     let record_lookup = record_definitions
@@ -401,6 +587,7 @@ fn lower_bindings(
                 binding.type_span,
                 root_kinds,
                 module,
+                vocabulary,
             )
             .map(|resolved| (name.clone(), resolved))
         })
@@ -414,6 +601,7 @@ fn lower_bindings(
         let resolved_type = &resolved_types[&name];
         let mut context = BindingValueContext {
             records: &record_lookup,
+            vocabulary,
             limits,
             element_id: element_ids[&name],
             field_provenance: &mut field_provenance,
@@ -660,6 +848,7 @@ fn resolve_record_schemas(
     records: &BTreeMap<String, ParsedRecord>,
     root_kinds: &BTreeMap<String, RootKind>,
     module: &LogicalModuleIdentity,
+    vocabulary: Option<&VocabularyContract>,
 ) -> Result<BTreeMap<String, Vec<ResolvedSchemaField>>, SemanticError> {
     records
         .iter()
@@ -668,14 +857,19 @@ fn resolve_record_schemas(
                 .fields
                 .iter()
                 .map(|field| {
-                    resolve_type(&field.declared_type, field.type_span, root_kinds, module).map(
-                        |resolved_type| ResolvedSchemaField {
-                            name: field.name.clone(),
-                            resolved_type,
-                            default_value: field.default_value.clone(),
-                            default_span: field.default_span,
-                        },
+                    resolve_type(
+                        &field.declared_type,
+                        field.type_span,
+                        root_kinds,
+                        module,
+                        vocabulary,
                     )
+                    .map(|resolved_type| ResolvedSchemaField {
+                        name: field.name.clone(),
+                        resolved_type,
+                        default_value: field.default_value.clone(),
+                        default_span: field.default_span,
+                    })
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             fields.sort_by(|left, right| left.name.cmp(&right.name));
@@ -690,16 +884,17 @@ fn resolve_type(
     span: ByteSpan,
     root_kinds: &BTreeMap<String, RootKind>,
     module: &LogicalModuleIdentity,
+    vocabulary: Option<&VocabularyContract>,
 ) -> Result<ResolvedType, SemanticError> {
     match parsed {
         ParsedType::Num => Ok(ResolvedType::Num),
         ParsedType::String => Ok(ResolvedType::String),
         ParsedType::Bool => Ok(ResolvedType::Bool),
         ParsedType::List(inner) => {
-            resolve_type(inner, span, root_kinds, module).map(ResolvedType::list)
+            resolve_type(inner, span, root_kinds, module, vocabulary).map(ResolvedType::list)
         }
         ParsedType::Ref(inner) => {
-            resolve_type(inner, span, root_kinds, module).map(ResolvedType::reference)
+            resolve_type(inner, span, root_kinds, module, vocabulary).map(ResolvedType::reference)
         }
         ParsedType::Record(name) => match root_kinds.get(name) {
             Some(RootKind::Record) => Ok(ResolvedType::Record(NominalTypeIdentity::new(
@@ -712,8 +907,28 @@ fn resolve_type(
             )),
             None => Err(SemanticError::semantic(diagnostics::UNKNOWN_TYPE, span)),
         },
+        ParsedType::VocabularyRecord { namespace, name } => {
+            let Some(contract) = vocabulary else {
+                return Err(SemanticError::vocabulary(
+                    diagnostics::MISSING_VOCABULARY,
+                    span,
+                ));
+            };
+            if namespace != contract.identity().identity() {
+                return Err(SemanticError::vocabulary(
+                    diagnostics::VOCABULARY_LOCK_MISMATCH,
+                    span,
+                ));
+            }
+            contract
+                .type_by_name(name)
+                .map(|definition| ResolvedType::VocabularyRecord(definition.identity().clone()))
+                .ok_or_else(|| {
+                    SemanticError::vocabulary(diagnostics::UNKNOWN_VOCABULARY_TYPE, span)
+                })
+        }
         ParsedType::Nullable(inner) => {
-            resolve_type(inner, span, root_kinds, module).map(ResolvedType::nullable)
+            resolve_type(inner, span, root_kinds, module, vocabulary).map(ResolvedType::nullable)
         }
     }
 }
@@ -769,7 +984,11 @@ fn embedded_record_target(parsed: &ParsedType) -> Option<&str> {
     match parsed {
         ParsedType::Record(name) => Some(name),
         ParsedType::Nullable(inner) | ParsedType::List(inner) => embedded_record_target(inner),
-        ParsedType::Ref(_) | ParsedType::Num | ParsedType::String | ParsedType::Bool => None,
+        ParsedType::Ref(_)
+        | ParsedType::VocabularyRecord { .. }
+        | ParsedType::Num
+        | ParsedType::String
+        | ParsedType::Bool => None,
     }
 }
 
@@ -966,6 +1185,9 @@ fn lower_value(
         (ResolvedType::Record(identity), ParsedValue::Record(fields)) => {
             lower_record_value(identity, fields, value_span, field_path, context)
         }
+        (ResolvedType::VocabularyRecord(identity), ParsedValue::Record(fields)) => {
+            lower_vocabulary_record_value(identity, fields, value_span, field_path, context)
+        }
         (ResolvedType::List(inner), ParsedValue::List(items)) => {
             let mut lowered = Vec::with_capacity(items.len());
             let mut decoded_string_bytes = 0_u64;
@@ -988,6 +1210,105 @@ fn lower_value(
             value_span,
         )),
     }
+}
+
+/// Validates and materializes one vocabulary-owned contextual record value.
+fn lower_vocabulary_record_value(
+    identity: &VocabularyTypeIdentity,
+    fields: &[ParsedValueField],
+    value_span: ByteSpan,
+    field_path: &mut Vec<String>,
+    context: &mut BindingValueContext<'_>,
+) -> Result<(LogicalValue, Normalization, u64), SemanticError> {
+    let contract = context
+        .vocabulary
+        .expect("resolved qualified types require a capture");
+    let schema = contract
+        .type_by_name(identity.name())
+        .expect("resolved vocabulary type identities must have schemas");
+    let expected = schema
+        .fields()
+        .iter()
+        .map(|field| (field.name(), field))
+        .collect::<BTreeMap<_, _>>();
+    let mut supplied = BTreeMap::new();
+    for field in fields {
+        if !expected.contains_key(field.name.as_str()) {
+            return Err(SemanticError::vocabulary(
+                diagnostics::UNKNOWN_VOCABULARY_FIELD,
+                field.name_span,
+            ));
+        }
+        if supplied.insert(field.name.as_str(), field).is_some() {
+            return Err(SemanticError::vocabulary(
+                diagnostics::DUPLICATE_VOCABULARY_FIELD,
+                field.name_span,
+            ));
+        }
+    }
+    if schema
+        .fields()
+        .iter()
+        .any(|field| !supplied.contains_key(field.name()) && field.default_value().is_none())
+    {
+        return Err(SemanticError::vocabulary(
+            diagnostics::MISSING_VOCABULARY_FIELD,
+            value_span,
+        ));
+    }
+    let mut lowered_fields = Vec::with_capacity(schema.fields().len());
+    let mut decoded_string_bytes = 0_u64;
+    for schema_field in schema.fields() {
+        field_path.push(schema_field.name().to_owned());
+        let (value, decoded_bytes) = if let Some(supplied_field) = supplied.get(schema_field.name())
+        {
+            context.field_provenance.push(FieldProvenanceRecord::new(
+                context.element_id,
+                field_path.clone(),
+                ValueOrigin::ExplicitRecordField,
+            ));
+            let result = lower_value(
+                schema_field.resolved_type(),
+                &supplied_field.value,
+                supplied_field.value_span,
+                field_path,
+                context,
+            )
+            .map_err(|mut error| {
+                if error.code == diagnostics::TYPE_MISMATCH {
+                    error.code = diagnostics::VOCABULARY_FIELD_TYPE_MISMATCH;
+                    error.class = ResultClass::Vocabulary;
+                    error.detail = CompilationFailureDetail::VocabularyRejected;
+                    error.layer = DiagnosticLayer::Vocabulary;
+                }
+                error
+            })?;
+            (result.0, result.2)
+        } else {
+            let default = schema_field
+                .default_value()
+                .expect("only vocabulary-defaulted fields may be omitted")
+                .clone();
+            context.field_provenance.push(FieldProvenanceRecord::new(
+                context.element_id,
+                field_path.clone(),
+                ValueOrigin::VocabularyDefault,
+            ));
+            let bytes = logical_string_bytes(&default);
+            (default, bytes)
+        };
+        field_path.pop();
+        decoded_string_bytes = decoded_string_bytes.saturating_add(decoded_bytes);
+        lowered_fields.push(RecordValueField::new(schema_field.name(), value));
+    }
+    Ok((
+        LogicalValue::VocabularyRecord(VocabularyRecordValue::new(
+            identity.clone(),
+            lowered_fields,
+        )),
+        Normalization::RecordContextualization,
+        decoded_string_bytes,
+    ))
 }
 
 /// Lowers one ordinary binding name to its already-resolved final logical value.
@@ -1095,6 +1416,13 @@ fn append_reference_provenance(
             reference.target_element_id(),
         )),
         LogicalValue::Record(record) => {
+            for field in record.fields() {
+                path.push(field.name().to_owned());
+                append_reference_provenance(field.value(), path, element_id, provenance);
+                path.pop();
+            }
+        }
+        LogicalValue::VocabularyRecord(record) => {
             for field in record.fields() {
                 path.push(field.name().to_owned());
                 append_reference_provenance(field.value(), path, element_id, provenance);
@@ -1210,6 +1538,11 @@ fn logical_string_bytes(value: &LogicalValue) -> u64 {
     match value {
         LogicalValue::String(value) => u64::try_from(value.len()).unwrap_or(u64::MAX),
         LogicalValue::Record(record) => record
+            .fields()
+            .iter()
+            .map(|field| logical_string_bytes(field.value()))
+            .fold(0_u64, u64::saturating_add),
+        LogicalValue::VocabularyRecord(record) => record
             .fields()
             .iter()
             .map(|field| logical_string_bytes(field.value()))

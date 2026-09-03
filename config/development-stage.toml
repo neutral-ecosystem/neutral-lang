@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# The active stage selects the completed Stage 6 Slice 6.1 vocabulary boundary.
+# The active stage selects the completed Stage 6 Slice 6.2 vocabulary boundary.
 # Advancing this value requires its complete vertical slice and reviewed evidence.
 active_stage = 6
-active_step = 1
+active_step = 2

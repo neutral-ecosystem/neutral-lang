@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+fixture_sha256 = "cd13edee8bfbe559255cdbb0ee8bbd919f628247216e4320d21c757b04721ba8"
+bundle_sha256 = "b067cfb1d8e253bc5ce2173c129098858104040bc8787a1208eb8da06c19b727"
+outcome = "accept"
+qualified_type = "Fixture::Metadata"
+vocabulary_defaults = 5
+reader_contract = "exact-captured"
+

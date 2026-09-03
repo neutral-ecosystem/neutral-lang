@@ -456,31 +456,31 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Slice 6.2: captured `use` and qualified values
 
-- [ ] Activate `use Fixture`, `Fixture::Metadata`, payload/default, lock mismatch,
+- [*] Activate `use Fixture`, `Fixture::Metadata`, payload/default, lock mismatch,
       missing, collision, unknown feature/type, and reader contract fixtures.
-- [ ] Add `use` and qualified-type grammar only now.
-- [ ] Resolve exclusively from exact captured lock input.
-- [ ] Validate bundle before source payloads.
-- [ ] Type-check vocabulary contextual values using ordinary binding/value rules.
-- [ ] Apply vocabulary defaults as final values with distinct provenance.
-- [ ] Record exact identity/version/schema/encoding/digest/features in IR and
+- [*] Add `use` and qualified-type grammar only now.
+- [*] Resolve exclusively from exact captured lock input.
+- [*] Validate bundle before source payloads.
+- [*] Type-check vocabulary contextual values using ordinary binding/value rules.
+- [*] Apply vocabulary defaults as final values with distinct provenance.
+- [*] Record exact identity/version/schema/encoding/digest/features in IR and
       derivation.
-- [ ] Expose qualified typed data through reader/probe without interpretation.
+- [*] Expose qualified typed data through reader/probe without interpretation.
 
 #### Slice validation
 
-- [ ] Minimal vocabulary fixture passes end to end.
-- [ ] Missing/mismatch/unknown/executable cases fail with frozen diagnostics.
-- [ ] Source cannot trigger registry/path/network acquisition.
-- [ ] Probe has no `Fixture`-specific behavior.
+- [*] Minimal vocabulary fixture passes end to end.
+- [*] Missing/mismatch/unknown/executable cases fail with frozen diagnostics.
+- [*] Source cannot trigger registry/path/network acquisition.
+- [*] Probe has no `Fixture`-specific behavior.
 
 ### Stage 6 validation
 
-- [ ] Vocabulary byte decoding, capture, source syntax, semantics, IR, reader,
+- [*] Vocabulary byte decoding, capture, source syntax, semantics, IR, reader,
       probe, diagnostics, provenance, derivation, and limits form one complete
       vertical boundary.
-- [ ] External-reader contract fixtures are ready for Stage 7 encoded IR.
-- [ ] Stage 2–5 suites remain green.
+- [*] External-reader contract fixtures are ready for Stage 7 encoded IR.
+- [*] Stage 2–5 suites remain green.
 
 ---
 

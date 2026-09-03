@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module fixture_duplicate_vocabulary_field
+
+use Fixture
+
+Fixture::Metadata metadata = {
+    label: "first",
+    label: "second",
+}

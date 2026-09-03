@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+fixture_sha256 = "88cd43057f75b489493444737aee881db1a96190ddfe7660fd244510345d43df"
+outcome = "reject"
+class = "vocabulary"
+diagnostic = "NEU-VOC-005"
+

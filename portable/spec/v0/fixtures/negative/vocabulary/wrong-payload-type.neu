@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module fixture_wrong_vocabulary_field_type
+
+use Fixture
+
+Fixture::Metadata metadata = {
+    label: false,
+}

@@ -4,8 +4,8 @@
 
 use super::{
     FrontendError, LexedSource, ParsedBinding, ParsedDeclaration, ParsedListItem, ParsedModule,
-    ParsedRecord, ParsedRecordField, ParsedType, ParsedUnit, ParsedValue, ParsedValueField, Token,
-    TokenKind, span,
+    ParsedRecord, ParsedRecordField, ParsedType, ParsedUnit, ParsedValue, ParsedValueField,
+    ParsedVocabularyUse, Token, TokenKind, span,
 };
 use crate::language::names;
 use neutral_core::{ByteSpan, StructuralLimits};
@@ -68,6 +68,13 @@ impl Parser<'_> {
 
         let module = self.parse_module()?;
         self.skip_line_ends();
+        let vocabulary_use = if self.at(&TokenKind::Use) {
+            let parsed = Some(self.parse_vocabulary_use()?);
+            self.skip_line_ends();
+            parsed
+        } else {
+            None
+        };
         let mut declarations = Vec::new();
         while !self.at(&TokenKind::EndOfFile) {
             Self::ensure_capacity(
@@ -89,8 +96,24 @@ impl Parser<'_> {
             language_header_span,
             version_span,
             module,
+            vocabulary_use,
             declarations,
             trivia: Vec::new(),
+        })
+    }
+
+    /// Parses the exact `use Vocabulary LINE_END` requirement.
+    fn parse_vocabulary_use(&mut self) -> Result<ParsedVocabularyUse, FrontendError> {
+        let start = self.expect_simple(&TokenKind::Use)?.span.start();
+        let name_token = self.next().ok_or_else(|| self.other_here())?;
+        let name = identifier_spelling(&name_token)
+            .ok_or_else(|| FrontendError::other(name_token.span))?;
+        let end = name_token.span.end();
+        self.expect_simple(&TokenKind::LineEnd)?;
+        Ok(ParsedVocabularyUse {
+            name,
+            span: ByteSpan::new(start, end).expect("ordered use tokens must form a valid span"),
+            name_span: name_token.span,
         })
     }
 
@@ -231,7 +254,20 @@ impl Parser<'_> {
                 ParsedType::Ref(Box::new(inner))
             }
             TokenKind::Identifier(name) | TokenKind::ProtectedName(name) => {
-                ParsedType::Record(name)
+                if self.at(&TokenKind::DoubleColon) {
+                    self.next().expect("looked-ahead qualifier must exist");
+                    let target = self.next().ok_or_else(|| self.other_here())?;
+                    let target_name = identifier_spelling(&target)
+                        .ok_or_else(|| FrontendError::other(target.span))?;
+                    type_span = ByteSpan::new(type_span.start(), target.span.end())
+                        .expect("ordered qualified type tokens must form a valid span");
+                    ParsedType::VocabularyRecord {
+                        namespace: name,
+                        name: target_name,
+                    }
+                } else {
+                    ParsedType::Record(name)
+                }
             }
             _ => return Err(FrontendError::other(type_span)),
         };
@@ -457,6 +493,7 @@ fn identifier_spelling(token: &Token) -> Option<String> {
         TokenKind::Identifier(value) | TokenKind::ProtectedName(value) => Some(value.clone()),
         TokenKind::Neu => Some(names::NEU.to_owned()),
         TokenKind::Module => Some(names::MODULE.to_owned()),
+        TokenKind::Use => Some(names::USE.to_owned()),
         TokenKind::Record => Some(names::RECORD.to_owned()),
         TokenKind::List => Some(names::LIST.to_owned()),
         TokenKind::Num => Some(names::NUM.to_owned()),

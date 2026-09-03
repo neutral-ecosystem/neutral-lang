@@ -50,6 +50,10 @@ pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
                 tokens.push(token(TokenKind::PhysicalLineEnd(kind), index, end));
                 index = end;
             }
+            b':' if source.get(index + 1) == Some(&b':') => {
+                tokens.push(token(TokenKind::DoubleColon, index, index + 2));
+                index += 2;
+            }
             byte if punctuation_token(byte).is_some() => {
                 let kind = punctuation_token(byte).expect("matched punctuation must classify");
                 tokens.push(token(kind, index, index + 1));
@@ -137,6 +141,8 @@ fn word_token(text: String) -> TokenKind {
         TokenKind::Neu
     } else if text == names::MODULE {
         TokenKind::Module
+    } else if text == names::USE {
+        TokenKind::Use
     } else if text == names::RECORD {
         TokenKind::Record
     } else if text == names::LIST {

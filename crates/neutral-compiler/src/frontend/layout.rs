@@ -78,6 +78,7 @@ fn is_complete_construct(tokens: &[Token]) -> bool {
             matches!(first.kind, TokenKind::Neu)
                 && matches!(second.kind, TokenKind::StringLiteral(_))
                 || matches!(first.kind, TokenKind::Module) && is_name_token(&second.kind)
+                || matches!(first.kind, TokenKind::Use) && is_name_token(&second.kind)
         }
         [first, .., last] if matches!(first.kind, TokenKind::Record) => {
             matches!(last.kind, TokenKind::CloseBrace)

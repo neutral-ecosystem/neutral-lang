@@ -124,6 +124,7 @@ dependencies = [
  "neutral-ir",
  "neutral-probe",
  "neutral-reader",
+ "neutral-vocabulary",
 ]
 
 [[package]]

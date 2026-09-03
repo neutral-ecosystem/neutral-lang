@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module fixture_missing_vocabulary_field
+
+use Fixture
+
+Fixture::Address address = {}

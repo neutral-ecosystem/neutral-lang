@@ -13,6 +13,9 @@ The public boundary captures exact bytes immutably. Its private frontend now
 recognizes the frozen minimal document plus all Stage 3 source-text, identifier,
 comment, exact-number, bounded-string, Boolean, nullable-scalar, null, nominal
 record, and contextual-record behavior. It collects the complete root scope
-before nominal type resolution and rejects embedded record cycles. Exact
+before nominal type resolution and rejects embedded record cycles. Stage 6 also
+accepts one exact host-captured vocabulary bundle and lock, validates it before
+source payloads, and resolves optional `use` plus qualified nominal types without
+performing acquisition. Exact
 trivia stays private for a later formatter and is never lowered into
 authoritative logical IR.

@@ -13,3 +13,6 @@ perform host effects. Its active scalar model carries exact numbers, decoded
 Unicode strings, Booleans, recursive outer-nullable type identity, and explicit
 typed null, module-owned nominal record schemas, and recursively typed
 contextual record values; display is deterministic and escapes hostile controls.
+It also carries exact captured vocabulary identity/version/schema/encoding/
+digest/feature facts, qualified type contracts and values, and distinct
+vocabulary-default provenance without introducing an executable value kind.

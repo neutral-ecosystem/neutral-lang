@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "stage6-slice1-complete-fixtures-frozen"
+status = "stage6-slice2-complete-fixtures-frozen"
 
 # No source behavior is active in Stage 1. These entries are an inventory only;
 # they are not executable compiler expectations until their listed stage.
@@ -170,8 +170,9 @@ status = "frozen"
 [[case]]
 id = "minimal-vocabulary"
 fixture = "portable/spec/v0/fixtures/positive/vocabulary/minimal-vocabulary.neu"
-active_from_stage = 2
-status = "planned"
+oracle = "conformance/oracles/stage6/minimal-vocabulary.toml"
+active_from_stage = 6
+status = "frozen"
 
 [[case]]
 id = "immutable-value-reuse"
@@ -190,8 +191,9 @@ status = "frozen"
 [[case]]
 id = "vocabulary-name-collision"
 fixture = "portable/spec/v0/fixtures/negative/vocabulary/vocabulary-name-collision.neu"
+oracle = "conformance/oracles/stage6/vocabulary-name-collision.toml"
 active_from_stage = 6
-status = "planned"
+status = "frozen"
 
 [[case]]
 id = "visibility-modifier"
@@ -773,5 +775,47 @@ status = "frozen"
 id = "vocabulary-incomplete-record-default"
 fixture = "portable/spec/v0/fixtures/vocabulary/bundles/negative/incomplete-record-default.json"
 oracle = "conformance/oracles/stage6/vocabulary-incomplete-record-default.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "missing-vocabulary-capture"
+fixture = "portable/spec/v0/fixtures/negative/vocabulary/missing-capture.neu"
+oracle = "conformance/oracles/stage6/missing-vocabulary-capture.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "unknown-vocabulary-type"
+fixture = "portable/spec/v0/fixtures/negative/vocabulary/unknown-type.neu"
+oracle = "conformance/oracles/stage6/unknown-vocabulary-type.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "unknown-vocabulary-field"
+fixture = "portable/spec/v0/fixtures/negative/vocabulary/unknown-payload-field.neu"
+oracle = "conformance/oracles/stage6/unknown-vocabulary-field.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "wrong-vocabulary-field-type"
+fixture = "portable/spec/v0/fixtures/negative/vocabulary/wrong-payload-type.neu"
+oracle = "conformance/oracles/stage6/wrong-vocabulary-field-type.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "missing-vocabulary-field"
+fixture = "portable/spec/v0/fixtures/negative/vocabulary/missing-payload-field.neu"
+oracle = "conformance/oracles/stage6/missing-vocabulary-field.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "duplicate-vocabulary-field"
+fixture = "portable/spec/v0/fixtures/negative/vocabulary/duplicate-payload-field.neu"
+oracle = "conformance/oracles/stage6/duplicate-vocabulary-field.toml"
 active_from_stage = 6
 status = "frozen"

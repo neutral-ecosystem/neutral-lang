@@ -20,6 +20,10 @@ pub mod diagnostics {
 pub struct ProbeSummary {
     /// Logical module name.
     module: String,
+    /// Exact captured vocabulary identity summary, when present.
+    vocabulary: Option<String>,
+    /// Vocabulary-owned type summaries in reader order.
+    vocabulary_types: Vec<String>,
     /// Nominal record schema summaries in reader order.
     record_types: Vec<String>,
     /// Typed declaration summaries in reader order.
@@ -39,6 +43,18 @@ impl ProbeSummary {
     #[must_use]
     pub fn module(&self) -> &str {
         &self.module
+    }
+
+    /// Returns the exact captured vocabulary identity summary, when present.
+    #[must_use]
+    pub fn vocabulary(&self) -> Option<&str> {
+        self.vocabulary.as_deref()
+    }
+
+    /// Returns generic vocabulary-owned schema summaries.
+    #[must_use]
+    pub fn vocabulary_types(&self) -> &[String] {
+        &self.vocabulary_types
     }
 
     /// Returns deterministic typed declaration summaries.
@@ -81,6 +97,7 @@ impl ProbeSummary {
 /// Traverses only immutable public reader views to summarize a document.
 #[must_use]
 pub fn summarize(document: &ValidatedDocument) -> ProbeSummary {
+    let (vocabulary, vocabulary_types) = summarize_vocabulary(document);
     let record_types = document
         .record_types()
         .iter()
@@ -152,6 +169,8 @@ pub fn summarize(document: &ValidatedDocument) -> ProbeSummary {
         .collect();
     ProbeSummary {
         module: document.module_name().to_owned(),
+        vocabulary,
+        vocabulary_types,
         record_types,
         declarations,
         field_provenance,
@@ -159,6 +178,43 @@ pub fn summarize(document: &ValidatedDocument) -> ProbeSummary {
         reference_provenance,
         diagnostics: Vec::new(),
     }
+}
+
+/// Summarizes exact vocabulary identity and schema data without interpretation.
+fn summarize_vocabulary(document: &ValidatedDocument) -> (Option<String>, Vec<String>) {
+    let vocabulary = document.vocabulary().map(|contract| {
+        let identity = contract.identity();
+        format!(
+            "{}@{} schema={} encoding={} digest={} features=[{}]",
+            identity.identity(),
+            identity.version(),
+            identity.schema_version(),
+            identity.encoding_version(),
+            identity.content_digest(),
+            identity.required_features().join(",")
+        )
+    });
+    let types = document.vocabulary().map_or_else(Vec::new, |contract| {
+        contract
+            .types()
+            .iter()
+            .map(|definition| {
+                let fields = definition
+                    .fields()
+                    .iter()
+                    .map(|field| match field.default_value() {
+                        Some(default) => {
+                            format!("{}: {} = {}", field.name(), field.resolved_type(), default)
+                        }
+                        None => format!("{}: {}", field.name(), field.resolved_type()),
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("record {} {{ {fields} }}", definition.identity())
+            })
+            .collect()
+    });
+    (vocabulary, types)
 }
 
 /// Creates a consumer-owned diagnostic mapped through the public source map.
