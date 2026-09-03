@@ -2,23 +2,33 @@
 
 # Neutral v0 development progress
 
-Status: Stage 6 complete.
+Status: Stage 7 Step 1 complete.
 
 ## Current focus
 
-- Stage: Stage 6, Slice 6.2
-- Status: Captured vocabulary vertical boundary complete
+- Stage: Stage 7, Step 1
+- Status: External IR encoding decision accepted
 - Last updated: 2026-09-03
 
 ## Next actions
 
-- [ ] Continue with Stage 7, Step 1: accept the external IR encoding decision.
+- [ ] Continue with Stage 7, Step 2: encode validated documents.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-09-03: Completed Stage 7, Step 1. Selected Neutral IR Framed CBOR
+  0.1 after comparing JSON, Protocol Buffers, MessagePack, FlatBuffers, and a
+  restricted CBOR profile. Froze the fixed header and section directory,
+  capability assignments, five complete artifact sections, exact-number
+  representation, closed CBOR schemas, hard allocation ceilings, validation
+  order, malformed/unsupported result classes, and the rule that external bytes
+  are noncanonical while logical equality remains structural alpha-equivalence.
+  The security/allocation review approved bounds-before-allocation and
+  fail-closed version, capability, integrity, and schema handling.
 
 - [*] 2026-09-03: Completed Stage 6, Slice 6.2 and Stage 6 validation. Activated
   optional `use` and `Vocabulary::Type` grammar; exact host-captured bundle and

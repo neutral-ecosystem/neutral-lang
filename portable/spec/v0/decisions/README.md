@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Neutral language v0 decisions
 
 Status: accepted v0 decision baseline
@@ -17,10 +19,11 @@ Implementation order and release gates are defined in
 6. [Literal and constructed values](06-literal-values.md)
 7. [Identity references](07-references-relationships.md)
 8. [Minimal vocabulary boundary](10-domain-vocabulary.md)
-9. [Security and limits](12-security-sensitive-syntax.md)
-10. [Diagnostics](13-diagnostics-invalid-syntax.md)
-11. [Formatting](14-documentation-formatting-tools.md)
-12. [Evolution and conformance](15-evolution-conformance.md)
+9. [External Neutral IR encoding](11-external-ir-encoding.md)
+10. [Security and limits](12-security-sensitive-syntax.md)
+11. [Diagnostics](13-diagnostics-invalid-syntax.md)
+12. [Formatting](14-documentation-formatting-tools.md)
+13. [Evolution and conformance](15-evolution-conformance.md)
 
 ## Complete v0 surface
 

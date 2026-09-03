@@ -91,6 +91,7 @@ fn verify_environment() -> Result<(), String> {
         "rust-toolchain.toml",
         "config/development-stage.toml",
         "config/host-policy.toml",
+        "config/ir-encoding.toml",
         "config/test-suites.toml",
         "conformance/manifest.toml",
     ] {

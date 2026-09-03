@@ -488,18 +488,18 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Step 1: accept the encoding decision
 
-- [ ] Compare candidates for exact numbers, duplicate detection, unknown fields,
+- [*] Compare candidates for exact numbers, duplicate detection, unknown fields,
       bounded decoding, ecosystem tooling, and language bindings.
-- [ ] Freeze framing, versions, capabilities, sizes, payload/companion/envelope
+- [*] Freeze framing, versions, capabilities, sizes, payload/companion/envelope
       sections, malformed behavior, and all invalid encoded states.
-- [ ] State that bytes are noncanonical and logical equality remains structural.
+- [*] State that bytes are noncanonical and logical equality remains structural.
 
 #### Step validation
 
-- [ ] The decision represents every frozen logical/companion contract.
-- [ ] Exact numbers require no host floating-point conversion.
-- [ ] Every unknown/malformed/version/capability case has a specified result.
-- [ ] Security and allocation review approves the framing design.
+- [*] The decision represents every frozen logical/companion contract.
+- [*] Exact numbers require no host floating-point conversion.
+- [*] Every unknown/malformed/version/capability case has a specified result.
+- [*] Security and allocation review approves the framing design.
 
 ### Step 2: encode validated documents
 

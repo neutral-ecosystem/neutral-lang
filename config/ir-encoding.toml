@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# Frozen hard ceilings and identifiers for Neutral IR Framed CBOR 0.1.
+# Implementations may use lower host limits but may never exceed these values.
+contract = "NIR-CBOR/0.1"
+media_type = "application/vnd.neutral.ir+cbor;version=0.1"
+framing_revision = 1
+header_bytes = 48
+directory_entry_bytes = 24
+section_count = 5
+known_capability_mask = 255
+maximum_artifact_bytes = 67108864
+maximum_section_bytes = 67108864
+maximum_nesting_depth = 128
+maximum_container_items = 1000000
+maximum_text_bytes = 16777216
+maximum_byte_string_bytes = 16777216
+maximum_exact_number_digits = 1000000
+maximum_traversal_nodes = 1000000
+
+[[section]]
+kind = 1
+name = "envelope"
+schema_revision = 1
+
+[[section]]
+kind = 2
+name = "logical-payload"
+schema_revision = 1
+
+[[section]]
+kind = 3
+name = "source-map"
+schema_revision = 1
+
+[[section]]
+kind = 4
+name = "provenance"
+schema_revision = 1
+
+[[section]]
+kind = 5
+name = "derivation"
+schema_revision = 1
+
+[[capability]]
+bit = 0
+name = "exact-decimal"
+
+[[capability]]
+bit = 1
+name = "nullable"
+
+[[capability]]
+bit = 2
+name = "nominal-record"
+
+[[capability]]
+bit = 3
+name = "ordered-list"
+
+[[capability]]
+bit = 4
+name = "identity-reference"
+
+[[capability]]
+bit = 5
+name = "captured-vocabulary"
+
+[[capability]]
+bit = 6
+name = "ordinary-reuse-provenance"
+
+[[capability]]
+bit = 7
+name = "default-provenance"

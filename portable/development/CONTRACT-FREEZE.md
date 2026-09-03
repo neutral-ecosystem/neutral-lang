@@ -1,6 +1,7 @@
 # Neutral v0 normative contract-freeze gate
 
-Status: approved v0 baseline on 2026-08-26
+Status: approved v0 baseline on 2026-08-26; external IR encoding amendment
+approved on 2026-09-03
 
 This gate closes the gap between design exploration and production compiler
 behavior. Repository scaffolding and disposable experiments may happen before
@@ -48,6 +49,10 @@ record:
 - fixture corpus revision and manifest digest;
 - approvers and unresolved blocking issues; and
 - superseding freeze identifier, if replaced.
+
+The current manifest supersedes the original baseline to add the accepted
+[Neutral IR Framed CBOR 0.1 decision](../spec/v0/decisions/11-external-ir-encoding.md)
+and its machine-readable limits without changing logical language behavior.
 
 The freeze manifest identifies contracts; it is not itself a language input and
 does not enter logical IR equality.

@@ -3,11 +3,11 @@
 # This approved manifest identifies the exact v0 inputs, contract versions,
 # fixture corpus, and repository-owner approval that permit Stage 2 work.
 schema_version = 1
-freeze_id = "neutral-v0-0.1.0-2026-08-26"
+freeze_id = "neutral-v0-0.1.0-encoding-0.1-2026-09-03"
 status = "approved"
-created_on = "2026-08-26"
-approval_date = "2026-08-26"
-supersedes = ""
+created_on = "2026-09-03"
+approval_date = "2026-09-03"
+supersedes = "neutral-v0-0.1.0-2026-08-26"
 
 [review]
 question_ledger_path = "portable/development/CONTRACT-QUESTION-LEDGER.md"
@@ -28,14 +28,16 @@ reader_api = "0.1.0"
 resolver_api = "0.1.0"
 diagnostic_catalogue = "0.1.0"
 structural_limits_profile = "0.1.0"
+external_ir_encoding = "NIR-CBOR/0.1"
 
 [fixture_corpus]
 manifest_path = "conformance/manifest.toml"
-manifest_sha256 = "ea81005811ee237fe5471097b471784eca3a384dd9f9d67fd1f409f91bdc1c3b"
+manifest_sha256 = "f380d6a6b35914e9677cf1ac8eb027818f755aea1f097a821d88005dea98fde7"
 fixture_oracle_review_path = "conformance/fixture-oracle-review.toml"
-fixture_oracle_review_sha256 = "bacb53e01a751cebc05743b48167537d39e9a80ed0aedbc32cacb3ce80d9bbac"
-source_fixture_tree_sha256 = "f911118ab9aabd4e9171dff295020d18a2440c9aa2227317b9eb65098ccfbe9a"
-status = "approved initial corpus"
+fixture_oracle_review_sha256 = "299611eab5155ee630fe17e128f26dc324623a4a8797515780a74c7c1550d7b7"
+# Digest of sorted `<sha256>  <repository-relative .neu path>\n` records.
+source_fixture_tree_sha256 = "abafd6caca51401e7a58eb9c3fc1ad31e29969392e0c53b16c4b1524632bada3"
+status = "approved active corpus through Stage 6"
 
 [[governing_document]]
 path = "portable/spec/v0/architecture.md"
@@ -49,7 +51,7 @@ role = "requirements"
 
 [[governing_document]]
 path = "portable/spec/v0/decisions/README.md"
-sha256 = "a39f2ac3025b0c3d822e286d436eac934b275c9d5b276ec912292d696efd7339"
+sha256 = "603c205f9e2a02db218c20f26813b55d98052d6ac932fa1e94e9137ed1f492e5"
 role = "accepted decision index"
 
 [[governing_document]]
@@ -64,7 +66,7 @@ role = "accepted decision"
 
 [[governing_document]]
 path = "portable/spec/v0/decisions/02-lexical-source-text.md"
-sha256 = "e83cedd029e205bff1d6b7f241b80fcbb316330869c0d124b49eef022bf65b1e"
+sha256 = "1119c7ef5f225718514328ecbe8b64d3196df502b7e0d46ea2dba1a933cf3806"
 role = "accepted decision"
 
 [[governing_document]]
@@ -98,6 +100,11 @@ sha256 = "45957584d77d6d70d19403e8c87233306b29d26b29e6bb1375c137347448f30a"
 role = "accepted decision"
 
 [[governing_document]]
+path = "portable/spec/v0/decisions/11-external-ir-encoding.md"
+sha256 = "edc196f31866644a0f09f17f70b6453456256b035bce234c4b4c622dc50f5b74"
+role = "accepted external IR encoding decision"
+
+[[governing_document]]
 path = "portable/spec/v0/decisions/12-security-sensitive-syntax.md"
 sha256 = "09eb144706e1b6f435881fdc38bb16849f91d8aeaa4a5ca58c477d3b7c815b50"
 role = "accepted decision"
@@ -129,15 +136,20 @@ role = "accepted authoring guide"
 
 [[governing_document]]
 path = "portable/development/IDENTITY-AND-VOCABULARY.md"
-sha256 = "1221f8bb140e4042981354a434cbaf81cde3747ff9bee431360e31772281b671"
+sha256 = "667bebdda9e4a022de74306e9ca2d35f4a28db890fcf3045d7be31f3ed2e9040"
 role = "identity and vocabulary encoding contract"
 
 [[governing_document]]
 path = "portable/spec/v0/fixtures/README.md"
-sha256 = "5c85308ff2837680fd4768bc7c48d18e6611f4956247fa187c6a6a75260d635f"
+sha256 = "5032c2711899f52f01655df14f97069d6a9b189862644f19492dc361e4cf789f"
 role = "fixture contract"
 
 [[governing_document]]
 path = "portable/spec/v0/choices.md"
 sha256 = "fabb015bb5d90dbe9c1f5b6f51b7ad1bbdfa9760bb767dd0981ec99fc809a494"
 role = "accepted v0 choices"
+
+[[governing_document]]
+path = "config/ir-encoding.toml"
+sha256 = "773eb21b3333d85316d44c40f37983f1c32e45a75d74ed43431c014ef80bf94d"
+role = "external IR encoding identifiers and hard ceilings"
