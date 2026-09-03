@@ -4,8 +4,8 @@
     --neutral-code-border: color-mix(in srgb, var(--main-color) 28%, transparent);
     --neutral-inline-code-background: color-mix(
       in srgb,
-      var(--code-block-background-color) 82%,
-      var(--main-color) 18%
+      var(--code-block-background-color) 84%,
+      var(--link-color) 16%
     );
     --neutral-signature-background: color-mix(
       in srgb,
@@ -20,7 +20,7 @@
     padding: 0.08em 0.32em;
     color: var(--main-color);
     background: var(--neutral-inline-code-background);
-    border: 1px solid var(--neutral-code-border);
+    border: 1px solid color-mix(in srgb, var(--link-color) 52%, transparent);
     border-radius: 0.28rem;
     font-weight: 600;
     box-decoration-break: clone;
@@ -42,6 +42,44 @@
   .method > .code-header,
   .trait-impl > .code-header {
     padding: 0.55rem 0.75rem;
+  }
+
+  a.src,
+  .impl a.src.rightside,
+  .impl .rightside a.src {
+    display: inline-block;
+    padding: 0.18rem 0.45rem;
+    color: var(--link-color) !important;
+    background: color-mix(in srgb, var(--link-color) 13%, var(--main-background-color));
+    border: 1px solid color-mix(in srgb, var(--link-color) 58%, transparent);
+    border-radius: 0.3rem;
+    font-weight: 600;
+  }
+
+  a.src:hover,
+  a.src:focus-visible {
+    background: color-mix(in srgb, var(--link-color) 24%, var(--main-background-color));
+    border-color: var(--link-color);
+  }
+
+  .stab {
+    padding: 0.2rem 0.45rem;
+    color: var(--main-color);
+    background: color-mix(in srgb, var(--stab-background-color) 78%, var(--link-color) 22%);
+    border: 1px solid color-mix(in srgb, var(--link-color) 52%, transparent);
+    border-radius: 0.3rem;
+  }
+
+  .stab code,
+  .since a {
+    color: var(--link-color) !important;
+    font-weight: 600;
+  }
+
+  .since a {
+    padding: 0.08rem 0.28rem;
+    background: color-mix(in srgb, var(--link-color) 12%, var(--main-background-color));
+    border-radius: 0.25rem;
   }
 
   #neutral-workspace-home {
