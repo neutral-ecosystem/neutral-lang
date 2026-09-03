@@ -1,0 +1,95 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<style>
+  :root {
+    --neutral-code-border: color-mix(in srgb, var(--main-color) 28%, transparent);
+    --neutral-inline-code-background: color-mix(
+      in srgb,
+      var(--code-block-background-color) 82%,
+      var(--main-color) 18%
+    );
+    --neutral-signature-background: color-mix(
+      in srgb,
+      var(--code-block-background-color) 92%,
+      var(--link-color) 8%
+    );
+  }
+
+  .docblock :not(pre) > code,
+  .item-table dd code,
+  .item-info code {
+    padding: 0.08em 0.32em;
+    color: var(--main-color);
+    background: var(--neutral-inline-code-background);
+    border: 1px solid var(--neutral-code-border);
+    border-radius: 0.28rem;
+    font-weight: 600;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+
+  .impl > .code-header,
+  .method > .code-header,
+  .trait-impl > .code-header,
+  pre.item-decl,
+  .docblock pre {
+    background: var(--neutral-signature-background);
+    border: 1px solid var(--neutral-code-border);
+    border-left: 3px solid var(--link-color);
+    border-radius: 0.4rem;
+  }
+
+  .impl > .code-header,
+  .method > .code-header,
+  .trait-impl > .code-header {
+    padding: 0.55rem 0.75rem;
+  }
+
+  #neutral-workspace-home {
+    position: fixed;
+    top: 0.7rem;
+    right: 0.8rem;
+    z-index: 10000;
+    padding: 0.45rem 0.7rem;
+    color: var(--link-color);
+    background: var(--main-background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0.35rem;
+    font: 600 0.82rem/1.2 var(--code-font);
+    text-decoration: none;
+    box-shadow: 0 0.1rem 0.4rem rgb(0 0 0 / 20%);
+  }
+
+  #neutral-workspace-home:hover,
+  #neutral-workspace-home:focus-visible {
+    color: var(--main-color);
+    border-color: var(--link-color);
+    outline: 2px solid transparent;
+  }
+
+  @media (max-width: 700px) {
+    #neutral-workspace-home {
+      top: auto;
+      right: 0.7rem;
+      bottom: 0.7rem;
+    }
+  }
+</style>
+<script>
+  "use strict";
+
+  /** Adds a workspace-index link using rustdoc's page-relative root path. */
+  function addNeutralWorkspaceHomeLink() {
+    const rustdocVariables = document.querySelector('meta[name="rustdoc-vars"]');
+    if (!rustdocVariables || document.getElementById("neutral-workspace-home")) {
+      return;
+    }
+    const link = document.createElement("a");
+    link.id = "neutral-workspace-home";
+    link.href = `${rustdocVariables.dataset.rootPath || "./"}index.html`;
+    link.textContent = "← Workspace index";
+    link.setAttribute("aria-label", "Back to the Neutral workspace documentation index");
+    document.body.append(link);
+  }
+
+  document.addEventListener("DOMContentLoaded", addNeutralWorkspaceHomeLink);
+</script>

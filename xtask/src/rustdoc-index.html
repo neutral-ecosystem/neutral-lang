@@ -1,0 +1,502 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Generated workspace documentation for the Neutral language implementation.">
+  <title>Neutral language API documentation</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --background: #111418;
+      --surface: #191e24;
+      --surface-raised: #20262e;
+      --border: #343d48;
+      --text: #e8edf2;
+      --muted: #a9b3be;
+      --accent: #f2b84b;
+      --accent-soft: #332a19;
+      --public: #57c7a5;
+      --internal: #9aa9ff;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      line-height: 1.5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 75% -10%, #2d2517 0, transparent 28rem),
+        var(--background);
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .shell {
+      width: min(76rem, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 4rem 0;
+    }
+
+    .eyebrow,
+    .package-owner {
+      color: var(--accent);
+      font: 600 0.75rem/1.4 ui-monospace, monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 18ch;
+      margin: 0.4rem 0 1rem;
+      font-size: clamp(2.25rem, 6vw, 4.75rem);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+    }
+
+    .intro {
+      max-width: 48rem;
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.1rem;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(15rem, 1fr) auto;
+      gap: 1rem;
+      align-items: center;
+      margin: 2.5rem 0 3rem;
+    }
+
+    .search {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      font: inherit;
+    }
+
+    .search:focus {
+      border-color: var(--accent);
+      outline: 2px solid transparent;
+    }
+
+    .stats {
+      display: flex;
+      gap: 1rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    .stats strong {
+      color: var(--text);
+    }
+
+    .package-section {
+      margin-top: 3rem;
+    }
+
+    .section-heading {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: end;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+
+    .section-heading p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .packages {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+      gap: 1rem;
+      padding: 0;
+      margin: 1rem 0 0;
+      list-style: none;
+    }
+
+    .package-card {
+      position: relative;
+      height: 100%;
+      padding: 1.15rem;
+      background: linear-gradient(145deg, var(--surface-raised), var(--surface));
+      border: 1px solid var(--border);
+      border-radius: 0.65rem;
+      cursor: pointer;
+      transition: border-color 120ms ease, transform 120ms ease;
+    }
+
+    .package-card:hover,
+    .package-card:focus-within {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .package-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: baseline;
+    }
+
+    .package-title a {
+      color: var(--accent);
+      font: 650 1rem/1.4 ui-monospace, monospace;
+      text-decoration: none;
+    }
+
+    .package-title a::after {
+      position: absolute;
+      inset: 0;
+      content: "";
+      border-radius: 0.65rem;
+    }
+
+    .package-title a:focus-visible {
+      outline: none;
+    }
+
+    .package-title a:focus-visible::after {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .package-version {
+      color: var(--muted);
+      font: 0.75rem/1.4 ui-monospace, monospace;
+    }
+
+    .package-description {
+      min-height: 3rem;
+      margin: 0.8rem 0 1rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .dependency-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.45rem;
+    }
+
+    .dependency-list a,
+    .no-dependencies {
+      padding: 0.15rem 0.45rem;
+      color: var(--muted);
+      background: var(--accent-soft);
+      border-radius: 999px;
+      font: 0.72rem/1.4 ui-monospace, monospace;
+      text-decoration: none;
+    }
+
+    .dependency-list a {
+      position: relative;
+      z-index: 1;
+    }
+
+    .dependency-list a:hover,
+    .dependency-list a:focus-visible {
+      color: var(--text);
+      outline: 1px solid var(--accent);
+    }
+
+    .package-action {
+      margin-top: 1rem;
+      color: var(--accent);
+      font: 600 0.78rem/1.4 ui-monospace, monospace;
+    }
+
+    .empty {
+      display: none;
+      padding: 2rem;
+      color: var(--muted);
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: 0.65rem;
+    }
+
+    footer {
+      margin-top: 4rem;
+      padding-top: 1rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+
+    code {
+      color: var(--accent);
+      font-family: ui-monospace, monospace;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    @media (max-width: 42rem) {
+      .shell {
+        padding-top: 2rem;
+      }
+
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .stats,
+      .section-heading {
+        align-items: start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="eyebrow">Neutral ecosystem · Rust API</div>
+      <h1>Workspace documentation</h1>
+      <p class="intro">Browse the contracts, compilation pipeline, readers, host adapters, and verification tools that make up Neutral v0. This page is generated from Cargo metadata.</p>
+    </header>
+
+    <main>
+      <div class="toolbar">
+        <label>
+          <span class="eyebrow">Filter packages</span>
+          <input class="search" id="package-search" type="search" placeholder="Name, responsibility, dependency…" autocomplete="off">
+        </label>
+        <div class="stats" id="workspace-stats" aria-live="polite"></div>
+      </div>
+
+      <section class="package-section" id="public-section">
+        <div class="section-heading">
+          <h2>Runtime ecosystem</h2>
+          <p>Publishable contracts, producers, consumers, and host adapters</p>
+        </div>
+        <ul class="packages" id="public-packages"></ul>
+      </section>
+
+      <section class="package-section" id="internal-section">
+        <div class="section-heading">
+          <h2>Development and verification</h2>
+          <p>Private test, benchmark, and repository automation packages</p>
+        </div>
+        <ul class="packages" id="internal-packages"></ul>
+      </section>
+
+      <p class="empty" id="empty-result">No workspace package matches this filter.</p>
+    </main>
+
+    <footer>
+      Regenerate this site with <code>cargo docs</code>. Package names,
+      descriptions, versions, ownership, visibility, and dependency links come
+      directly from Cargo metadata.
+    </footer>
+  </div>
+
+  <script id="cargo-metadata" type="application/json">__NEUTRAL_CARGO_METADATA__</script>
+  <script>
+    "use strict";
+
+    const metadata = JSON.parse(document.getElementById("cargo-metadata").textContent);
+    const workspaceIds = new Set(metadata.workspace_members);
+    const packages = metadata.packages.filter(isWorkspacePackage);
+    const packageNames = new Set(packages.map(packageName));
+
+    /** Returns whether one metadata package belongs to the active workspace. */
+    function isWorkspacePackage(packageEntry) {
+      return workspaceIds.has(packageEntry.id);
+    }
+
+    /** Returns one metadata package's Cargo name. */
+    function packageName(packageEntry) {
+      return packageEntry.name;
+    }
+
+    /** Returns whether Cargo permits publication of a package. */
+    function isPublishable(packageEntry) {
+      return packageEntry.publish === null || packageEntry.publish.length > 0;
+    }
+
+    /** Returns the rustdoc target directory generated for a package. */
+    function documentationTarget(packageEntry) {
+      const target = packageEntry.targets.find(isLibraryDocumentationTarget)
+        || packageEntry.targets.find(isDocumentationTarget);
+      return target ? target.name : packageEntry.name.replaceAll("-", "_");
+    }
+
+    /** Returns whether one Cargo target is a documented library. */
+    function isLibraryDocumentationTarget(target) {
+      return target.doc && target.kind.includes("lib");
+    }
+
+    /** Returns whether one Cargo target participates in rustdoc output. */
+    function isDocumentationTarget(target) {
+      return target.doc;
+    }
+
+    /** Returns direct dependencies that are also members of this workspace. */
+    function workspaceDependencies(packageEntry) {
+      return packageEntry.dependencies
+        .map(dependencyName)
+        .filter(isWorkspaceDependency)
+        .sort();
+    }
+
+    /** Returns one Cargo dependency's package name. */
+    function dependencyName(dependency) {
+      return dependency.name;
+    }
+
+    /** Returns whether a dependency is another package in this workspace. */
+    function isWorkspaceDependency(name) {
+      return packageNames.has(name);
+    }
+
+    /** Returns the package owner label recorded in Cargo metadata. */
+    function packageOwner(packageEntry) {
+      return packageEntry.metadata?.neutral?.owner || "unassigned";
+    }
+
+    /** Creates one linked dependency label. */
+    function createDependencyLink(name) {
+      const dependency = packages.find(packageWithName.bind(null, name));
+      const link = document.createElement("a");
+      link.href = `${documentationTarget(dependency)}/index.html`;
+      link.textContent = name;
+      return link;
+    }
+
+    /** Returns whether a package has the requested Cargo name. */
+    function packageWithName(name, packageEntry) {
+      return packageEntry.name === name;
+    }
+
+    /** Creates one package documentation card from Cargo metadata. */
+    function createPackageCard(packageEntry) {
+      const item = document.createElement("li");
+      const card = document.createElement("article");
+      const title = document.createElement("div");
+      const link = document.createElement("a");
+      const version = document.createElement("span");
+      const owner = document.createElement("div");
+      const description = document.createElement("p");
+      const dependencyLabel = document.createElement("div");
+      const dependencyList = document.createElement("div");
+      const action = document.createElement("div");
+      const dependencies = workspaceDependencies(packageEntry);
+
+      item.dataset.search = [
+        packageEntry.name,
+        packageEntry.description || "",
+        packageOwner(packageEntry),
+        ...dependencies,
+      ].join(" ").toLowerCase();
+      item.className = "package-item";
+      card.className = "package-card";
+      title.className = "package-title";
+      link.href = `${documentationTarget(packageEntry)}/index.html`;
+      link.textContent = packageEntry.name;
+      version.className = "package-version";
+      version.textContent = `v${packageEntry.version}`;
+      owner.className = "package-owner";
+      owner.textContent = packageOwner(packageEntry).replaceAll("-", " ");
+      description.className = "package-description";
+      description.textContent = packageEntry.description || "Workspace API documentation.";
+      dependencyLabel.className = "eyebrow";
+      dependencyLabel.textContent = "Workspace dependencies";
+      dependencyList.className = "dependency-list";
+      action.className = "package-action";
+      action.textContent = "Open API documentation →";
+
+      if (dependencies.length === 0) {
+        const empty = document.createElement("span");
+        empty.className = "no-dependencies";
+        empty.textContent = "foundation package";
+        dependencyList.append(empty);
+      } else {
+        for (const dependency of dependencies.map(createDependencyLink)) {
+          dependencyList.append(dependency);
+        }
+      }
+
+      title.append(link, version);
+      card.append(title, owner, description, dependencyLabel, dependencyList, action);
+      item.append(card);
+      return item;
+    }
+
+    /** Sorts packages by workspace dependency count and then by package name. */
+    function comparePackages(left, right) {
+      return workspaceDependencies(left).length - workspaceDependencies(right).length
+        || left.name.localeCompare(right.name);
+    }
+
+    /** Populates both documentation sections from the current workspace metadata. */
+    function renderWorkspace() {
+      const publicPackages = packages.filter(isPublishable).sort(comparePackages);
+      const internalPackages = packages.filter(isInternalPackage).sort(comparePackages);
+      document.getElementById("public-packages").append(...publicPackages.map(createPackageCard));
+      document.getElementById("internal-packages").append(...internalPackages.map(createPackageCard));
+      document.getElementById("workspace-stats").innerHTML = [
+        `<span><strong>${packages.length}</strong> packages</span>`,
+        `<span><strong>${publicPackages.length}</strong> runtime</span>`,
+        `<span><strong>${internalPackages.length}</strong> development</span>`,
+      ].join("");
+    }
+
+    /** Returns whether Cargo marks a package as workspace-internal. */
+    function isInternalPackage(packageEntry) {
+      return !isPublishable(packageEntry);
+    }
+
+    /** Applies the current package-search query to every generated card. */
+    function filterPackages(event) {
+      const query = event.target.value.trim().toLowerCase();
+      const items = [...document.querySelectorAll(".package-item")];
+      for (const item of items) {
+        item.hidden = !item.dataset.search.includes(query);
+      }
+      const publicVisible = hasVisiblePackage("#public-packages .package-item");
+      const internalVisible = hasVisiblePackage("#internal-packages .package-item");
+      document.getElementById("public-section").hidden = !publicVisible;
+      document.getElementById("internal-section").hidden = !internalVisible;
+      document.getElementById("empty-result").style.display = publicVisible || internalVisible ? "none" : "block";
+    }
+
+    /** Returns whether a package selector contains at least one visible card. */
+    function hasVisiblePackage(selector) {
+      for (const item of document.querySelectorAll(selector)) {
+        if (!item.hidden) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    renderWorkspace();
+    document.getElementById("package-search").addEventListener("input", filterPackages);
+  </script>
+</body>
+</html>

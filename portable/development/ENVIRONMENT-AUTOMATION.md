@@ -128,6 +128,7 @@ cargo xtask boundary check
 cargo xtask format [--write]
 cargo xtask lint
 cargo xtask build --profile dev|test|release
+cargo docs
 cargo xtask test smoke|unit|integration|system|conformance|property|security|all
 cargo xtask test performance --profile pr|nightly|release
 cargo xtask fuzz smoke|campaign
@@ -144,6 +145,8 @@ Command rules:
 - local and CI automation call the same commands;
 - invalid or empty suite selection fails;
 - active suite minimum counts come from the stage/test manifest;
+- `cargo docs` generates crate rustdoc plus a Cargo-metadata-driven workspace
+  index without a fixed package list;
 - no automatic retry changes a failed required result to pass;
 - check commands do not modify tracked files;
 - golden update is explicit and lists every changed oracle;

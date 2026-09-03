@@ -1,9 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+
 [alias]
 xtask = "run --package xtask --"
+docs = "run --package xtask -- docs"
 
 [build]
 incremental = true
 
 [net]
 retry = 2
-

@@ -15,6 +15,11 @@ use std::{
 
 pub mod constants;
 
+/// Source template for the generated workspace rustdoc landing page.
+const RUSTDOC_INDEX_TEMPLATE: &str = include_str!("rustdoc-index.html");
+/// Shared HTML fragment injected into every generated rustdoc page.
+const RUSTDOC_HEADER_TEMPLATE: &str = include_str!("rustdoc-header.html");
+
 /// Runs an `xtask` subcommand.
 ///
 /// # Errors
@@ -44,6 +49,7 @@ pub fn run(arguments: impl IntoIterator<Item = String>) -> Result<(), String> {
             "-D",
             "warnings",
         ]),
+        [command] if command == "docs" => documentation(),
         [command, flag, profile] if command == "build" && flag == "--profile" => build(profile),
         [command, suite] if command == "test" => test_suite(suite),
         [command, suite, flag, profile]
@@ -185,6 +191,97 @@ fn build(profile: &str) -> Result<(), String> {
         "release" => run_cargo(&["build", "--workspace", "--release"]),
         _ => Err(format!("unknown build profile: {profile}")),
     }
+}
+
+/// Builds every workspace crate's API documentation and its metadata-driven index.
+fn documentation() -> Result<(), String> {
+    run_rustdoc()?;
+    let metadata = command_output(
+        constants::CARGO_COMMAND,
+        &["metadata", "--format-version", "1", "--no-deps"],
+    )?;
+    let index = render_rustdoc_index(&metadata)?;
+    let output_directory = workspace_root()?.join(constants::RUSTDOC_OUTPUT_DIRECTORY);
+    fs::create_dir_all(&output_directory).map_err(|error| {
+        format!(
+            "could not create rustdoc directory {}: {error}",
+            output_directory.display()
+        )
+    })?;
+    let output_path = output_directory.join(constants::RUSTDOC_INDEX_FILE);
+    fs::write(&output_path, index)
+        .map_err(|error| format!("could not write {}: {error}", output_path.display()))?;
+    println!(
+        "{} workspace documentation: {}",
+        constants::INFO,
+        output_path.display()
+    );
+    Ok(())
+}
+
+/// Runs workspace rustdoc with the shared navigation header on every HTML page.
+fn run_rustdoc() -> Result<(), String> {
+    let header_path = workspace_root()?.join(constants::RUSTDOC_HEADER_FILE);
+    if !header_path.is_file() {
+        return Err(format!(
+            "rustdoc navigation header is missing: {}",
+            header_path.display()
+        ));
+    }
+    let header_path = header_path
+        .to_str()
+        .ok_or_else(|| "rustdoc navigation header path is not valid UTF-8".to_owned())?;
+    let mut rustdoc_flags = env::var(constants::CARGO_ENCODED_RUSTDOCFLAGS).unwrap_or_default();
+    if !rustdoc_flags.is_empty() {
+        rustdoc_flags.push(constants::RUSTDOC_FLAG_SEPARATOR);
+    }
+    rustdoc_flags.push_str(constants::RUSTDOC_HTML_HEADER_FLAG);
+    rustdoc_flags.push(constants::RUSTDOC_FLAG_SEPARATOR);
+    rustdoc_flags.push_str(header_path);
+    rustdoc_flags.push(constants::RUSTDOC_FLAG_SEPARATOR);
+    rustdoc_flags.push_str("--cfg");
+    rustdoc_flags.push(constants::RUSTDOC_FLAG_SEPARATOR);
+    rustdoc_flags.push_str(&rustdoc_header_configuration());
+
+    let arguments = ["doc", "--workspace", "--no-deps"];
+    let status = Command::new(constants::CARGO_COMMAND)
+        .current_dir(workspace_root()?)
+        .env(constants::CARGO_ENCODED_RUSTDOCFLAGS, rustdoc_flags)
+        .args(arguments)
+        .status()
+        .map_err(|error| {
+            format!(
+                "could not run {} {}: {error}",
+                constants::CARGO_COMMAND,
+                arguments.join(" ")
+            )
+        })?;
+    status.success().then_some(()).ok_or_else(|| {
+        format!(
+            "{} {} failed with {status}",
+            constants::CARGO_COMMAND,
+            arguments.join(" ")
+        )
+    })
+}
+
+/// Derives a stable non-security cache token from the shared rustdoc header.
+fn rustdoc_header_configuration() -> String {
+    let mut hash = constants::RUSTDOC_HEADER_HASH_OFFSET;
+    for byte in RUSTDOC_HEADER_TEMPLATE.bytes() {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(constants::RUSTDOC_HEADER_HASH_PRIME);
+    }
+    format!("{}_{hash:016x}", constants::RUSTDOC_HEADER_CFG_PREFIX)
+}
+
+/// Embeds Cargo metadata safely into the workspace rustdoc index template.
+fn render_rustdoc_index(metadata: &str) -> Result<String, String> {
+    if !RUSTDOC_INDEX_TEMPLATE.contains(constants::CARGO_METADATA_PLACEHOLDER) {
+        return Err("rustdoc index template has no Cargo metadata placeholder".to_owned());
+    }
+    let safe_metadata = metadata.replace('<', "\\u003c");
+    Ok(RUSTDOC_INDEX_TEMPLATE.replacen(constants::CARGO_METADATA_PLACEHOLDER, &safe_metadata, 1))
 }
 
 /// Runs an active Stage 1 suite or rejects a future-stage suite selection.
@@ -364,7 +461,7 @@ fn run_ci_gate(profile: &str, include_behavior: bool) -> Result<(), String> {
         fuzz("smoke")?;
     }
     run_cargo(&["build", "--locked", "--package", constants::NEUTRAL_PROBE])?;
-    run_cargo(&["doc", "--workspace", "--no-deps"])?;
+    documentation()?;
 
     let result_directory = unique_result_directory(profile)?;
     fs::write(
@@ -705,7 +802,10 @@ fn set<const N: usize>(values: [&'static str; N]) -> BTreeSet<&'static str> {
 #[cfg(test)]
 /// Tests for dependency-boundary policy failures.
 mod tests {
-    use super::{constants, set, validate_allowed_packages, validate_direct_dependencies};
+    use super::{
+        constants, render_rustdoc_index, rustdoc_header_configuration, set,
+        validate_allowed_packages, validate_direct_dependencies,
+    };
     use std::collections::{BTreeMap, BTreeSet};
 
     #[test]
@@ -723,6 +823,23 @@ mod tests {
         let stage = super::active_stage().expect("active stage should be readable");
         assert!(manifest.contains(&format!("\"pinned_rust\": \"{pinned}\"")));
         assert!(manifest.contains(&format!("\"active_stage\": {stage}")));
+    }
+
+    #[test]
+    /// Verifies that the rustdoc index embeds metadata without an HTML script escape.
+    fn automation_generates_a_safe_rustdoc_index() {
+        let generated = render_rustdoc_index(r#"{"description":"</script>"}"#)
+            .expect("the rustdoc template should contain its metadata placeholder");
+        assert!(!generated.contains(constants::CARGO_METADATA_PLACEHOLDER));
+        assert!(generated.contains(r#"{"description":"\u003c/script>"}"#));
+    }
+
+    #[test]
+    /// Verifies that the shared rustdoc header contributes a stable cache token.
+    fn automation_tracks_the_rustdoc_header_content() {
+        let configuration = rustdoc_header_configuration();
+        assert!(configuration.starts_with(constants::RUSTDOC_HEADER_CFG_PREFIX));
+        assert_eq!(configuration, rustdoc_header_configuration());
     }
 
     #[test]

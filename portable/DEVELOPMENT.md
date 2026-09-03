@@ -197,6 +197,13 @@ cargo xtask ci nightly
 cargo xtask ci release      # release candidates only
 ```
 
+Generate the workspace API site with `cargo docs`, then open
+[`target/doc/index.html`](../target/doc/index.html). The automation runs rustdoc
+and builds the landing page from Cargo metadata, so package names, versions,
+descriptions, ownership, publication groups, and workspace dependency links
+stay synchronized without a hand-maintained crate list. All generated site
+files remain ignored.
+
 Individual tasks and evidence behavior are defined in
 [ENVIRONMENT-AUTOMATION.md](development/ENVIRONMENT-AUTOMATION.md). Test
 activation and quality gates are defined in

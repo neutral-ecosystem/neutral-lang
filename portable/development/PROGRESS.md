@@ -20,6 +20,18 @@ None recorded.
 
 ## Completed log
 
+- [*] 2026-09-03: Added `cargo docs`, which builds workspace rustdoc and
+  generates `target/doc/index.html` from Cargo metadata. The responsive landing
+  page automatically groups publishable and internal packages, exposes package
+  descriptions, owners, versions, searchable dependency links, and counts, and
+  contains no hand-maintained crate list. Each complete package card opens its
+  API while dependency chips retain their own links. Every generated rustdoc
+  page also receives a page-depth-aware back button to the workspace index and
+  higher-contrast inline-code and signature-line styling. A content-derived
+  cache token forces rustdoc regeneration whenever the shared header or theme
+  changes. CI uses the same generator, while all generated output remains
+  ignored.
+
 - [*] 2026-09-03: Completed Stage 7, Step 1. Selected Neutral IR Framed CBOR
   0.1 after comparing JSON, Protocol Buffers, MessagePack, FlatBuffers, and a
   restricted CBOR profile. Froze the fixed header and section directory,
