@@ -40,6 +40,25 @@ impl SourceContentDigest {
     }
 }
 
+/// A typed SHA-256 digest of one exact externally encoded artifact section.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct EncodedSectionDigest([u8; 32]);
+
+impl EncodedSectionDigest {
+    /// Computes the digest over exactly one encoded section's bytes.
+    #[must_use]
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        let bytes: [u8; 32] = Sha256::digest(bytes).into();
+        Self(bytes)
+    }
+
+    /// Returns the raw SHA-256 bytes for the external integrity envelope.
+    #[must_use]
+    pub const fn as_bytes(self) -> [u8; 32] {
+        self.0
+    }
+}
+
 /// A typed SHA-256 digest of exact captured vocabulary-bundle bytes.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct VocabularyContentDigest([u8; 32]);

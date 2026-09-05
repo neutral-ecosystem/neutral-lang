@@ -6,6 +6,7 @@ members = [
     "crates/neutral-vocabulary",
     "crates/neutral-compiler",
     "crates/neutral-reader",
+    "crates/neutral-encoding",
     "crates/neutral-probe",
     "crates/neutral-cli",
     "crates/neutral-test-support",

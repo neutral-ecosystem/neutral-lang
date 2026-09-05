@@ -42,6 +42,8 @@ pub const NEUTRAL_CLI: &str = "neutral-cli";
 pub const NEUTRAL_COMPILER: &str = "neutral-compiler";
 /// Workspace package name for the core contract types.
 pub const NEUTRAL_CORE: &str = "neutral-core";
+/// Workspace package name for external artifact encoding.
+pub const NEUTRAL_ENCODING: &str = "neutral-encoding";
 /// Workspace package name for the intermediate representation.
 pub const NEUTRAL_IR: &str = "neutral-ir";
 /// Workspace package name for the probe executable.

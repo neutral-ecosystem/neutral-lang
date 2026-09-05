@@ -1796,6 +1796,23 @@ pub enum Normalization {
     IdentityReferenceResolution,
 }
 
+impl Normalization {
+    /// Returns the stable external vocabulary spelling.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ExactNumberCanonicalization => "exact-number",
+            Self::StringEscapeDecoding => "string-escape",
+            Self::BooleanIdentity => "boolean-identity",
+            Self::NullIdentity => "null-identity",
+            Self::RecordContextualization => "record-context",
+            Self::ListContextualization => "list-context",
+            Self::ImmutableValueReuse => "immutable-reuse",
+            Self::IdentityReferenceResolution => "identity-reference",
+        }
+    }
+}
+
 /// Provenance record for one minimal binding value.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ProvenanceRecord {

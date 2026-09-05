@@ -99,8 +99,8 @@ Stage 10: release qualification
 ## Current gate status
 
 Stage 1, the mandatory normative contract freeze, Stage 2, all Stage 3 slices,
-all Stage 4 slices, all Stage 5 slices, all Stage 6 slices, and Stage 7 Step 1
-are complete. The
+all Stage 4 slices, all Stage 5 slices, all Stage 6 slices, and Stage 7 Steps 1
+and 2 are complete. The
 private frontend
 retains exact nonsemantic trivia, enforces frozen ASCII/token boundaries,
 decodes bounded Unicode strings, and normalizes signed decimal exact numbers
@@ -134,9 +134,13 @@ the accepted external artifact format: a checked fixed-width frame encloses
 closed, restricted-CBOR envelope, logical payload, source-map, provenance, and
 derivation sections. Exact decimals remain normalized string/integer
 components; unknown versions, capabilities, members, and malformed or oversized
-input fail closed before a reader view exists. Encoding bytes remain
-noncanonical and outside structural logical equality. The next work is Stage 7,
-Step 2: encode validated documents.
+input fail closed before a reader view exists. The validated-document encoder
+now derives exact capabilities, projects every logical and companion contract
+into five bounded restricted-CBOR sections, hashes sections 2 through 5 into an
+envelope-only integrity list, and emits the fixed frame. Producer/build facts
+affect only the envelope; deterministic emitted byte order is nonsemantic
+implementation behavior. The next work is Stage 7, Step 3: decode and validate
+hostile input.
 The approved
 [freeze manifest](spec/v0/freeze.toml) identifies
 the v0 contract family, and the
@@ -174,6 +178,7 @@ neutral-ir
 neutral-vocabulary
 neutral-compiler
 neutral-reader
+neutral-encoding      # validated-document external artifact encoder
 neutral-probe          # reader-only library + standalone binary
 neutral-cli            # compile/validate/format host
 neutral-test-support   # helpers only

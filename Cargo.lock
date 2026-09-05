@@ -92,6 +92,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "neutral-encoding"
+version = "0.1.0"
+dependencies = [
+ "neutral-compiler",
+ "neutral-core",
+ "neutral-ir",
+ "neutral-reader",
+ "neutral-vocabulary",
+]
+
+[[package]]
 name = "neutral-ir"
 version = "0.1.0"
 dependencies = [
@@ -121,6 +132,7 @@ version = "0.1.0"
 dependencies = [
  "neutral-compiler",
  "neutral-core",
+ "neutral-encoding",
  "neutral-ir",
  "neutral-probe",
  "neutral-reader",

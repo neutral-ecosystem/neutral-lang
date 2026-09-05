@@ -58,16 +58,16 @@ property = 18
 security = 15
 fuzz_smoke = 1
 
-# Stage 7 Step 1 changes contracts only; these floors remain active until the
-# encoder and hostile decoder add their executable cases in Steps 2 and 3.
+# Stage 7 Step 2 adds executable encoder integration, conformance, property, and
+# limit evidence. Hostile decoder cases join these floors in Step 3.
 [stage7.minimum]
 unit = 1
 smoke = 1
-integration = 2
+integration = 3
 system = 8
-conformance = 23
-property = 18
-security = 15
+conformance = 24
+property = 20
+security = 16
 fuzz_smoke = 1
 
 [planned]

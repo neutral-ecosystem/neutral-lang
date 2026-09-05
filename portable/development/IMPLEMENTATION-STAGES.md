@@ -43,6 +43,7 @@ neutral-ir            public logical IR, source map, provenance, derivation
 neutral-vocabulary    closed logical schema and strict bundle validation
 neutral-compiler      capture, private frontend/semantics, IR lowering
 neutral-reader        external artifact validation and immutable reader views
+neutral-encoding      validated-document external artifact encoder
 neutral-probe         reader-only library and standalone probe binary
 neutral-cli           capture/compile/validate/format host commands
 neutral-test-support  reusable test-only builders and assertions
@@ -503,17 +504,17 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Step 2: encode validated documents
 
-- [ ] Encode only fully validated in-memory documents.
-- [ ] Keep producer/build facts in the envelope.
-- [ ] Preserve all logical and companion contracts without making byte order
+- [*] Encode only fully validated in-memory documents.
+- [*] Keep producer/build facts in the envelope.
+- [*] Preserve all logical and companion contracts without making byte order
       semantic.
 
 #### Step validation
 
-- [ ] Every valid in-memory fixture encodes within configured limits.
-- [ ] Encoding does not mutate validated input.
-- [ ] Producer/envelope changes do not alter logical payload equality.
-- [ ] Byte determinism, where provided, is documented as implementation behavior
+- [*] Every valid in-memory fixture encodes within configured limits.
+- [*] Encoding does not mutate validated input.
+- [*] Producer/envelope changes do not alter logical payload equality.
+- [*] Byte determinism, where provided, is documented as implementation behavior
       rather than logical identity.
 
 ### Step 3: decode and validate hostile input

@@ -2,23 +2,34 @@
 
 # Neutral v0 development progress
 
-Status: Stage 7 Step 1 complete.
+Status: Stage 7 Step 2 complete.
 
 ## Current focus
 
-- Stage: Stage 7, Step 1
-- Status: External IR encoding decision accepted
-- Last updated: 2026-09-03
+- Stage: Stage 7, Step 2
+- Status: Validated-document encoder complete
+- Last updated: 2026-09-05
 
 ## Next actions
 
-- [ ] Continue with Stage 7, Step 2: encode validated documents.
+- [ ] Continue with Stage 7, Step 3: decode and validate hostile input.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-09-05: Completed Stage 7, Step 2. Added the `neutral-encoding`
+  boundary, which accepts only immutable `ValidatedDocument` input and emits
+  the five fixed Neutral IR Framed CBOR 0.1 sections under centralized framing,
+  schema, capability, and size constants. The encoder derives capabilities from
+  actual types, values, vocabulary, and provenance; preserves logical,
+  source-map, provenance, and derivation contracts; records exact SHA-256
+  section integrity; and confines producer/build facts to the envelope. Every
+  current positive source fixture, including captured vocabulary, encodes within
+  limits. Nonmutation, envelope isolation, deterministic implementation output,
+  fixed framing, and oversized producer rejection are executable evidence.
 
 - [*] 2026-09-03: Added `cargo docs`, which builds workspace rustdoc and
   generates `target/doc/index.html` from Cargo metadata. The responsive landing

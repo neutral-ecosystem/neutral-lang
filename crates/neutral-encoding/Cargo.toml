@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [package]
-name = "neutral-test-suite"
-description = "Cross-package smoke, integration, system, and conformance tests for Neutral"
+name = "neutral-encoding"
+description = "Validated-document encoder for Neutral IR Framed CBOR"
 readme = "README.md"
-publish = false
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,16 +11,16 @@ license.workspace = true
 repository.workspace = true
 
 [package.metadata.neutral]
-owner = "cross-package-testing"
+owner = "external-artifact-encoding"
+
+[dependencies]
+neutral-core = { path = "../neutral-core" }
+neutral-ir = { path = "../neutral-ir" }
+neutral-reader = { path = "../neutral-reader" }
+neutral-vocabulary = { path = "../neutral-vocabulary" }
 
 [dev-dependencies]
 neutral-compiler = { path = "../neutral-compiler" }
-neutral-core = { path = "../neutral-core" }
-neutral-encoding = { path = "../neutral-encoding" }
-neutral-ir = { path = "../neutral-ir" }
-neutral-probe = { path = "../neutral-probe" }
-neutral-reader = { path = "../neutral-reader" }
-neutral-vocabulary = { path = "../neutral-vocabulary" }
 
 [lints]
 workspace = true

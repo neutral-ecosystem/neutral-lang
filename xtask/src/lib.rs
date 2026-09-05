@@ -664,6 +664,15 @@ fn direct_dependency_policy() -> BTreeMap<&'static str, BTreeSet<&'static str>> 
             ]),
         ),
         (constants::NEUTRAL_CORE, set(["sha2"])),
+        (
+            constants::NEUTRAL_ENCODING,
+            set([
+                constants::NEUTRAL_CORE,
+                constants::NEUTRAL_IR,
+                constants::NEUTRAL_READER,
+                constants::NEUTRAL_VOCABULARY,
+            ]),
+        ),
         (constants::NEUTRAL_IR, set([constants::NEUTRAL_CORE])),
         (
             constants::NEUTRAL_PROBE,
