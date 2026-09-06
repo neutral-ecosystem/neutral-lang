@@ -99,8 +99,8 @@ Stage 10: release qualification
 ## Current gate status
 
 Stage 1, the mandatory normative contract freeze, Stage 2, all Stage 3 slices,
-all Stage 4 slices, all Stage 5 slices, all Stage 6 slices, and all three Stage
-7 steps and validation are complete. The
+all Stage 4 slices, all Stage 5 slices, all Stage 6 slices, all three Stage 7
+steps and validation, and Stage 8 Step 1 are complete. The
 private frontend
 retains exact nonsemantic trivia, enforces frozen ASCII/token boundaries,
 decodes bounded Unicode strings, and normalizes signed decimal exact numbers
@@ -151,8 +151,13 @@ artifacts through public encoding/reader contracts without compiler linkage,
 and its process-boundary system test verifies deterministic categorized output.
 The stable decoder campaign covers all truncation boundaries, seeded structured
 mutations, and arbitrary byte sequences. A reviewed bounds-before-allocation
-record closes Stage 7. The next work is Stage 8, Step 1: the reference formatter
-vertical tool slice.
+record closes Stage 7. The Stage 8 reference formatter now renders validated
+captured source through the private parsed representation without publishing an
+AST. It enforces canonical headers, LF newlines, four-space recursive layout,
+field/item commas, normalized spacing, and deterministic source-order comment
+placement. Complete-corpus tests prove idempotence, parse/format/parse logical
+equivalence, provenance-category preservation, and source-identity separation.
+The next work is Stage 8, Step 2: CLI host tools.
 The approved
 [freeze manifest](spec/v0/freeze.toml) identifies
 the v0 contract family, and the

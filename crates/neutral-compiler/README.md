@@ -16,6 +16,16 @@ record, and contextual-record behavior. It collects the complete root scope
 before nominal type resolution and rejects embedded record cycles. Stage 6 also
 accepts one exact host-captured vocabulary bundle and lock, validates it before
 source payloads, and resolves optional `use` plus qualified nominal types without
-performing acquisition. Exact
-trivia stays private for a later formatter and is never lowered into
-authoritative logical IR.
+performing acquisition. Exact trivia stays private for the reference formatter
+and is never lowered into authoritative logical IR.
+
+The Stage 8.1 reference formatter accepts only captured source that completes
+the compiler validation path. It emits canonical header order, LF newlines,
+four-space record/list indentation, one field or item per line with a trailing
+comma, normalized delimiter spacing, and no semicolons. Comments retain their
+text and source order with LF-normalized line endings, and are deterministically
+lifted to standalone top-level positions before the root construct that
+contained or followed them; comments
+after the final construct remain at end of file. Formatter output is ordinary
+source bytes with a new source digest when recaptured—not logical IR, canonical
+artifact encoding, or signing material.

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# Stage 7 and its validation are complete; Stage 8 has not yet been activated.
+# The active stage selects the completed Stage 8 Step 1 formatter slice.
 # Advancing this value requires its complete vertical slice and reviewed evidence.
-active_stage = 7
-active_step = 3
+active_stage = 8
+active_step = 1

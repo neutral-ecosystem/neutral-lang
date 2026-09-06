@@ -236,6 +236,43 @@ pub enum CaptureError {
     Cancelled,
 }
 
+/// Canonical source bytes produced by the reference formatter.
+///
+/// These bytes have their own ordinary source identity if captured again. They
+/// are not logical IR, canonical artifact bytes, or signing material.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FormattedSource {
+    /// Complete UTF-8 formatter output with one final line feed.
+    bytes: Vec<u8>,
+}
+
+impl FormattedSource {
+    /// Returns the complete formatted source bytes.
+    #[must_use]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+
+    /// Consumes the result and returns its complete formatted source bytes.
+    #[must_use]
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.bytes
+    }
+}
+
+/// A fail-closed error from source capture, validation, or formatting.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum FormatError {
+    /// The host-supplied request could not be captured.
+    Capture(CaptureError),
+    /// The captured document did not compile to valid logical IR.
+    Compilation(CompilationFailure),
+    /// Canonical output exceeded the captured source-byte ceiling.
+    OutputLimitExceeded,
+    /// Valid compilation and private parsing disagreed unexpectedly.
+    InternalDefect,
+}
+
 /// A non-authoritative result of the current compilation boundary.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilationResult {
@@ -416,6 +453,39 @@ fn vocabulary_bundle_failure(
 /// Returns a capture error before compilation when the request cannot be frozen.
 pub fn compile(request: CompilationRequest) -> Result<CompilationResult, CaptureError> {
     capture(request).map(|captured| compile_captured(&captured))
+}
+
+/// Captures, validates, and canonically formats one host-supplied source unit.
+///
+/// # Errors
+///
+/// Returns a fail-closed capture, compilation, output-limit, or internal error.
+pub fn format(request: CompilationRequest) -> Result<FormattedSource, FormatError> {
+    let captured = capture(request).map_err(FormatError::Capture)?;
+    format_captured(&captured)
+}
+
+/// Canonically formats one immutable captured source without ambient I/O.
+///
+/// The source must compile successfully before formatter output is published.
+/// Formatted bytes remain separate from both the captured input identity and
+/// logical artifact identity.
+///
+/// # Errors
+///
+/// Returns the complete compilation failure, an output-limit failure, or an
+/// internal defect if a valid compilation cannot be parsed a second time.
+pub fn format_captured(captured: &CapturedCompilation) -> Result<FormattedSource, FormatError> {
+    if let CompilationResult::Failure(failure) = compile_captured(captured) {
+        return Err(FormatError::Compilation(failure));
+    }
+    let unit = frontend::parse(captured.source(), captured.limits())
+        .map_err(|_| FormatError::InternalDefect)?;
+    let bytes = frontend::format_source(captured.source(), &unit);
+    if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > captured.limits().source_bytes() {
+        return Err(FormatError::OutputLimitExceeded);
+    }
+    Ok(FormattedSource { bytes })
 }
 
 #[cfg(test)]

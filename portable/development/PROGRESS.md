@@ -2,24 +2,33 @@
 
 # Neutral v0 development progress
 
-Status: Stage 7 validation complete.
+Status: Stage 8 Step 1 complete.
 
 ## Current focus
 
-- Stage: Stage 7 validation
-- Status: Complete
+- Stage: Stage 8, Step 1
+- Status: Reference formatter vertical slice complete
 - Last updated: 2026-09-06
 
 ## Next actions
 
-- [ ] Begin Stage 8, Step 1: implement the reference formatter vertical tool
-      slice and prove idempotence plus parse/format/parse logical equality.
+- [ ] Begin Stage 8, Step 2: implement compile, validate, and format CLI host
+      commands with explicit filesystem and output policy.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-09-06: Completed Stage 8, Step 1. Added the I/O-free public
+  `format`/`format_captured` boundary backed by compiler-private syntax and
+  trivia, canonical LF/header/spacing/four-space/multiline-comma rendering, and
+  deterministic source-order comment placement. Every positive source fixture
+  is idempotent after one formatting pass and recompiles to alpha-equivalent
+  logical IR with identical value, field, reuse, and reference provenance.
+  Formatted bytes are explicitly ordinary recapturable source rather than IR,
+  encoded-artifact identity, or signing material.
 
 - [*] 2026-09-06: Completed Stage 7 validation. Activated the standalone
   `neutral-probe` encoded-artifact path through public core, encoding, and

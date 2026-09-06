@@ -8,6 +8,8 @@ use neutral_core::{
     SourceLocation, StructuralLimits,
 };
 
+mod format_style;
+mod formatter;
 mod layout;
 mod lexer;
 mod parser;
@@ -529,6 +531,11 @@ pub(super) fn parse(source: &[u8], limits: StructuralLimits) -> Result<ParsedUni
     let raw = lexer::lex(source)?;
     let normalized = layout::normalize(raw)?;
     parser::parse(normalized, limits)
+}
+
+/// Formats one successfully parsed unit without exposing private syntax types.
+pub(super) fn format_source(source: &[u8], unit: &ParsedUnit) -> Vec<u8> {
+    formatter::format_source(source, unit)
 }
 
 /// Creates a checked source span from validated in-memory indexes.

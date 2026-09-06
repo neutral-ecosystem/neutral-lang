@@ -71,5 +71,18 @@ security = 17
 fuzz_smoke = 2
 fuzz_decoder = 3
 
+# Stage 8 Step 1 adds complete-corpus formatter conformance, idempotence,
+# logical/provenance preservation, comment placement, and identity separation.
+[stage8.minimum]
+unit = 1
+smoke = 1
+integration = 3
+system = 10
+conformance = 25
+property = 24
+security = 17
+fuzz_smoke = 2
+fuzz_decoder = 3
+
 [planned]
 performance = 3

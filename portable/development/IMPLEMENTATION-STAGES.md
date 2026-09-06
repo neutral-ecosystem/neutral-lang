@@ -546,16 +546,16 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Step 1: reference formatter vertical tool slice
 
-- [ ] Implement canonical header order, four-space indentation, field layout,
+- [*] Implement canonical header order, four-space indentation, field layout,
       spacing, commas, no semicolons, and deterministic comment placement.
-- [ ] Prove idempotence and parse/format/parse logical equality.
-- [ ] Keep formatted bytes separate from IR/source identity/signing.
+- [*] Prove idempotence and parse/format/parse logical equality.
+- [*] Keep formatted bytes separate from IR/source identity/signing.
 
 #### Step validation
 
-- [ ] Formatting is idempotent across the complete source corpus.
-- [ ] Parse/format/parse preserves logical IR and accepted provenance categories.
-- [ ] Comment placement is deterministic and comments remain nonsemantic.
+- [*] Formatting is idempotent across the complete source corpus.
+- [*] Parse/format/parse preserves logical IR and accepted provenance categories.
+- [*] Comment placement is deterministic and comments remain nonsemantic.
 
 ### Step 2: CLI host tools
 
