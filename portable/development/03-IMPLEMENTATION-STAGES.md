@@ -625,9 +625,9 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Stage 9 validation
 
-- [*] No known input causes unbounded work, panic, stack exhaustion, invalid
+- [ ] No known input causes unbounded work, panic, stack exhaustion, invalid
       typed IR, stale source facts, cross-request leakage, or partial success.
-- [*] Determinism holds under repeated/concurrent/adversarial execution.
+- [ ] Determinism holds under repeated/concurrent/adversarial execution.
 - [ ] All approved quality gates and residual-risk reviews pass.
 
 ---
@@ -639,6 +639,8 @@ Execute [05-RELEASE.md](05-RELEASE.md).
 ### Stage 10 validation
 
 - [ ] All prior stage gates pass from a clean release candidate.
+- [ ] the future stages/changes should be easy and staight forwards like chnaging a version v0.1.0 to v0.1.1 in one + run a command = update the whole project 
+- [ ] make the future dev process better and less reliante on the manual changing files
 - [ ] Required artifacts and complete retained evidence exist.
 - [ ] Independent probe proof passes.
 - [ ] All exclusions remain rejected.
