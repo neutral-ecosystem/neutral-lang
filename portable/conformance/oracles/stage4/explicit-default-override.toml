@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/defaults/explicit-default-override.neu"
+fixture_sha256 = "1f417efbb167a7d077fa24e01499f05738484aed08d574dd023bf7a7ed6f43de"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "explicit_override"
+records = ["Config(name: string = \"fallback\")"]
+bindings = ["config: Config = {name: \"explicit\"}"]
+
+[field_provenance]
+fields = ["name: explicit-record-field"]

@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/nullability/double-nullable.neu"
+fixture_sha256 = "fa48fdf8f1910d61f0dc84d5cec9570bb958f5577316293b134a5f882fde6e51"
+expected_outcome = "reject"
+failure_class = "syntax"
+diagnostic = "NEU-SYN-003"
+primary_span = [80, 81]

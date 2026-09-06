@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/positive/booleans/boolean-true.neu"
+fixture_sha256 = "80e4ba134de7ef2b0b914f08fbf1bb1e04a8c74a4a395691a1b05e1c96bc87ee"
+expected_outcome = "accept"
+requirements = ["NL-TYP-001", "SYN-VAL-001"]
+
+[logical_ir]
+module = "scalar_boolean"
+name = "enabled"
+type = "bool"
+value = true
+
+[source_map]
+source_byte_length = 92
+module_span = [50, 71]
+binding_span = [72, 91]
+binding_type_span = [72, 76]
+binding_name_span = [77, 84]
+binding_value_span = [87, 91]
+
+[provenance]
+normalization = "boolean-identity"

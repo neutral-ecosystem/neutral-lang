@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/positive/syntax/comments-equivalent.neu"
+fixture_sha256 = "5f792f9bfc7e5c73b73c3ab3663e307496d01f73fd2ab0c66114146120247c52"
+expected_outcome = "accept"
+requirements = ["NL-SRC-002", "NL-SRC-003", "NL-SRC-005", "SYN-TOL-001"]
+
+[logical_ir]
+module = "minimal"
+declaration_count = 1
+declaration_order = ["answer"]
+
+[[logical_ir.binding]]
+name = "answer"
+type = "num"
+normalized_value = "42/1"
+
+[source_map]
+source_byte_length = 227
+module_span = [130, 144]
+binding_span = [170, 226]
+binding_type_span = [170, 173]
+binding_name_span = [198, 204]
+binding_value_span = [224, 226]
+
+[provenance]
+binding_value_origin = "explicit-source"
+normalization = "exact-number-canonicalization"
+
+[probe_summary]
+module = "minimal"
+declarations = ["answer: num = 42/1"]
+diagnostics = []

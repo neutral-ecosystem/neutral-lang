@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/negative/identifiers/invalid-identifier.neu"
+fixture_sha256 = "6c702b86c74eae74678d9e08c055f6b12fe59afca0df314bf74776784f73ea49"
+expected_outcome = "reject"
+requirements = ["NL-SRC-006", "SYN-LEX-004"]
+
+[failure]
+class = "semantics"
+diagnostic_code = "NEU-NAME-001"
+message_key = "invalid-ascii-name"
+primary_span = [57, 69]
+authoritative_ir = "absent"

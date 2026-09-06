@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/lists/record-list-default.neu"
+fixture_sha256 = "1583be04ac21d886b88be216a802eb9751e3d47d067c16582f655c10bc69e788"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "list_defaults"
+records = ["Config(items: List<Item> = [{name: \"default\"}], labels: List<string> = [])", "Item(name: string)"]
+bindings = ["config: Config = {items: [{name: \"default\"}], labels: []}"]
+
+[field_provenance]
+fields = ["items: user-record-default", "labels: user-record-default"]

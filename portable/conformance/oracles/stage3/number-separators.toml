@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/numbers/number-separators.neu"
+fixture_sha256 = "1a077f9b9ef44b7789b4f6f9ab00b4514b43b4dd469defb7128cfbf6db0795ac"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "numeric_separators"
+name = "amount"
+type = "num"
+value = "16777216/1"
+
+[provenance]
+normalization = "exact-number-canonicalization"

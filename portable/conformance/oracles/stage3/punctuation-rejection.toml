@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/negative/syntax/punctuation-rejection.neu"
+fixture_sha256 = "48a2d4c4603db7bfaf37bc528375972fccfc0840f2edb0c54b2e755313063455"
+expected_outcome = "reject"
+requirements = ["NL-SRC-007", "SYN-LEX-005"]
+
+[failure]
+class = "syntax"
+diagnostic_code = "NEU-LEX-001"
+message_key = "unsupported-source-symbol"
+primary_span = [64, 65]
+authoritative_ir = "absent"

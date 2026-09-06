@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/lists/missing-comma.neu"
+fixture_sha256 = "7a114b3251bfee3942068b31dc290617126ce9a8dff171a2a7bda2028b55ff11"
+expected_outcome = "reject"
+failure_class = "syntax"
+diagnostic = "NEU-SYN-003"
+primary_span = [107, 115]

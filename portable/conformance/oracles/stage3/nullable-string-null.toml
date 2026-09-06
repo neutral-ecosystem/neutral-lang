@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/nullability/nullable-string-null.neu"
+fixture_sha256 = "8f0c7317abc98eb1aa298456680e94770d46b44cc545c30fd2fd998810a2a930"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "nullable_string"
+name = "value"
+type = "string?"
+value = "null"
+
+[provenance]
+origin = "explicit-source"
+normalization = "null-identity"

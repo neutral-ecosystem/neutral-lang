@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/values/defaults-compatibility.neu"
+fixture_sha256 = "c0b88e7b8f1cbf1c1e9ae77f30487ec9894eab9c6b662e791295f654afe28171"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "fixture_defaults"
+records = ["Config(image: string, labels: List<string> = [], note: string? = null)"]
+bindings = ["config: Config = {image: \"example.invalid/tool:1\", labels: [], note: null}", "image: string = \"example.invalid/tool:1\"", "nullable_image: string? = \"example.invalid/tool:1\"", "nullable_labels: List<string>? = [\"portable\"]"]
+
+[reuse_provenance]
+edges = ["1:image:2", "3::2"]
+
+[field_provenance]
+fields = ["image: explicit-record-field", "labels: user-record-default", "note: user-record-default"]

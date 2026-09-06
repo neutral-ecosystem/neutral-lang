@@ -1182,11 +1182,11 @@ mod tests {
 
     /// Comprehensive accepted exact-byte bundle.
     const COMPREHENSIVE: &[u8] = include_bytes!(
-        "../../../portable/spec/v0/fixtures/vocabulary/bundles/positive/comprehensive.json"
+        "../../../portable/specs/fixtures/vocabulary/bundles/positive/comprehensive.json"
     );
     /// Logically equal reordered and reformatted bundle.
     const REORDERED: &[u8] = include_bytes!(
-        "../../../portable/spec/v0/fixtures/vocabulary/bundles/positive/reordered.json"
+        "../../../portable/specs/fixtures/vocabulary/bundles/positive/reordered.json"
     );
     /// Empty valid bundle used for generated hostile byte cases.
     const EMPTY_BUNDLE: &[u8] = b"{\"format\":\"neutral-vocabulary-bundle\",\"encoding_version\":\"0.1\",\"schema_version\":\"0.1\",\"identity\":\"Fixture\",\"version\":\"0.1.0\",\"required_features\":[],\"types\":[]}";
@@ -1265,8 +1265,8 @@ mod tests {
     /// Verifies duplicate keys are rejected at envelope and nested object depths.
     fn security_vocabulary_duplicate_members_fail_before_map_collapse() {
         for bytes in [
-            include_bytes!("../../../portable/spec/v0/fixtures/vocabulary/bundles/negative/duplicate-envelope-key.json").as_slice(),
-            include_bytes!("../../../portable/spec/v0/fixtures/vocabulary/bundles/negative/duplicate-nested-key.json").as_slice(),
+            include_bytes!("../../../portable/specs/fixtures/vocabulary/bundles/negative/duplicate-envelope-key.json").as_slice(),
+            include_bytes!("../../../portable/specs/fixtures/vocabulary/bundles/negative/duplicate-nested-key.json").as_slice(),
         ] {
             assert_eq!(validate(bytes), Err(VocabularyError::DuplicateJsonMember));
         }
@@ -1276,13 +1276,13 @@ mod tests {
     /// Verifies unknown and executable-looking shapes fail the closed schema.
     fn security_vocabulary_closed_schema_rejects_unknown_and_executable_shapes() {
         let unknown = include_bytes!(
-            "../../../portable/spec/v0/fixtures/vocabulary/bundles/negative/unknown-envelope-member.json"
+            "../../../portable/specs/fixtures/vocabulary/bundles/negative/unknown-envelope-member.json"
         );
         let executable = include_bytes!(
-            "../../../portable/spec/v0/fixtures/vocabulary/bundles/negative/executable-member.json"
+            "../../../portable/specs/fixtures/vocabulary/bundles/negative/executable-member.json"
         );
         let executable_kind = include_bytes!(
-            "../../../portable/spec/v0/fixtures/vocabulary/bundles/negative/unknown-type-kind.json"
+            "../../../portable/specs/fixtures/vocabulary/bundles/negative/unknown-type-kind.json"
         );
         assert_eq!(validate(unknown), Err(VocabularyError::UnknownMember));
         assert_eq!(
@@ -1299,10 +1299,10 @@ mod tests {
     /// Verifies raw numbers, truncation, BOM, invalid UTF-8, and surrogates fail.
     fn security_vocabulary_strict_json_bytes_fail_closed() {
         let raw_number = include_bytes!(
-            "../../../portable/spec/v0/fixtures/vocabulary/bundles/negative/raw-json-number.json"
+            "../../../portable/specs/fixtures/vocabulary/bundles/negative/raw-json-number.json"
         );
         let truncated = include_bytes!(
-            "../../../portable/spec/v0/fixtures/vocabulary/bundles/negative/truncated.json"
+            "../../../portable/specs/fixtures/vocabulary/bundles/negative/truncated.json"
         );
         assert_eq!(
             validate(raw_number),
@@ -1332,12 +1332,12 @@ mod tests {
     /// Verifies type targets, embedding recursion, reference defaults, and features.
     fn conformance_vocabulary_semantic_graph_failures() {
         let cases = [
-            (include_bytes!("../../../portable/spec/v0/fixtures/vocabulary/bundles/negative/unknown-type-target.json").as_slice(), VocabularyError::UnknownTypeTarget),
-            (include_bytes!("../../../portable/spec/v0/fixtures/vocabulary/bundles/negative/embedded-recursion.json").as_slice(), VocabularyError::InvalidTypeRecursion),
-            (include_bytes!("../../../portable/spec/v0/fixtures/vocabulary/bundles/negative/reference-default.json").as_slice(), VocabularyError::InvalidDefault),
-            (include_bytes!("../../../portable/spec/v0/fixtures/vocabulary/bundles/negative/incompatible-default.json").as_slice(), VocabularyError::InvalidDefault),
-            (include_bytes!("../../../portable/spec/v0/fixtures/vocabulary/bundles/negative/incomplete-record-default.json").as_slice(), VocabularyError::InvalidDefault),
-            (include_bytes!("../../../portable/spec/v0/fixtures/vocabulary/bundles/negative/unknown-feature.json").as_slice(), VocabularyError::UnknownRequiredFeature),
+            (include_bytes!("../../../portable/specs/fixtures/vocabulary/bundles/negative/unknown-type-target.json").as_slice(), VocabularyError::UnknownTypeTarget),
+            (include_bytes!("../../../portable/specs/fixtures/vocabulary/bundles/negative/embedded-recursion.json").as_slice(), VocabularyError::InvalidTypeRecursion),
+            (include_bytes!("../../../portable/specs/fixtures/vocabulary/bundles/negative/reference-default.json").as_slice(), VocabularyError::InvalidDefault),
+            (include_bytes!("../../../portable/specs/fixtures/vocabulary/bundles/negative/incompatible-default.json").as_slice(), VocabularyError::InvalidDefault),
+            (include_bytes!("../../../portable/specs/fixtures/vocabulary/bundles/negative/incomplete-record-default.json").as_slice(), VocabularyError::InvalidDefault),
+            (include_bytes!("../../../portable/specs/fixtures/vocabulary/bundles/negative/unknown-feature.json").as_slice(), VocabularyError::UnknownRequiredFeature),
         ];
         for (bytes, expected) in cases {
             assert_eq!(validate(bytes), Err(expected));

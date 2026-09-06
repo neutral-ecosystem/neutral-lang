@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/references/missing-constructor.neu"
+fixture_sha256 = "1eafd994c536daca7e31ca1fe9acab7eebb15a06d2bdd8e2fe47bd48022e8597"
+expected_outcome = "reject"
+
+[failure]
+class = "semantics"
+diagnostic_code = "NEU-TYP-001"
+primary_span = [126, 131]
+authoritative_ir = "absent"

@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/records/wrong-field-type.neu"
+fixture_sha256 = "779df949f8d3873dbc67901b7d5885076a7d506cc8139f81bdfba6f62cb2cec6"
+expected_outcome = "reject"
+failure_class = "semantics"
+diagnostic = "NEU-TYP-001"
+primary_span = [137, 142]

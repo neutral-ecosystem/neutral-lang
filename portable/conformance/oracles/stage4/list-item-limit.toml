@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/lists/item-limit.neu"
+fixture_sha256 = "fb4697bd48ebdb634476abc5b443909d4638ad41e2cc32e03c4187d368a76601"
+expected_outcome = "reject"
+failure_class = "resource"
+diagnostic = "NEU-LIM-004"
+primary_span = [100, 101]

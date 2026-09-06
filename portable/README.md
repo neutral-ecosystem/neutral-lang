@@ -1,26 +1,31 @@
-# Neutral language v0 — portable implementation seed
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 
-This directory is a self-contained starting point for the `neutral-lang`
-implementation repository. Copy the contents of this directory, not the
-directory itself, into the new repository root.
+# Neutral language v0 portable implementation package
 
-Start with [DEVELOPMENT.md](DEVELOPMENT.md). Do not implement language behavior
-until the mandatory [contract-freeze gate](development/CONTRACT-FREEZE.md) is
-approved.
+This directory is the self-contained execution, tracking, specification, and
+conformance package for the version currently implemented by this repository.
+When v0 is complete, archive this directory as its immutable version record;
+the next version starts from the corresponding portable package in the Neutral
+roadmap and is adapted with this repository's implementation evidence.
+
+Start with [PLAN.md](PLAN.md). The mandatory
+[contract-freeze gate](development/02-CONTRACT-FREEZE.md) was approved before
+production language behavior began.
 
 ## Layout
 
 ```text
-DEVELOPMENT.md                operational entry point
-ROADMAP.md                    milestone summary
-development/                  implementation, testing, automation, release rules
-spec/v0/                      normative v0 baseline and decisions
-conformance/                  future conformance manifests and execution assets
-spec/v0/fixtures/             accepted positive and negative source fixtures
-docs/                         copied language showcase and supporting reading
+README.md                     package lifecycle and navigation
+ARCHITECTURE.md               normative v0 architecture
+PLAN.md                       operational implementation entry point
+ROADMAP.md                    product milestone summary
+conformance/                  executable manifests, oracles, and review metadata
+development/                  numbered lifecycle rules and retained evidence
+specs/                        requirements, contracts, decisions, fixtures, examples
 ```
 
-`development/PROGRESS.md` is the solo-maintained working log. It records only
+[`development/06-PROGRESS.md`](development/06-PROGRESS.md) is the
+solo-maintained working log. It records only
 current focus, immediate actions, blockers, and completed validation evidence;
 the specifications and checklists remain acceptance criteria rather than a
 second mutable status system.

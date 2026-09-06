@@ -1,13 +1,13 @@
 # Neutral language v0 implementation roadmap
 
-Status: proposed execution plan
+Status: active execution plan — Stage 8 Step 2 complete
 
 This roadmap orders the work required to create Neutral v0. It is intentionally
-limited to the v0 contract in [architecture.md](spec/v0/architecture.md). It does not
+limited to the v0 contract in [architecture.md](ARCHITECTURE.md). It does not
 allocate features to later versions.
 
 The split, implementation-level gates and checklists begin at
-[DEVELOPMENT.md](DEVELOPMENT.md). This roadmap remains the dependency and
+[PLAN.md](PLAN.md). This roadmap remains the dependency and
 milestone summary; the development documents must not expand its v0 scope.
 
 The target outcome is one complete, reproducible boundary:
@@ -64,9 +64,9 @@ specification.
 
 ### Work
 
-- Adopt [architecture.md](spec/v0/architecture.md),
-  [requirements.md](spec/v0/requirements.md), and
-  [the decision index](spec/v0/decisions/README.md) as the v0 baseline.
+- Adopt [architecture.md](ARCHITECTURE.md),
+  [requirements.md](specs/REQUIREMENTS.md), and
+  [the decision index](specs/decisions/README.md) as the v0 baseline.
 - Give every normative requirement and diagnostic a stable ID.
 - Define document precedence and a repository coherence check.
 - Create a traceability table from requirement → decision → fixture → test.
@@ -463,7 +463,7 @@ IR.
 
 ### Release checklist
 
-- [ ] Every item in [syntax-checklist.md](spec/v0/syntax-checklist.md) is complete.
+- [ ] Every item in [syntax-checklist.md](specs/contracts/syntax-checklist.md) is complete.
 - [ ] Normative grammar and semantic specifications are published.
 - [ ] Logical IR and concrete noncanonical encoding are versioned.
 - [ ] Capture/compiler/reader/probe APIs are documented.

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/numbers/number-exponent.neu"
+fixture_sha256 = "16bd69b270b18a08f501ddd2d059bdeeb3f149cec00c85d5e17ccc97acfa7e03"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "numeric_exponent"
+name = "amount"
+type = "num"
+value = "-125e1/1"
+
+[provenance]
+normalization = "exact-number-canonicalization"

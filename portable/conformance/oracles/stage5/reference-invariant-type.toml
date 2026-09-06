@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/references/invariant-target-type.neu"
+fixture_sha256 = "4bcd501e5e86e93d4afeba5f5622b7982df2143773f2e0cb254dcf3cfd7c20d0"
+expected_outcome = "reject"
+
+[failure]
+class = "reference"
+diagnostic_code = "NEU-REF-003"
+primary_span = [106, 111]
+authoritative_ir = "absent"

@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/reuse/forward-transitive.neu"
+fixture_sha256 = "628ad15a6f2355fcfdc439da780bc25c5d1b33951cc80377498712ee6342e470"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "reuse_forward"
+bindings = ["final_image: string = \"example.invalid/tool:1\"", "image: string = \"example.invalid/tool:1\"", "intermediate_image: string = \"example.invalid/tool:1\""]
+
+[reuse_provenance]
+edges = ["0::2", "2::1"]

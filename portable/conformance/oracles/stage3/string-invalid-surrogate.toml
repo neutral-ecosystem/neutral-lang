@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/negative/strings/string-invalid-surrogate.neu"
+fixture_sha256 = "02fac19d1b6252bc08632495533a2552321218db0eafd1b45d98d5f14545137c"
+expected_outcome = "reject"
+requirements = ["SYN-LEX-006"]
+
+[failure]
+class = "syntax"
+diagnostic_code = "NEU-LEX-003"
+primary_span = [90, 98]
+authoritative_ir = "absent"

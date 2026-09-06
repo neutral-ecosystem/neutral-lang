@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/reuse/nested-reuse.neu"
+fixture_sha256 = "c21d93406f49bb8fdb8fc5e9575570c1021f2d069b74acc68f07d2babe8a5113"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "reuse_nested"
+records = ["Config(image: string, labels: List<string>)"]
+bindings = ["config: Config = {image: \"example.invalid/tool:1\", labels: [\"portable\", \"portable\"]}", "first_label: string = \"portable\"", "image: string = \"example.invalid/tool:1\"", "second_label: string = \"portable\""]
+
+[reuse_provenance]
+edges = ["1:image:3", "1:labels.0:2", "1:labels.1:4", "4::2"]

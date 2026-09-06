@@ -556,14 +556,14 @@ mod tests {
         let cases: [(&[u8], &str, (u64, u64)); 2] = [
             (
                 include_bytes!(
-                    "../../../portable/spec/v0/fixtures/negative/syntax/missing-module-header.neu"
+                    "../../../portable/specs/fixtures/negative/syntax/missing-module-header.neu"
                 ),
                 diagnostics::MISSING_MODULE_HEADER,
                 (10, 10),
             ),
             (
                 include_bytes!(
-                    "../../../portable/spec/v0/fixtures/negative/syntax/unsupported-language-version.neu"
+                    "../../../portable/specs/fixtures/negative/syntax/unsupported-language-version.neu"
                 ),
                 diagnostics::UNSUPPORTED_LANGUAGE_VERSION,
                 (4, 9),

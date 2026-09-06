@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/reuse/traversal-limit.neu"
+fixture_sha256 = "c6b803de99d0a22d0933fb3a6a81aacb5100b88527e3484563bd8525140b7570"
+expected_outcome = "reject"
+
+[limits]
+traversal_nodes = 3
+
+[failure]
+class = "resource"
+diagnostic_code = "NEU-LIM-004"
+primary_span = [151, 158]
+authoritative_ir = "absent"

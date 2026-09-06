@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/records/nominal-record.neu"
+fixture_sha256 = "7530ab4712de1b2c10d83f1c66f68c148224591dc9926dc1208fc983375f349a"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "records"
+records = ["Metadata(enabled: bool, image: string, note: string?)"]
+bindings = ["metadata: Metadata = {enabled: true, image: \"example.invalid/tool:1\", note: null}"]
+
+[provenance]
+origin = "explicit-source"
+normalization = "record-contextualization"

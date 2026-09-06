@@ -1788,12 +1788,12 @@ mod tests {
             .and_then(Path::parent)
             .expect("encoding crate must be inside the workspace");
         let source = fs::read(
-            workspace.join("portable/spec/v0/fixtures/positive/vocabulary/minimal-vocabulary.neu"),
+            workspace.join("portable/specs/fixtures/positive/vocabulary/minimal-vocabulary.neu"),
         )
         .expect("vocabulary source fixture must be readable");
         let bundle = fs::read(
             workspace
-                .join("portable/spec/v0/fixtures/vocabulary/bundles/positive/comprehensive.json"),
+                .join("portable/specs/fixtures/vocabulary/bundles/positive/comprehensive.json"),
         )
         .expect("vocabulary bundle fixture must be readable");
         let document = validated_with_vocabulary(&source, &bundle);
@@ -1894,13 +1894,13 @@ mod tests {
             .parent()
             .and_then(Path::parent)
             .expect("encoding crate must be inside the workspace");
-        let positive = workspace.join("portable/spec/v0/fixtures/positive");
+        let positive = workspace.join("portable/specs/fixtures/positive");
         let mut fixtures = Vec::new();
         collect_neu_files(&positive, &mut fixtures);
         assert!(!fixtures.is_empty());
         let vocabulary_bundle = fs::read(
             workspace
-                .join("portable/spec/v0/fixtures/vocabulary/bundles/positive/comprehensive.json"),
+                .join("portable/specs/fixtures/vocabulary/bundles/positive/comprehensive.json"),
         )
         .expect("vocabulary bundle fixture must be readable");
         for fixture in fixtures {

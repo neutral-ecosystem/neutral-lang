@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/negative/syntax/string-token-boundary.neu"
+fixture_sha256 = "783e0b4d4d60f74e57f2c31dfc8dfa568a6efdd5864defc3898fc38399bc7c8f"
+expected_outcome = "reject"
+requirements = ["SYN-DOC-001", "SYN-EVO-001"]
+
+[failure]
+class = "syntax"
+diagnostic_code = "NEU-SYN-003"
+message_key = "malformed-layout-boundary"
+primary_span = [55, 56]
+authoritative_ir = "absent"

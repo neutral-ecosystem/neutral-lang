@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/records/record-forward-order.neu"
+fixture_sha256 = "f1aa9aba5944ea24f8c58f4ba1e0e5955fd88fd0bf2fa3c46c7c486c0a3cd297"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "forward_records"
+records = ["Config(name: string)"]
+bindings = ["config: Config = {name: \"portable\"}"]

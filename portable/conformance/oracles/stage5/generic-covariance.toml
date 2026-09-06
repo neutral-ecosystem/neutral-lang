@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/reuse/generic-covariance.neu"
+fixture_sha256 = "d6c42e928c9928e37bb6d0afa24368bf2117e2f964796d22cc7e24ead93061c8"
+expected_outcome = "reject"
+
+[failure]
+class = "semantics"
+diagnostic_code = "NEU-TYP-001"
+primary_span = [143, 148]
+authoritative_ir = "absent"

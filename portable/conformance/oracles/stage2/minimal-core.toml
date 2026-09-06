@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/positive/syntax/minimal-core.neu"
+fixture_sha256 = "2c0ba86566082520c52d6af9d772890512ae76e5b59dcd628ca64a398ae1522f"
+expected_outcome = "accept"
+requirements = ["NL-DOC-001", "NL-DOC-004", "NL-DEC-001", "NL-TYP-002", "NL-IR-001", "NL-PRO-001", "NL-V0-001"]
+
+[logical_ir]
+module = "minimal"
+declaration_count = 1
+declaration_order = ["answer"]
+
+[[logical_ir.binding]]
+name = "answer"
+type = "num"
+value_kind = "exact-rational"
+normalized_value = "42/1"
+
+[source_map]
+source_byte_length = 42
+module_span = [10, 24]
+binding_span = [26, 41]
+binding_type_span = [26, 29]
+binding_name_span = [30, 36]
+binding_value_span = [39, 41]
+
+[provenance]
+binding_value_origin = "explicit-source"
+normalization = "exact-number-canonicalization"
+
+[derivation]
+language_behavior_version = "0.1.0"
+logical_ir_schema_version = "0.1.0"
+source_map_version = "0.1.0"
+provenance_version = "0.1.0"
+resource_facts = { source_bytes = 42, declarations = 1, diagnostics = 0 }
+
+[probe_summary]
+module = "minimal"
+declarations = ["answer: num = 42/1"]
+diagnostics = []

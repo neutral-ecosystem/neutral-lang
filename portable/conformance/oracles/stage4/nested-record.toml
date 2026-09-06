@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/records/nested-record.neu"
+fixture_sha256 = "075cd6dc0493f75441bdbfc59969ef472561e786e5ed1c1d2f64ddfbee9352b3"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "nested_records"
+records = ["Metadata(name: string)", "Package(metadata: Metadata)"]
+bindings = ["package: Package = {metadata: {name: \"neutral\"}}"]

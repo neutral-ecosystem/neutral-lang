@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/negative/strings/string-raw-control.neu"
+fixture_sha256 = "2484f1068a082ccbfbb0a362269e0010d7c69c3e78cd55b8ed70532b80dd5aa1"
+expected_outcome = "reject"
+requirements = ["SYN-LEX-006", "NL-DIA-006"]
+
+[failure]
+class = "syntax"
+diagnostic_code = "NEU-LEX-003"
+primary_span = [93, 94]
+authoritative_ir = "absent"

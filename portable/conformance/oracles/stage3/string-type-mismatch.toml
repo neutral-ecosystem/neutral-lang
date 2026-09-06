@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/negative/strings/string-type-mismatch.neu"
+fixture_sha256 = "d208ccf8ab665368fe0a984e871353e5fda64726ab167d275bab117900e31baa"
+expected_outcome = "reject"
+requirements = ["NL-TYP-001", "SYN-VAL-001"]
+
+[failure]
+class = "semantics"
+diagnostic_code = "NEU-TYP-001"
+primary_span = [89, 93]
+authoritative_ir = "absent"

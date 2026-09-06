@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/records/field-shorthand.neu"
+fixture_sha256 = "dcd01ab265928e36e18a9ef09030801bc8b8720231df8a6f49616bcfdde54113"
+expected_outcome = "reject"
+failure_class = "syntax"
+diagnostic = "NEU-SYN-003"
+primary_span = [130, 131]

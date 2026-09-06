@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/records/duplicate-schema-field.neu"
+fixture_sha256 = "17a7a4b0f1619c53d2a78da12339b1ca557d3a8f51bb14a1ba5df46b868ca79f"
+expected_outcome = "reject"
+failure_class = "semantics"
+diagnostic = "NEU-NAME-004"
+primary_span = [121, 125]

@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/records/missing-value-field.neu"
+fixture_sha256 = "20784888bd6c8f1b971593238b37a2c2f9bec8114660fba8d02a1a83257a91f4"
+expected_outcome = "reject"
+failure_class = "semantics"
+diagnostic = "NEU-VAL-002"
+primary_span = [142, 166]

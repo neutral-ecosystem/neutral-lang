@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/records/duplicate-value-field.neu"
+fixture_sha256 = "cfc7a8d3548dc4346f6fee62faa82727435bccbb1554dcd8b014a230cec0e118"
+expected_outcome = "reject"
+failure_class = "semantics"
+diagnostic = "NEU-VAL-004"
+primary_span = [153, 157]

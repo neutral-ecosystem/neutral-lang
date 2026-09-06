@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/nullability/nonnullable-null.neu"
+fixture_sha256 = "37f6aeabecea0185ba56503aefbb8b07d5bf08f88db7ba19746b3a669b5c47bf"
+expected_outcome = "reject"
+failure_class = "semantics"
+diagnostic = "NEU-TYP-001"
+primary_span = [89, 93]

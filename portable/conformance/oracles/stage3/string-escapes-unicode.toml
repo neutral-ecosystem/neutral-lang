@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/positive/strings/string-escapes-unicode.neu"
+fixture_sha256 = "19ed3848037a14ce49c5a37e1fca667f468d3c405496f68123d0b527c0ad8afb"
+expected_outcome = "accept"
+requirements = ["NL-TYP-001", "SYN-LEX-006", "SYN-VAL-001", "NL-DIA-006"]
+
+[logical_ir]
+module = "scalar_strings"
+declaration_count = 1
+name = "message"
+type = "string"
+safe_rendering = '''"quote:\" slash:\\ newline:\n nul:\0 unicode:🙂 raw:é"'''
+
+[source_map]
+source_byte_length = 152
+module_span = [50, 71]
+binding_span = [72, 151]
+binding_type_span = [72, 78]
+binding_name_span = [79, 86]
+binding_value_span = [89, 151]
+
+[provenance]
+binding_value_origin = "explicit-source"
+normalization = "string-escape-decoding"
+
+[derivation]
+decoded_string_bytes = 51
+
+[probe_summary]
+declarations = ['''message: string = "quote:\" slash:\\ newline:\n nul:\0 unicode:🙂 raw:é"''']

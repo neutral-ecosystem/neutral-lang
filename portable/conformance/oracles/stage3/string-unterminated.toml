@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/negative/strings/string-unterminated.neu"
+fixture_sha256 = "90bcc210635ca6305b60cca5aa4bd4f895fe19126e43eaaa301882b522f3b23e"
+expected_outcome = "reject"
+requirements = ["SYN-LEX-006"]
+
+[failure]
+class = "syntax"
+diagnostic_code = "NEU-LEX-004"
+primary_span = [89, 102]
+authoritative_ir = "absent"

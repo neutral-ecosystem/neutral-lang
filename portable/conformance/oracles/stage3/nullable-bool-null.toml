@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/nullability/nullable-bool-null.neu"
+fixture_sha256 = "7ed48c6e488a6f4b59df324a0b380c174c276800946e42b160c47be6c2b03b38"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "nullable_bool"
+name = "value"
+type = "bool?"
+value = "null"
+
+[provenance]
+origin = "explicit-source"
+normalization = "null-identity"

@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/records/embedded-recursion.neu"
+fixture_sha256 = "68cd7cf059562ac3e34f2bacfd17ee0e8ca0da187c2e8424b25055c59d709755"
+expected_outcome = "reject"
+failure_class = "semantics"
+diagnostic = "NEU-TYP-004"
+primary_span = [135, 140]

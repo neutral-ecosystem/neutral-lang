@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/positive/syntax/identifier-boundaries.neu"
+fixture_sha256 = "17a862b9285f0a2184a61e6d20d3b0e49a95d6a981a0279fa3e0e09cc0b3c507"
+expected_outcome = "accept"
+requirements = ["NL-SRC-006", "SYN-LEX-004", "SYN-EVO-001"]
+
+[logical_ir]
+module = "minimal2_core"
+declaration_count = 1
+declaration_order = ["answer2_value3"]
+
+[[logical_ir.binding]]
+name = "answer2_value3"
+type = "num"
+normalized_value = "42/1"
+
+[source_map]
+source_byte_length = 95
+module_span = [50, 70]
+binding_span = [71, 94]
+binding_type_span = [71, 74]
+binding_name_span = [75, 89]
+binding_value_span = [92, 94]

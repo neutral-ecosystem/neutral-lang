@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/negative/syntax/version-escape.neu"
+fixture_sha256 = "3972ac67febb8fbdcac600a5cfaca555ec837a01a7a0249c43ea896f636753ce"
+expected_outcome = "reject"
+requirements = ["NL-DOC-001", "SYN-DOC-001"]
+
+[failure]
+class = "syntax"
+diagnostic_code = "NEU-SYN-002"
+primary_span = [4, 14]
+authoritative_ir = "absent"

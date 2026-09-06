@@ -69,7 +69,7 @@ pub fn run(arguments: impl IntoIterator<Item = String>) -> Result<(), String> {
             Ok(())
         }
         _ => Err(
-            "unsupported command; see portable/development/ENVIRONMENT-AUTOMATION.md".to_owned(),
+            "unsupported command; see portable/development/00-ENVIRONMENT-AUTOMATION.md".to_owned(),
         ),
     }
 }
@@ -99,7 +99,7 @@ fn verify_environment() -> Result<(), String> {
         "config/host-policy.toml",
         "config/ir-encoding.toml",
         "config/test-suites.toml",
-        "conformance/manifest.toml",
+        "portable/conformance/manifest.toml",
     ] {
         if !workspace_root.join(required_path).is_file() {
             return Err(format!("missing required workspace file: {required_path}"));

@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/numbers/number-base-prefix.neu"
+fixture_sha256 = "887802ac8fd9c60205f01d4769cf7e4dfd6cfe675cfea5d7b8f697c1cde0e27c"
+expected_outcome = "reject"
+failure_class = "semantics"
+diagnostic = "NEU-VAL-001"
+primary_span = [90, 94]

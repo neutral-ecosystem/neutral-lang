@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/negative/syntax/comment-newline-ambiguity.neu"
+fixture_sha256 = "b7f772e7f63723f5d96b50bf2a8efc6ddb7148aa35dfbacb71b63b389c0f4753"
+expected_outcome = "reject"
+requirements = ["NL-SRC-003", "NL-SRC-004", "NL-SRC-005"]
+
+[failure]
+class = "syntax"
+diagnostic_code = "NEU-SYN-003"
+message_key = "malformed-layout-boundary"
+primary_span = [132, 133]
+authoritative_ir = "absent"

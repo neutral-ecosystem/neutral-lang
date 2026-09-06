@@ -321,9 +321,9 @@ fn system_cli_vocabulary_resolution_is_explicit() {
         .and_then(Path::parent)
         .expect("CLI crate must be inside the workspace");
     let source =
-        workspace.join("portable/spec/v0/fixtures/positive/vocabulary/minimal-vocabulary.neu");
+        workspace.join("portable/specs/fixtures/positive/vocabulary/minimal-vocabulary.neu");
     let bundle =
-        workspace.join("portable/spec/v0/fixtures/vocabulary/bundles/positive/comprehensive.json");
+        workspace.join("portable/specs/fixtures/vocabulary/bundles/positive/comprehensive.json");
     let bundle_bytes = fs::read(&bundle).expect("vocabulary bundle must be readable");
     let digest = VocabularyContentDigest::from_bytes(&bundle_bytes).to_string();
     let destination = root.join("vocabulary.nir");

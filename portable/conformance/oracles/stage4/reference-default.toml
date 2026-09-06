@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/defaults/reference-default.neu"
+fixture_sha256 = "6425e0f2e1fc7857abdf98d54a4828dd103317224333c23b63789691ab7dc991"
+expected_outcome = "reject"
+failure_class = "syntax"
+diagnostic = "NEU-SYN-003"
+primary_span = [114, 124]

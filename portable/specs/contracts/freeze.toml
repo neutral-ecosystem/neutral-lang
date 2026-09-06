@@ -1,0 +1,155 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# This approved manifest identifies the exact v0 inputs, contract versions,
+# fixture corpus, and repository-owner approval that permit Stage 2 work.
+schema_version = 1
+freeze_id = "neutral-v0-0.1.0-encoding-0.1-portable-layout-2026-09-06"
+status = "approved"
+created_on = "2026-09-06"
+approval_date = "2026-09-06"
+supersedes = "neutral-v0-0.1.0-encoding-0.1-2026-09-03"
+
+[review]
+question_ledger_path = "portable/development/evidence/contract-question-ledger.md"
+approvers = ["repository owner"]
+blocking_issues = []
+
+[contract_versions]
+language_behavior = "0.1.0"
+logical_ir_schema = "0.1.0"
+source_map = "0.1.0"
+provenance = "0.1.0"
+derivation = "0.1.0"
+vocabulary_schema = "0.1.0"
+vocabulary_bundle_encoding = "0.1.0"
+digest_transcript_profile = "0.1.0"
+compiler_api = "0.1.0"
+reader_api = "0.1.0"
+resolver_api = "0.1.0"
+diagnostic_catalogue = "0.1.0"
+structural_limits_profile = "0.1.0"
+external_ir_encoding = "NIR-CBOR/0.1"
+
+[fixture_corpus]
+manifest_path = "portable/conformance/manifest.toml"
+manifest_sha256 = "f05752b28c7e1bc1d58d5a2200c85c58837e93932ec07c9db457e01b564075fe"
+fixture_oracle_review_path = "portable/conformance/fixture-oracle-review.toml"
+fixture_oracle_review_sha256 = "4ed8ff3a2429c6f2c795b5cfbe2c129d662bab27ae81373e2d1aedc2c0fa09de"
+# Digest of sorted `<sha256>  <repository-relative .neu path>\n` records.
+source_fixture_tree_sha256 = "6f21ab285bc4c30faf531d7d7974c78c7528bb44b0baec8001adc221c381445f"
+status = "approved active corpus through Stage 6"
+
+[[governing_document]]
+path = "portable/ARCHITECTURE.md"
+sha256 = "9ebeaa1f3d3e0148fb8a76bd9d72ac61777a61a91f3bb3e777c72ff878df0a4c"
+role = "highest-precedence architecture"
+
+[[governing_document]]
+path = "portable/specs/REQUIREMENTS.md"
+sha256 = "f3b752f47e2f16bead6dc2ac83e18c90b06fea9225c9a0b91002228d1255b408"
+role = "requirements"
+
+[[governing_document]]
+path = "portable/specs/decisions/README.md"
+sha256 = "7033d0b25ff9810251b97e7d0bff3ccba37d9835b898971ba08675c0bc87b923"
+role = "accepted decision index"
+
+[[governing_document]]
+path = "portable/specs/decisions"
+sha256 = "directory members listed below"
+role = "accepted decisions"
+
+[[governing_document]]
+path = "portable/specs/decisions/01-governing-boundaries.md"
+sha256 = "7a5266d3be937ba00bd4ed972062ecc79985fc66c2ec28045d590a0eb629f511"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/specs/decisions/02-lexical-source-text.md"
+sha256 = "1119c7ef5f225718514328ecbe8b64d3196df502b7e0d46ea2dba1a933cf3806"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/specs/decisions/03-documents-modules-profiles.md"
+sha256 = "a10f34b4d61f6bac08ea682a84ab36f0b13d0e213b0bbfcab4eacf3d7538214c"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/specs/decisions/04-declarations-bindings-names.md"
+sha256 = "460320a2661c47b0fa8605e0abf55d1755ca4ad658493a7da91101c5b3363c6a"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/specs/decisions/05-type-schema-notation.md"
+sha256 = "1443cceb5dcce5615cab58ec9115e9580684eb277641f9bfba695184fd11e6bc"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/specs/decisions/06-literal-values.md"
+sha256 = "e1ba1d5ed2e5a6f17473f4ad198ce94b459d7b4a86a72d1d49da8ddf199af2ab"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/specs/decisions/07-references-relationships.md"
+sha256 = "6018dfc94b0e868c89c03137ac6ecf1099264206b7378acfcf675dcfa4c80000"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/specs/decisions/10-domain-vocabulary.md"
+sha256 = "45957584d77d6d70d19403e8c87233306b29d26b29e6bb1375c137347448f30a"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/specs/decisions/11-external-ir-encoding.md"
+sha256 = "d04065378b4c09de9f5900bf2d056e57e9e29c67681d024db51aaea7c3384e41"
+role = "accepted external IR encoding decision"
+
+[[governing_document]]
+path = "portable/specs/decisions/12-security-sensitive-syntax.md"
+sha256 = "09eb144706e1b6f435881fdc38bb16849f91d8aeaa4a5ca58c477d3b7c815b50"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/specs/decisions/13-diagnostics-invalid-syntax.md"
+sha256 = "457224a7c06bf7ac6fd477875b8a9b5770100b13a7c9243d4b26b7f0852021b8"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/specs/decisions/14-documentation-formatting-tools.md"
+sha256 = "e49a3571fb7a4aba1d3d7bb27d8b706f2ac1e34811b5b912ae4489bbeb8af439"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/specs/decisions/15-evolution-conformance.md"
+sha256 = "66fa3fff3acf10f2ea1517d3d7f61ed95cfc071461292b06c229ccf1895c2948"
+role = "accepted decision"
+
+[[governing_document]]
+path = "portable/specs/contracts/syntax.md"
+sha256 = "b904512aca75951fdc30eea3f2ba87099d47582f05f2cb41953b83d1fffa864c"
+role = "master syntax checklist"
+
+[[governing_document]]
+path = "portable/specs/contracts/proposed-syntax-guide.md"
+sha256 = "8018a447310c21cc265ab4769915b5192720df00beaacfdc59bd4871eb32b3ec"
+role = "accepted authoring guide"
+
+[[governing_document]]
+path = "portable/development/01-IDENTITY-AND-VOCABULARY.md"
+sha256 = "667bebdda9e4a022de74306e9ca2d35f4a28db890fcf3045d7be31f3ed2e9040"
+role = "identity and vocabulary encoding contract"
+
+[[governing_document]]
+path = "portable/specs/fixtures/README.md"
+sha256 = "c09a177127e8f7d73c715da359e18e20e0e76006f2d4905fb344c846c6f1ad0a"
+role = "fixture contract"
+
+[[governing_document]]
+path = "portable/specs/contracts/choices.md"
+sha256 = "fabb015bb5d90dbe9c1f5b6f51b7ad1bbdfa9760bb767dd0981ec99fc809a494"
+role = "accepted v0 choices"
+
+[[governing_document]]
+path = "config/ir-encoding.toml"
+sha256 = "773eb21b3333d85316d44c40f37983f1c32e45a75d74ed43431c014ef80bf94d"
+role = "external IR encoding identifiers and hard ceilings"

@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/reuse/unknown-value.neu"
+fixture_sha256 = "4a049688dc395a58d53dd52f883b20b32a4d6722eb8edcd96b8934498c534b8d"
+expected_outcome = "reject"
+
+[failure]
+class = "semantics"
+diagnostic_code = "NEU-VAL-006"
+primary_span = [87, 100]
+authoritative_ir = "absent"

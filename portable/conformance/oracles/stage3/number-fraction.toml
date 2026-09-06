@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/numbers/number-fraction.neu"
+fixture_sha256 = "ac0cca8e7c546ccb8316155c26166c7321b0e8e8dc79071be59c6e302e6382de"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "numeric_fraction"
+name = "amount"
+type = "num"
+value = "123e-2/1"
+
+[provenance]
+normalization = "exact-number-canonicalization"

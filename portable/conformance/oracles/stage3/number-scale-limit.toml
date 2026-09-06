@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/numbers/number-scale-limit.neu"
+fixture_sha256 = "6590da56cd425e660acc2b254a80cfe61856830e9e280e49cc9bc0a57fef8848"
+expected_outcome = "reject"
+failure_class = "resource"
+diagnostic = "NEU-LIM-002"
+primary_span = [90, 93]

@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/records/unknown-value-field.neu"
+fixture_sha256 = "53d348b729dfe84c257b67c2760663363e493e809ad772af512dd551a7883f76"
+expected_outcome = "reject"
+failure_class = "semantics"
+diagnostic = "NEU-VAL-003"
+primary_span = [151, 156]

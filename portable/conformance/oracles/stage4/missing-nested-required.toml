@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/defaults/missing-nested-required.neu"
+fixture_sha256 = "8afb03d4350ae664fc50c793c2346e500bb20106b659b34ed98a747556c21d05"
+expected_outcome = "reject"
+failure_class = "semantics"
+diagnostic = "NEU-VAL-002"
+primary_span = [159, 161]

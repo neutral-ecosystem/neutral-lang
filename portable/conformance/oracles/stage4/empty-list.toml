@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/lists/empty-list.neu"
+fixture_sha256 = "72fe4da4610cb59a10e49e89709eafd65a9421a7716035fd8cc08cba818d04cc"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "empty_lists"
+bindings = ["names: List<string> = []"]

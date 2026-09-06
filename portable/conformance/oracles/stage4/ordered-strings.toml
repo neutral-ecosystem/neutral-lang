@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/lists/ordered-strings.neu"
+fixture_sha256 = "e228dddf7e2dd27528f7ebe5daf96f16adf449982d5986b152462e8a1feaf730"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "ordered_lists"
+bindings = ["names: List<string> = [\"first\", \"second\", \"third\"]"]

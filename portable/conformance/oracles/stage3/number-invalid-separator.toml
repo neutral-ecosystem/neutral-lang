@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/numbers/number-invalid-separator.neu"
+fixture_sha256 = "34e05720a7a8f0573ff343b85d27a309730b667c8505baead568240fa7ce5e29"
+expected_outcome = "reject"
+failure_class = "semantics"
+diagnostic = "NEU-VAL-001"
+primary_span = [96, 100]

@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/references/recursive-identity-cycle.neu"
+fixture_sha256 = "10c40bb91ea525dd7967c8c9a400897db6440269c08069926674e2d0b64380fc"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "reference_cycle"
+records = ["Node(next: Ref<Node>?)"]
+bindings = ["first: Node = {next: ref(#2)}", "second: Node = {next: ref(#1)}"]
+
+[reference_provenance]
+edges = ["1:next:2", "2:next:1"]

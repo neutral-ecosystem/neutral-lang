@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/values/immutable-value-reuse.neu"
+fixture_sha256 = "5d4c01965db14c30e4696b6a471923df0c2ec1c0e9b89768fc2dffa75b76284e"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "fixture_value_reuse"
+records = ["Selection(config: Ref<ToolConfig>)", "ToolConfig(image: string, labels: List<string>)"]
+bindings = ["config: ToolConfig = {image: \"example.invalid/tool:1\", labels: [\"example.invalid/tool:1\", \"example.invalid/tool:1\"]}", "image: string = \"example.invalid/tool:1\"", "image2: string = \"example.invalid/tool:1\"", "images: List<string> = [\"example.invalid/tool:1\", \"example.invalid/tool:1\"]", "selected: Selection = {config: ref(#2)}"]
+
+[reuse_provenance]
+edges = ["2:image:3", "2:labels:5", "4::3", "5:0:3", "5:1:4"]
+
+[reference_provenance]
+edges = ["6:config:2"]

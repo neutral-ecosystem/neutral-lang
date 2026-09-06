@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/negative/strings/string-unknown-escape.neu"
+fixture_sha256 = "d670c190f6cbd4d46892bae312eb83d18480d25d9e3a58a8c8e56520917bb44e"
+expected_outcome = "reject"
+requirements = ["SYN-LEX-006"]
+
+[failure]
+class = "syntax"
+diagnostic_code = "NEU-LEX-003"
+primary_span = [93, 95]
+authoritative_ir = "absent"

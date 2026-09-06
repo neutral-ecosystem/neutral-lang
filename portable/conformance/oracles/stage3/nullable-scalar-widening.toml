@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/nullability/nullable-scalar-widening.neu"
+fixture_sha256 = "6a8d0e9eb74b71dd759e20b70e8872a9aae057d97c199ec7a94c1c06f0e4de15"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "nullable_widening"
+name = "value"
+type = "string?"
+value = '"present"'
+
+[provenance]
+origin = "explicit-source"
+normalization = "string-escape-decoding"

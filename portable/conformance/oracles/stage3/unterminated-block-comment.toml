@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/negative/syntax/unterminated-block-comment.neu"
+fixture_sha256 = "435fccfaaa1d737e3b6552583e07d2284d32a7482214761173bc9b2cc732849a"
+expected_outcome = "reject"
+requirements = ["NL-SRC-003", "NL-SRC-005", "SYN-LEX-003"]
+
+[failure]
+class = "syntax"
+diagnostic_code = "NEU-LEX-002"
+message_key = "unterminated-block-comment"
+primary_span = [81, 97]
+authoritative_ir = "absent"

@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/reuse/wrong-kind.neu"
+fixture_sha256 = "8a0526b2f2860ae9287443b3df2f7935f614089c2e2a46ec918175df8cf00d15"
+expected_outcome = "reject"
+
+[failure]
+class = "semantics"
+diagnostic_code = "NEU-TYP-003"
+primary_span = [128, 134]
+authoritative_ir = "absent"

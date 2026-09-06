@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/references/field-name-neutrality.neu"
+fixture_sha256 = "1308d6852cbc7ff59e62ecc35d7b1449f321aaeaad71f69cbdc627c2372941df"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "reference_fields"
+records = ["Config(image: string)", "Selection(dependency: Ref<Config>, owner: Ref<Config>)"]
+bindings = ["config: Config = {image: \"example.invalid/tool:1\"}", "selected: Selection = {dependency: ref(#2), owner: ref(#2)}"]
+
+[reference_provenance]
+edges = ["3:dependency:2", "3:owner:2"]

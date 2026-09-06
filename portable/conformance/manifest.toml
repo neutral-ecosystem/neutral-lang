@@ -1,0 +1,821 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+status = "stage6-slice2-complete-fixtures-frozen"
+
+# No source behavior is active in Stage 1. These entries are an inventory only;
+# they are not executable compiler expectations until their listed stage.
+
+[[case]]
+id = "minimal-core"
+fixture = "portable/specs/fixtures/positive/syntax/minimal-core.neu"
+oracle = "portable/conformance/oracles/stage2/minimal-core.toml"
+active_from_stage = 2
+status = "frozen"
+
+[[case]]
+id = "missing-module-header"
+fixture = "portable/specs/fixtures/negative/syntax/missing-module-header.neu"
+oracle = "portable/conformance/oracles/stage2/missing-module-header.toml"
+active_from_stage = 2
+status = "frozen"
+
+[[case]]
+id = "unsupported-language-version"
+fixture = "portable/specs/fixtures/negative/syntax/unsupported-language-version.neu"
+oracle = "portable/conformance/oracles/stage2/unsupported-language-version.toml"
+active_from_stage = 2
+status = "frozen"
+
+[[case]]
+id = "comments-equivalent"
+fixture = "portable/specs/fixtures/positive/syntax/comments-equivalent.neu"
+oracle = "portable/conformance/oracles/stage3/comments-equivalent.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "identifier-boundaries"
+fixture = "portable/specs/fixtures/positive/syntax/identifier-boundaries.neu"
+oracle = "portable/conformance/oracles/stage3/identifier-boundaries.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "invalid-identifier"
+fixture = "portable/specs/fixtures/negative/identifiers/invalid-identifier.neu"
+oracle = "portable/conformance/oracles/stage3/invalid-identifier.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "protected-name"
+fixture = "portable/specs/fixtures/negative/identifiers/protected-name.neu"
+oracle = "portable/conformance/oracles/stage3/protected-name.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "unterminated-block-comment"
+fixture = "portable/specs/fixtures/negative/syntax/unterminated-block-comment.neu"
+oracle = "portable/conformance/oracles/stage3/unterminated-block-comment.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "unsupported-symbol"
+fixture = "portable/specs/fixtures/negative/syntax/unsupported-symbol.neu"
+oracle = "portable/conformance/oracles/stage3/unsupported-symbol.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "punctuation-rejection"
+fixture = "portable/specs/fixtures/negative/syntax/punctuation-rejection.neu"
+oracle = "portable/conformance/oracles/stage3/punctuation-rejection.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "comment-newline-ambiguity"
+fixture = "portable/specs/fixtures/negative/syntax/comment-newline-ambiguity.neu"
+oracle = "portable/conformance/oracles/stage3/comment-newline-ambiguity.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "string-token-boundary"
+fixture = "portable/specs/fixtures/negative/syntax/string-token-boundary.neu"
+oracle = "portable/conformance/oracles/stage3/string-token-boundary.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "string-escapes-unicode"
+fixture = "portable/specs/fixtures/positive/strings/string-escapes-unicode.neu"
+oracle = "portable/conformance/oracles/stage3/string-escapes-unicode.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "boolean-true"
+fixture = "portable/specs/fixtures/positive/booleans/boolean-true.neu"
+oracle = "portable/conformance/oracles/stage3/boolean-true.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "boolean-false"
+fixture = "portable/specs/fixtures/positive/booleans/boolean-false.neu"
+oracle = "portable/conformance/oracles/stage3/boolean-false.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "string-unknown-escape"
+fixture = "portable/specs/fixtures/negative/strings/string-unknown-escape.neu"
+oracle = "portable/conformance/oracles/stage3/string-unknown-escape.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "string-invalid-surrogate"
+fixture = "portable/specs/fixtures/negative/strings/string-invalid-surrogate.neu"
+oracle = "portable/conformance/oracles/stage3/string-invalid-surrogate.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "string-out-of-range"
+fixture = "portable/specs/fixtures/negative/strings/string-out-of-range.neu"
+oracle = "portable/conformance/oracles/stage3/string-out-of-range.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "string-raw-control"
+fixture = "portable/specs/fixtures/negative/strings/string-raw-control.neu"
+oracle = "portable/conformance/oracles/stage3/string-raw-control.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "string-unterminated"
+fixture = "portable/specs/fixtures/negative/strings/string-unterminated.neu"
+oracle = "portable/conformance/oracles/stage3/string-unterminated.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "string-type-mismatch"
+fixture = "portable/specs/fixtures/negative/strings/string-type-mismatch.neu"
+oracle = "portable/conformance/oracles/stage3/string-type-mismatch.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "invalid-boolean-literal"
+fixture = "portable/specs/fixtures/negative/booleans/invalid-boolean-literal.neu"
+oracle = "portable/conformance/oracles/stage3/invalid-boolean-literal.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "string-limit"
+fixture = "portable/specs/fixtures/negative/strings/string-limit.neu"
+oracle = "portable/conformance/oracles/stage3/string-limit.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "minimal-vocabulary"
+fixture = "portable/specs/fixtures/positive/vocabulary/minimal-vocabulary.neu"
+oracle = "portable/conformance/oracles/stage6/minimal-vocabulary.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "immutable-value-reuse"
+fixture = "portable/specs/fixtures/positive/values/immutable-value-reuse.neu"
+oracle = "portable/conformance/oracles/stage5/reuse-reference-combined.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "defaults-compatibility"
+fixture = "portable/specs/fixtures/positive/values/defaults-compatibility.neu"
+oracle = "portable/conformance/oracles/stage5/defaults-compatibility.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "vocabulary-name-collision"
+fixture = "portable/specs/fixtures/negative/vocabulary/vocabulary-name-collision.neu"
+oracle = "portable/conformance/oracles/stage6/vocabulary-name-collision.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "visibility-modifier"
+fixture = "portable/specs/fixtures/negative/vocabulary/visibility-modifier.neu"
+active_from_stage = 3
+status = "planned"
+
+[[case]]
+id = "version-leading-zero"
+fixture = "portable/specs/fixtures/negative/syntax/version-leading-zero.neu"
+oracle = "portable/conformance/oracles/stage3/version-leading-zero.toml"
+active_from_stage = 2
+status = "frozen"
+
+[[case]]
+id = "version-escape"
+fixture = "portable/specs/fixtures/negative/syntax/version-escape.neu"
+oracle = "portable/conformance/oracles/stage3/version-escape.toml"
+active_from_stage = 2
+status = "frozen"
+
+[[case]]
+id = "value-cycle"
+fixture = "portable/specs/fixtures/negative/reuse/indirect-cycle.neu"
+oracle = "portable/conformance/oracles/stage5/indirect-cycle.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reassignment"
+fixture = "portable/specs/fixtures/negative/values/reassignment.neu"
+active_from_stage = 3
+status = "planned"
+
+[[case]]
+id = "nonconstant-default"
+fixture = "portable/specs/fixtures/negative/defaults/nonconstant-default.neu"
+oracle = "portable/conformance/oracles/stage4/nonconstant-default.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "namespace-declaration"
+fixture = "portable/specs/fixtures/negative/vocabulary/namespace-declaration.neu"
+active_from_stage = 3
+status = "planned"
+
+[[case]]
+id = "mut-modifier"
+fixture = "portable/specs/fixtures/negative/vocabulary/mut-modifier.neu"
+active_from_stage = 3
+status = "planned"
+
+[[case]]
+id = "module-path"
+fixture = "portable/specs/fixtures/negative/vocabulary/module-path.neu"
+active_from_stage = 2
+status = "planned"
+
+[[case]]
+id = "generic-covariance"
+fixture = "portable/specs/fixtures/negative/reuse/generic-covariance.neu"
+oracle = "portable/conformance/oracles/stage5/generic-covariance.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "number-fraction"
+fixture = "portable/specs/fixtures/positive/numbers/number-fraction.neu"
+oracle = "portable/conformance/oracles/stage3/number-fraction.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "number-exponent"
+fixture = "portable/specs/fixtures/positive/numbers/number-exponent.neu"
+oracle = "portable/conformance/oracles/stage3/number-exponent.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "number-separators"
+fixture = "portable/specs/fixtures/positive/numbers/number-separators.neu"
+oracle = "portable/conformance/oracles/stage3/number-separators.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "number-zero"
+fixture = "portable/specs/fixtures/positive/numbers/number-zero.neu"
+oracle = "portable/conformance/oracles/stage3/number-zero.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "number-invalid-separator"
+fixture = "portable/specs/fixtures/negative/numbers/number-invalid-separator.neu"
+oracle = "portable/conformance/oracles/stage3/number-invalid-separator.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "number-missing-fraction"
+fixture = "portable/specs/fixtures/negative/numbers/number-missing-fraction.neu"
+oracle = "portable/conformance/oracles/stage3/number-missing-fraction.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "number-invalid-exponent"
+fixture = "portable/specs/fixtures/negative/numbers/number-invalid-exponent.neu"
+oracle = "portable/conformance/oracles/stage3/number-invalid-exponent.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "number-base-prefix"
+fixture = "portable/specs/fixtures/negative/numbers/number-base-prefix.neu"
+oracle = "portable/conformance/oracles/stage3/number-base-prefix.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "number-digit-limit"
+fixture = "portable/specs/fixtures/negative/numbers/number-digit-limit.neu"
+oracle = "portable/conformance/oracles/stage3/number-digit-limit.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "number-scale-limit"
+fixture = "portable/specs/fixtures/negative/numbers/number-scale-limit.neu"
+oracle = "portable/conformance/oracles/stage3/number-scale-limit.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "nullable-string-null"
+fixture = "portable/specs/fixtures/positive/nullability/nullable-string-null.neu"
+oracle = "portable/conformance/oracles/stage3/nullable-string-null.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "nullable-num-null"
+fixture = "portable/specs/fixtures/positive/nullability/nullable-num-null.neu"
+oracle = "portable/conformance/oracles/stage3/nullable-num-null.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "nullable-bool-null"
+fixture = "portable/specs/fixtures/positive/nullability/nullable-bool-null.neu"
+oracle = "portable/conformance/oracles/stage3/nullable-bool-null.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "nullable-scalar-widening"
+fixture = "portable/specs/fixtures/positive/nullability/nullable-scalar-widening.neu"
+oracle = "portable/conformance/oracles/stage3/nullable-scalar-widening.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "nonnullable-null"
+fixture = "portable/specs/fixtures/negative/nullability/nonnullable-null.neu"
+oracle = "portable/conformance/oracles/stage3/nonnullable-null.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "double-nullable"
+fixture = "portable/specs/fixtures/negative/nullability/double-nullable.neu"
+oracle = "portable/conformance/oracles/stage3/double-nullable.toml"
+active_from_stage = 3
+status = "frozen"
+
+[[case]]
+id = "nominal-record"
+fixture = "portable/specs/fixtures/positive/records/nominal-record.neu"
+oracle = "portable/conformance/oracles/stage4/nominal-record.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "record-forward-order"
+fixture = "portable/specs/fixtures/positive/records/record-forward-order.neu"
+oracle = "portable/conformance/oracles/stage4/record-forward-order.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "nested-record"
+fixture = "portable/specs/fixtures/positive/records/nested-record.neu"
+oracle = "portable/conformance/oracles/stage4/nested-record.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "duplicate-declaration"
+fixture = "portable/specs/fixtures/negative/records/duplicate-declaration.neu"
+oracle = "portable/conformance/oracles/stage4/duplicate-declaration.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "duplicate-schema-field"
+fixture = "portable/specs/fixtures/negative/records/duplicate-schema-field.neu"
+oracle = "portable/conformance/oracles/stage4/duplicate-schema-field.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "missing-value-field"
+fixture = "portable/specs/fixtures/negative/records/missing-value-field.neu"
+oracle = "portable/conformance/oracles/stage4/missing-value-field.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "unknown-value-field"
+fixture = "portable/specs/fixtures/negative/records/unknown-value-field.neu"
+oracle = "portable/conformance/oracles/stage4/unknown-value-field.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "duplicate-value-field"
+fixture = "portable/specs/fixtures/negative/records/duplicate-value-field.neu"
+oracle = "portable/conformance/oracles/stage4/duplicate-value-field.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "wrong-kind-type"
+fixture = "portable/specs/fixtures/negative/records/wrong-kind-type.neu"
+oracle = "portable/conformance/oracles/stage4/wrong-kind-type.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "embedded-recursion"
+fixture = "portable/specs/fixtures/negative/records/embedded-recursion.neu"
+oracle = "portable/conformance/oracles/stage4/embedded-recursion.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "field-shorthand"
+fixture = "portable/specs/fixtures/negative/records/field-shorthand.neu"
+oracle = "portable/conformance/oracles/stage4/field-shorthand.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "wrong-field-type"
+fixture = "portable/specs/fixtures/negative/records/wrong-field-type.neu"
+oracle = "portable/conformance/oracles/stage4/wrong-field-type.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "field-state-matrix"
+fixture = "portable/specs/fixtures/positive/defaults/field-state-matrix.neu"
+oracle = "portable/conformance/oracles/stage4/field-state-matrix.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "nested-record-default"
+fixture = "portable/specs/fixtures/positive/defaults/nested-record-default.neu"
+oracle = "portable/conformance/oracles/stage4/nested-record-default.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "explicit-default-override"
+fixture = "portable/specs/fixtures/positive/defaults/explicit-default-override.neu"
+oracle = "portable/conformance/oracles/stage4/explicit-default-override.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "reference-default"
+fixture = "portable/specs/fixtures/negative/defaults/reference-default.neu"
+oracle = "portable/conformance/oracles/stage4/reference-default.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "expression-default"
+fixture = "portable/specs/fixtures/negative/defaults/expression-default.neu"
+oracle = "portable/conformance/oracles/stage4/expression-default.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "wrong-default-type"
+fixture = "portable/specs/fixtures/negative/defaults/wrong-default-type.neu"
+oracle = "portable/conformance/oracles/stage4/wrong-default-type.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "missing-nested-required"
+fixture = "portable/specs/fixtures/negative/defaults/missing-nested-required.neu"
+oracle = "portable/conformance/oracles/stage4/missing-nested-required.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "ordered-strings"
+fixture = "portable/specs/fixtures/positive/lists/ordered-strings.neu"
+oracle = "portable/conformance/oracles/stage4/ordered-strings.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "empty-list"
+fixture = "portable/specs/fixtures/positive/lists/empty-list.neu"
+oracle = "portable/conformance/oracles/stage4/empty-list.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "nested-nullable-list"
+fixture = "portable/specs/fixtures/positive/lists/nested-nullable-list.neu"
+oracle = "portable/conformance/oracles/stage4/nested-nullable-list.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "record-list-default"
+fixture = "portable/specs/fixtures/positive/lists/record-list-default.neu"
+oracle = "portable/conformance/oracles/stage4/record-list-default.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "wrong-list-item-type"
+fixture = "portable/specs/fixtures/negative/lists/wrong-item-type.neu"
+oracle = "portable/conformance/oracles/stage4/wrong-list-item-type.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "missing-list-comma"
+fixture = "portable/specs/fixtures/negative/lists/missing-comma.neu"
+oracle = "portable/conformance/oracles/stage4/missing-list-comma.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "list-item-limit"
+fixture = "portable/specs/fixtures/negative/lists/item-limit.neu"
+oracle = "portable/conformance/oracles/stage4/list-item-limit.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "list-nesting-limit"
+fixture = "portable/specs/fixtures/negative/lists/nesting-limit.neu"
+oracle = "portable/conformance/oracles/stage4/list-nesting-limit.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "list-traversal-limit"
+fixture = "portable/specs/fixtures/negative/lists/traversal-limit.neu"
+oracle = "portable/conformance/oracles/stage4/list-traversal-limit.toml"
+active_from_stage = 4
+status = "frozen"
+
+[[case]]
+id = "forward-transitive-reuse"
+fixture = "portable/specs/fixtures/positive/reuse/forward-transitive.neu"
+oracle = "portable/conformance/oracles/stage5/forward-transitive.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "nested-reuse"
+fixture = "portable/specs/fixtures/positive/reuse/nested-reuse.neu"
+oracle = "portable/conformance/oracles/stage5/nested-reuse.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "nullable-reuse"
+fixture = "portable/specs/fixtures/positive/reuse/nullable-widening.neu"
+oracle = "portable/conformance/oracles/stage5/nullable-widening.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "unknown-reused-value"
+fixture = "portable/specs/fixtures/negative/reuse/unknown-value.neu"
+oracle = "portable/conformance/oracles/stage5/unknown-value.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "wrong-kind-reused-value"
+fixture = "portable/specs/fixtures/negative/reuse/wrong-kind.neu"
+oracle = "portable/conformance/oracles/stage5/wrong-kind.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "direct-value-cycle"
+fixture = "portable/specs/fixtures/negative/reuse/direct-cycle.neu"
+oracle = "portable/conformance/oracles/stage5/direct-cycle.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reuse-traversal-limit"
+fixture = "portable/specs/fixtures/negative/reuse/traversal-limit.neu"
+oracle = "portable/conformance/oracles/stage5/traversal-limit.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-forward-target"
+fixture = "portable/specs/fixtures/positive/references/forward-target.neu"
+oracle = "portable/conformance/oracles/stage5/reference-forward-target.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-recursive-cycle"
+fixture = "portable/specs/fixtures/positive/references/recursive-identity-cycle.neu"
+oracle = "portable/conformance/oracles/stage5/reference-recursive-cycle.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-field-neutrality"
+fixture = "portable/specs/fixtures/positive/references/field-name-neutrality.neu"
+oracle = "portable/conformance/oracles/stage5/reference-field-neutrality.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-unknown-target"
+fixture = "portable/specs/fixtures/negative/references/unknown-target.neu"
+oracle = "portable/conformance/oracles/stage5/reference-unknown-target.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-wrong-kind"
+fixture = "portable/specs/fixtures/negative/references/wrong-kind-target.neu"
+oracle = "portable/conformance/oracles/stage5/reference-wrong-kind.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-wrong-type"
+fixture = "portable/specs/fixtures/negative/references/wrong-target-type.neu"
+oracle = "portable/conformance/oracles/stage5/reference-wrong-type.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-invariant-type"
+fixture = "portable/specs/fixtures/negative/references/invariant-target-type.neu"
+oracle = "portable/conformance/oracles/stage5/reference-invariant-type.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "reference-missing-constructor"
+fixture = "portable/specs/fixtures/negative/references/missing-constructor.neu"
+oracle = "portable/conformance/oracles/stage5/reference-missing-constructor.toml"
+active_from_stage = 5
+status = "frozen"
+
+[[case]]
+id = "vocabulary-comprehensive"
+fixture = "portable/specs/fixtures/vocabulary/bundles/positive/comprehensive.json"
+oracle = "portable/conformance/oracles/stage6/vocabulary-comprehensive.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-reordered"
+fixture = "portable/specs/fixtures/vocabulary/bundles/positive/reordered.json"
+oracle = "portable/conformance/oracles/stage6/vocabulary-reordered.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-duplicate-envelope"
+fixture = "portable/specs/fixtures/vocabulary/bundles/negative/duplicate-envelope-key.json"
+oracle = "portable/conformance/oracles/stage6/vocabulary-duplicate-envelope.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-duplicate-nested"
+fixture = "portable/specs/fixtures/vocabulary/bundles/negative/duplicate-nested-key.json"
+oracle = "portable/conformance/oracles/stage6/vocabulary-duplicate-nested.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-embedded-recursion"
+fixture = "portable/specs/fixtures/vocabulary/bundles/negative/embedded-recursion.json"
+oracle = "portable/conformance/oracles/stage6/vocabulary-embedded-recursion.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-executable-member"
+fixture = "portable/specs/fixtures/vocabulary/bundles/negative/executable-member.json"
+oracle = "portable/conformance/oracles/stage6/vocabulary-executable-member.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-raw-number"
+fixture = "portable/specs/fixtures/vocabulary/bundles/negative/raw-json-number.json"
+oracle = "portable/conformance/oracles/stage6/vocabulary-raw-number.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-reference-default"
+fixture = "portable/specs/fixtures/vocabulary/bundles/negative/reference-default.json"
+oracle = "portable/conformance/oracles/stage6/vocabulary-reference-default.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-truncated"
+fixture = "portable/specs/fixtures/vocabulary/bundles/negative/truncated.json"
+oracle = "portable/conformance/oracles/stage6/vocabulary-truncated.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-unknown-member"
+fixture = "portable/specs/fixtures/vocabulary/bundles/negative/unknown-envelope-member.json"
+oracle = "portable/conformance/oracles/stage6/vocabulary-unknown-member.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-unknown-feature"
+fixture = "portable/specs/fixtures/vocabulary/bundles/negative/unknown-feature.json"
+oracle = "portable/conformance/oracles/stage6/vocabulary-unknown-feature.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-executable-kind"
+fixture = "portable/specs/fixtures/vocabulary/bundles/negative/unknown-type-kind.json"
+oracle = "portable/conformance/oracles/stage6/vocabulary-executable-kind.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-unknown-target"
+fixture = "portable/specs/fixtures/vocabulary/bundles/negative/unknown-type-target.json"
+oracle = "portable/conformance/oracles/stage6/vocabulary-unknown-target.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-incompatible-default"
+fixture = "portable/specs/fixtures/vocabulary/bundles/negative/incompatible-default.json"
+oracle = "portable/conformance/oracles/stage6/vocabulary-incompatible-default.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "vocabulary-incomplete-record-default"
+fixture = "portable/specs/fixtures/vocabulary/bundles/negative/incomplete-record-default.json"
+oracle = "portable/conformance/oracles/stage6/vocabulary-incomplete-record-default.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "missing-vocabulary-capture"
+fixture = "portable/specs/fixtures/negative/vocabulary/missing-capture.neu"
+oracle = "portable/conformance/oracles/stage6/missing-vocabulary-capture.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "unknown-vocabulary-type"
+fixture = "portable/specs/fixtures/negative/vocabulary/unknown-type.neu"
+oracle = "portable/conformance/oracles/stage6/unknown-vocabulary-type.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "unknown-vocabulary-field"
+fixture = "portable/specs/fixtures/negative/vocabulary/unknown-payload-field.neu"
+oracle = "portable/conformance/oracles/stage6/unknown-vocabulary-field.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "wrong-vocabulary-field-type"
+fixture = "portable/specs/fixtures/negative/vocabulary/wrong-payload-type.neu"
+oracle = "portable/conformance/oracles/stage6/wrong-vocabulary-field-type.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "missing-vocabulary-field"
+fixture = "portable/specs/fixtures/negative/vocabulary/missing-payload-field.neu"
+oracle = "portable/conformance/oracles/stage6/missing-vocabulary-field.toml"
+active_from_stage = 6
+status = "frozen"
+
+[[case]]
+id = "duplicate-vocabulary-field"
+fixture = "portable/specs/fixtures/negative/vocabulary/duplicate-payload-field.neu"
+oracle = "portable/conformance/oracles/stage6/duplicate-vocabulary-field.toml"
+active_from_stage = 6
+status = "frozen"

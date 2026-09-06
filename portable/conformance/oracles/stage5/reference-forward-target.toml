@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/references/forward-target.neu"
+fixture_sha256 = "127315554df67df0216bccd4f921430bc948ed9f7f6c82bf5a74ad5d6022bacb"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "reference_forward"
+records = ["Config(image: string)"]
+bindings = ["config: Config = {image: \"example.invalid/tool:1\"}", "selected: Ref<Config> = ref(#1)"]
+
+[reference_provenance]
+edges = ["2::1"]

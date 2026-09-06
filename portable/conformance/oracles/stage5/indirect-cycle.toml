@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/reuse/indirect-cycle.neu"
+fixture_sha256 = "1220fc95cc27e48888839b71cd3dcf7d128a3dddc884883c07480b72c65b9067"
+expected_outcome = "reject"
+
+[failure]
+class = "semantics"
+diagnostic_code = "NEU-VAL-007"
+primary_span = [138, 143]
+related_spans = [[94, 100], [117, 122], [138, 143]]
+authoritative_ir = "absent"

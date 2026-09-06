@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/defaults/nonconstant-default.neu"
+fixture_sha256 = "5232d8ce443d0086f6fe47fba21e956241a4f7f477628afba69034d30cbf7943"
+expected_outcome = "reject"
+failure_class = "semantics"
+diagnostic = "NEU-VAL-005"
+primary_span = [137, 143]

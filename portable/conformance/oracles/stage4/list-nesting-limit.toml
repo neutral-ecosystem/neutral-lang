@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/lists/nesting-limit.neu"
+fixture_sha256 = "7f4a75323cdaf2375ddb5c9a03899aafb04b0d36c8ed00cff76b29ec48199696"
+expected_outcome = "reject"
+failure_class = "resource"
+diagnostic = "NEU-LIM-004"
+primary_span = [103, 104]

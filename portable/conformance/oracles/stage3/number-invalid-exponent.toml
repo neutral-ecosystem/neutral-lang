@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/numbers/number-invalid-exponent.neu"
+fixture_sha256 = "e652237994cc6f27903fb5c35d4462dfa3a2ccb1130bd3138ec6e0b5fde3163b"
+expected_outcome = "reject"
+failure_class = "semantics"
+diagnostic = "NEU-VAL-001"
+primary_span = [95, 98]

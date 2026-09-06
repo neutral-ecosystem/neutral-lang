@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/negative/numbers/number-missing-fraction.neu"
+fixture_sha256 = "5d150c4f1be81f42e63fed0a110b98e1e83f77d21f6cf261e31fc01f1add02f4"
+expected_outcome = "reject"
+failure_class = "semantics"
+diagnostic = "NEU-VAL-001"
+primary_span = [95, 97]

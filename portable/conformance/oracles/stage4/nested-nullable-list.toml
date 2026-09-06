@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/lists/nested-nullable-list.neu"
+fixture_sha256 = "1a73ae481d19a22e610763e40b55a051665a954880b76ff23f2ba92ab7dea8dc"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "nested_lists"
+bindings = ["groups: List<List<string?>> = [[\"first\", null], [], [\"last\"]]"]

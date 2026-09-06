@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/negative/identifiers/protected-name.neu"
+fixture_sha256 = "6b27025076abc4a02d1d26f69d01a34189cb6cad3ac11d323cfa5a4414a2610f"
+expected_outcome = "reject"
+requirements = ["SYN-DEC-004"]
+
+[failure]
+class = "semantics"
+diagnostic_code = "NEU-NAME-002"
+message_key = "protected-core-name"
+primary_span = [69, 75]
+authoritative_ir = "absent"

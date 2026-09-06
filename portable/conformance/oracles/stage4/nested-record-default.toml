@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+fixture = "portable/specs/fixtures/positive/defaults/nested-record-default.neu"
+fixture_sha256 = "679930e1d2a8e43beafbb5082f496e9cfc7847ab87f4b1386ab93079c149c119"
+expected_outcome = "accept"
+
+[logical_ir]
+module = "nested_defaults"
+records = ["Config(metadata: Metadata = {label: \"nested\"})", "Metadata(label: string = \"nested\")"]
+bindings = ["config: Config = {metadata: {label: \"nested\"}}"]
+
+[field_provenance]
+fields = ["metadata: user-record-default"]

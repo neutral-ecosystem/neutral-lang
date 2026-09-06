@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+fixture = "portable/specs/fixtures/negative/strings/string-limit.neu"
+fixture_sha256 = "cafacfb921d8fc2bf79b6fe0e8377314eb3111820b54a904663a1a540fb83ab4"
+expected_outcome = "reject"
+requirements = ["NL-API-004", "NL-DIA-004"]
+
+[limits]
+decoded_string_bytes = 8
+
+[failure]
+class = "resource"
+diagnostic_code = "NEU-LIM-001"
+primary_span = [89, 100]
+authoritative_ir = "absent"
