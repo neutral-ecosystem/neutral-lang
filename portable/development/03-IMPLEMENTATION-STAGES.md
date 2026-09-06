@@ -574,18 +574,18 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Step 3: complete standalone probe
 
-- [ ] Enumerate all metadata/declarations/types/final values/references/
+- [*] Enumerate all metadata/declarations/types/final values/references/
       vocabulary/provenance through reader APIs.
-- [ ] Map one consumer diagnostic to source.
-- [ ] Compare in-process reader/probe library and external probe binary summaries.
-- [ ] Enforce dependency allowlist in release CI.
+- [*] Map one consumer diagnostic to source.
+- [*] Compare in-process reader/probe library and external probe binary summaries.
+- [*] Enforce dependency allowlist in release CI.
 
 #### Step validation
 
-- [ ] Probe package builds/tests independently from compiler packages.
-- [ ] In-process and encoded summaries match modulo envelope-only metadata.
-- [ ] Probe traversal is bounded and safe for hostile validated graphs.
-- [ ] Source-linked consumer diagnostic maps to the expected original span.
+- [*] Probe package builds/tests independently from compiler packages.
+- [*] In-process and encoded summaries match modulo envelope-only metadata.
+- [*] Probe traversal is bounded and safe for hostile validated graphs.
+- [*] Source-linked consumer diagnostic maps to the expected original span.
 
 ### Step 4: close documentation and traceability
 

@@ -4,7 +4,7 @@
 
 use neutral_core::CancellationToken;
 use neutral_encoding::{DecodeError, DecodeLimits};
-use neutral_probe::{ProbeSummary, inspect_encoded, output};
+use neutral_probe::{inspect_encoded, output, render_summary};
 use std::{fs, path::Path};
 
 /// Starts the standalone Neutral artifact probe.
@@ -59,51 +59,6 @@ fn render_decode_error(error: DecodeError) -> String {
         || error.code().to_owned(),
         |offset| format!("{} at encoded byte {offset}", error.code()),
     )
-}
-
-/// Renders deterministic generic observations as one line per public reader view.
-fn render_summary(summary: &ProbeSummary) -> Vec<String> {
-    let mut lines = vec![format!("module {}", summary.module())];
-    if let Some(vocabulary) = summary.vocabulary() {
-        lines.push(format!("vocabulary {vocabulary}"));
-    }
-    lines.extend(
-        summary
-            .record_types()
-            .iter()
-            .map(|record| format!("record {record}")),
-    );
-    lines.extend(
-        summary
-            .vocabulary_types()
-            .iter()
-            .map(|record| format!("vocabulary-type {record}")),
-    );
-    lines.extend(
-        summary
-            .declarations()
-            .iter()
-            .map(|declaration| format!("declaration {declaration}")),
-    );
-    lines.extend(
-        summary
-            .field_provenance()
-            .iter()
-            .map(|record| format!("field-provenance {record}")),
-    );
-    lines.extend(
-        summary
-            .reuse_provenance()
-            .iter()
-            .map(|record| format!("reuse-provenance {record}")),
-    );
-    lines.extend(
-        summary
-            .reference_provenance()
-            .iter()
-            .map(|record| format!("reference-provenance {record}")),
-    );
-    lines
 }
 
 #[cfg(test)]

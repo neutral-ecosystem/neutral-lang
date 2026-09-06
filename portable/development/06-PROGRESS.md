@@ -2,24 +2,35 @@
 
 # Neutral v0 development progress
 
-Status: Stage 8 Step 2 complete.
+Status: Stage 8 Step 3 complete.
 
 ## Current focus
 
-- Stage: Stage 8, Step 2
-- Status: CLI host tools complete
+- Stage: Stage 8, Step 3
+- Status: standalone probe complete
 - Last updated: 2026-09-06
 
 ## Next actions
 
-- [ ] Begin Stage 8, Step 3: complete the standalone probe traversal and
-      source-linked consumer diagnostic proof.
+- [ ] Begin Stage 8, Step 4: close documentation and end-to-end traceability.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-09-06: Completed Stage 8, Step 3. The compiler-free
+  `neutral-probe` now enumerates logical/identity metadata, source and
+  derivation facts, resource and acceptance facts, schemas, final typed values,
+  vocabulary contracts, source mappings, and every provenance category through
+  validated public reader views. Rendering is shared by the library and binary;
+  a manually constructed public-IR artifact proves exact in-process, decoded,
+  and executable output parity without compiler linkage. Separate tests prove
+  consumer diagnostics retain the expected original source digest/span and
+  hostile external traversal obeys caller-selected decoder limits. PR and
+  release CI already enforce the complete standalone-probe dependency
+  allowlist.
 
 - [*] 2026-09-06: Migrated the active v0 portable package to the homogeneous
   Neutral roadmap layout. `PLAN.md` is now the operational entry point;

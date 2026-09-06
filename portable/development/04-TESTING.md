@@ -225,6 +225,16 @@ diagnostics, temporary cleanup, and compiler-independent decoding of emitted
 artifacts. These tests execute Cargo-provided binary paths and never call CLI
 internals. Standalone inspection remains owned by `neutral-probe`.
 
+### Stage 8 Step 3 active tests
+
+The active Stage 8 profile also builds and tests `neutral-probe` independently
+from compiler packages. A compiler-free public-IR fixture proves exact parity
+between in-process reader summaries, decoded summaries, and standalone binary
+lines across metadata, identities, source maps, declarations, types, values,
+and provenance. Additional system and security cases prove consumer diagnostic
+source mapping and caller-selected hostile-artifact traversal limits. The CI
+dependency gate checks the complete probe closure for every PR and release.
+
 ### Activation milestones
 
 | Stage | Newly active evidence |

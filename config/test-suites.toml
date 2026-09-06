@@ -71,9 +71,9 @@ security = 17
 fuzz_smoke = 2
 fuzz_decoder = 3
 
-# Stage 8 Steps 1 and 2 add complete-corpus formatter evidence plus built-binary
-# CLI usage, filesystem, standard-stream, permission, cancellation, vocabulary,
-# disclosure, broken-pipe, atomic-output, and artifact-decoding system evidence.
+# Stage 8 Steps 1 through 3 add complete-corpus formatter evidence, built-binary
+# CLI host evidence, and compiler-free standalone-probe traversal, parity,
+# source-linked diagnostic, hostile-limit, and dependency-closure proofs.
 [stage8.minimum]
 unit = 2
 smoke = 1
