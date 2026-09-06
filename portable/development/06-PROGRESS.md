@@ -2,23 +2,35 @@
 
 # Neutral v0 development progress
 
-Status: Stage 8 Step 3 complete.
+Status: Stage 8 complete.
 
 ## Current focus
 
-- Stage: Stage 8, Step 3
-- Status: standalone probe complete
+- Stage: Stage 8 validation
+- Status: formatter, CLI, probe, documentation, and traceability complete
 - Last updated: 2026-09-06
 
 ## Next actions
 
-- [ ] Begin Stage 8, Step 4: close documentation and end-to-end traceability.
+- [ ] Begin Stage 9 hardening with the property/metamorphic test expansion.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-09-06: Completed Stage 8, Step 4 and Stage 8 validation. Added the
+  published requirement/syntax evidence index spanning decisions, fixtures,
+  implementation owners, and executable tests; checked every master syntax
+  item only after its completed vertical evidence was identified. Added
+  `cargo xtask traceability check` to PR/release CI to reject missing accepted
+  IDs, divergent or unchecked syntax inventories, unregistered normative
+  fixtures/oracles, and missing manifest paths. The full example embedded in
+  the language showcase now compiles against the exact captured vocabulary as
+  conformance evidence. Rustdoc/doc tests, dependency boundaries, explicit
+  exclusions, compiler-private model isolation, and all active Stage 8 suites
+  pass.
 
 - [*] 2026-09-06: Completed Stage 8, Step 3. The compiler-free
   `neutral-probe` now enumerates logical/identity metadata, source and

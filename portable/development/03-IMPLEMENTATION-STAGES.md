@@ -589,22 +589,22 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Step 4: close documentation and traceability
 
-- [ ] Complete requirement → decision → fixture → implementation → test mapping.
-- [ ] Publish grammar, semantics, IR, identity, vocabulary, API, encoding,
+- [*] Complete requirement → decision → fixture → implementation → test mapping.
+- [*] Publish grammar, semantics, IR, identity, vocabulary, API, encoding,
       diagnostic, limits, formatter, and tool documentation.
-- [ ] Check master syntax items only with complete evidence.
+- [*] Check master syntax items only with complete evidence.
 
 #### Step validation
 
-- [ ] Every accepted `NL-*`/`SYN-*` ID maps to executable evidence.
-- [ ] No fixture, diagnostic, public API, or implementation behavior is orphaned.
-- [ ] Documentation examples compile and repository coherence checks pass.
+- [*] Every accepted `NL-*`/`SYN-*` ID maps to executable evidence.
+- [*] No fixture, diagnostic, public API, or implementation behavior is orphaned.
+- [*] Documentation examples compile and repository coherence checks pass.
 
 ### Stage 8 validation
 
-- [ ] Formatter, CLI, probe, docs, traceability, and all active tests pass.
-- [ ] No explicit v0 exclusion is accepted.
-- [ ] No public consumer needs source/private compiler models.
+- [*] Formatter, CLI, probe, docs, traceability, and all active tests pass.
+- [*] No explicit v0 exclusion is accepted.
+- [*] No public consumer needs source/private compiler models.
 
 ---
 

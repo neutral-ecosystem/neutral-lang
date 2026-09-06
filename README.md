@@ -4,7 +4,7 @@
 
 Neutral is a portable declarative language under development. The current
 repository contains the approved v0 specification and a Rust implementation
-complete through Stage 8 Step 3. The active compiler supports source/scalar
+complete through Stage 8. The active compiler supports source/scalar
 behavior, records, defaults, invariant lists, and ordinary immutable-value
 reuse and typed identity references through validated IR, reader, and probe
 boundaries. Logical payload comparison uses whole-graph alpha-equivalence under

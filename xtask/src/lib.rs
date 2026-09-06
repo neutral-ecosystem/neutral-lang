@@ -9,7 +9,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     env, fs,
-    path::{Component, PathBuf},
+    path::{Component, Path, PathBuf},
     process::Command,
 };
 
@@ -36,6 +36,7 @@ pub fn run(arguments: impl IntoIterator<Item = String>) -> Result<(), String> {
             print_environment_manifest()
         }
         [command, action] if command == "boundary" && action == "check" => check_boundaries(),
+        [command, action] if command == "traceability" && action == "check" => check_traceability(),
         [command] if command == "format" => run_cargo(&["fmt", "--all", "--", "--check"]),
         [command, action] if command == "format" && action == "--write" => {
             run_cargo(&["fmt", "--all"])
@@ -442,6 +443,7 @@ fn run_ci_gate(profile: &str, include_behavior: bool) -> Result<(), String> {
     verify_environment()?;
     run_cargo(&["metadata", "--format-version", "1", "--no-deps"])?;
     check_boundaries()?;
+    check_traceability()?;
     run_cargo(&["fmt", "--all", "--", "--check"])?;
     run_cargo(&[
         "clippy",
@@ -649,6 +651,149 @@ fn check_boundaries() -> Result<(), String> {
     Ok(())
 }
 
+/// Checks accepted IDs, completed syntax items, and fixture/oracle inventories.
+fn check_traceability() -> Result<(), String> {
+    let root = workspace_root()?;
+    let requirements = read_workspace_text(&root, constants::REQUIREMENTS_FILE)?;
+    let syntax = read_workspace_text(&root, constants::SYNTAX_CONTRACT_FILE)?;
+    let checklist = read_workspace_text(&root, constants::SYNTAX_CHECKLIST_FILE)?;
+    let traceability = read_workspace_text(&root, constants::TRACEABILITY_FILE)?;
+    let manifest = read_workspace_text(&root, constants::CONFORMANCE_MANIFEST_FILE)?;
+
+    let requirement_ids = contract_ids(&requirements, "NL-");
+    let syntax_ids = contract_ids(&syntax, "SYN-");
+    let checklist_ids = contract_ids(&checklist, "SYN-");
+    ensure_ids_covered("requirements", &requirement_ids, &traceability)?;
+    ensure_ids_covered("syntax", &syntax_ids, &traceability)?;
+    if syntax_ids != checklist_ids {
+        return Err("master syntax and implementation checklist IDs differ".to_owned());
+    }
+    ensure_syntax_complete(constants::SYNTAX_CONTRACT_FILE, &syntax)?;
+    ensure_syntax_complete(constants::SYNTAX_CHECKLIST_FILE, &checklist)?;
+    ensure_inventory_registered(&root, constants::FIXTURE_DIRECTORY, &manifest)?;
+    ensure_inventory_registered(&root, constants::ORACLE_DIRECTORY, &manifest)?;
+    ensure_registered_paths_exist(&root, &manifest)?;
+
+    println!("{} traceability coherence: pass", constants::INFO);
+    Ok(())
+}
+
+/// Reads one required UTF-8 workspace file with a path-safe error.
+fn read_workspace_text(root: &Path, relative: &str) -> Result<String, String> {
+    fs::read_to_string(root.join(relative))
+        .map_err(|error| format!("could not read {relative}: {error}"))
+}
+
+/// Extracts unique contract identifiers beginning with `prefix`.
+fn contract_ids(content: &str, prefix: &str) -> BTreeSet<String> {
+    content
+        .split(|character: char| !(character.is_ascii_alphanumeric() || character == '-'))
+        .filter(|token| token.starts_with(prefix))
+        .map(str::to_owned)
+        .collect()
+}
+
+/// Requires every accepted identifier to occur in the evidence index.
+fn ensure_ids_covered(
+    category: &str,
+    identifiers: &BTreeSet<String>,
+    traceability: &str,
+) -> Result<(), String> {
+    if identifiers.is_empty() {
+        return Err(format!("{category} contains no contract identifiers"));
+    }
+    let missing = identifiers
+        .iter()
+        .filter(|identifier| !traceability.contains(identifier.as_str()))
+        .cloned()
+        .collect::<Vec<_>>();
+    if missing.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "traceability is missing {category} IDs: {}",
+            missing.join(", ")
+        ))
+    }
+}
+
+/// Rejects an unchecked master syntax item after Stage 8 traceability closure.
+fn ensure_syntax_complete(path: &str, content: &str) -> Result<(), String> {
+    let unchecked = content
+        .lines()
+        .filter(|line| line.trim_start().starts_with("- [ ]") && line.contains("SYN-"))
+        .collect::<Vec<_>>();
+    if unchecked.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "{path} contains {} unchecked syntax items",
+            unchecked.len()
+        ))
+    }
+}
+
+/// Requires every normative file beneath `directory` to occur in the manifest.
+fn ensure_inventory_registered(root: &Path, directory: &str, manifest: &str) -> Result<(), String> {
+    let mut files = Vec::new();
+    collect_regular_files(&root.join(directory), &mut files)?;
+    let missing = files
+        .iter()
+        .filter_map(|path| path.strip_prefix(root).ok())
+        .map(|path| path.to_string_lossy().replace('\\', "/"))
+        .filter(|path| {
+            matches!(
+                Path::new(path).extension().and_then(|value| value.to_str()),
+                Some("neu" | "json" | "toml")
+            )
+        })
+        .filter(|path| !manifest.contains(path))
+        .collect::<Vec<_>>();
+    if missing.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "conformance manifest omits normative files: {}",
+            missing.join(", ")
+        ))
+    }
+}
+
+/// Recursively collects regular files without following directory symlinks.
+fn collect_regular_files(directory: &Path, files: &mut Vec<PathBuf>) -> Result<(), String> {
+    let entries = fs::read_dir(directory)
+        .map_err(|error| format!("could not inspect {}: {error}", directory.display()))?;
+    for entry in entries {
+        let entry = entry.map_err(|error| format!("could not inspect directory entry: {error}"))?;
+        let file_type = entry
+            .file_type()
+            .map_err(|error| format!("could not inspect {}: {error}", entry.path().display()))?;
+        if file_type.is_dir() {
+            collect_regular_files(&entry.path(), files)?;
+        } else if file_type.is_file() {
+            files.push(entry.path());
+        }
+    }
+    Ok(())
+}
+
+/// Requires every workspace-relative path registered by the manifest to exist.
+fn ensure_registered_paths_exist(root: &Path, manifest: &str) -> Result<(), String> {
+    let missing = manifest
+        .split('"')
+        .filter(|value| value.starts_with("portable/"))
+        .filter(|value| !root.join(value).is_file())
+        .collect::<Vec<_>>();
+    if missing.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "manifest paths do not exist: {}",
+            missing.join(", ")
+        ))
+    }
+}
+
 /// Returns the workspace root derived from the `xtask` package location.
 fn workspace_root() -> Result<PathBuf, String> {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -832,8 +977,8 @@ fn set<const N: usize>(values: [&'static str; N]) -> BTreeSet<&'static str> {
 /// Tests for dependency-boundary policy failures.
 mod tests {
     use super::{
-        constants, render_rustdoc_index, rustdoc_header_configuration, set,
-        validate_allowed_packages, validate_direct_dependencies,
+        constants, contract_ids, ensure_ids_covered, ensure_syntax_complete, render_rustdoc_index,
+        rustdoc_header_configuration, set, validate_allowed_packages, validate_direct_dependencies,
     };
     use std::collections::{BTreeMap, BTreeSet};
 
@@ -882,6 +1027,29 @@ mod tests {
         let configuration = rustdoc_header_configuration();
         assert!(configuration.starts_with(constants::RUSTDOC_HEADER_CFG_PREFIX));
         assert_eq!(configuration, rustdoc_header_configuration());
+    }
+
+    #[test]
+    /// Verifies accepted identifiers are extracted without Markdown punctuation.
+    fn automation_extracts_contract_identifiers() {
+        assert_eq!(
+            contract_ids("- **NL-ONE-001:** first\n`NL-TWO-002`", "NL-"),
+            BTreeSet::from(["NL-ONE-001".to_owned(), "NL-TWO-002".to_owned()])
+        );
+    }
+
+    #[test]
+    /// Verifies a missing accepted identifier fails traceability coverage.
+    fn automation_rejects_missing_traceability_identifiers() {
+        let identifiers = BTreeSet::from(["NL-ONE-001".to_owned(), "NL-TWO-002".to_owned()]);
+        assert!(ensure_ids_covered("test", &identifiers, "NL-ONE-001").is_err());
+    }
+
+    #[test]
+    /// Verifies unchecked syntax items fail the completed Stage 8 gate.
+    fn automation_rejects_unchecked_syntax_contracts() {
+        assert!(ensure_syntax_complete("syntax.md", "- [ ] SYN-GOV-001").is_err());
+        assert!(ensure_syntax_complete("syntax.md", "- [*] SYN-GOV-001").is_ok());
     }
 
     #[test]

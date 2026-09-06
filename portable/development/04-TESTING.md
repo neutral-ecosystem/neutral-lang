@@ -235,6 +235,16 @@ and provenance. Additional system and security cases prove consumer diagnostic
 source mapping and caller-selected hostile-artifact traversal limits. The CI
 dependency gate checks the complete probe closure for every PR and release.
 
+### Stage 8 Step 4 active tests
+
+The Stage 8 profile runs repository traceability coherence before compilation:
+all accepted `NL-*` and checked `SYN-*` IDs must occur in the evidence index,
+the master and implementation syntax inventories must match with no unchecked
+items, every normative fixture/oracle must be registered, and every registered
+path must exist. The first complete `neu` block in the published language
+showcase is compiled with its exact captured vocabulary bundle. Rustdoc link
+checks and doc tests cover the public Rust API documentation.
+
 ### Activation milestones
 
 | Stage | Newly active evidence |

@@ -41,7 +41,7 @@ contract-freeze manifest.
 Run from an offline/prevalidated dependency environment:
 
 - [ ] environment verification and manifest;
-- [ ] repository/document/ID/traceability coherence;
+- [*] repository/document/ID/traceability coherence;
 - [ ] formatting, linting, docs, dependency, license, advisory, source, and
       package-boundary checks;
 - [ ] smoke, unit, integration, system, and conformance suites;

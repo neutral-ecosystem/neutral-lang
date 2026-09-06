@@ -12,5 +12,7 @@ This directory owns the normative v0 material that accompanies the portable
 - [`fixtures/`](fixtures/README.md) contains normative verification inputs.
 - [`examples/`](examples/README.md) explains the language without overriding its
   contracts.
+- [`TRACEABILITY.md`](TRACEABILITY.md) maps every accepted requirement and
+  checked syntax item to decisions, fixtures, implementation, and tests.
 
 Implementation notes and mutable progress do not belong here.

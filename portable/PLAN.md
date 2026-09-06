@@ -2,7 +2,7 @@
 
 # Neutral language v0 development plan
 
-Status: active v0 operational index — Stage 8 Step 3 complete
+Status: active v0 operational index — Stage 8 complete
 
 This is the entry point for implementing and tracking Neutral language v0 in
 this repository. The directory is a self-contained, version-scoped package of
@@ -102,7 +102,7 @@ Stage 10: release qualification
 
 Stage 1, the mandatory normative contract freeze, Stage 2, all Stage 3 slices,
 all Stage 4 slices, all Stage 5 slices, all Stage 6 slices, all three Stage 7
-steps and validation, and Stage 8 Steps 1 through 3 are complete. The
+steps and validation, and all Stage 8 steps and validation are complete. The
 private frontend
 retains exact nonsemantic trivia, enforces frozen ASCII/token boundaries,
 decodes bounded Unicode strings, and normalizes signed decimal exact numbers
@@ -172,8 +172,11 @@ source-map, derivation, resource, type, value, vocabulary, and provenance views;
 its shared renderer produces byte-for-byte-equivalent in-process and executable
 observations. A consumer-owned diagnostic maps through the public source map,
 hostile external traversal remains bounded by decoder limits, and CI enforces
-the compiler-free dependency closure. The next work is Stage 8, Step 4:
-documentation and traceability closure.
+the compiler-free dependency closure. The complete requirement/syntax evidence
+index now maps accepted contracts to decisions, fixtures, implementation, and
+tests. CI rejects missing IDs, unchecked master syntax, orphaned normative
+fixtures/oracles, and broken registered paths; the published full-language
+example compiles as conformance evidence. The next work is Stage 9 hardening.
 The approved
 [freeze manifest](specs/contracts/freeze.toml) identifies
 the v0 contract family, and the

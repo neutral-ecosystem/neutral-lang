@@ -132,9 +132,12 @@ fixtures/
   locks the current fixture bytes and identifies the required oracle shape for
   each case. It is not approved or immutable until contract-freeze review.
 
-## Required additions
+## Generated evidence outside source fixtures
 
-The corpus still needs fixtures for malformed UTF-8, layout recovery, resource
-boundaries, invalid encoded IR, source maps, provenance, and deterministic
-concurrent compilation. Logical alpha-equivalence uses generated in-memory graph
-vectors because `ElementId` has no Neutral source spelling.
+Malformed UTF-8/NUL vectors, exhaustive layout boundaries, concurrent
+compilation schedules, graph alpha-equivalence, invalid source-map/provenance
+states, and hostile encoded IR are generated directly by their owning tests.
+They are not `.neu` fixtures because some cannot be represented as valid UTF-8
+source and others exercise public in-memory or encoded-artifact contracts rather
+than source syntax. Resource cases with stable source spellings remain registered
+fixtures; boundary permutations are generated from centralized limit values.

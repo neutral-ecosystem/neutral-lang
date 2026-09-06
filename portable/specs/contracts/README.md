@@ -11,6 +11,7 @@ implementation design or local working notes.
 - [Syntax completion checklist](syntax-checklist.md)
 - [Author-facing syntax guide](proposed-syntax-guide.md)
 - [Approved freeze manifest](freeze.toml)
+- [Implementation traceability](../TRACEABILITY.md)
 
 The freeze manifest pins the exact governing revisions used by this
 implementation and must remain synchronized with any accepted contract change.

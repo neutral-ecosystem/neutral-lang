@@ -7,7 +7,7 @@
 //! not provide production APIs or duplicate normative fixtures.
 
 #[cfg(test)]
-/// Cross-package tests for active Stage 2 through Stage 8.1 vertical slices.
+/// Cross-package tests for active Stage 2 through Stage 8 vertical slices.
 mod tests {
     use neutral_compiler::{
         CompilationFailureDetail, CompilationRequest, CompilationResult, LANGUAGE_BEHAVIOR_VERSION,
@@ -189,6 +189,9 @@ mod tests {
     const VOCABULARY_BUNDLE: &[u8] = include_bytes!(
         "../../../portable/specs/fixtures/vocabulary/bundles/positive/comprehensive.json"
     );
+    /// Published language showcase containing one complete executable example.
+    const LANGUAGE_SHOWCASE: &str =
+        include_str!("../../../portable/specs/examples/LANGUAGE-SHOWCASE.md");
     /// Logically equivalent vocabulary bundle with different member order and bytes.
     const REORDERED_VOCABULARY_BUNDLE: &[u8] = include_bytes!(
         "../../../portable/specs/fixtures/vocabulary/bundles/positive/reordered.json"
@@ -2573,6 +2576,20 @@ mod tests {
         let source = b"/* license */ neu \"0.1\"\r\nmodule style\r\nrecord Item{string name,}\r\nList<Item>items=[{name:\"x\",},]\r\n";
         let expected = b"/* license */\nneu \"0.1\"\nmodule style\n\nrecord Item {\n    string name,\n}\n\nList<Item> items = [\n    {\n        name: \"x\",\n    },\n]\n";
         assert_eq!(format_fixture(source, false), expected);
+    }
+
+    #[test]
+    /// Verifies the published complete language example compiles with its captured bundle.
+    fn conformance_stage8_documentation_showcase_compiles() {
+        let source = LANGUAGE_SHOWCASE
+            .split_once("```neu\n")
+            .and_then(|(_, remainder)| remainder.split_once("\n```"))
+            .map(|(source, _)| source.as_bytes())
+            .expect("showcase must contain one complete Neutral example first");
+        assert!(matches!(
+            compile_with_vocabulary(source, VOCABULARY_BUNDLE),
+            CompilationResult::Success(_)
+        ));
     }
 
     #[test]

@@ -128,6 +128,7 @@ Stable commands:
 cargo xtask bootstrap
 cargo xtask environment verify|manifest
 cargo xtask boundary check
+cargo xtask traceability check
 cargo xtask format [--write]
 cargo xtask lint
 cargo xtask build --profile dev|test|release
@@ -148,6 +149,8 @@ Command rules:
 - local and CI automation call the same commands;
 - invalid or empty suite selection fails;
 - active suite minimum counts come from the stage/test manifest;
+- traceability checks reject missing accepted IDs, unchecked master syntax,
+  unregistered normative fixtures/oracles, and missing manifest paths;
 - `cargo docs` generates crate rustdoc plus a Cargo-metadata-driven workspace
   index without a fixed package list;
 - no automatic retry changes a failed required result to pass;

@@ -34,6 +34,20 @@ pub const RUSTDOC_HEADER_CFG_PREFIX: &str = "neutral_rustdoc_header";
 pub const RUSTDOC_HEADER_HASH_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 /// FNV-1a prime used for the non-security rustdoc cache token.
 pub const RUSTDOC_HEADER_HASH_PRIME: u64 = 0x0000_0100_0000_01b3;
+/// Accepted requirements document relative to the workspace root.
+pub const REQUIREMENTS_FILE: &str = "portable/specs/REQUIREMENTS.md";
+/// Authoritative syntax contract relative to the workspace root.
+pub const SYNTAX_CONTRACT_FILE: &str = "portable/specs/contracts/syntax.md";
+/// Checked syntax implementation mirror relative to the workspace root.
+pub const SYNTAX_CHECKLIST_FILE: &str = "portable/specs/contracts/syntax-checklist.md";
+/// Complete implementation evidence index relative to the workspace root.
+pub const TRACEABILITY_FILE: &str = "portable/specs/TRACEABILITY.md";
+/// Normative fixture root relative to the workspace root.
+pub const FIXTURE_DIRECTORY: &str = "portable/specs/fixtures";
+/// Normative oracle root relative to the workspace root.
+pub const ORACLE_DIRECTORY: &str = "portable/conformance/oracles";
+/// Executable conformance manifest relative to the workspace root.
+pub const CONFORMANCE_MANIFEST_FILE: &str = "portable/conformance/manifest.toml";
 /// Workspace package name for benchmarks.
 pub const NEUTRAL_BENCH: &str = "neutral-bench";
 /// Workspace package name for the command-line shell.
