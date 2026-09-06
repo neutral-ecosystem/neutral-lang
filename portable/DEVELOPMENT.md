@@ -52,7 +52,7 @@ the affected gate.
       models private.
 - [ ] Emit authoritative IR only after complete success.
 - [ ] Keep `compile_captured` deterministic and I/O-free.
-- [ ] Treat source, vocabulary, and encoded IR bytes as untrusted even after a
+- [*] Treat source, vocabulary, and encoded IR bytes as untrusted even after a
       digest matches.
 - [ ] Enforce structural limits before proportional allocation or conversion.
 - [*] Keep logical IR equality independent of map order, thread scheduling,
@@ -99,8 +99,8 @@ Stage 10: release qualification
 ## Current gate status
 
 Stage 1, the mandatory normative contract freeze, Stage 2, all Stage 3 slices,
-all Stage 4 slices, all Stage 5 slices, all Stage 6 slices, and Stage 7 Steps 1
-and 2 are complete. The
+all Stage 4 slices, all Stage 5 slices, all Stage 6 slices, and all three Stage
+7 steps are complete. The
 private frontend
 retains exact nonsemantic trivia, enforces frozen ASCII/token boundaries,
 decodes bounded Unicode strings, and normalizes signed decimal exact numbers
@@ -139,8 +139,15 @@ now derives exact capabilities, projects every logical and companion contract
 into five bounded restricted-CBOR sections, hashes sections 2 through 5 into an
 envelope-only integrity list, and emits the fixed frame. Producer/build facts
 affect only the envelope; deterministic emitted byte order is nonsemantic
-implementation behavior. The next work is Stage 7, Step 3: decode and validate
-hostile input.
+implementation behavior. The hostile decoder now validates the fixed frame and
+directory before CBOR allocation, retains duplicate map entries until closed
+schema checks finish, applies host and captured bounds, verifies integrity and
+capabilities, reconstructs every logical and companion contract, and returns a
+reader view only after complete cross-section and trusted-reader validation.
+Stable failure classes cover malformed, unsupported, oversized, inconsistent,
+and cancelled inputs; captured vocabulary identity is checked without external
+lookup. The next work is the remaining Stage 7 validation: standalone encoded
+artifact inspection and full decoder fuzz/allocation evidence.
 The approved
 [freeze manifest](spec/v0/freeze.toml) identifies
 the v0 contract family, and the

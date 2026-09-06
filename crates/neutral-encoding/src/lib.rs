@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! One-way encoding of validated Neutral documents.
+//! External encoding and hostile decoding of validated Neutral documents.
 //!
-//! The encoder implements Neutral IR Framed CBOR 0.1. Its deterministic field
-//! order is an implementation property only: encoded bytes are not logical
-//! identity, and producer/build facts remain confined to the envelope.
+//! This codec implements Neutral IR Framed CBOR 0.1. The encoder accepts only
+//! trusted reader views; the bounds-first decoder returns one only after full
+//! validation. Deterministic emitted field order is an implementation property:
+//! encoded bytes are not logical identity, and producer/build facts remain
+//! confined to the envelope.
 
 mod cbor;
 pub mod constants;
+mod decode;
+mod decoder;
+pub mod diagnostics;
 
 use cbor::CborWriter;
 use neutral_core::{ByteSpan, EncodedSectionDigest};
@@ -23,6 +28,213 @@ use neutral_ir::{
 use neutral_reader::ValidatedDocument;
 use neutral_vocabulary::VOCABULARY_SCHEMA_VERSION;
 use std::{array, ops::Range};
+
+pub use decode::decode;
+
+/// Complete bounded result class for hostile external artifact decoding.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DecodeErrorClass {
+    /// An artifact, section, string, container, depth, or traversal limit failed.
+    EncodedSizeLimit,
+    /// Fixed framing or directory structure was malformed.
+    MalformedFrame,
+    /// A fixed framing, section, or contract version is unsupported.
+    UnsupportedVersion,
+    /// Capability declarations are unsupported or inconsistent with content.
+    UnsupportedCapability,
+    /// Exact section integrity verification failed.
+    IntegrityMismatch,
+    /// Restricted-CBOR lexical/container validation failed.
+    MalformedCbor,
+    /// A closed encoded schema was malformed.
+    InvalidEncodedSchema,
+    /// Logical IR validation failed.
+    InvalidLogicalIr,
+    /// Source-map validation failed.
+    InvalidSourceMap,
+    /// Provenance validation failed.
+    InvalidProvenance,
+    /// Derivation or cross-section validation failed.
+    InvalidDerivation,
+    /// Cooperative caller cancellation was observed.
+    Cancelled,
+    /// An implementation invariant failed independently of input validity.
+    InternalDefect,
+}
+
+impl DecodeErrorClass {
+    /// Returns the stable bounded diagnostic code for this result class.
+    #[must_use]
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::EncodedSizeLimit => diagnostics::ENCODED_SIZE_LIMIT,
+            Self::MalformedFrame => diagnostics::MALFORMED_FRAME,
+            Self::UnsupportedVersion => diagnostics::UNSUPPORTED_VERSION,
+            Self::UnsupportedCapability => diagnostics::UNSUPPORTED_CAPABILITY,
+            Self::IntegrityMismatch => diagnostics::INTEGRITY_MISMATCH,
+            Self::MalformedCbor => diagnostics::MALFORMED_CBOR,
+            Self::InvalidEncodedSchema => diagnostics::INVALID_ENCODED_SCHEMA,
+            Self::InvalidLogicalIr => diagnostics::INVALID_LOGICAL_IR,
+            Self::InvalidSourceMap => diagnostics::INVALID_SOURCE_MAP,
+            Self::InvalidProvenance => diagnostics::INVALID_PROVENANCE,
+            Self::InvalidDerivation => diagnostics::INVALID_DERIVATION,
+            Self::Cancelled => diagnostics::CANCELLED,
+            Self::InternalDefect => diagnostics::INTERNAL_DEFECT,
+        }
+    }
+}
+
+/// Bounded safe decoder failure with an optional encoded-byte offset.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DecodeError {
+    /// Stable failure class.
+    class: DecodeErrorClass,
+    /// Absolute byte offset when one is available.
+    offset: Option<u64>,
+}
+
+impl DecodeError {
+    /// Constructs one bounded internal decoder error.
+    const fn new(class: DecodeErrorClass, offset: Option<u64>) -> Self {
+        Self { class, offset }
+    }
+
+    /// Returns the stable result class.
+    #[must_use]
+    pub const fn class(self) -> DecodeErrorClass {
+        self.class
+    }
+
+    /// Returns the stable diagnostic code.
+    #[must_use]
+    pub const fn code(self) -> &'static str {
+        self.class.code()
+    }
+
+    /// Returns the absolute encoded-byte offset when available.
+    #[must_use]
+    pub const fn offset(self) -> Option<u64> {
+        self.offset
+    }
+}
+
+/// Host-configurable decoder ceilings, always clamped to frozen hard limits.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DecodeLimits {
+    /// Complete artifact bytes.
+    artifact_bytes: usize,
+    /// Bytes in any one section.
+    section_bytes: usize,
+    /// Nested CBOR/logical containers.
+    nesting_depth: usize,
+    /// Items in one container.
+    container_items: usize,
+    /// Bytes in one text string.
+    text_bytes: usize,
+    /// Bytes in one byte string.
+    byte_string_bytes: usize,
+    /// Total traversed nodes.
+    traversal_nodes: usize,
+}
+
+impl DecodeLimits {
+    /// Returns the immutable frozen hard ceilings.
+    #[must_use]
+    pub const fn hard() -> Self {
+        Self {
+            artifact_bytes: constants::MAXIMUM_ARTIFACT_BYTES,
+            section_bytes: constants::MAXIMUM_SECTION_BYTES,
+            nesting_depth: constants::MAXIMUM_NESTING_DEPTH,
+            container_items: constants::MAXIMUM_CONTAINER_ITEMS,
+            text_bytes: constants::MAXIMUM_TEXT_BYTES,
+            byte_string_bytes: constants::MAXIMUM_BYTE_STRING_BYTES,
+            traversal_nodes: constants::MAXIMUM_TRAVERSAL_NODES,
+        }
+    }
+
+    /// Applies a lower host artifact-byte ceiling; zero rejects every artifact.
+    #[must_use]
+    pub const fn with_artifact_bytes(mut self, value: usize) -> Self {
+        self.artifact_bytes = min_usize(self.artifact_bytes, value);
+        self
+    }
+
+    /// Applies a lower host section-byte ceiling.
+    #[must_use]
+    pub const fn with_section_bytes(mut self, value: usize) -> Self {
+        self.section_bytes = min_usize(self.section_bytes, value);
+        self
+    }
+
+    /// Applies a lower host nesting-depth ceiling.
+    #[must_use]
+    pub const fn with_nesting_depth(mut self, value: usize) -> Self {
+        self.nesting_depth = min_usize(self.nesting_depth, value);
+        self
+    }
+
+    /// Applies a lower host per-container item ceiling.
+    #[must_use]
+    pub const fn with_container_items(mut self, value: usize) -> Self {
+        self.container_items = min_usize(self.container_items, value);
+        self
+    }
+
+    /// Applies a lower host text-string byte ceiling.
+    #[must_use]
+    pub const fn with_text_bytes(mut self, value: usize) -> Self {
+        self.text_bytes = min_usize(self.text_bytes, value);
+        self
+    }
+
+    /// Applies a lower host byte-string ceiling.
+    #[must_use]
+    pub const fn with_byte_string_bytes(mut self, value: usize) -> Self {
+        self.byte_string_bytes = min_usize(self.byte_string_bytes, value);
+        self
+    }
+
+    /// Applies a lower host total traversal ceiling.
+    #[must_use]
+    pub const fn with_traversal_nodes(mut self, value: usize) -> Self {
+        self.traversal_nodes = min_usize(self.traversal_nodes, value);
+        self
+    }
+
+    /// Returns the effective artifact-byte ceiling.
+    pub(crate) const fn maximum_artifact_bytes(self) -> usize {
+        self.artifact_bytes
+    }
+    /// Returns the effective per-section byte ceiling.
+    pub(crate) const fn maximum_section_bytes(self) -> usize {
+        self.section_bytes
+    }
+    /// Returns the effective nesting-depth ceiling.
+    pub(crate) const fn maximum_nesting_depth(self) -> usize {
+        self.nesting_depth
+    }
+    /// Returns the effective per-container item ceiling.
+    pub(crate) const fn maximum_container_items(self) -> usize {
+        self.container_items
+    }
+    /// Returns the effective text-string byte ceiling.
+    pub(crate) const fn maximum_text_bytes(self) -> usize {
+        self.text_bytes
+    }
+    /// Returns the effective byte-string ceiling.
+    pub(crate) const fn maximum_byte_string_bytes(self) -> usize {
+        self.byte_string_bytes
+    }
+    /// Returns the effective traversal ceiling.
+    pub(crate) const fn maximum_traversal_nodes(self) -> usize {
+        self.traversal_nodes
+    }
+}
+
+/// Returns the smaller of two `usize` values in constant contexts.
+const fn min_usize(left: usize, right: usize) -> usize {
+    if left < right { left } else { right }
+}
 
 /// Envelope-only facts describing the implementation that produced an artifact.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1231,9 +1443,13 @@ fn check_depth(depth: usize) -> Result<(), EncodingError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ProducerInfo, SectionKind, constants, encode};
+    use super::{
+        DecodeErrorClass, DecodeLimits, ProducerInfo, SectionKind, constants, decode, encode,
+    };
     use neutral_compiler::{CompilationRequest, CompilationResult, capture, compile_captured};
-    use neutral_core::{CancellationToken, StructuralLimits, VocabularyContentDigest};
+    use neutral_core::{
+        CancellationToken, EncodedSectionDigest, StructuralLimits, VocabularyContentDigest,
+    };
     use neutral_reader::ValidatedDocument;
     use neutral_vocabulary::{
         VOCABULARY_ENCODING_VERSION, VOCABULARY_SCHEMA_VERSION, VocabularyLock,
@@ -1242,6 +1458,9 @@ mod tests {
         fs,
         path::{Path, PathBuf},
     };
+
+    /// Package-metadata version used for nonsemantic test producer envelopes.
+    const TEST_PRODUCER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
     /// Builds one validated scalar document for encoder tests.
     fn validated(source: &[u8]) -> ValidatedDocument {
@@ -1298,11 +1517,42 @@ mod tests {
         }
     }
 
+    /// Returns the first byte offset of one exact subsequence.
+    fn find_bytes(haystack: &[u8], needle: &[u8]) -> usize {
+        haystack
+            .windows(needle.len())
+            .position(|candidate| candidate == needle)
+            .expect("expected encoded subsequence must exist")
+    }
+
+    /// Mutates one section in place and refreshes its envelope integrity digest.
+    fn mutate_and_rehash(
+        encoded: &super::EncodedArtifact,
+        kind: SectionKind,
+        mutate: impl FnOnce(&mut [u8]),
+    ) -> Vec<u8> {
+        let mut bytes = encoded.as_bytes().to_vec();
+        let range = encoded.sections[kind.index()].clone();
+        let old_digest = EncodedSectionDigest::from_bytes(&bytes[range.clone()]).as_bytes();
+        mutate(&mut bytes[range.clone()]);
+        let new_digest = EncodedSectionDigest::from_bytes(&bytes[range]).as_bytes();
+        let envelope = encoded.sections[SectionKind::Envelope.index()].clone();
+        let digest_offset = envelope.start + find_bytes(&bytes[envelope.clone()], &old_digest);
+        bytes[digest_offset..digest_offset + old_digest.len()].copy_from_slice(&new_digest);
+        bytes
+    }
+
+    /// Changes the scalar immediately following one text map key.
+    fn mutate_scalar_after_key(section: &mut [u8], key: &str, replacement: u8) {
+        let offset = find_bytes(section, key.as_bytes()) + key.len();
+        section[offset] = replacement;
+    }
+
     /// Verifies the fixed frame and all five nonempty sections.
     #[test]
     fn encoder_emits_fixed_frame_and_sections() {
         let document = validated(b"neu \"0.1\"\nmodule sample\n\nnum answer = 42\n");
-        let encoded = encode(&document, &ProducerInfo::new("test", "0.1.0"))
+        let encoded = encode(&document, &ProducerInfo::new("test", TEST_PRODUCER_VERSION))
             .expect("validated document must encode");
         assert_eq!(&encoded.as_bytes()[..8], &constants::MAGIC);
         assert_eq!(
@@ -1322,6 +1572,277 @@ mod tests {
         ] {
             assert!(!encoded.section_bytes(kind).is_empty());
         }
+    }
+
+    /// Verifies one encoded artifact reconstructs an equivalent immutable reader.
+    #[test]
+    fn valid_artifact_decodes_to_an_equivalent_reader() {
+        let document = validated(b"neu \"0.1\"\nmodule sample\n\nnum answer = 42\n");
+        let encoded = encode(&document, &ProducerInfo::new("test", TEST_PRODUCER_VERSION))
+            .expect("validated document must encode");
+        let decoded = decode(
+            encoded.as_bytes(),
+            DecodeLimits::hard(),
+            &CancellationToken::new(),
+        )
+        .expect("encoded document must decode");
+        assert!(document.logically_equivalent(&decoded));
+        assert_eq!(document.artifacts().as_ref(), decoded.artifacts().as_ref());
+    }
+
+    /// Verifies fixed-frame truncation and header corruption fail before CBOR parsing.
+    #[test]
+    fn hostile_frame_failures_are_classified() {
+        let document = validated(b"neu \"0.1\"\nmodule sample\n\nnum answer = 42\n");
+        let encoded = encode(&document, &ProducerInfo::new("test", TEST_PRODUCER_VERSION))
+            .expect("fixture must encode");
+        let cancellation = CancellationToken::new();
+        for (bytes, class) in [
+            (
+                encoded.as_bytes()[..constants::HEADER_BYTES - 1].to_vec(),
+                DecodeErrorClass::MalformedFrame,
+            ),
+            (
+                {
+                    let mut bytes = encoded.as_bytes().to_vec();
+                    bytes[0] ^= 1;
+                    bytes
+                },
+                DecodeErrorClass::MalformedFrame,
+            ),
+            (
+                {
+                    let mut bytes = encoded.as_bytes().to_vec();
+                    bytes[9] = 2;
+                    bytes
+                },
+                DecodeErrorClass::UnsupportedVersion,
+            ),
+            (
+                {
+                    let mut bytes = encoded.as_bytes().to_vec();
+                    bytes[40] = 1;
+                    bytes
+                },
+                DecodeErrorClass::UnsupportedCapability,
+            ),
+        ] {
+            assert_eq!(
+                decode(&bytes, DecodeLimits::hard(), &cancellation)
+                    .expect_err("hostile frame must fail")
+                    .class(),
+                class
+            );
+        }
+    }
+
+    /// Verifies envelope lexical, schema, version, and integrity failures stay distinct.
+    #[test]
+    fn hostile_envelope_failures_are_classified() {
+        let document = validated(b"neu \"0.1\"\nmodule sample\n\nnum answer = 42\n");
+        let encoded = encode(&document, &ProducerInfo::new("test", TEST_PRODUCER_VERSION))
+            .expect("fixture must encode");
+        let cancellation = CancellationToken::new();
+        let mut malformed = encoded.as_bytes().to_vec();
+        malformed[encoded.sections[0].start] = 0xfa;
+        assert_eq!(
+            decode(&malformed, DecodeLimits::hard(), &cancellation)
+                .expect_err("float envelope must fail")
+                .class(),
+            DecodeErrorClass::MalformedCbor
+        );
+
+        let mut unknown = encoded.as_bytes().to_vec();
+        let envelope = encoded.sections[0].clone();
+        let producer = envelope.start + find_bytes(&unknown[envelope], b"producer");
+        unknown[producer + b"producer".len() - 1] = b'x';
+        assert_eq!(
+            decode(&unknown, DecodeLimits::hard(), &cancellation)
+                .expect_err("unknown envelope key must fail")
+                .class(),
+            DecodeErrorClass::InvalidEncodedSchema
+        );
+
+        let mut duplicate = encoded.as_bytes().to_vec();
+        let envelope = encoded.sections[0].clone();
+        let producer = envelope.start + find_bytes(&duplicate[envelope], b"producer");
+        duplicate[producer..producer + b"producer".len()].copy_from_slice(b"versions");
+        assert_eq!(
+            decode(&duplicate, DecodeLimits::hard(), &cancellation)
+                .expect_err("duplicate envelope key must fail")
+                .class(),
+            DecodeErrorClass::InvalidEncodedSchema
+        );
+
+        let mut version = encoded.as_bytes().to_vec();
+        let envelope = encoded.sections[0].clone();
+        let encoding =
+            envelope.start + find_bytes(&version[envelope], constants::ENCODING.as_bytes());
+        version[encoding + constants::ENCODING.len() - 1] = b'2';
+        assert_eq!(
+            decode(&version, DecodeLimits::hard(), &cancellation)
+                .expect_err("unsupported encoding version must fail")
+                .class(),
+            DecodeErrorClass::UnsupportedVersion
+        );
+
+        let mut integrity = encoded.as_bytes().to_vec();
+        let last = integrity.len() - 1;
+        integrity[last] ^= 1;
+        assert_eq!(
+            decode(&integrity, DecodeLimits::hard(), &cancellation)
+                .expect_err("section corruption must fail integrity")
+                .class(),
+            DecodeErrorClass::IntegrityMismatch
+        );
+    }
+
+    /// Verifies authenticated hostile section states reach their owning validators.
+    #[test]
+    fn hostile_section_failures_are_classified() {
+        let document = validated(b"neu \"0.1\"\nmodule sample\n\nnum answer = 42\n");
+        let encoded = encode(&document, &ProducerInfo::new("test", TEST_PRODUCER_VERSION))
+            .expect("fixture must encode");
+        let cancellation = CancellationToken::new();
+
+        let malformed = mutate_and_rehash(&encoded, SectionKind::LogicalPayload, |section| {
+            section[0] = 0xfa;
+        });
+        assert_eq!(
+            decode(&malformed, DecodeLimits::hard(), &cancellation)
+                .expect_err("forbidden logical CBOR must fail")
+                .class(),
+            DecodeErrorClass::MalformedCbor
+        );
+
+        let schema = mutate_and_rehash(&encoded, SectionKind::LogicalPayload, |section| {
+            let offset = find_bytes(section, b"record_types");
+            section[offset + b"record_types".len() - 1] = b'z';
+        });
+        assert_eq!(
+            decode(&schema, DecodeLimits::hard(), &cancellation)
+                .expect_err("unknown logical key must fail")
+                .class(),
+            DecodeErrorClass::InvalidEncodedSchema
+        );
+
+        let fingerprint = document.declarations()[0].fingerprint().digest().as_bytes();
+        let invalid_logical = mutate_and_rehash(&encoded, SectionKind::LogicalPayload, |section| {
+            let offset = find_bytes(section, &fingerprint);
+            section[offset] ^= 1;
+        });
+        assert_eq!(
+            decode(&invalid_logical, DecodeLimits::hard(), &cancellation)
+                .expect_err("invalid fingerprint must fail")
+                .class(),
+            DecodeErrorClass::InvalidLogicalIr
+        );
+
+        let invalid_name = mutate_and_rehash(&encoded, SectionKind::LogicalPayload, |section| {
+            let offset = find_bytes(section, b"sample");
+            section[offset] = b'S';
+        });
+        assert_eq!(
+            decode(&invalid_name, DecodeLimits::hard(), &cancellation)
+                .expect_err("invalid module name must fail")
+                .class(),
+            DecodeErrorClass::InvalidLogicalIr
+        );
+
+        let invalid_source = mutate_and_rehash(&encoded, SectionKind::SourceMap, |section| {
+            mutate_scalar_after_key(section, constants::key::ELEMENT_ID, 2);
+        });
+        assert_eq!(
+            decode(&invalid_source, DecodeLimits::hard(), &cancellation)
+                .expect_err("source ownership mismatch must fail")
+                .class(),
+            DecodeErrorClass::InvalidSourceMap
+        );
+
+        let invalid_provenance = mutate_and_rehash(&encoded, SectionKind::Provenance, |section| {
+            mutate_scalar_after_key(section, constants::key::ELEMENT_ID, 2);
+        });
+        assert_eq!(
+            decode(&invalid_provenance, DecodeLimits::hard(), &cancellation)
+                .expect_err("provenance ownership mismatch must fail")
+                .class(),
+            DecodeErrorClass::InvalidProvenance
+        );
+
+        let invalid_derivation = mutate_and_rehash(&encoded, SectionKind::Derivation, |section| {
+            mutate_scalar_after_key(section, constants::key::SAFE_BOUNDED_OUTPUT, 0xf4);
+        });
+        assert_eq!(
+            decode(&invalid_derivation, DecodeLimits::hard(), &cancellation)
+                .expect_err("unsafe derivation policy must fail")
+                .class(),
+            DecodeErrorClass::InvalidDerivation
+        );
+    }
+
+    /// Verifies mismatched captured vocabulary identity fails without external lookup.
+    #[test]
+    fn hostile_vocabulary_identity_mismatch_fails_closed() {
+        let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(Path::parent)
+            .expect("encoding crate must be inside the workspace");
+        let source = fs::read(
+            workspace.join("portable/spec/v0/fixtures/positive/vocabulary/minimal-vocabulary.neu"),
+        )
+        .expect("vocabulary source fixture must be readable");
+        let bundle = fs::read(
+            workspace
+                .join("portable/spec/v0/fixtures/vocabulary/bundles/positive/comprehensive.json"),
+        )
+        .expect("vocabulary bundle fixture must be readable");
+        let document = validated_with_vocabulary(&source, &bundle);
+        let encoded = encode(&document, &ProducerInfo::new("test", TEST_PRODUCER_VERSION))
+            .expect("vocabulary fixture must encode");
+        let digest = document
+            .artifacts()
+            .logical_document()
+            .vocabulary()
+            .expect("fixture must retain vocabulary")
+            .identity()
+            .content_digest()
+            .as_bytes();
+        let mismatch = mutate_and_rehash(&encoded, SectionKind::Derivation, |section| {
+            let offset = find_bytes(section, &digest);
+            section[offset] ^= 1;
+        });
+        assert_eq!(
+            decode(&mismatch, DecodeLimits::hard(), &CancellationToken::new(),)
+                .expect_err("mismatched vocabulary identity must fail")
+                .class(),
+            DecodeErrorClass::InvalidDerivation
+        );
+    }
+
+    /// Verifies host limits and cancellation prevent reader construction.
+    #[test]
+    fn hostile_limits_and_cancellation_fail_boundedly() {
+        let document = validated(b"neu \"0.1\"\nmodule sample\n\nnum answer = 42\n");
+        let encoded = encode(&document, &ProducerInfo::new("test", TEST_PRODUCER_VERSION))
+            .expect("fixture must encode");
+        assert_eq!(
+            decode(
+                encoded.as_bytes(),
+                DecodeLimits::hard().with_artifact_bytes(encoded.as_bytes().len() - 1),
+                &CancellationToken::new(),
+            )
+            .expect_err("host artifact limit must fail")
+            .class(),
+            DecodeErrorClass::EncodedSizeLimit
+        );
+        let cancelled = CancellationToken::new();
+        cancelled.cancel();
+        assert_eq!(
+            decode(encoded.as_bytes(), DecodeLimits::hard(), &cancelled)
+                .expect_err("cancelled decode must fail")
+                .class(),
+            DecodeErrorClass::Cancelled
+        );
     }
 
     /// Verifies producer changes affect only the envelope section.
@@ -1352,7 +1873,7 @@ mod tests {
     #[test]
     fn repeated_encoding_is_byte_deterministic() {
         let document = validated(b"neu \"0.1\"\nmodule sample\n\nnum answer = 42\n");
-        let producer = ProducerInfo::new("test", "0.1.0");
+        let producer = ProducerInfo::new("test", TEST_PRODUCER_VERSION);
         assert_eq!(encode(&document, &producer), encode(&document, &producer));
     }
 
@@ -1361,7 +1882,7 @@ mod tests {
     fn encoding_does_not_mutate_validated_input() {
         let document = validated(b"neu \"0.1\"\nmodule sample\n\nnum answer = 42\n");
         let before = document.artifacts().as_ref().clone();
-        let _encoded = encode(&document, &ProducerInfo::new("test", "0.1.0"))
+        let _encoded = encode(&document, &ProducerInfo::new("test", TEST_PRODUCER_VERSION))
             .expect("validated document must encode");
         assert_eq!(document.artifacts().as_ref(), &before);
     }
@@ -1392,9 +1913,19 @@ mod tests {
             } else {
                 validated(&source)
             };
-            let encoded = encode(&document, &ProducerInfo::new("fixture-test", "0.1.0"))
-                .expect("every positive validated fixture must encode");
+            let encoded = encode(
+                &document,
+                &ProducerInfo::new("fixture-test", TEST_PRODUCER_VERSION),
+            )
+            .expect("every positive validated fixture must encode");
             assert!(encoded.as_bytes().len() <= constants::MAXIMUM_ARTIFACT_BYTES);
+            let decoded = decode(
+                encoded.as_bytes(),
+                DecodeLimits::hard(),
+                &CancellationToken::new(),
+            )
+            .expect("every encoded positive fixture must decode");
+            assert_eq!(document.artifacts().as_ref(), decoded.artifacts().as_ref());
         }
     }
 
@@ -1404,7 +1935,10 @@ mod tests {
         let document = validated(b"neu \"0.1\"\nmodule sample\n\nnum answer = 42\n");
         let oversized_name = "x".repeat(constants::MAXIMUM_TEXT_BYTES + 1);
         assert_eq!(
-            encode(&document, &ProducerInfo::new(oversized_name, "0.1.0")),
+            encode(
+                &document,
+                &ProducerInfo::new(oversized_name, TEST_PRODUCER_VERSION),
+            ),
             Err(super::EncodingError::EncodedSizeLimit)
         );
     }

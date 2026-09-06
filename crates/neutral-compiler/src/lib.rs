@@ -109,7 +109,7 @@ pub mod diagnostics {
 }
 
 /// The frozen v0 language-behavior contract used for captured compilation.
-pub const LANGUAGE_BEHAVIOR_VERSION: &str = "0.1.0";
+pub use neutral_ir::LANGUAGE_BEHAVIOR_VERSION;
 
 /// Host-supplied input for one prospective Neutral source unit.
 #[derive(Clone, Debug)]

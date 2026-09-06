@@ -6,6 +6,8 @@
 //! records. It must not acquire source input, expose compiler-private models, or
 //! perform host I/O.
 
+pub mod language;
+
 use neutral_core::{
     ByteSpan, CoreError, SemanticDigest, SourceContentDigest, StructuralLimits,
     VocabularyContentDigest, nht_frame,
@@ -14,6 +16,8 @@ use std::{collections::BTreeMap, fmt};
 
 /// Frozen logical IR schema version for the minimal v0 artifact.
 pub const LOGICAL_IR_SCHEMA_VERSION: &str = "0.1.0";
+/// Frozen v0 language-behavior version shared by artifacts and producers.
+pub const LANGUAGE_BEHAVIOR_VERSION: &str = "0.1.0";
 /// Frozen source-map schema version for the minimal v0 artifact.
 pub const SOURCE_MAP_VERSION: &str = "0.1.0";
 /// Frozen provenance schema version for the minimal v0 artifact.
@@ -154,6 +158,40 @@ pub struct ExactNumber {
 }
 
 impl ExactNumber {
+    /// Reconstructs one validated normalized exact number from external parts.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the coefficient is noncanonical or the configured
+    /// digit or absolute-scale limit is exceeded.
+    pub fn from_normalized_parts(
+        negative: bool,
+        coefficient: impl Into<String>,
+        scale: i64,
+        maximum_digits: u64,
+        maximum_scale: u64,
+    ) -> Result<Self, IrError> {
+        let coefficient = coefficient.into();
+        let digit_count = u64::try_from(coefficient.len()).unwrap_or(u64::MAX);
+        if digit_count > maximum_digits || scale.unsigned_abs() > maximum_scale {
+            return Err(IrError::ExactNumberLimitExceeded);
+        }
+        let valid_digits =
+            !coefficient.is_empty() && coefficient.bytes().all(|byte| byte.is_ascii_digit());
+        let valid_zero = coefficient == "0" && !negative && scale == 0;
+        let valid_nonzero = coefficient
+            .starts_with(|character: char| ('1'..='9').contains(&character))
+            && !coefficient.ends_with('0');
+        if !valid_digits || (!valid_zero && !valid_nonzero) {
+            return Err(IrError::InvalidExactNumber);
+        }
+        Ok(Self {
+            negative,
+            coefficient,
+            scale,
+        })
+    }
+
     /// Normalizes one frozen source number without floating-point conversion.
     ///
     /// # Errors
@@ -861,6 +899,12 @@ fn format_safe_string(value: &str, formatter: &mut fmt::Formatter<'_>) -> fmt::R
 pub struct DeclarationFingerprint(SemanticDigest);
 
 impl DeclarationFingerprint {
+    /// Reconstructs a declared fingerprint from validated external digest bytes.
+    #[must_use]
+    pub const fn from_digest(digest: SemanticDigest) -> Self {
+        Self(digest)
+    }
+
     /// Computes the v1 binding fingerprint over resolved type and logical value.
     ///
     /// # Errors

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Frozen framing, capability, and schema spellings for the v0 encoder.
+//! Frozen framing, capability, and schema spellings for the v0 codec.
 
 /// Frozen external encoding identifier.
 pub const ENCODING: &str = "NIR-CBOR/0.1";
@@ -46,6 +46,10 @@ pub const CAPABILITY_NAMES: [&str; 8] = [
     "ordinary-reuse-provenance",
     "default-provenance",
 ];
+/// Mask containing every capability bit understood by this codec.
+pub const KNOWN_CAPABILITY_MASK: u64 = (1_u64 << CAPABILITY_NAMES.len()) - 1;
+/// Number of non-envelope sections covered by envelope integrity records.
+pub const INTEGRITY_SECTION_COUNT: usize = SECTION_COUNT - 1;
 
 /// Schema field and discriminator spellings.
 pub mod key {

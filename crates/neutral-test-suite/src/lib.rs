@@ -15,7 +15,8 @@ mod tests {
     };
     use neutral_core::{CancellationToken, ResultClass, StructuralLimits, VocabularyContentDigest};
     use neutral_encoding::{
-        EncodingError, ProducerInfo, SectionKind, constants as encoding, encode,
+        DecodeErrorClass, DecodeLimits, EncodingError, ProducerInfo, SectionKind,
+        constants as encoding, decode, encode,
     };
     use neutral_ir::{
         CompilationArtifacts, Declaration, LOGICAL_IR_SCHEMA_VERSION, LogicalDocument,
@@ -200,6 +201,8 @@ mod tests {
     const FIXTURE_VOCABULARY_IDENTITY: &str = "Fixture";
     /// Frozen fixture vocabulary release version.
     const FIXTURE_VOCABULARY_VERSION: &str = "0.1.0";
+    /// Package-metadata version used for nonsemantic test producer envelopes.
+    const TEST_PRODUCER_VERSION: &str = env!("CARGO_PKG_VERSION");
     /// Captured bundle requiring an unsupported structural feature.
     const UNKNOWN_FEATURE_VOCABULARY_BUNDLE: &[u8] = include_bytes!(
         "../../../portable/spec/v0/fixtures/vocabulary/bundles/negative/unknown-feature.json"
@@ -2416,7 +2419,7 @@ mod tests {
     /// Verifies the external encoder emits the fixed frame and all five sections.
     fn integration_stage7_encoder_emits_complete_fixed_frame() {
         let document = compile_reader(MINIMAL_SOURCE);
-        let encoded = encode(&document, &ProducerInfo::new("test", "0.1.0"))
+        let encoded = encode(&document, &ProducerInfo::new("test", TEST_PRODUCER_VERSION))
             .expect("validated fixture should encode");
         assert_eq!(
             &encoded.as_bytes()[..encoding::MAGIC.len()],
@@ -2431,6 +2434,26 @@ mod tests {
         ] {
             assert!(!encoded.section_bytes(kind).is_empty());
         }
+    }
+
+    #[test]
+    /// Verifies an external artifact reconstructs exact immutable reader views.
+    fn system_stage7_encoded_artifact_reconstructs_reader_views() {
+        let original = compile_reader(COMBINED_REUSE_REFERENCE);
+        let encoded = encode(
+            &original,
+            &ProducerInfo::new("system-test", TEST_PRODUCER_VERSION),
+        )
+        .expect("system fixture should encode");
+        let decoded = decode(
+            encoded.as_bytes(),
+            DecodeLimits::hard(),
+            &CancellationToken::new(),
+        )
+        .expect("system artifact should decode");
+        assert!(original.logically_equivalent(&decoded));
+        assert_eq!(original.artifacts().as_ref(), decoded.artifacts().as_ref());
+        assert_eq!(summarize(&original), summarize(&decoded));
     }
 
     #[test]
@@ -2463,7 +2486,7 @@ mod tests {
     fn property_stage7_encoding_is_deterministic_and_nonmutating() {
         let document = compile_reader(COMBINED_REUSE_REFERENCE);
         let before = document.artifacts().as_ref().clone();
-        let producer = ProducerInfo::new("test", "0.1.0");
+        let producer = ProducerInfo::new("test", TEST_PRODUCER_VERSION);
         assert_eq!(encode(&document, &producer), encode(&document, &producer));
         assert_eq!(document.artifacts().as_ref(), &before);
     }
@@ -2497,9 +2520,87 @@ mod tests {
             } else {
                 compile_reader(&source)
             };
-            let encoded = encode(&document, &ProducerInfo::new("fixture-test", "0.1.0"))
-                .expect("positive validated fixture should encode");
+            let encoded = encode(
+                &document,
+                &ProducerInfo::new("fixture-test", TEST_PRODUCER_VERSION),
+            )
+            .expect("positive validated fixture should encode");
             assert!(encoded.as_bytes().len() <= encoding::MAXIMUM_ARTIFACT_BYTES);
+            let decoded = decode(
+                encoded.as_bytes(),
+                DecodeLimits::hard(),
+                &CancellationToken::new(),
+            )
+            .expect("positive encoded fixture should decode");
+            assert_eq!(document.artifacts().as_ref(), decoded.artifacts().as_ref());
+        }
+    }
+
+    #[test]
+    /// Verifies representative hostile framing, integrity, capability, and limit classes.
+    fn security_stage7_hostile_encoded_inputs_fail_boundedly() {
+        let document = compile_reader(MINIMAL_SOURCE);
+        let encoded = encode(
+            &document,
+            &ProducerInfo::new("security-test", TEST_PRODUCER_VERSION),
+        )
+        .expect("security fixture should encode");
+        let cancellation = CancellationToken::new();
+        assert_eq!(
+            decode(
+                &encoded.as_bytes()[..encoding::HEADER_BYTES - 1],
+                DecodeLimits::hard(),
+                &cancellation,
+            )
+            .expect_err("truncated frame must fail")
+            .class(),
+            DecodeErrorClass::MalformedFrame
+        );
+        let mut unknown_capability = encoded.as_bytes().to_vec();
+        unknown_capability[40] = 1;
+        assert_eq!(
+            decode(&unknown_capability, DecodeLimits::hard(), &cancellation,)
+                .expect_err("unknown capability must fail")
+                .class(),
+            DecodeErrorClass::UnsupportedCapability
+        );
+        let mut corrupt = encoded.as_bytes().to_vec();
+        let last = corrupt.len() - 1;
+        corrupt[last] ^= 1;
+        assert_eq!(
+            decode(&corrupt, DecodeLimits::hard(), &cancellation)
+                .expect_err("corrupt section must fail")
+                .class(),
+            DecodeErrorClass::IntegrityMismatch
+        );
+        assert_eq!(
+            decode(
+                encoded.as_bytes(),
+                DecodeLimits::hard().with_artifact_bytes(encoded.as_bytes().len() - 1),
+                &cancellation,
+            )
+            .expect_err("host limit must fail")
+            .class(),
+            DecodeErrorClass::EncodedSizeLimit
+        );
+    }
+
+    #[test]
+    /// Verifies arbitrary single-byte encoded mutations terminate without partial views.
+    fn fuzz_smoke_stage7_single_byte_mutations_terminate() {
+        let document = compile_reader(MINIMAL_SOURCE);
+        let encoded = encode(
+            &document,
+            &ProducerInfo::new("fuzz-test", TEST_PRODUCER_VERSION),
+        )
+        .expect("fuzz seed should encode");
+        for index in 0..encoded.as_bytes().len() {
+            let mut mutation = encoded.as_bytes().to_vec();
+            mutation[index] ^= 1;
+            if let Ok(decoded) = decode(&mutation, DecodeLimits::hard(), &CancellationToken::new())
+            {
+                assert!(!decoded.module_name().is_empty());
+            }
         }
     }
 
@@ -2509,7 +2610,10 @@ mod tests {
         let document = compile_reader(MINIMAL_SOURCE);
         let oversized = "x".repeat(encoding::MAXIMUM_TEXT_BYTES + 1);
         assert_eq!(
-            encode(&document, &ProducerInfo::new(oversized, "0.1.0")),
+            encode(
+                &document,
+                &ProducerInfo::new(oversized, TEST_PRODUCER_VERSION),
+            ),
             Err(EncodingError::EncodedSizeLimit)
         );
     }

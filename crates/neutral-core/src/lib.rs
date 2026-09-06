@@ -26,6 +26,12 @@ const SHA256_TEXT_LENGTH: usize = SHA256_TEXT_PREFIX.len() + 64;
 pub struct SourceContentDigest([u8; 32]);
 
 impl SourceContentDigest {
+    /// Reconstructs a typed digest from an externally validated 32-byte value.
+    #[must_use]
+    pub const fn from_raw_bytes(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
+
     /// Computes the digest over exactly `bytes`, without normalization.
     #[must_use]
     pub fn from_bytes(bytes: &[u8]) -> Self {
@@ -64,6 +70,12 @@ impl EncodedSectionDigest {
 pub struct VocabularyContentDigest([u8; 32]);
 
 impl VocabularyContentDigest {
+    /// Reconstructs a typed digest from an externally validated 32-byte value.
+    #[must_use]
+    pub const fn from_raw_bytes(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
+
     /// Computes the digest over exactly `bytes`, without JSON normalization.
     #[must_use]
     pub fn from_bytes(bytes: &[u8]) -> Self {
@@ -145,6 +157,12 @@ fn lowercase_hex_value(value: u8) -> Option<u8> {
 pub struct SemanticDigest([u8; 32]);
 
 impl SemanticDigest {
+    /// Reconstructs a typed semantic digest from validated transcript bytes.
+    #[must_use]
+    pub const fn from_raw_bytes(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
+
     /// Hashes `payload` using the frozen NHT-v1 framing and supplied ASCII domain.
     ///
     /// # Errors

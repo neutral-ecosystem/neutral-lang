@@ -519,23 +519,23 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Step 3: decode and validate hostile input
 
-- [ ] Validate framing/length/version/capability before allocation.
-- [ ] Decode into untrusted intermediate data.
-- [ ] Validate IDs, types, values, references, source maps, provenance,
+- [*] Validate framing/length/version/capability before allocation.
+- [*] Decode into untrusted intermediate data.
+- [*] Validate IDs, types, values, references, source maps, provenance,
       derivation, limits, and exact vocabulary contracts.
-- [ ] Expose reader views only after complete validation.
+- [*] Expose reader views only after complete validation.
 
 #### Step validation
 
-- [ ] Valid artifacts produce expected immutable reader observations.
-- [ ] Every invalid encoded state returns a bounded classified error.
-- [ ] No unchecked length controls proportional allocation.
-- [ ] Missing/mismatched vocabulary contracts fail without lookup.
+- [*] Valid artifacts produce expected immutable reader observations.
+- [*] Every invalid encoded state returns a bounded classified error.
+- [*] No unchecked length controls proportional allocation.
+- [*] Missing/mismatched vocabulary contracts fail without lookup.
 
 ### Stage 7 validation
 
-- [ ] Valid artifacts decode to alpha-equivalent logical IR.
-- [ ] Corrupt/truncated/oversized/duplicate/dangling/unknown cases fail boundedly.
+- [*] Valid artifacts decode to alpha-equivalent logical IR.
+- [*] Corrupt/truncated/oversized/duplicate/dangling/unknown cases fail boundedly.
 - [ ] Standalone probe inspects encoded artifacts without compiler linkage.
 - [ ] Decoder fuzzing and allocation review pass.
 

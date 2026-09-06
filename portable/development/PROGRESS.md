@@ -2,23 +2,37 @@
 
 # Neutral v0 development progress
 
-Status: Stage 7 Step 2 complete.
+Status: Stage 7 Step 3 complete.
 
 ## Current focus
 
-- Stage: Stage 7, Step 2
-- Status: Validated-document encoder complete
-- Last updated: 2026-09-05
+- Stage: Stage 7, Step 3
+- Status: Hostile external artifact decoder complete
+- Last updated: 2026-09-06
 
 ## Next actions
 
-- [ ] Continue with Stage 7, Step 3: decode and validate hostile input.
+- [ ] Complete the remaining Stage 7 validation: standalone encoded-artifact
+      probe isolation plus decoder fuzzing and allocation review evidence.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-09-06: Completed Stage 7, Step 3. Added a bounds-first decoder for
+  the fixed frame and duplicate-preserving restricted CBOR; stable classified
+  failures for size, framing, versions, capabilities, integrity, schema,
+  logical IR, source maps, provenance, derivation, cancellation, and internal
+  defects; exact reconstruction of every logical and companion contract; and a
+  final trusted-reader gate before any public view is returned. All positive
+  fixtures round-trip exactly, while frame, duplicate-key, version, integrity,
+  ownership, name-category, fingerprint, derivation, vocabulary-identity, limit,
+  cancellation, and single-byte mutation vectors fail boundedly. Captured
+  vocabulary mismatches require no registry, path, network, or other lookup.
+  Compiler, vocabulary, IR, and decoder name checks now share one protected-name
+  and ASCII-category contract module instead of duplicating language spellings.
 
 - [*] 2026-09-05: Completed Stage 7, Step 2. Added the `neutral-encoding`
   boundary, which accepts only immutable `ValidatedDocument` input and emits

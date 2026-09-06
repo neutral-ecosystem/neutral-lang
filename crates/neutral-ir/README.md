@@ -4,7 +4,9 @@
 
 `neutral-ir` owns Neutral's public logical intermediate-representation and
 source-accounting contracts. It is where accepted program meaning is described
-independently of source spelling, storage, or external encoding.
+independently of source spelling, storage, or external encoding. Its shared
+`language` namespace is the single source for frozen core spellings and
+identifier predicates needed by producers and hostile readers.
 
 It depends only on `neutral-core`. The compiler produces this logical model;
 the reader validates and exposes it; the vocabulary layer refers to it; and the
