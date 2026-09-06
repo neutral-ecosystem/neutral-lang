@@ -636,13 +636,25 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 Execute [05-RELEASE.md](05-RELEASE.md).
 
-### Stage 10 validation
+### Stage 10 — v0 Release Validation
 
-- [ ] All prior stage gates pass from a clean release candidate.
-- [ ] the future stages/changes should be easy and staight forwards like chnaging a version v0.1.0 to v0.1.1 in one + run a command = update the whole project 
-- [ ] make the future dev process better and less reliante on the manual changing files
-- [ ] Required artifacts and complete retained evidence exist.
-- [ ] Independent probe proof passes.
-- [ ] All exclusions remain rejected.
-- [ ] Release approval records exact independent contract versions and residual
-      risks.
+- [ ] All previous stage gates pass from a clean release-candidate build.
+- [ ] The complete v0 release can be built, tested, validated, and packaged using the documented release workflow.
+- [ ] Versioning is centralized so that changing a release version, for example `v0.1.0` → `v0.1.1`, requires changing it in only one authoritative location.
+- [ ] A single release/update command propagates the version and generated metadata across all required crates, packages, manifests, documentation, and artifacts.
+- [ ] Repetitive development and release tasks are automated wherever practical instead of requiring manual edits across multiple files.
+- [ ] Generated files and metadata have a clearly defined source of truth and can be regenerated deterministically.
+- [ ] Future stages can extend the project without requiring changes to unrelated components or duplicating release logic.
+- [ ] Common development operations such as formatting, linting, testing, validation, building, and release preparation are exposed through simple project-level commands.
+- [ ] CI uses the same validation and build commands used by developers locally.
+- [ ] A clean checkout can reproduce the release without relying on undocumented local state or manually prepared files.
+- [ ] Required release artifacts are generated successfully and all required validation evidence is retained.
+- [ ] Independent probe validation passes against the release candidate.
+- [ ] All explicitly excluded, unsupported, or forbidden behavior remains rejected.
+- [ ] Release validation records the exact versions of all independent contracts, schemas, protocols, and compatibility boundaries.
+- [ ] The release record documents known limitations, residual risks, exclusions, compatibility guarantees, and deferred work.
+- [ ] No known release-blocking issue remains unresolved.
+
+#### Stage Gate
+
+Stage 10 passes only when the project can be reproduced from a clean checkout, validated through the standard automated workflow, released with centralized version management, and extended in future versions without relying on repetitive manual project-wide edits.
