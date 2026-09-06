@@ -20,7 +20,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.97.1"
 license = "Apache-2.0"
-repository = "https://github.com/neutral-lang/neutral-lang"
+repository = "https://github.com/neutral-ecosystem/neutral-lang"
 
 [workspace.lints.rust]
 missing_docs = "warn"

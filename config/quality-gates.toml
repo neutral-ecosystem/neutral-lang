@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# Stage 9 quality thresholds. A gate is not a pass until its named tool has
+# produced retained evidence for the exact candidate under review.
+[coverage]
+tool = "cargo-llvm-cov"
+minimum_line_percent = 85
+minimum_function_percent = 90
+minimum_region_percent = 80
+status = "blocked-missing-llvm-tools"
+
+[mutation]
+tool = "cargo-mutants"
+critical_target = "crates/neutral-ir/src/language.rs"
+minimum_caught_percent = 100
+observed_mutants = 38
+observed_caught = 38
+status = "pass"
+
+[fuzz]
+tool = "cargo-fuzz"
+targets = ["source", "vocabulary", "ir", "formatter", "probe"]
+minimum_seconds_per_target = 900
+status = "targets-ready-campaign-not-run"
+
+[performance]
+harness = "neutral-bench/stage9"
+pr_profile = "informational"
+release_profile = "dedicated-runner-baseline-required"
+soak_profile = "manual"
+status = "local-profiles-pass-dedicated-baseline-pending"

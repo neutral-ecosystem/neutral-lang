@@ -376,12 +376,30 @@ pub fn capture(request: CompilationRequest) -> Result<CapturedCompilation, Captu
 /// capture; this boundary performs no registry, path, cache, or network lookup.
 #[must_use]
 pub fn compile_captured(captured: &CapturedCompilation) -> CompilationResult {
+    compile_captured_with_checkpoints(captured, |_| {})
+}
+
+/// Internal compilation handoffs at which cooperative cancellation is observed.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CompilationCheckpoint {
+    /// Exact source and optional vocabulary input have been captured.
+    Capture,
+    /// The optional vocabulary contract has been validated.
+    Vocabulary,
+    /// Source decoding, lexing, layout, and parsing have completed.
+    Frontend,
+    /// Semantic validation and lowering have completed before publication.
+    Semantics,
+}
+
+/// Compiles captured input while exposing deterministic handoffs to private tests.
+fn compile_captured_with_checkpoints(
+    captured: &CapturedCompilation,
+    mut checkpoint: impl FnMut(CompilationCheckpoint),
+) -> CompilationResult {
+    checkpoint(CompilationCheckpoint::Capture);
     if captured.cancellation.is_cancelled() {
-        return CompilationResult::Failure(CompilationFailure {
-            class: ResultClass::Cancellation,
-            detail: CompilationFailureDetail::Cancelled,
-            diagnostics: Vec::new(),
-        });
+        return cancellation_failure();
     }
 
     let vocabulary = match captured.vocabulary.as_ref() {
@@ -395,23 +413,51 @@ pub fn compile_captured(captured: &CapturedCompilation) -> CompilationResult {
         },
         None => None,
     };
+    checkpoint(CompilationCheckpoint::Vocabulary);
+    if captured.cancellation.is_cancelled() {
+        return cancellation_failure();
+    }
     match frontend::parse(captured.source(), captured.limits()) {
-        Ok(unit) => match semantics::lower(
-            unit,
-            vocabulary.as_ref(),
-            captured.source_digest(),
-            captured.source().len(),
-            captured.limits(),
-        ) {
-            Ok(artifacts) => CompilationResult::Success(Arc::new(artifacts)),
-            Err(error) => CompilationResult::Failure(error.into_failure(captured.source_digest())),
-        },
+        Ok(unit) => {
+            checkpoint(CompilationCheckpoint::Frontend);
+            if captured.cancellation.is_cancelled() {
+                return cancellation_failure();
+            }
+            match semantics::lower(
+                unit,
+                vocabulary.as_ref(),
+                captured.source_digest(),
+                captured.source().len(),
+                captured.limits(),
+            ) {
+                Ok(artifacts) => {
+                    checkpoint(CompilationCheckpoint::Semantics);
+                    if captured.cancellation.is_cancelled() {
+                        cancellation_failure()
+                    } else {
+                        CompilationResult::Success(Arc::new(artifacts))
+                    }
+                }
+                Err(error) => {
+                    CompilationResult::Failure(error.into_failure(captured.source_digest()))
+                }
+            }
+        }
         Err(error) => CompilationResult::Failure(CompilationFailure {
             class: error.class(),
             detail: error.detail(),
             diagnostics: error.into_diagnostics(captured.source_digest()),
         }),
     }
+}
+
+/// Returns the uniform fail-closed compilation cancellation result.
+fn cancellation_failure() -> CompilationResult {
+    CompilationResult::Failure(CompilationFailure {
+        class: ResultClass::Cancellation,
+        detail: CompilationFailureDetail::Cancelled,
+        diagnostics: Vec::new(),
+    })
 }
 
 /// Converts one strict captured-bundle failure into stable bounded diagnostics.
@@ -489,109 +535,5 @@ pub fn format_captured(captured: &CapturedCompilation) -> Result<FormattedSource
 }
 
 #[cfg(test)]
-/// Unit tests for captured-input and I/O-free compiler contracts.
-mod tests {
-    use super::diagnostics;
-    use super::{
-        CaptureError, CompilationFailureDetail, CompilationRequest, capture, compile_captured,
-    };
-    use neutral_core::{CancellationToken, SourceContentDigest, StructuralLimits};
-
-    /// Returns small deterministic limits for capture tests.
-    fn test_limits() -> StructuralLimits {
-        StructuralLimits::new(64, 4).expect("test limits should be valid")
-    }
-
-    #[test]
-    /// Verifies that capture records exact source bytes and their typed digest.
-    fn capture_records_exact_source_identity() {
-        let source = b"neu \"0.1\"\n".to_vec();
-        let captured = capture(CompilationRequest::new(
-            source.clone(),
-            test_limits(),
-            CancellationToken::new(),
-        ))
-        .expect("source should capture");
-        assert_eq!(captured.source(), source);
-        assert_eq!(
-            captured.source_digest(),
-            SourceContentDigest::from_bytes(&source)
-        );
-    }
-
-    #[test]
-    /// Verifies that digest mismatches fail before compiler work starts.
-    fn capture_rejects_an_unmatched_digest() {
-        let request =
-            CompilationRequest::new(b"source".to_vec(), test_limits(), CancellationToken::new())
-                .requiring_source_digest(SourceContentDigest::from_bytes(b"other"));
-        assert!(matches!(
-            capture(request),
-            Err(CaptureError::SourceDigestMismatch { .. })
-        ));
-    }
-
-    #[test]
-    /// Verifies that the frozen minimal source produces authoritative artifacts.
-    fn compile_captured_accepts_the_minimal_frontend_slice() {
-        let captured = capture(CompilationRequest::new(
-            b"neu \"0.1\"\nmodule minimal\n\nnum answer = 42\n".to_vec(),
-            test_limits(),
-            CancellationToken::new(),
-        ))
-        .expect("source should capture");
-        let super::CompilationResult::Success(artifacts) = compile_captured(&captured) else {
-            panic!("minimal source should compile successfully");
-        };
-        assert_eq!(
-            artifacts.logical_document().module().module_name(),
-            "minimal"
-        );
-        assert_eq!(artifacts.logical_document().declarations().len(), 1);
-    }
-
-    #[test]
-    /// Verifies frozen syntax failures expose exact codes and original-byte spans.
-    fn compilation_exposes_frozen_frontend_diagnostics_without_ir() {
-        let cases: [(&[u8], &str, (u64, u64)); 2] = [
-            (
-                include_bytes!(
-                    "../../../portable/specs/fixtures/negative/syntax/missing-module-header.neu"
-                ),
-                diagnostics::MISSING_MODULE_HEADER,
-                (10, 10),
-            ),
-            (
-                include_bytes!(
-                    "../../../portable/specs/fixtures/negative/syntax/unsupported-language-version.neu"
-                ),
-                diagnostics::UNSUPPORTED_LANGUAGE_VERSION,
-                (4, 9),
-            ),
-        ];
-
-        for (source, expected_code, expected_span) in cases {
-            let captured = capture(CompilationRequest::new(
-                source.to_vec(),
-                test_limits(),
-                CancellationToken::new(),
-            ))
-            .expect("frozen negative fixture should capture");
-            let super::CompilationResult::Failure(failure) = compile_captured(&captured) else {
-                panic!("frozen negative fixture must not produce authoritative IR");
-            };
-            assert_eq!(failure.class(), neutral_core::ResultClass::Syntax);
-            assert_eq!(failure.detail(), CompilationFailureDetail::SyntaxRejected);
-            assert_eq!(failure.diagnostics().len(), 1);
-            let diagnostic = &failure.diagnostics()[0];
-            assert_eq!(diagnostic.code().as_str(), expected_code);
-            assert_eq!(
-                (
-                    diagnostic.primary().span().start(),
-                    diagnostic.primary().span().end()
-                ),
-                expected_span
-            );
-        }
-    }
-}
+#[path = "../tests/internal_unit/mod.rs"]
+mod tests;

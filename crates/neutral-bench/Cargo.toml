@@ -12,5 +12,17 @@ repository.workspace = true
 [package.metadata.neutral]
 owner = "performance-evaluation"
 
+[dev-dependencies]
+neutral-compiler = { path = "../neutral-compiler" }
+neutral-core = { path = "../neutral-core" }
+neutral-encoding = { path = "../neutral-encoding" }
+neutral-ir = { path = "../neutral-ir" }
+neutral-probe = { path = "../neutral-probe" }
+neutral-reader = { path = "../neutral-reader" }
+
+[[bench]]
+name = "stage9"
+harness = false
+
 [lints]
 workspace = true

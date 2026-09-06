@@ -72,7 +72,7 @@ fixtures/
 - [defaults-compatibility.neu](positive/values/defaults-compatibility.neu) covers
   defaults, nullability, lists, and outer nullable widening.
 - [minimal-vocabulary.neu](positive/vocabulary/minimal-vocabulary.neu) is the
-  planned Slice 6.2 source-to-IR integration fixture.
+  Slice 6.2 source-to-IR integration fixture.
 
 ## Negative source
 

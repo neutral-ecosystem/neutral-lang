@@ -85,5 +85,20 @@ security = 17
 fuzz_smoke = 2
 fuzz_decoder = 3
 
-[planned]
-performance = 3
+# Stage 9 adds complete stable mutation campaigns for every untrusted input and
+# consumer boundary plus expanded metamorphic, limit, and isolation evidence.
+[stage9.minimum]
+unit = 2
+smoke = 1
+integration = 3
+system = 18
+conformance = 26
+property = 26
+security = 19
+fuzz_smoke = 2
+fuzz_decoder = 3
+fuzz_source = 1
+fuzz_vocabulary = 1
+fuzz_ir = 1
+fuzz_formatter = 1
+fuzz_probe = 1

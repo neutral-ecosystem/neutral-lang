@@ -1,6 +1,6 @@
 # Neutral language v0 implementation roadmap
 
-Status: active execution plan — Stage 8 complete
+Status: active execution plan — Stage 9 hardening in progress
 
 This roadmap orders the work required to create Neutral v0. It is intentionally
 limited to the v0 contract in [architecture.md](ARCHITECTURE.md). It does not

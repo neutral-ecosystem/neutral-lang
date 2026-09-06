@@ -56,8 +56,8 @@ conformance/
 ├── expected-derivation/
 └── encoded-ir/
 
-crates/<production-crate>/src/
-└── colocated private unit tests only
+crates/<production-crate>/tests/
+└── path-based private unit modules and black-box integration targets
 
 crates/neutral-test-support/
 └── reusable builders, fixture loading, assertions, and test-only comparators
@@ -94,6 +94,9 @@ Rules:
 - Generated results live only under ignored `test-results/`, organized by
   bootstrap, CI profile/stage, suite, and analysis category.
 - There is no duplicate root `tests/` tree outside its owning Cargo package.
+- Production `src/` files may contain only a `#[cfg(test)]` path declaration;
+  every test body lives below the owning crate's `tests/` directory. CI enforces
+  this with `cargo xtask test-layout check`.
 
 ## Independent probe proof
 
@@ -270,7 +273,7 @@ behavior.
 
 ### Unit
 
-Colocated pure-module invariants: spans, limits, diagnostics, exact numbers,
+Crate-local path-based pure-module invariants: spans, limits, diagnostics, exact numbers,
 tokens, layout, parser productions, symbol/type logic, graph algorithms,
 lowering, fingerprints, alpha-equivalence, schema validators, and decoder
 checks. Unit tests perform no network, process, ambient filesystem, wall-clock,
@@ -368,6 +371,11 @@ Use and record the applicable technique:
 - thresholds ratchet upward; reduction requires a reviewed quality decision.
 
 Coverage percentage alone never proves correctness.
+
+Stage 9 thresholds and their current measured/pending state are stored in
+`config/quality-gates.toml`. Static review records live under `quality/`; a
+missing LLVM or coverage-guided fuzz toolchain leaves the applicable conclusion
+indeterminate rather than silently weakening the gate.
 
 ## Test metadata and evidence
 

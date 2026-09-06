@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "neutral-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/neutral-ecosystem/neutral-lang"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+neutral-compiler = { path = "../crates/neutral-compiler" }
+neutral-core = { path = "../crates/neutral-core" }
+neutral-encoding = { path = "../crates/neutral-encoding" }
+neutral-probe = { path = "../crates/neutral-probe" }
+neutral-vocabulary = { path = "../crates/neutral-vocabulary" }
+
+[[bin]]
+name = "source"
+path = "fuzz_targets/source.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vocabulary"
+path = "fuzz_targets/vocabulary.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ir"
+path = "fuzz_targets/ir.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "formatter"
+path = "fuzz_targets/formatter.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "probe"
+path = "fuzz_targets/probe.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+members = ["."]

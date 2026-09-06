@@ -2,23 +2,41 @@
 
 # Neutral v0 development progress
 
-Status: Stage 8 complete.
+Status: Stage 9 hardening in progress.
 
 ## Current focus
 
-- Stage: Stage 8 validation
-- Status: formatter, CLI, probe, documentation, and traceability complete
+- Stage: Stage 9 hardening
+- Status: stable hardening gates pass; external coverage/fuzz/release performance evidence remains
 - Last updated: 2026-09-06
 
 ## Next actions
 
-- [ ] Begin Stage 9 hardening with the property/metamorphic test expansion.
+- [ ] Run all five coverage-guided fuzz targets for the approved time budget.
+- [ ] Supply LLVM coverage tools and meet the configured thresholds.
+- [ ] Complete remaining named mutation targets and controlled release/memory/soak profiles.
 
 ## Blockers
 
-None recorded.
+- The current stable environment has neither `rustup` nor
+  `llvm-tools-preview`, so `cargo-llvm-cov` cannot produce coverage evidence.
+- No compatible nightly/libFuzzer toolchain is present to run `cargo-fuzz`.
 
 ## Completed log
+
+- [*] 2026-09-06: Began Stage 9 hardening. Moved every inline Rust test body
+  into path-based crate-local `tests/` modules and added a CI layout gate.
+  Expanded metamorphic, concurrent/adversarial determinism, exact structural
+  boundary, source-fact isolation, and stable source/vocabulary/IR/formatter/
+  probe mutation campaigns. Added cancellation checks and executable tests at
+  every compiler handoff, a dependency-free controlled benchmark/stress/soak
+  harness, five isolated `cargo-fuzz` targets, quality thresholds, standards
+  register, threat model, dependency/unsafe/native review, cache-isolation
+  review, static review, quality evaluation, and residual-risk record. RustSec
+  found no advisory in the current 22-dependency lockfile. After an initial 38
+  surviving critical language-predicate mutants, exhaustive tests now catch all
+  38. Coverage-guided runs, LLVM coverage, broader mutation, and dedicated
+  release/memory/soak evidence remain open, so Stage 9 is not yet approved.
 
 - [*] 2026-09-06: Completed Stage 8, Step 4 and Stage 8 validation. Added the
   published requirement/syntax evidence index spanning decisions, fixtures,

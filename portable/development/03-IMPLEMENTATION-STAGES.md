@@ -610,13 +610,14 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ## Stage 9: harden correctness, security, and performance
 
-- [ ] Complete property/metamorphic suites.
-- [ ] put all tests in tests directory relative to the crate, no inline/ in class testing in real source files
+- [*] Complete property/metamorphic suites.
+- [*] Put all test bodies in the owning crate's `tests/` directory; production
+      sources retain only path-based test-module declarations.
 - [ ] Complete source, vocabulary, IR, formatter, and probe fuzz campaigns.
-- [ ] Test every structural limit at and one over boundary.
-- [ ] Inject cancellation/faults at every stage.
-- [ ] Complete dependency/build-script/proc-macro/native/unsafe review.
-- [ ] Complete cache poisoning/cross-request/stale-source-fact review.
+- [*] Test every structural limit at and one over boundary.
+- [*] Inject cancellation/faults at every stage.
+- [*] Complete dependency/build-script/proc-macro/native/unsafe review.
+- [*] Complete cache poisoning/cross-request/stale-source-fact review.
 - [ ] Complete controlled phase/end-to-end performance, growth, memory,
       concurrency, stress, and soak profiles.
 - [ ] Complete coverage, mutation, static work-product reviews, threat model, and
@@ -624,9 +625,9 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Stage 9 validation
 
-- [ ] No known input causes unbounded work, panic, stack exhaustion, invalid
+- [*] No known input causes unbounded work, panic, stack exhaustion, invalid
       typed IR, stale source facts, cross-request leakage, or partial success.
-- [ ] Determinism holds under repeated/concurrent/adversarial execution.
+- [*] Determinism holds under repeated/concurrent/adversarial execution.
 - [ ] All approved quality gates and residual-risk reviews pass.
 
 ---

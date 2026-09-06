@@ -48,6 +48,10 @@ pub const FIXTURE_DIRECTORY: &str = "portable/specs/fixtures";
 pub const ORACLE_DIRECTORY: &str = "portable/conformance/oracles";
 /// Executable conformance manifest relative to the workspace root.
 pub const CONFORMANCE_MANIFEST_FILE: &str = "portable/conformance/manifest.toml";
+/// Rust marker that identifies a test-only source declaration.
+pub const TEST_CONFIGURATION_MARKER: &str = "#[cfg(test)]";
+/// Rust marker proving a test module body is stored outside production source.
+pub const TEST_PATH_ATTRIBUTE_MARKER: &str = "#[path =";
 /// Workspace package name for benchmarks.
 pub const NEUTRAL_BENCH: &str = "neutral-bench";
 /// Workspace package name for the command-line shell.
@@ -72,3 +76,5 @@ pub const NEUTRAL_TEST_SUPPORT: &str = "neutral-test-support";
 pub const NEUTRAL_VOCABULARY: &str = "neutral-vocabulary";
 /// Workspace package name for this automation crate.
 pub const XTASK: &str = "xtask";
+/// Harness-free Stage 9 benchmark target name.
+pub const STAGE9_BENCHMARK: &str = "stage9";

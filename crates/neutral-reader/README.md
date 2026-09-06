@@ -13,5 +13,5 @@ artifacts without depending on compiler internals.
 The active reader exposes validated in-process compiler artifacts through
 immutable scalar, nominal-record, and qualified vocabulary traversal; recursive
 type/value/default-provenance validation; exact vocabulary-contract validation;
-and indexed source lookup. Hostile external decoding is introduced by its later
-owning stage.
+and indexed source lookup. `neutral-encoding` owns hostile framed-byte decoding
+and exposes a reader view only after the complete external artifact validates.

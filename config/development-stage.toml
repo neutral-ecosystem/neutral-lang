@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# The active stage selects the completed Stage 8 Step 2 CLI host-tool slice.
+# The active stage selects the completed Stage 8 formatter/CLI/probe/docs slice.
 # Advancing this value requires its complete vertical slice and reviewed evidence.
 active_stage = 8
-active_step = 2
+active_step = 4
