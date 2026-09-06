@@ -34,6 +34,31 @@ with identity, version, encoding-version, schema-version, and digest lock
 options. Structural ceilings have explicit `--max-*` options and bounded
 reviewed defaults. Run `neutral-cli <command> --help` for stable command usage.
 
+## Options
+
+- `--output <path|->`: Output destination (for `compile` and `format`).
+- `--overwrite`: Overwrite existing output file if present.
+- `--cancel-before-start`: Cooperative pre-work cancellation flag.
+- `--vocabulary-bundle <path|->`: Path to host-captured vocabulary bundle JSON.
+- `--vocabulary-identity <string>`: Exact vocabulary lock identity.
+- `--vocabulary-version <string>`: Exact vocabulary lock release version.
+- `--vocabulary-encoding-version <string>`: Exact vocabulary lock encoding version.
+- `--vocabulary-schema-version <string>`: Exact vocabulary lock schema version.
+- `--vocabulary-digest <sha256>`: Exact vocabulary lock SHA-256 digest.
+- `--vocabulary-feature <string>`: Repeatable required vocabulary feature flag.
+- `--max-source-bytes <n>`: Source byte limit (default: 16,777,216).
+- `--max-diagnostics <n>`: Retained diagnostic count limit (default: 64).
+- `--max-string-bytes <n>`: Decoded string byte limit (default: 1,048,576).
+- `--max-numeric-digits <n>`: Exact number digit limit (default: 1,000,000).
+- `--max-numeric-scale <n>`: Exact number scale limit (default: 1,000,000).
+- `--max-declarations <n>`: Root declaration limit (default: 100,000).
+- `--max-record-fields <n>`: Record field limit (default: 100,000).
+- `--max-nesting-depth <n>`: Value nesting depth limit (default: 128).
+- `--max-list-items <n>`: List item count limit (default: 1,000,000).
+- `--max-traversal-nodes <n>`: Value traversal node limit (default: 1,000,000).
+- `--help`: Display command usage help.
+- `--version`: Display version information.
+
 ## Exit classes
 
 | Code | Meaning |
