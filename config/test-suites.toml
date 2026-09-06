@@ -71,13 +71,14 @@ security = 17
 fuzz_smoke = 2
 fuzz_decoder = 3
 
-# Stage 8 Step 1 adds complete-corpus formatter conformance, idempotence,
-# logical/provenance preservation, comment placement, and identity separation.
+# Stage 8 Steps 1 and 2 add complete-corpus formatter evidence plus built-binary
+# CLI usage, filesystem, standard-stream, permission, cancellation, vocabulary,
+# disclosure, broken-pipe, atomic-output, and artifact-decoding system evidence.
 [stage8.minimum]
-unit = 1
+unit = 2
 smoke = 1
 integration = 3
-system = 10
+system = 18
 conformance = 25
 property = 24
 security = 17

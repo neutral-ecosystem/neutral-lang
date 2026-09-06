@@ -100,7 +100,7 @@ Stage 10: release qualification
 
 Stage 1, the mandatory normative contract freeze, Stage 2, all Stage 3 slices,
 all Stage 4 slices, all Stage 5 slices, all Stage 6 slices, all three Stage 7
-steps and validation, and Stage 8 Step 1 are complete. The
+steps and validation, and Stage 8 Steps 1 and 2 are complete. The
 private frontend
 retains exact nonsemantic trivia, enforces frozen ASCII/token boundaries,
 decodes bounded Unicode strings, and normalizes signed decimal exact numbers
@@ -157,7 +157,16 @@ AST. It enforces canonical headers, LF newlines, four-space recursive layout,
 field/item commas, normalized spacing, and deterministic source-order comment
 placement. Complete-corpus tests prove idempotence, parse/format/parse logical
 equivalence, provenance-category preservation, and source-identity separation.
-The next work is Stage 8, Step 2: CLI host tools.
+The host CLI now exposes strict `compile`, `validate`, and `format` process
+boundaries with explicit source and destination selection, captured-vocabulary
+locks, reviewed structural limits, standard streams, overwrite authorization,
+cooperative cancellation, safe diagnostic disclosure, stable exit classes, and
+synchronized same-directory atomic output. Built-binary system tests cover
+Unicode and spaced paths, stdin/stdout separation, permissions, broken pipes,
+failed commits, cancellation, output preservation, temporary cleanup, and
+external artifact decoding. Inspection remains a separate compiler-free
+`neutral-probe` responsibility. The next work is Stage 8, Step 3: complete
+standalone probe traversal and source-linked consumer diagnostics.
 The approved
 [freeze manifest](spec/v0/freeze.toml) identifies
 the v0 contract family, and the

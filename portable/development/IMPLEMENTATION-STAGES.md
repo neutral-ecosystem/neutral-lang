@@ -559,18 +559,18 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 ### Step 2: CLI host tools
 
-- [ ] Implement compile, validate, and format commands with explicit resolver,
+- [*] Implement compile, validate, and format commands with explicit resolver,
       limits, disclosure, destinations, overwrite, atomic-write, and exit policy.
-- [ ] Keep inspect proof in standalone `neutral-probe`; shared rendering may use a
+- [*] Keep inspect proof in standalone `neutral-probe`; shared rendering may use a
       reader-only public library.
-- [ ] Test child-process/filesystem/stdio/permission/cancellation behavior.
+- [*] Test child-process/filesystem/stdio/permission/cancellation behavior.
 
 #### Step validation
 
-- [ ] Every command has stable usage and exit classes.
-- [ ] Failure/cancellation leaves no authoritative partial output.
-- [ ] Host paths/credentials obey disclosure policy.
-- [ ] System tests invoke built binaries, not CLI internals.
+- [*] Every command has stable usage and exit classes.
+- [*] Failure/cancellation leaves no authoritative partial output.
+- [*] Host paths/credentials obey disclosure policy.
+- [*] System tests invoke built binaries, not CLI internals.
 
 ### Step 3: complete standalone probe
 
@@ -611,6 +611,7 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 ## Stage 9: harden correctness, security, and performance
 
 - [ ] Complete property/metamorphic suites.
+- [ ] put all tests in tests directory relative to the crate, no inline/ in class testing in real source files
 - [ ] Complete source, vocabulary, IR, formatter, and probe fuzz campaigns.
 - [ ] Test every structural limit at and one over boundary.
 - [ ] Inject cancellation/faults at every stage.

@@ -666,7 +666,9 @@ fn direct_dependency_policy() -> BTreeMap<&'static str, BTreeSet<&'static str>> 
             set([
                 constants::NEUTRAL_COMPILER,
                 constants::NEUTRAL_CORE,
+                constants::NEUTRAL_ENCODING,
                 constants::NEUTRAL_READER,
+                constants::NEUTRAL_VOCABULARY,
             ]),
         ),
         (

@@ -215,6 +215,16 @@ type mismatches, both Boolean values, and decoded-string resource limits.
 Reader traversal asserts typed public IR values, while probe tests require every
 decoded control character to be rendered through a safe escape.
 
+### Stage 8 Step 2 active tests
+
+The active Stage 8 profile includes built-`neutral-cli` process tests for stable
+general and command usage, exit classes, file and standard-stream operation,
+explicit vocabulary capture, reviewed limits, overwrite protection, atomic
+publication, cancellation, permission and broken-pipe failures, path-safe
+diagnostics, temporary cleanup, and compiler-independent decoding of emitted
+artifacts. These tests execute Cargo-provided binary paths and never call CLI
+internals. Standalone inspection remains owned by `neutral-probe`.
+
 ### Activation milestones
 
 | Stage | Newly active evidence |

@@ -2,24 +2,35 @@
 
 # Neutral v0 development progress
 
-Status: Stage 8 Step 1 complete.
+Status: Stage 8 Step 2 complete.
 
 ## Current focus
 
-- Stage: Stage 8, Step 1
-- Status: Reference formatter vertical slice complete
+- Stage: Stage 8, Step 2
+- Status: CLI host tools complete
 - Last updated: 2026-09-06
 
 ## Next actions
 
-- [ ] Begin Stage 8, Step 2: implement compile, validate, and format CLI host
-      commands with explicit filesystem and output policy.
+- [ ] Begin Stage 8, Step 3: complete the standalone probe traversal and
+      source-linked consumer diagnostic proof.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-09-06: Completed Stage 8, Step 2. Activated strict built-binary
+  `compile`, `validate`, and `format` commands with explicit source, destination,
+  captured-vocabulary lock, structural-limit, overwrite, standard-stream, and
+  cooperative-cancellation policy. Output uses synchronized same-directory
+  temporary files and atomic commit semantics; validation, cancellation,
+  permission, commit, and broken-pipe failures publish no partial authoritative
+  output. Stable usage and exit classes, path-safe diagnostics, Unicode and
+  spaced paths, exact vocabulary acquisition, clean stdout artifacts, and
+  compiler-free artifact decoding are covered at the child-process boundary.
+  Inspection remains exclusively owned by the independent `neutral-probe`.
 
 - [*] 2026-09-06: Completed Stage 8, Step 1. Added the I/O-free public
   `format`/`format_captured` boundary backed by compiler-private syntax and

@@ -72,7 +72,9 @@ version = "0.1.0"
 dependencies = [
  "neutral-compiler",
  "neutral-core",
+ "neutral-encoding",
  "neutral-reader",
+ "neutral-vocabulary",
 ]
 
 [[package]]

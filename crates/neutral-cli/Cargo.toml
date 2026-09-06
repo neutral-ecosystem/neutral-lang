@@ -14,7 +14,9 @@ owner = "host-cli"
 [dependencies]
 neutral-compiler = { path = "../neutral-compiler" }
 neutral-core = { path = "../neutral-core" }
+neutral-encoding = { path = "../neutral-encoding" }
 neutral-reader = { path = "../neutral-reader" }
+neutral-vocabulary = { path = "../neutral-vocabulary" }
 
 [lints]
 workspace = true
