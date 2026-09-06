@@ -54,14 +54,14 @@ the affected gate.
       models private.
 - [ ] Emit authoritative IR only after complete success.
 - [ ] Keep `compile_captured` deterministic and I/O-free.
-- [*] Treat source, vocabulary, and encoded IR bytes as untrusted even after a
+- [x] Treat source, vocabulary, and encoded IR bytes as untrusted even after a
       digest matches.
 - [ ] Enforce structural limits before proportional allocation or conversion.
-- [*] Keep logical IR equality independent of map order, thread scheduling,
+- [x] Keep logical IR equality independent of map order, thread scheduling,
       pretty printing, encoding bytes, and graph-local `ElementId` spelling.
-- [*] Keep ordinary reuse/default origin in provenance, not new logical value
+- [x] Keep ordinary reuse/default origin in provenance, not new logical value
       kinds.
-- [*] Give `Ref<T>` identity-only meaning; infer no ownership, containment,
+- [x] Give `Ref<T>` identity-only meaning; infer no ownership, containment,
       dependency, readiness, order, or runtime behavior.
 - [ ] Add no excluded syntax through parser convenience, private IR, vocabulary,
       CLI, formatter, or probe conventions.

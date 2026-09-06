@@ -41,7 +41,7 @@ contract-freeze manifest.
 Run from an offline/prevalidated dependency environment:
 
 - [ ] environment verification and manifest;
-- [*] repository/document/ID/traceability coherence;
+- [x] repository/document/ID/traceability coherence;
 - [ ] formatting, linting, docs, dependency, license, advisory, source, and
       package-boundary checks;
 - [ ] smoke, unit, integration, system, and conformance suites;
@@ -50,7 +50,7 @@ Run from an offline/prevalidated dependency environment:
 - [ ] controlled performance, resource, stress, and soak profiles;
 - [ ] coverage and mutation gates;
 - [ ] formatter idempotence and parse/format/parse equality;
-- [*] in-process reader/probe and external standalone probe comparison;
+- [x] in-process reader/probe and external standalone probe comparison;
 - [ ] every positive, negative, ambiguity, numeric, vocabulary, invalid-IR,
       resource, cancellation, and explicit-exclusion fixture;
 - [ ] pinned development/release toolchain and MSRV jobs; and
@@ -61,7 +61,7 @@ Run from an offline/prevalidated dependency environment:
 - [ ] Release packages contain only intended files and licenses.
 - [ ] Package digests use the accepted exact-byte digest contract.
 - [ ] Published logical/version identities match the freeze manifest.
-- [*] The standalone probe package dependency graph contains no compiler/private
+- [x] The standalone probe package dependency graph contains no compiler/private
       frontend dependency.
 - [ ] Public examples compile and execute against packaged artifacts.
 - [ ] A clean consumer environment can validate and inspect encoded artifacts

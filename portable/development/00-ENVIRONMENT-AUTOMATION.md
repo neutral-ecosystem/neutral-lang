@@ -251,13 +251,13 @@ branch, tag, and manual-dispatch events.
 
 ## Stage 1 acceptance
 
-- [*] Layer 0 works on every supported bootstrap host.
-- [*] Layer 1 validates all pinned workspace tools.
-- [*] The optional development container passes the same Stage 1 gate.
-- [*] Environment manifests contain no secrets and identify all relevant tools.
-- [*] Host, container, and CI call identical `xtask` tasks after bootstrap.
-- [*] Concurrent jobs cannot share mutable roots accidentally.
-- [*] Network-denied Stage 1 build/tests pass with prepared dependencies.
-- [*] Running Stage 1 CI leaves tracked files unchanged.
-- [*] A deliberate task/test/dependency-boundary failure propagates nonzero.
-- [*] Generated evidence stays beneath the configured result root.
+- [x] Layer 0 works on every supported bootstrap host.
+- [x] Layer 1 validates all pinned workspace tools.
+- [x] The optional development container passes the same Stage 1 gate.
+- [x] Environment manifests contain no secrets and identify all relevant tools.
+- [x] Host, container, and CI call identical `xtask` tasks after bootstrap.
+- [x] Concurrent jobs cannot share mutable roots accidentally.
+- [x] Network-denied Stage 1 build/tests pass with prepared dependencies.
+- [x] Running Stage 1 CI leaves tracked files unchanged.
+- [x] A deliberate task/test/dependency-boundary failure propagates nonzero.
+- [x] Generated evidence stays beneath the configured result root.

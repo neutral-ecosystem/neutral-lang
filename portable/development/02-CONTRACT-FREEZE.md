@@ -78,7 +78,7 @@ resolutions for the questions found during the freeze review.
 - [ ] No Flow, Neux, runtime, authority, filesystem, network, command, secret, or
       application-specific meaning appears in Neutral core.
 - [ ] Later-version placeholders contain no implied v0 commitment.
-- [*] Open questions are classified as blocking, implementation-only, or
+- [x] Open questions are classified as blocking, implementation-only, or
       deliberately deferred.
 - [ ] Every blocking question is resolved before approval.
 
@@ -206,7 +206,7 @@ resolutions for the questions found during the freeze review.
 - [ ] Reentrancy, concurrency, cancellation, ownership, and lifetime behavior are
       specified.
 - [ ] No public AST or IR rewrite API exists in v0.
-- [*] The standalone probe can be implemented from public encoding and reader
+- [x] The standalone probe can be implemented from public encoding and reader
       contracts without compiler linkage.
 
 ### Validation

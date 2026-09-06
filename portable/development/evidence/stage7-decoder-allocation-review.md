@@ -56,9 +56,9 @@ bounded-decoder approval.
 
 ## Review decision
 
-- [*] Frame and section lengths are checked before section decoding.
-- [*] String, byte-string, container, depth, and traversal growth is bounded.
-- [*] Captured structural limits constrain typed reconstruction.
-- [*] Invalid exact-number coefficients are rejected before their retained copy.
-- [*] Stable decoder fuzz targets pass and retain a reproducible seed.
-- [*] No public reader view is returned from partially validated data.
+- [x] Frame and section lengths are checked before section decoding.
+- [x] String, byte-string, container, depth, and traversal growth is bounded.
+- [x] Captured structural limits constrain typed reconstruction.
+- [x] Invalid exact-number coefficients are rejected before their retained copy.
+- [x] Stable decoder fuzz targets pass and retain a reproducible seed.
+- [x] No public reader view is returned from partially validated data.

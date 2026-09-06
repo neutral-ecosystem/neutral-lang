@@ -75,7 +75,7 @@ fn automation_rejects_missing_traceability_identifiers() {
 /// Verifies unchecked syntax items fail the completed Stage 8 gate.
 fn automation_rejects_unchecked_syntax_contracts() {
     assert!(ensure_syntax_complete("syntax.md", "- [ ] SYN-GOV-001").is_err());
-    assert!(ensure_syntax_complete("syntax.md", "- [*] SYN-GOV-001").is_ok());
+    assert!(ensure_syntax_complete("syntax.md", "- [x] SYN-GOV-001").is_ok());
 }
 
 #[test]
