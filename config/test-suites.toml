@@ -69,7 +69,7 @@ conformance = 24
 property = 20
 security = 17
 fuzz_smoke = 2
+fuzz_decoder = 3
 
 [planned]
 performance = 3
-fuzz = 3

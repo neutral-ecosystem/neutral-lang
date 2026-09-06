@@ -6,8 +6,19 @@
 //! validated reader views. It must remain independent of the compiler, private
 //! frontend models, test support, and host acquisition behavior.
 
-use neutral_core::{Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity};
+use neutral_core::{
+    CancellationToken, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity,
+};
+use neutral_encoding::{DecodeError, DecodeLimits, decode};
 use neutral_reader::{ElementId, ValidatedDocument};
+
+/// Stable host-output prefixes shared by the probe library and binary.
+pub mod output {
+    /// Error output category prefix.
+    pub const ERROR: &str = "[error]";
+    /// Informational output category prefix.
+    pub const INFO: &str = "[info]";
+}
 
 /// Stable consumer-owned diagnostic identifiers.
 pub mod diagnostics {
@@ -178,6 +189,20 @@ pub fn summarize(document: &ValidatedDocument) -> ProbeSummary {
         reference_provenance,
         diagnostics: Vec::new(),
     }
+}
+
+/// Decodes hostile external bytes and returns only a validated generic summary.
+///
+/// # Errors
+///
+/// Returns the decoder's stable bounded failure when the artifact is malformed,
+/// unsupported, oversized, inconsistent, or cancelled.
+pub fn inspect_encoded(
+    bytes: &[u8],
+    limits: DecodeLimits,
+    cancellation: &CancellationToken,
+) -> Result<ProbeSummary, DecodeError> {
+    decode(bytes, limits, cancellation).map(|document| summarize(&document))
 }
 
 /// Summarizes exact vocabulary identity and schema data without interpretation.

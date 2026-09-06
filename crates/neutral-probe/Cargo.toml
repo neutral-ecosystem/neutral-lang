@@ -13,7 +13,11 @@ owner = "independent-probe"
 
 [dependencies]
 neutral-core = { path = "../neutral-core" }
+neutral-encoding = { path = "../neutral-encoding" }
 neutral-reader = { path = "../neutral-reader" }
+
+[dev-dependencies]
+neutral-ir = { path = "../neutral-ir" }
 
 [lints]
 workspace = true

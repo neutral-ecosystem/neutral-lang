@@ -166,12 +166,11 @@ impl ExactNumber {
     /// digit or absolute-scale limit is exceeded.
     pub fn from_normalized_parts(
         negative: bool,
-        coefficient: impl Into<String>,
+        coefficient: &str,
         scale: i64,
         maximum_digits: u64,
         maximum_scale: u64,
     ) -> Result<Self, IrError> {
-        let coefficient = coefficient.into();
         let digit_count = u64::try_from(coefficient.len()).unwrap_or(u64::MAX);
         if digit_count > maximum_digits || scale.unsigned_abs() > maximum_scale {
             return Err(IrError::ExactNumberLimitExceeded);
@@ -187,7 +186,7 @@ impl ExactNumber {
         }
         Ok(Self {
             negative,
-            coefficient,
+            coefficient: coefficient.to_owned(),
             scale,
         })
     }

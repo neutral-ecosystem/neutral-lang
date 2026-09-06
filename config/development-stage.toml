@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# The active stage selects the completed Stage 7 Step 3 hostile decoder.
+# Stage 7 and its validation are complete; Stage 8 has not yet been activated.
 # Advancing this value requires its complete vertical slice and reviewed evidence.
 active_stage = 7
 active_step = 3

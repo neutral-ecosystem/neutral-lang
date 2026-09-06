@@ -325,10 +325,11 @@ fn run_active_test_filter(suite: &str) -> Result<(), String> {
     ])
 }
 
-/// Runs an active bounded fuzz-smoke selection or rejects future campaigns.
+/// Runs an active bounded fuzz selection or rejects future campaigns.
 fn fuzz(mode: &str) -> Result<(), String> {
     match mode {
         "smoke" if active_stage()? >= 2 => run_active_test_filter("fuzz_smoke"),
+        "campaign" if active_stage()? >= 7 => run_active_test_filter("fuzz_decoder"),
         _ => not_active(&format!("fuzz mode {mode}")),
     }
 }
@@ -628,6 +629,7 @@ fn check_boundaries() -> Result<(), String> {
         &set([
             constants::NEUTRAL_PROBE,
             constants::NEUTRAL_CORE,
+            constants::NEUTRAL_ENCODING,
             constants::NEUTRAL_IR,
             constants::NEUTRAL_READER,
             constants::NEUTRAL_VOCABULARY,
@@ -688,7 +690,11 @@ fn direct_dependency_policy() -> BTreeMap<&'static str, BTreeSet<&'static str>> 
         (constants::NEUTRAL_IR, set([constants::NEUTRAL_CORE])),
         (
             constants::NEUTRAL_PROBE,
-            set([constants::NEUTRAL_CORE, constants::NEUTRAL_READER]),
+            set([
+                constants::NEUTRAL_CORE,
+                constants::NEUTRAL_ENCODING,
+                constants::NEUTRAL_READER,
+            ]),
         ),
         (
             constants::NEUTRAL_READER,
@@ -926,6 +932,7 @@ mod tests {
                 &set([
                     constants::NEUTRAL_PROBE,
                     constants::NEUTRAL_CORE,
+                    constants::NEUTRAL_ENCODING,
                     constants::NEUTRAL_IR,
                     constants::NEUTRAL_READER,
                     constants::NEUTRAL_VOCABULARY,

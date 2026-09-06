@@ -536,8 +536,9 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 - [*] Valid artifacts decode to alpha-equivalent logical IR.
 - [*] Corrupt/truncated/oversized/duplicate/dangling/unknown cases fail boundedly.
-- [ ] Standalone probe inspects encoded artifacts without compiler linkage.
-- [ ] Decoder fuzzing and allocation review pass.
+- [*] Standalone probe inspects encoded artifacts without compiler linkage.
+- [*] Decoder fuzzing and
+      [allocation review](STAGE7-DECODER-ALLOCATION-REVIEW.md) pass.
 
 ---
 

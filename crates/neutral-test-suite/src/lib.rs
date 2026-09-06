@@ -203,6 +203,16 @@ mod tests {
     const FIXTURE_VOCABULARY_VERSION: &str = "0.1.0";
     /// Package-metadata version used for nonsemantic test producer envelopes.
     const TEST_PRODUCER_VERSION: &str = env!("CARGO_PKG_VERSION");
+    /// Reproducible seed for the stable decoder mutation campaign.
+    const DECODER_FUZZ_SEED: u64 = 0x4e45_5554_5241_4c37;
+    /// Number of structured encoded-artifact mutation cases per campaign run.
+    const DECODER_MUTATION_CASES: usize = 2_048;
+    /// Number of arbitrary byte-sequence cases per campaign run.
+    const DECODER_ARBITRARY_CASES: usize = 1_024;
+    /// Maximum changes applied to one structured mutation.
+    const DECODER_MAX_CHANGES: usize = 8;
+    /// Maximum arbitrary input length exercised by the stable campaign.
+    const DECODER_MAX_ARBITRARY_BYTES: usize = 4_096;
     /// Captured bundle requiring an unsupported structural feature.
     const UNKNOWN_FEATURE_VOCABULARY_BUNDLE: &[u8] = include_bytes!(
         "../../../portable/spec/v0/fixtures/vocabulary/bundles/negative/unknown-feature.json"
@@ -2605,6 +2615,68 @@ mod tests {
     }
 
     #[test]
+    /// Fuzzes every truncation boundary and requires bounded fail-closed decoding.
+    fn fuzz_decoder_all_truncation_boundaries_fail_boundedly() {
+        let document = compile_reader(MINIMAL_SOURCE);
+        let encoded = encode(
+            &document,
+            &ProducerInfo::new("fuzz-truncation", TEST_PRODUCER_VERSION),
+        )
+        .expect("fuzz seed should encode");
+        for end in 0..encoded.as_bytes().len() {
+            assert!(
+                decode(
+                    &encoded.as_bytes()[..end],
+                    DecodeLimits::hard(),
+                    &CancellationToken::new(),
+                )
+                .is_err(),
+                "truncated input at byte {end} unexpectedly decoded"
+            );
+        }
+    }
+
+    #[test]
+    /// Fuzzes reproducible multi-byte mutations without permitting partial views.
+    fn fuzz_decoder_structured_mutation_campaign_terminates() {
+        let document = compile_reader(MINIMAL_SOURCE);
+        let encoded = encode(
+            &document,
+            &ProducerInfo::new("fuzz-structured", TEST_PRODUCER_VERSION),
+        )
+        .expect("fuzz seed should encode");
+        let mut state = DECODER_FUZZ_SEED;
+        for _ in 0..DECODER_MUTATION_CASES {
+            let mut mutation = encoded.as_bytes().to_vec();
+            let changes = 1 + fuzz_index(&mut state, DECODER_MAX_CHANGES);
+            for _ in 0..changes {
+                let index = fuzz_index(&mut state, mutation.len());
+                mutation[index] ^= fuzz_nonzero_byte(&mut state);
+            }
+            if let Ok(decoded) = decode(&mutation, DecodeLimits::hard(), &CancellationToken::new())
+            {
+                assert!(!decoded.module_name().is_empty());
+            }
+        }
+    }
+
+    #[test]
+    /// Fuzzes arbitrary deterministic byte sequences under the hard decoder ceiling.
+    fn fuzz_decoder_arbitrary_byte_campaign_terminates() {
+        let mut state = DECODER_FUZZ_SEED.rotate_left(7);
+        for _ in 0..DECODER_ARBITRARY_CASES {
+            let length = fuzz_index(&mut state, DECODER_MAX_ARBITRARY_BYTES + 1);
+            let mut bytes = vec![0_u8; length];
+            for byte in &mut bytes {
+                *byte = fuzz_word(&mut state).to_le_bytes()[0];
+            }
+            if let Ok(decoded) = decode(&bytes, DecodeLimits::hard(), &CancellationToken::new()) {
+                assert!(!decoded.module_name().is_empty());
+            }
+        }
+    }
+
+    #[test]
     /// Verifies an oversized envelope string fails before a complete frame exists.
     fn security_stage7_oversized_producer_text_fails_boundedly() {
         let document = compile_reader(MINIMAL_SOURCE);
@@ -2636,6 +2708,27 @@ mod tests {
                 files.push(path);
             }
         }
+    }
+
+    /// Advances the reproducible xorshift generator used by decoder campaigns.
+    fn fuzz_word(state: &mut u64) -> u64 {
+        *state ^= *state << 13;
+        *state ^= *state >> 7;
+        *state ^= *state << 17;
+        *state
+    }
+
+    /// Selects a reproducible index strictly below a nonzero upper bound.
+    fn fuzz_index(state: &mut u64, upper_bound: usize) -> usize {
+        debug_assert!(upper_bound > 0);
+        usize::try_from(fuzz_word(state) % u64::try_from(upper_bound).unwrap_or(u64::MAX))
+            .unwrap_or(0)
+    }
+
+    /// Selects a reproducible nonzero byte for an effective mutation.
+    fn fuzz_nonzero_byte(state: &mut u64) -> u8 {
+        let candidate = fuzz_word(state).to_le_bytes()[0];
+        candidate.max(1)
     }
 
     /// Converts a checked byte span into a compact assertion pair.

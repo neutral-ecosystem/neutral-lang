@@ -114,6 +114,8 @@ name = "neutral-probe"
 version = "0.1.0"
 dependencies = [
  "neutral-core",
+ "neutral-encoding",
+ "neutral-ir",
  "neutral-reader",
 ]
 

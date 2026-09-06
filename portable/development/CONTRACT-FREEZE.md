@@ -203,7 +203,8 @@ resolutions for the questions found during the freeze review.
 - [ ] Reentrancy, concurrency, cancellation, ownership, and lifetime behavior are
       specified.
 - [ ] No public AST or IR rewrite API exists in v0.
-- [ ] The standalone probe can be implemented from reader contracts alone.
+- [*] The standalone probe can be implemented from public encoding and reader
+      contracts without compiler linkage.
 
 ### Validation
 

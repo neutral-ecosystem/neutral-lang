@@ -100,7 +100,7 @@ Stage 10: release qualification
 
 Stage 1, the mandatory normative contract freeze, Stage 2, all Stage 3 slices,
 all Stage 4 slices, all Stage 5 slices, all Stage 6 slices, and all three Stage
-7 steps are complete. The
+7 steps and validation are complete. The
 private frontend
 retains exact nonsemantic trivia, enforces frozen ASCII/token boundaries,
 decodes bounded Unicode strings, and normalizes signed decimal exact numbers
@@ -146,8 +146,13 @@ capabilities, reconstructs every logical and companion contract, and returns a
 reader view only after complete cross-section and trusted-reader validation.
 Stable failure classes cover malformed, unsupported, oversized, inconsistent,
 and cancelled inputs; captured vocabulary identity is checked without external
-lookup. The next work is the remaining Stage 7 validation: standalone encoded
-artifact inspection and full decoder fuzz/allocation evidence.
+lookup. The standalone `neutral-probe` binary now reads external encoded
+artifacts through public encoding/reader contracts without compiler linkage,
+and its process-boundary system test verifies deterministic categorized output.
+The stable decoder campaign covers all truncation boundaries, seeded structured
+mutations, and arbitrary byte sequences. A reviewed bounds-before-allocation
+record closes Stage 7. The next work is Stage 8, Step 1: the reference formatter
+vertical tool slice.
 The approved
 [freeze manifest](spec/v0/freeze.toml) identifies
 the v0 contract family, and the

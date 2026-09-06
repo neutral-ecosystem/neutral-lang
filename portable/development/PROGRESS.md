@@ -2,24 +2,32 @@
 
 # Neutral v0 development progress
 
-Status: Stage 7 Step 3 complete.
+Status: Stage 7 validation complete.
 
 ## Current focus
 
-- Stage: Stage 7, Step 3
-- Status: Hostile external artifact decoder complete
+- Stage: Stage 7 validation
+- Status: Complete
 - Last updated: 2026-09-06
 
 ## Next actions
 
-- [ ] Complete the remaining Stage 7 validation: standalone encoded-artifact
-      probe isolation plus decoder fuzzing and allocation review evidence.
+- [ ] Begin Stage 8, Step 1: implement the reference formatter vertical tool
+      slice and prove idempotence plus parse/format/parse logical equality.
 
 ## Blockers
 
 None recorded.
 
 ## Completed log
+
+- [*] 2026-09-06: Completed Stage 7 validation. Activated the standalone
+  `neutral-probe` encoded-artifact path through public core, encoding, and
+  reader contracts; added a compiler-free process-boundary system proof and
+  dependency-closure enforcement; activated reproducible truncation,
+  structured-mutation, and arbitrary-byte decoder fuzz targets; and approved
+  the bounds-before-allocation review. Exact-number reconstruction now validates
+  borrowed coefficient text before retaining its owned copy.
 
 - [*] 2026-09-06: Replaced the exact development/release Rust pin with the
   rolling `stable` channel. CI and release workflows now install current stable,

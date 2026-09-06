@@ -88,8 +88,9 @@ Rules:
 - `neutral-test-suite` is non-published and owns cross-crate executable tests.
 - `neutral-bench` is non-published and owns benchmark harnesses and immutable
   benchmark corpus identities.
-- Fuzz targets live only under `fuzz/` and promote confirmed failures into
-  deterministic conformance/security regression fixtures.
+- Coverage-guided fuzz targets live only under `fuzz/`. Stable bounded mutation
+  campaigns may live in `neutral-test-suite`; both promote confirmed failures
+  into deterministic conformance/security regression fixtures.
 - Generated results live only under ignored `test-results/`, organized by
   bootstrap, CI profile/stage, suite, and analysis category.
 - There is no duplicate root `tests/` tree outside its owning Cargo package.
@@ -98,8 +99,9 @@ Rules:
 
 `neutral-probe` is both a library and standalone binary package.
 
-- Its normal and development dependency graph may include only public core and
-  reader contracts plus narrowly reviewed CLI/output dependencies.
+- Its normal dependency graph may include only public core, encoding, and reader
+  contracts plus narrowly reviewed CLI/output dependencies. Test-only public IR
+  constructors may build compiler-free encoded fixtures.
 - It may not depend on `neutral-compiler`, compiler test support, private AST,
   semantic types, source lexer/parser, or filesystem resolver implementation.
 - The library accepts a public validated reader view.
@@ -281,8 +283,10 @@ and repeated/concurrent determinism. CI records seeds and minimizes failures.
 
 ### Security and fuzz
 
-Deterministic hostile cases run on every PR. Coverage-guided fuzz smoke runs on
-PRs; extended campaigns run nightly/release for source decoding, lexer/layout,
+Deterministic hostile cases and bounded mutation smoke run on every PR. Stage 7
+adds a reproducible stable-Rust decoder campaign for truncations, structured
+mutations, and arbitrary bytes. Extended coverage-guided campaigns run during
+Stage 9 and manual release qualification for source decoding, lexer/layout,
 parser/recovery, vocabulary JSON, external IR decoder, formatter, and probe
 traversal. No crash, hang, stack exhaustion, uncontrolled allocation, invalid
 typed IR, or partial success is acceptable.
