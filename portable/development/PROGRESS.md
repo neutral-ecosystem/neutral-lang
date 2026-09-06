@@ -21,6 +21,12 @@ None recorded.
 
 ## Completed log
 
+- [*] 2026-09-06: Replaced the exact development/release Rust pin with the
+  rolling `stable` channel. CI and release workflows now install current stable,
+  bootstrap accepts stable distribution compilers while rejecting beta/nightly,
+  and evidence records the selected channel plus exact resolved compiler. The
+  separately declared Rust 1.97.1 MSRV remains unchanged.
+
 - [*] 2026-09-06: Completed Stage 7, Step 3. Added a bounds-first decoder for
   the fixed frame and duplicate-preserving restricted CBOR; stable classified
   failures for size, framing, versions, capabilities, integrity, schema,

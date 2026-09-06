@@ -89,7 +89,7 @@ fn bootstrap() -> Result<(), String> {
     Ok(())
 }
 
-/// Verifies the files and pinned Rust toolchain required by the Stage 1 workspace.
+/// Verifies the files and selected Rust toolchain channel required by the workspace.
 fn verify_environment() -> Result<(), String> {
     let workspace_root = workspace_root()?;
     for required_path in [
@@ -107,10 +107,10 @@ fn verify_environment() -> Result<(), String> {
     }
 
     let rustc_version = command_output(constants::RUSTC_COMMAND, &["--version"])?;
-    let pinned_rust = pinned_rust_channel()?;
-    if !rustc_version.starts_with(&format!("rustc {pinned_rust} ")) {
+    let rust_channel = rust_channel()?;
+    if !rust_version_matches_channel(&rustc_version, &rust_channel) {
         return Err(format!(
-            "pinned Rust {pinned_rust} is required; found {rustc_version}"
+            "Rust channel {rust_channel} is required; found {rustc_version}"
         ));
     }
 
@@ -129,28 +129,28 @@ fn environment_manifest() -> Result<String, String> {
     let workspace_root = workspace_root()?;
     let rustc_version = command_output(constants::RUSTC_COMMAND, &["--version"])?;
     let cargo_version = command_output(constants::CARGO_COMMAND, &["--version"])?;
-    let pinned_rust = pinned_rust_channel()?;
+    let rust_channel = rust_channel()?;
     let active_stage = active_stage()?;
     Ok(format!(
         concat!(
             "{{\n",
             "  \"workspace_root\": \"{}\",\n",
-            "  \"pinned_rust\": \"{}\",\n",
+            "  \"rust_channel\": \"{}\",\n",
             "  \"rustc\": \"{}\",\n",
             "  \"cargo\": \"{}\",\n",
             "  \"active_stage\": {}\n",
             "}}"
         ),
         json_string(&workspace_root.display().to_string()),
-        json_string(&pinned_rust),
+        json_string(&rust_channel),
         json_string(&rustc_version),
         json_string(&cargo_version),
         active_stage,
     ))
 }
 
-/// Reads the pinned Rust channel from the repository toolchain manifest.
-fn pinned_rust_channel() -> Result<String, String> {
+/// Reads the selected Rust channel from the repository toolchain manifest.
+fn rust_channel() -> Result<String, String> {
     let path = workspace_root()?.join("rust-toolchain.toml");
     let manifest = fs::read_to_string(&path)
         .map_err(|error| format!("could not read {}: {error}", path.display()))?;
@@ -160,6 +160,18 @@ fn pinned_rust_channel() -> Result<String, String> {
         .find_map(|line| line.strip_prefix("channel = \"")?.strip_suffix('"'))
         .map(str::to_owned)
         .ok_or_else(|| "rust-toolchain.toml has no quoted channel".to_owned())
+}
+
+/// Returns whether one compiler version belongs to the selected toolchain channel.
+fn rust_version_matches_channel(rustc_version: &str, channel: &str) -> bool {
+    if channel == "stable" {
+        rustc_version.starts_with("rustc ")
+            && !["-nightly", "-beta", "-dev"]
+                .iter()
+                .any(|marker| rustc_version.contains(marker))
+    } else {
+        rustc_version.starts_with(&format!("rustc {channel} "))
+    }
 }
 
 /// Reads the active implementation stage from the repository configuration.
@@ -824,14 +836,27 @@ mod tests {
     }
 
     #[test]
-    /// Verifies that the environment manifest identifies the pinned toolchain.
-    fn environment_manifest_identifies_the_pinned_toolchain() {
+    /// Verifies that the environment manifest identifies the selected toolchain channel.
+    fn environment_manifest_identifies_the_toolchain_channel() {
         let manifest =
             super::environment_manifest().expect("environment manifest should be available");
-        let pinned = super::pinned_rust_channel().expect("pinned channel should be readable");
+        let channel = super::rust_channel().expect("toolchain channel should be readable");
         let stage = super::active_stage().expect("active stage should be readable");
-        assert!(manifest.contains(&format!("\"pinned_rust\": \"{pinned}\"")));
+        assert!(manifest.contains(&format!("\"rust_channel\": \"{channel}\"")));
         assert!(manifest.contains(&format!("\"active_stage\": {stage}")));
+    }
+
+    #[test]
+    /// Verifies the stable channel excludes prerelease compiler identities.
+    fn stable_toolchain_channel_rejects_prereleases() {
+        assert!(super::rust_version_matches_channel(
+            "rustc 1.98.1 (stable-hash 2026-09-03)",
+            "stable",
+        ));
+        assert!(!super::rust_version_matches_channel(
+            "rustc 1.99.0-nightly (nightly-hash 2026-09-05)",
+            "stable",
+        ));
     }
 
     #[test]

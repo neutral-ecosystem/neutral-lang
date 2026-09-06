@@ -52,7 +52,7 @@ neutral-bench         benchmark harnesses and immutable corpora
 xtask                 developer/CI/evidence automation
 ```
 
-- [*] Create virtual workspace manifest, lockfile, pinned toolchain, formatting,
+- [*] Create virtual workspace manifest, lockfile, selected toolchain policy, formatting,
       lint, dependency, and quality/test-profile configuration.
 - [*] Mark automation/test/benchmark packages non-published.
 - [*] Keep unit tests colocated; use the ownership layout in

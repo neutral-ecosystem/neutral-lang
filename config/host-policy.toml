@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [toolchains]
-development = "1.97.1"
+development = "stable"
 msrv = "1.97.1"
-release = "1.97.1"
+release = "stable"
 
 [hosts]
 supported = ["x86_64-unknown-linux-gnu"]
@@ -13,6 +13,5 @@ unsupported = []
 primary_system_test_host = "x86_64-unknown-linux-gnu"
 
 [container]
-image = "rust:1.97.1-bookworm@sha256:14bc9c5966e7b3a385794b3d5389a8765668342025fbcc7b2e3d2866ac4bd8c3"
+image = "rust:bookworm"
 target = "x86_64-unknown-linux-gnu"
-

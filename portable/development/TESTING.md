@@ -296,7 +296,7 @@ concurrent isolation, and cancellation responsiveness.
 
 PR performance is informational except for gross complexity/time-budget
 failures. Release regression gates run on a controlled dedicated runner with
-pinned toolchain, power/CPU policy, warm-up, repeated samples, dispersion, and
+exact recorded toolchain, power/CPU policy, warm-up, repeated samples, dispersion, and
 reviewed absolute/relative thresholds.
 
 ### Mutation and static review

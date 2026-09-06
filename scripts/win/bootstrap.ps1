@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 $ErrorActionPreference = 'Stop'
-$requiredToolchain = '1.97.1'
 $neutralCargoCommand = if ($env:NEUTRAL_CARGO_COMMAND) { $env:NEUTRAL_CARGO_COMMAND } else { 'cargo' }
 $neutralRustcCommand = if ($env:NEUTRAL_RUSTC_COMMAND) { $env:NEUTRAL_RUSTC_COMMAND } else { 'rustc' }
 
@@ -14,16 +13,16 @@ if (-not (Get-Command tar -ErrorAction SilentlyContinue)) {
 }
 
 if (-not (Get-Command $neutralCargoCommand -ErrorAction SilentlyContinue)) {
-    throw '[error] cargo is required; install Rust 1.97.1 explicitly, then rerun this script.'
+    throw '[error] cargo is required; install the latest stable Rust, then rerun this script.'
 }
 
 if (-not (Get-Command $neutralRustcCommand -ErrorAction SilentlyContinue)) {
-    throw '[error] rustc is required; install Rust 1.97.1 explicitly, then rerun this script.'
+    throw '[error] rustc is required; install the latest stable Rust, then rerun this script.'
 }
 
 $actualToolchain = (& $neutralRustcCommand --version).Split(' ')[1]
-if ($actualToolchain -ne $requiredToolchain) {
-    throw "[error] Rust $requiredToolchain is required; found $actualToolchain. This script never installs software automatically."
+if ($actualToolchain -match '-(nightly|beta|dev)') {
+    throw "[error] Latest stable Rust is required; found $actualToolchain. This script never installs software automatically."
 }
 
 & $neutralCargoCommand xtask bootstrap

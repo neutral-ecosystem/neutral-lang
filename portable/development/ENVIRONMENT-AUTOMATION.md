@@ -60,7 +60,7 @@ environment or semantic authority.
 
 Record separately:
 
-- exact pinned development/CI Rust toolchain;
+- rolling stable development/CI Rust channel;
 - minimum supported Rust version (MSRV);
 - release toolchain;
 - supported/tested/experimental/unsupported host triples;
@@ -70,8 +70,11 @@ Record separately:
 - approved versions of formatter, linter, coverage, fuzz, mutation, benchmark,
   dependency, link, and documentation tools.
 
-CI runs the pinned toolchain and MSRV as separate jobs. “Stable” without an exact
-version/date is not a reproducible pin.
+Development, CI, release qualification, and the convenience container follow
+the latest stable Rust channel. The exact resolved `rustc` and Cargo versions
+must be recorded in each environment/evidence manifest because a rolling
+channel is intentionally not a reproducible version pin. MSRV remains an exact,
+separate compatibility contract and does not select the development compiler.
 
 ## Environment variables
 
