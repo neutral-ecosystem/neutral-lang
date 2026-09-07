@@ -5,7 +5,8 @@
 use super::diagnostics;
 use super::{
     CaptureError, CompilationCheckpoint, CompilationFailureDetail, CompilationRequest,
-    CompilationResult, capture, compile_captured, compile_captured_with_checkpoints,
+    CompilationResult, capture, compile, compile_captured, compile_captured_with_checkpoints,
+    format, format_captured,
 };
 use neutral_core::{CancellationToken, SourceContentDigest, StructuralLimits};
 
@@ -134,4 +135,38 @@ fn compilation_exposes_frozen_frontend_diagnostics_without_ir() {
             expected_span
         );
     }
+}
+
+#[test]
+/// Verifies public convenience entry points and capture metadata agree.
+fn compiler_convenience_entry_points_preserve_contracts() {
+    let source = b"neu \"0.1\"\nmodule minimal\n\nnum answer = 42\n".to_vec();
+    let request = CompilationRequest::new(source.clone(), test_limits(), CancellationToken::new());
+    let Ok(CompilationResult::Success(_)) = compile(request) else {
+        panic!("valid request should compile");
+    };
+
+    let captured = capture(CompilationRequest::new(
+        source.clone(),
+        test_limits(),
+        CancellationToken::new(),
+    ))
+    .expect("valid request should capture");
+    assert_eq!(
+        captured.language_behavior_version(),
+        super::LANGUAGE_BEHAVIOR_VERSION
+    );
+    assert_eq!(captured.limits(), test_limits());
+    assert!(!captured.has_captured_vocabulary());
+
+    let formatted = format_captured(&captured).expect("captured source should format");
+    assert_eq!(formatted.as_bytes(), source);
+    assert_eq!(formatted.into_bytes(), source);
+    let formatted = format(CompilationRequest::new(
+        source.clone(),
+        test_limits(),
+        CancellationToken::new(),
+    ))
+    .expect("valid request should format");
+    assert_eq!(formatted.as_bytes(), source);
 }

@@ -7,24 +7,41 @@ Status: Stage 9 hardening in progress.
 ## Current focus
 
 - Stage: Stage 9 hardening
-- Status: coverage remediation, full fuzzing, and controlled performance evidence remain
+- Status: coverage remediation, broader mutation strengthening, and allocation evidence remain
 - Last updated: 2026-09-07
 
 ## Next actions
 
-- [ ] Run all five coverage-guided fuzz targets for the approved time budget.
 - [ ] Raise line/function/region coverage to the configured 85%/90%/80% thresholds.
-- [ ] Complete broader named mutation review and controlled
-      release/memory/soak profiles on the approved runner.
+- [ ] Strengthen and rerun the broader 271-mutant review until every viable
+      selected mutant is caught.
+- [ ] Obtain component-level allocation evidence or record an approved
+      measurement exception.
 
 ## Blockers
 
-- Measured line/function/region coverage is 84.91%/80.46%/75.55%, below the
-  configured 85%/90%/80% thresholds.
-- Full fuzz campaigns require an untraced runner because LeakSanitizer cannot
-  operate under the development executor's ptrace supervision.
+- The official whole-workspace coverage gate remains below its configured
+  85%/90%/80% thresholds; a production-only diagnostic run is also below the
+  required 90% function threshold at 89.15%.
+- Broader mutation review found 66 surviving viable mutants in exact-number and
+  decoder-boundary logic.
+- Component-level allocation accounting is unavailable on the current runner.
 
 ## Completed log
+
+- [x] 2026-09-07: Completed every required full-duration libFuzzer campaign on
+  an untraced runner: source (7,517,511 executions), vocabulary (10,720,881),
+  IR (85,143,833), formatter (9,337,700), and probe (86,633,280), each for at
+  least 900 seconds without a failure. Recorded controlled 250-iteration
+  release and 50,000-iteration extended-soak baselines, including whole-command
+  peak RSS. The expanded 271-mutant review completed with 178 caught, 66
+  missed, and 27 unviable mutants, so its gate correctly remains open.
+
+- [x] 2026-09-07: Added exact-number canonical reconstruction and source
+  normalization boundary tests. The focused `ExactNumber` mutation subset now
+  catches 32 of 37 generated mutants (with 3 unviable and 2 still missed).
+  Workspace formatting, strict Clippy, all targets, traceability, dependency
+  boundaries, and crate-local test-layout checks pass.
 
 - [x] 2026-09-07: Provisioned checksum-verified isolated Stage 9 tools without
   changing the stable repository toolchain. Reconfirmed 38/38 critical mutants

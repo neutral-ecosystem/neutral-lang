@@ -3,9 +3,9 @@
 //! Unit tests for foundational value contracts.
 
 use super::{
-    ByteSpan, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity, DigestTextError,
-    SemanticDigest, SourceContentDigest, SourceLocation, StructuralLimits, VocabularyContentDigest,
-    line_column_at, nht_frame,
+    ByteSpan, CancellationToken, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity,
+    DigestTextError, EncodedSectionDigest, SemanticDigest, SourceContentDigest, SourceLocation,
+    StructuralLimits, VocabularyContentDigest, line_column_at, nht_frame,
 };
 
 #[test]
@@ -110,6 +110,7 @@ fn diagnostics_sort_by_source_position_before_stable_code() {
         false,
     );
     assert!(earlier < later);
+    assert!(!earlier.is_truncated());
 }
 
 #[test]
@@ -163,4 +164,84 @@ fn structural_limits_capture_collection_budgets() {
     assert!(limits.with_nesting_depth(0).is_err());
     assert!(limits.with_list_items(0).is_err());
     assert!(limits.with_traversal_nodes(0).is_err());
+}
+
+#[test]
+/// Exercises typed digest reconstruction and raw-byte access contracts.
+fn typed_digests_round_trip_validated_raw_bytes() {
+    let source_bytes = [1_u8; 32];
+    let source = SourceContentDigest::from_raw_bytes(source_bytes);
+    assert_eq!(source.as_bytes(), source_bytes);
+
+    let section = EncodedSectionDigest::from_bytes(b"section");
+    assert_eq!(section, EncodedSectionDigest::from_bytes(b"section"));
+    assert_ne!(section.as_bytes(), [0_u8; 32]);
+
+    let vocabulary_bytes = [2_u8; 32];
+    let vocabulary = VocabularyContentDigest::from_raw_bytes(vocabulary_bytes);
+    assert_eq!(vocabulary.as_bytes(), vocabulary_bytes);
+
+    let semantic_bytes = [3_u8; 32];
+    let semantic = SemanticDigest::from_raw_bytes(semantic_bytes);
+    assert_eq!(semantic.as_bytes(), semantic_bytes);
+    assert_eq!(semantic.to_string(), "03".repeat(32));
+}
+
+#[test]
+/// Exercises source-location, diagnostic, and line-column access contracts.
+fn source_and_diagnostic_accessors_preserve_captured_facts() {
+    let source = SourceContentDigest::from_bytes(b"a\nb");
+    let span = ByteSpan::new(0, 1).expect("span should be valid");
+    assert_eq!(span.start(), 0);
+    assert_eq!(span.end(), 1);
+    assert_eq!(span.len(), 1);
+    assert!(!span.is_empty());
+    assert!(
+        ByteSpan::new(1, 1)
+            .expect("empty span should be valid")
+            .is_empty()
+    );
+
+    let location = SourceLocation::new(source, span);
+    assert_eq!(location.source(), source);
+    assert_eq!(location.span(), span);
+
+    let related = SourceLocation::new(source, ByteSpan::new(2, 3).expect("span should be valid"));
+    let diagnostic = Diagnostic::new(
+        DiagnosticCode::new("TEST001").expect("code should be valid"),
+        DiagnosticLayer::Semantics,
+        DiagnosticSeverity::Note,
+        location,
+        vec!["safe".to_owned()],
+        true,
+    )
+    .with_related(vec![related, related]);
+    assert_eq!(diagnostic.code().as_str(), "TEST001");
+    assert_eq!(diagnostic.layer(), DiagnosticLayer::Semantics);
+    assert_eq!(diagnostic.severity(), DiagnosticSeverity::Note);
+    assert_eq!(diagnostic.primary(), location);
+    assert_eq!(diagnostic.related(), [related]);
+    assert_eq!(diagnostic.parameters(), ["safe"]);
+    assert!(diagnostic.is_truncated());
+
+    let position = line_column_at(b"a\nb", 2).expect("offset should be valid");
+    assert_eq!(position.line(), 2);
+    assert_eq!(position.column(), 1);
+    assert!(line_column_at(b"a", 2).is_err());
+}
+
+#[test]
+/// Exercises base structural-limit accessors and shared cancellation state.
+fn base_limits_and_cancellation_contracts_are_observable() {
+    let limits = StructuralLimits::new(128, 7).expect("nonzero limits should be valid");
+    assert_eq!(limits.source_bytes(), 128);
+    assert_eq!(limits.diagnostics(), 7);
+    assert!(StructuralLimits::new(0, 7).is_err());
+    assert!(StructuralLimits::new(128, 0).is_err());
+
+    let cancellation = CancellationToken::new();
+    let observer = cancellation.clone();
+    assert!(!observer.is_cancelled());
+    cancellation.cancel();
+    assert!(observer.is_cancelled());
 }

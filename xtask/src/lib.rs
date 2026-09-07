@@ -441,7 +441,7 @@ fn performance(profile: &str) -> Result<(), String> {
         return not_active(&format!("performance profile {profile}"));
     }
     match profile {
-        "pr" | "release" | "soak" => run_cargo(&[
+        "pr" | "release" | "soak" | "extended-soak" => run_cargo(&[
             "bench",
             "--package",
             constants::NEUTRAL_BENCH,

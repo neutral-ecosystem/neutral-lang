@@ -379,6 +379,7 @@ impl Parser<'_> {
             return Err(FrontendError::record_limit_exceeded(open_span));
         }
         let mut fields = Vec::new();
+        self.skip_line_ends();
         while !self.at(&TokenKind::CloseBrace) {
             Self::ensure_capacity(
                 fields.len(),
@@ -399,6 +400,7 @@ impl Parser<'_> {
             let value_span = ByteSpan::new(value_start, value_end)
                 .expect("ordered field value tokens must form a valid span");
             self.expect_field_delimiter(&TokenKind::Comma)?;
+            self.skip_line_ends();
             fields.push(ParsedValueField {
                 name,
                 value,

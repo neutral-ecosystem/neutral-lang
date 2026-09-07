@@ -1626,3 +1626,7 @@ const fn error(class: DecodeErrorClass) -> DecodeError {
 const fn at(class: DecodeErrorClass, offset: u64) -> DecodeError {
     DecodeError::new(class, Some(offset))
 }
+
+#[cfg(test)]
+#[path = "../tests/decode/mod.rs"]
+mod tests;

@@ -116,6 +116,63 @@ fn exact_number_source_validation_rejects_invalid_and_over_limit_values() {
 }
 
 #[test]
+/// Verifies externally reconstructed numbers enforce every canonical-part rule.
+fn exact_number_normalized_parts_enforce_canonical_boundaries() {
+    let negative = ExactNumber::from_normalized_parts(true, "123", -4, 3, 4)
+        .expect("a nonzero canonical negative number should reconstruct");
+    assert!(negative.is_negative());
+    assert_eq!(negative.coefficient(), "123");
+    assert_eq!(negative.scale(), -4);
+
+    for (negative, coefficient, scale) in [
+        (false, "", 0),
+        (false, "1x", 0),
+        (false, "012", 0),
+        (false, "120", 0),
+        (true, "0", 0),
+        (false, "0", 1),
+    ] {
+        assert!(
+            ExactNumber::from_normalized_parts(negative, coefficient, scale, 3, 4).is_err(),
+            "noncanonical parts {negative:?}/{coefficient:?}/{scale:?} must fail"
+        );
+    }
+    assert!(ExactNumber::from_normalized_parts(false, "1234", 0, 3, 4).is_err());
+    assert!(ExactNumber::from_normalized_parts(false, "123", -5, 3, 4).is_err());
+}
+
+#[test]
+/// Verifies source normalization distinguishes zero, sign, scale, and transcript facts.
+fn exact_number_source_normalization_preserves_distinct_canonical_facts() {
+    let zero = ExactNumber::from_source("-000.000", 16, 16)
+        .expect("a signed source zero should normalize");
+    let scaled =
+        ExactNumber::from_source("1200", 16, 16).expect("trailing zeroes should become scale");
+    let fractional = ExactNumber::from_source("0.00120", 16, 16)
+        .expect("fractional source number should normalize");
+    assert!(!zero.is_negative());
+    assert_eq!(zero.coefficient(), "0");
+    assert_eq!(zero.scale(), 0);
+    assert_eq!(scaled.coefficient(), "12");
+    assert_eq!(scaled.scale(), 2);
+    assert_eq!(fractional.coefficient(), "12");
+    assert_eq!(fractional.scale(), -4);
+    assert_ne!(
+        scaled.nht_payload().expect("payload should build"),
+        fractional.nht_payload().expect("payload should build")
+    );
+}
+
+#[test]
+/// Verifies a source coefficient exactly at the digit ceiling remains accepted.
+fn exact_number_source_accepts_the_exact_digit_limit() {
+    let number = ExactNumber::from_source("123", 3, 1)
+        .expect("a coefficient at the configured digit ceiling should normalize");
+    assert_eq!(number.coefficient(), "123");
+    assert_eq!(number.scale(), 0);
+}
+
+#[test]
 /// Verifies declaration names do not enter logical definition fingerprints.
 fn binding_fingerprint_depends_on_type_and_logical_value() {
     let value = LogicalValue::Number(
@@ -336,4 +393,48 @@ fn unit_language_release_and_feature_spellings_are_exact() {
     for rejected in ["", "A", "0a", "_a", "a+b", "é"] {
         assert!(!is_feature_id(rejected));
     }
+}
+
+#[test]
+/// Verifies the public logical graph exposes all retained record and binding facts.
+fn logical_document_accessors_preserve_complete_graph_facts() {
+    let document = reference_document([10, 20, 30, 40]);
+    assert_eq!(document.module().module_name(), "alpha_graph");
+    assert_eq!(document.record_types().len(), 1);
+    assert!(document.vocabulary().is_none());
+
+    let record = document
+        .record_type_by_name("Container")
+        .expect("record should exist");
+    assert_eq!(record.element_id().get(), 10);
+    assert_eq!(record.name(), "Container");
+    assert_eq!(record.nominal_identity().name(), "Container");
+    assert_eq!(record.symbol_identity().declaration_name(), "Container");
+    assert_ne!(record.fingerprint().digest().as_bytes(), [0_u8; 32]);
+    assert_eq!(record.fields().len(), 1);
+    let field = &record.fields()[0];
+    assert_eq!(field.name(), "name");
+    assert_eq!(field.resolved_type(), &ResolvedType::String);
+    assert_eq!(field.default_value(), None);
+    assert!(field.is_required());
+
+    assert_eq!(document.declarations().len(), 3);
+    let declaration = &document.declarations()[0];
+    assert_eq!(declaration.element_id().get(), 20);
+    assert_eq!(declaration.name(), "target");
+    assert_eq!(declaration.resolved_type(), &ResolvedType::String);
+    assert_eq!(
+        declaration.value(),
+        &LogicalValue::String("target".to_owned())
+    );
+    assert_eq!(declaration.symbol_identity().declaration_name(), "target");
+    assert_ne!(declaration.fingerprint().digest().as_bytes(), [0_u8; 32]);
+
+    let defaulted = RecordFieldSchema::new("label", ResolvedType::String)
+        .with_default(LogicalValue::String("default".to_owned()));
+    assert!(!defaulted.is_required());
+    assert_eq!(
+        defaulted.default_value(),
+        Some(&LogicalValue::String("default".to_owned()))
+    );
 }

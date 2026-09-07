@@ -183,3 +183,45 @@ fn automation_rejects_inline_test_module_bodies() {
         "#[cfg(test)]\n#[path = \"../tests/unit/mod.rs\"]\nmod tests;\n"
     ));
 }
+
+#[test]
+/// Verifies xtask commands run successfully.
+fn xtask_commands_and_helpers() {
+    assert!(super::run(["environment".into(), "manifest".into()]).is_ok());
+    assert!(super::run(["boundary".into(), "check".into()]).is_ok());
+    assert!(super::run(["test-layout".into(), "check".into()]).is_ok());
+    assert!(super::run(["traceability".into(), "check".into()]).is_ok());
+    assert!(super::run(["boundary".into(), "help".into()]).is_ok());
+    assert!(super::run(["clean-results".into()]).is_ok());
+
+    assert_eq!(
+        super::json_string("hello\n\"world\""),
+        "hello\n\\\"world\\\""
+    );
+    assert!(super::quality_array("fuzz", "targets").is_ok());
+    assert!(super::quality_array("fuzz", "nonexistent").is_err());
+    assert!(super::quality_array("nonexistent", "nonexistent").is_err());
+
+    let root = super::workspace_root().expect("workspace root should exist");
+    assert!(root.exists());
+    let res_root = super::result_root().expect("result root should exist");
+    assert!(res_root.ends_with("test-results"));
+
+    let uniq_dir = super::unique_result_directory("unit_test_probe").expect("unique result dir");
+    assert!(uniq_dir.exists());
+
+    let text = super::read_workspace_text(&root, "Cargo.toml").expect("read workspace text");
+    assert!(text.contains("workspace"));
+
+    let mut files = Vec::new();
+    assert!(super::collect_regular_files(&root.join("config"), &mut files).is_ok());
+    assert!(!files.is_empty());
+
+    assert!(super::ensure_registered_paths_exist(&root, "portable/specs/REQUIREMENTS.md").is_ok());
+    assert!(super::ensure_inventory_registered(&root, "config", "config/development-stage.toml config/host-policy.toml config/ir-encoding.toml config/quality-gates.toml config/test-suites.toml").is_ok());
+
+    assert!(super::print_environment_manifest().is_ok());
+    assert!(super::active_test_profile().is_ok());
+    let min_map = super::test_minimums("stage9").expect("test minimums");
+    assert!(!min_map.is_empty());
+}

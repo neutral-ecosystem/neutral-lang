@@ -10,3 +10,7 @@ pub mod constants;
 mod host;
 
 pub use host::{CliFailure, ExitClass, execute};
+
+#[cfg(test)]
+#[path = "../tests/library/mod.rs"]
+mod tests;

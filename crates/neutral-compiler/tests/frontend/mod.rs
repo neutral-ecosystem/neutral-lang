@@ -91,6 +91,27 @@ fn layout_normalizes_minimal_fixture_line_ends() {
 }
 
 #[test]
+/// Verifies physical newlines stay nonsemantic inside every delimiter family.
+fn layout_tracks_open_and_close_delimiter_depth() {
+    for source in [
+        b"num value = [\n1,\n2\n]\n".as_slice(),
+        b"record Value {\nstring label\n}\n".as_slice(),
+        b"num value = (\n42\n)\n".as_slice(),
+    ] {
+        let raw = lexer::lex(source).expect("delimited source should lex");
+        let normalized = layout::normalize(raw).expect("nested newlines should normalize");
+        assert_eq!(
+            normalized
+                .tokens
+                .iter()
+                .filter(|token| matches!(token.kind, TokenKind::LineEnd))
+                .count(),
+            1
+        );
+    }
+}
+
+#[test]
 /// Verifies the positive frozen fixture produces its expected private spans.
 fn parser_matches_the_minimal_frozen_oracle() {
     let source =
@@ -195,15 +216,61 @@ fn frontend_accepts_one_leading_bom_and_retains_original_offsets() {
 #[test]
 /// Verifies malformed encoding, NUL, BOM, headers, and numbers fail safely.
 fn frontend_rejects_malformed_minimal_inputs_safely() {
-    let malformed: [&[u8]; 6] = [
+    let malformed: [&[u8]; 14] = [
         b"\xff",
         b"neu \"0.1\"\0\nmodule minimal\nnum answer = 42\n",
         b"neu \"0.1\"\n\xef\xbb\xbfmodule minimal\nnum answer = 42\n",
         b"neu 0.1\nmodule minimal\nnum answer = 42\n",
         b"neu \"0.1\"\nmodule\nnum answer = 42\n",
         b"neu \"0.1\"\nmodule minimal\nnum answer = --42\n",
+        b"neu \"0.1\"\nuse\nmodule minimal\nnum answer = 42\n",
+        b"neu \"0.1\"\nmodule minimal\nrecord\n",
+        b"neu \"0.1\"\nmodule minimal\nrecord R {\n123\n}\n",
+        b"neu \"0.1\"\nmodule minimal\nnum = 42\n",
+        b"neu \"0.1\"\nmodule minimal\n123type x = 1\n",
+        b"neu \"0.1\"\nmodule minimal\nnum[] x = [1,\n",
+        b"neu \"0.1\"\nmodule minimal\nR x = R {\n",
+        b"neu \"0.1\"\nmodule minimal\nnum x = @invalid\n",
     ];
-    for source in malformed {
-        assert!(parse_source(source).is_err());
+    for (idx, source) in malformed.iter().enumerate() {
+        assert!(
+            parse_source(source).is_err(),
+            "malformed source at index {idx} unexpectedly succeeded"
+        );
     }
+
+    // Limit error in parser
+    let limits = neutral_core::StructuralLimits::new(4_096, 16)
+        .unwrap()
+        .with_declarations(1)
+        .unwrap();
+    let source = b"neu \"0.1\"\nmodule minimal\nnum a = 1\nnum b = 2\n";
+    assert!(parse(source, limits).is_err());
+}
+
+#[test]
+/// Verifies vocabulary use, records, lists, references, and nested values parse in the frontend.
+fn parser_handles_all_syntax_shapes() {
+    let source = br#"neu "0.1"
+module full_syntax
+
+use Fixture
+
+record Point {
+    num x,
+    num y,
+}
+
+num answer = 42
+Point pt = {
+    x: 10,
+    y: 20,
+}
+List<num> list = [1, 2, 3]
+Ref<Point> ptr = ref(pt)
+"#;
+    let unit = parse_source(source).expect("full syntax fixture should parse");
+    assert_eq!(unit.module.name, "full_syntax");
+    assert!(unit.vocabulary_use.is_some());
+    assert_eq!(unit.declarations.len(), 5);
 }

@@ -40,22 +40,47 @@ remains open until tests meet every configured threshold.
 `crates/neutral-ir/src/language.rs`, in cargo-mutants' isolated scratch tree.
 All 38 generated mutants were caught, meeting the configured 100% target.
 
-## Coverage-guided fuzz readiness
+The wider 271-mutant review caught 178, missed 66, and classified 27 as
+unviable. Follow-up exact-number boundary tests reduced the focused
+`ExactNumber` subset to 32 caught, 2 missed, and 3 unviable out of 37. The
+broader mutation gate remains open until every viable selected mutant is either
+caught or reviewed as an accepted equivalent-risk decision.
+
+## Coverage-guided fuzzing
 
 All five targets (`source`, `vocabulary`, `ir`, `formatter`, and `probe`) built
-under nightly and completed 256 bounded libFuzzer executions without a Neutral
-panic, hang, or sanitizer finding. This proves campaign readiness only; it does
-not satisfy the required 900 seconds per target.
+under the isolated nightly toolchain and completed their full 900-second
+libFuzzer campaigns on an untraced runner. No target reported a Neutral panic,
+hang, crash, timeout, or sanitizer finding.
 
-LeakSanitizer cannot run under the ptrace-managed development executor. The
-readiness rerun therefore disabled leak detection for this environment only.
-The full campaign must run on an untraced runner with normal sanitizer settings.
+| Target | Executions | Duration | Peak RSS |
+| --- | ---: | ---: | ---: |
+| `source` | 7,517,511 | 901s | 509 MiB |
+| `vocabulary` | 10,720,881 | 901s | 576 MiB |
+| `ir` | 85,143,833 | 901s | 484 MiB |
+| `formatter` | 9,337,700 | 901s | 471 MiB |
+| `probe` | 86,633,280 | 901s | 472 MiB |
+
+The first readiness run established that LeakSanitizer cannot run under the
+ptrace-managed development executor. The completed campaigns therefore used an
+untraced runner with normal sanitizer configuration.
 
 ## Performance
 
-The local release profile completed 250 iterations and the local soak profile
-completed 5,000 iterations for compilation, reader validation, artifact
-encoding/decoding, and probe traversal. Declaration-growth and eight-worker
-concurrent-isolation profiles also completed. These informational runs do not
-replace the required controlled-runner baseline, allocation measurement, or
-extended retained soak evidence.
+The controlled runner was Fedora Linux 7.1.13 on an Intel Core i3-1115G4
+(4 logical CPUs, 7.3 GiB RAM), using stable Rust 1.98.0. `/usr/bin/time -v`
+recorded whole-command peak resident memory; it includes Cargo/build activity,
+so it is a conservative process baseline rather than a component allocation
+profile.
+
+| Profile | Peak RSS | Result |
+| --- | ---: | --- |
+| `release` (250 iterations) | 446,476 KiB | pass |
+| `extended-soak` (50,000 iterations) | 463,128 KiB | pass |
+
+The extended soak completed compilation, reader validation, encoding, decoding,
+probe traversal, declaration growth, and eight-worker isolation without a
+failure or swap. Its slowest phase, artifact decoding, took 2,535,879,293 ns.
+No supported allocation profiler (`valgrind` or `heaptrack`) is installed on
+this runner, and the project forbids an unsafe replacement global allocator;
+component-level allocation accounting therefore remains an explicit open risk.

@@ -25,11 +25,11 @@ tool = "cargo-fuzz"
 targets = ["source", "vocabulary", "ir", "formatter", "probe"]
 minimum_seconds_per_target = 900
 readiness_runs_per_target = 256
-status = "readiness-pass-full-campaign-not-run"
+status = "full-campaign-pass"
 
 [performance]
 harness = "neutral-bench/stage9"
 pr_profile = "informational"
-release_profile = "dedicated-runner-baseline-required"
-soak_profile = "manual"
-status = "local-profiles-pass-dedicated-baseline-pending"
+release_profile = "measured-2026-09-07"
+soak_profile = "extended-soak-50000-measured-2026-09-07"
+status = "memory-and-soak-measured-allocation-profiler-unavailable"

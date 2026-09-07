@@ -30,6 +30,8 @@ const PR_PROFILE: &str = "pr";
 const RELEASE_PROFILE: &str = "release";
 /// Bounded stress/soak profile name.
 const SOAK_PROFILE: &str = "soak";
+/// Extended controlled-soak profile name.
+const EXTENDED_SOAK_PROFILE: &str = "extended-soak";
 /// Current benchmark package version.
 const BENCH_PRODUCER_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Small PR-profile iteration count.
@@ -38,6 +40,8 @@ const PR_ITERATIONS: usize = 25;
 const RELEASE_ITERATIONS: usize = 250;
 /// Bounded local soak iteration count.
 const SOAK_ITERATIONS: usize = 5_000;
+/// Extended controlled-soak iteration count.
+const EXTENDED_SOAK_ITERATIONS: usize = 50_000;
 /// Worker count used for the isolation/concurrency profile.
 const CONCURRENCY_WORKERS: usize = 8;
 /// Representative immutable source corpus entry.
@@ -54,6 +58,7 @@ fn main() {
         PR_PROFILE => PR_ITERATIONS,
         RELEASE_PROFILE => RELEASE_ITERATIONS,
         SOAK_PROFILE => SOAK_ITERATIONS,
+        EXTENDED_SOAK_PROFILE => EXTENDED_SOAK_ITERATIONS,
         _ => {
             eprintln!("{ERROR} unknown performance profile: {profile}");
             std::process::exit(2);

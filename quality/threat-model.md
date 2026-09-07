@@ -11,7 +11,7 @@ vocabulary JSON, external framed IR, CLI paths and streams, and probe traversal.
 
 | Threat | Control and evidence | Residual state |
 | --- | --- | --- |
-| Parser/decoder resource exhaustion | Explicit byte, depth, item, field, declaration, text, number, and traversal ceilings; at/over boundary tests | Stable campaigns pass; coverage-guided campaign pending |
+| Parser/decoder resource exhaustion | Explicit byte, depth, item, field, declaration, text, number, and traversal ceilings; at/over boundary tests; five clean 900-second coverage-guided campaigns | Pass within configured ceilings |
 | Stack exhaustion from recursive input | Frozen nesting limits and iterative dependency traversal | No known reproducer |
 | Malformed input yields partial authoritative IR | Result enums separate success/failure; reader validates complete graphs; CLI atomic publication | Pass in active hostile suites |
 | Source/vocabulary substitution | Typed SHA-256 digests and exact captured lock validation | Pass |

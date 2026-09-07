@@ -489,3 +489,7 @@ pub enum ProbeError {
     /// A frozen project-owned diagnostic contract was internally invalid.
     InternalInvariant,
 }
+
+#[cfg(test)]
+#[path = "../tests/library/mod.rs"]
+mod tests;

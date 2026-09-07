@@ -494,3 +494,39 @@ fn oversized_producer_text_fails_before_frame_construction() {
         Err(super::EncodingError::EncodedSizeLimit)
     );
 }
+
+#[test]
+/// Verifies every decoder ceiling builder and internal effective-limit accessor.
+fn decoder_limit_contract_applies_every_host_ceiling() {
+    let limits = DecodeLimits::hard()
+        .with_artifact_bytes(70)
+        .with_section_bytes(60)
+        .with_nesting_depth(50)
+        .with_container_items(40)
+        .with_text_bytes(30)
+        .with_byte_string_bytes(20)
+        .with_traversal_nodes(10);
+    assert_eq!(limits.maximum_artifact_bytes(), 70);
+    assert_eq!(limits.maximum_section_bytes(), 60);
+    assert_eq!(limits.maximum_nesting_depth(), 50);
+    assert_eq!(limits.maximum_container_items(), 40);
+    assert_eq!(limits.maximum_text_bytes(), 30);
+    assert_eq!(limits.maximum_byte_string_bytes(), 20);
+    assert_eq!(limits.maximum_traversal_nodes(), 10);
+    assert_eq!(
+        DecodeLimits::hard()
+            .with_artifact_bytes(usize::MAX)
+            .maximum_artifact_bytes(),
+        constants::MAXIMUM_ARTIFACT_BYTES
+    );
+}
+
+#[test]
+/// Verifies bounded decoder failures expose their stable code and offset policy.
+fn decoder_error_contract_exposes_safe_diagnostics() {
+    let error = decode(b"", DecodeLimits::hard(), &CancellationToken::new())
+        .expect_err("empty frame must fail");
+    assert_eq!(error.class(), DecodeErrorClass::MalformedFrame);
+    assert_eq!(error.code(), DecodeErrorClass::MalformedFrame.code());
+    assert_eq!(error.offset(), None);
+}
