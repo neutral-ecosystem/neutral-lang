@@ -7,22 +7,44 @@ Status: Stage 9 hardening in progress.
 ## Current focus
 
 - Stage: Stage 9 hardening
-- Status: stable hardening gates pass; external coverage/fuzz/release performance evidence remains
-- Last updated: 2026-09-06
+- Status: coverage remediation, full fuzzing, and controlled performance evidence remain
+- Last updated: 2026-09-07
 
 ## Next actions
 
 - [ ] Run all five coverage-guided fuzz targets for the approved time budget.
-- [ ] Supply LLVM coverage tools and meet the configured thresholds.
-- [ ] Complete remaining named mutation targets and controlled release/memory/soak profiles.
+- [ ] Raise line/function/region coverage to the configured 85%/90%/80% thresholds.
+- [ ] Complete broader named mutation review and controlled
+      release/memory/soak profiles on the approved runner.
 
 ## Blockers
 
-- The current stable environment has neither `rustup` nor
-  `llvm-tools-preview`, so `cargo-llvm-cov` cannot produce coverage evidence.
-- No compatible nightly/libFuzzer toolchain is present to run `cargo-fuzz`.
+- Measured line/function/region coverage is 84.91%/80.46%/75.55%, below the
+  configured 85%/90%/80% thresholds.
+- Full fuzz campaigns require an untraced runner because LeakSanitizer cannot
+  operate under the development executor's ptrace supervision.
 
 ## Completed log
+
+- [x] 2026-09-07: Provisioned checksum-verified isolated Stage 9 tools without
+  changing the stable repository toolchain. Reconfirmed 38/38 critical mutants
+  caught; ran all five libFuzzer targets for 256 readiness executions each;
+  completed local 250-iteration release and 5,000-iteration soak profiles; and
+  produced the first retained LLVM coverage summary. Coverage measured
+  84.91% lines, 80.46% functions, and 75.55% regions and therefore correctly
+  failed the configured 85%/90%/80% gate. Repeated, concurrent, and adversarial
+  determinism remains green and its Stage 9 validation item is approved.
+
+- [x] 2026-09-07: Activated Stage 9 in the repository configuration and
+  replaced the transitional automation stubs with real configuration-driven
+  quality entry points. `cargo xtask coverage` now enforces the configured
+  line/function/region thresholds, `cargo xtask mutate` targets the configured
+  critical module, and `cargo xtask fuzz campaign` runs all five configured
+  coverage-guided targets for their configured budgets. Automation unit tests,
+  Clippy, environment verification, and test-layout validation pass. Initial
+  direct probes reported the three absent external Cargo tools honestly;
+  deterministic fuzz smoke remains separate from coverage-guided evidence. The
+  complete Stage 9-aware `cargo xtask ci pr` profile passes.
 
 - [x] 2026-09-06: Began Stage 9 hardening. Moved every inline Rust test body
   into path-based crate-local `tests/` modules and added a CI layout gate.

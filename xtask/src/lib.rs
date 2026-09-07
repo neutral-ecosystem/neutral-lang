@@ -60,7 +60,8 @@ pub fn run(arguments: impl IntoIterator<Item = String>) -> Result<(), String> {
             performance(profile)
         }
         [command, mode] if command == "fuzz" => fuzz(mode),
-        [command] if command == "coverage" || command == "mutate" => not_active(command),
+        [command] if command == "coverage" => coverage(),
+        [command] if command == "mutate" => mutate(),
         [command, action] if command == "golden" || command == "quality" => {
             not_active(&format!("{command} {action}"))
         }
@@ -332,9 +333,105 @@ fn run_active_test_filter(suite: &str) -> Result<(), String> {
 fn fuzz(mode: &str) -> Result<(), String> {
     match mode {
         "smoke" if active_stage()? >= 2 => run_active_test_filter("fuzz_smoke"),
-        "campaign" if active_stage()? >= 9 => run_active_test_filter("fuzz"),
+        "campaign" if active_stage()? >= 9 => coverage_guided_fuzz_campaign(),
         "campaign" if active_stage()? >= 7 => run_active_test_filter("fuzz_decoder"),
         _ => not_active(&format!("fuzz mode {mode}")),
+    }
+}
+
+/// Runs every configured coverage-guided fuzz target for its approved budget.
+fn coverage_guided_fuzz_campaign() -> Result<(), String> {
+    let targets = quality_array("fuzz", "targets")?;
+    let seconds = quality_value("fuzz", "minimum_seconds_per_target")?;
+    for target in targets {
+        run_cargo(&[
+            "fuzz",
+            "run",
+            &target,
+            "--",
+            &format!("-max_total_time={seconds}"),
+        ])?;
+    }
+    Ok(())
+}
+
+/// Runs workspace coverage and enforces every configured percentage threshold.
+fn coverage() -> Result<(), String> {
+    if active_stage()? < 9 {
+        return not_active("coverage");
+    }
+    let lines = quality_value("coverage", "minimum_line_percent")?;
+    let functions = quality_value("coverage", "minimum_function_percent")?;
+    let regions = quality_value("coverage", "minimum_region_percent")?;
+    run_cargo(&[
+        "llvm-cov",
+        "--workspace",
+        "--all-targets",
+        "--fail-under-lines",
+        &lines,
+        "--fail-under-functions",
+        &functions,
+        "--fail-under-regions",
+        &regions,
+    ])
+}
+
+/// Runs mutation analysis for the configured critical production target.
+fn mutate() -> Result<(), String> {
+    if active_stage()? < 9 {
+        return not_active("mutate");
+    }
+    let target = quality_value("mutation", "critical_target")?;
+    run_cargo(&["mutants", "--file", &target])
+}
+
+/// Reads one scalar value from a section of the Stage 9 quality configuration.
+fn quality_value(section: &str, key: &str) -> Result<String, String> {
+    let configuration_path = workspace_root()?.join(constants::QUALITY_GATES_FILE);
+    let configuration = fs::read_to_string(&configuration_path)
+        .map_err(|error| format!("could not read {}: {error}", configuration_path.display()))?;
+    quality_value_from(&configuration, section, key)
+        .ok_or_else(|| format!("quality configuration has no [{section}] {key} value"))
+}
+
+/// Extracts one scalar value from a simple TOML section without interpreting it.
+fn quality_value_from(configuration: &str, section: &str, key: &str) -> Option<String> {
+    let heading = format!("[{section}]");
+    let mut selected = false;
+    for line in configuration.lines().map(str::trim) {
+        if line.starts_with('[') {
+            selected = line == heading;
+            continue;
+        }
+        if !selected || line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let (candidate, value) = line.split_once('=')?;
+        if candidate.trim() == key {
+            return Some(value.trim().trim_matches('"').to_owned());
+        }
+    }
+    None
+}
+
+/// Reads one quoted-string array from the Stage 9 quality configuration.
+fn quality_array(section: &str, key: &str) -> Result<Vec<String>, String> {
+    let value = quality_value(section, key)?;
+    let inner = value
+        .strip_prefix('[')
+        .and_then(|value| value.strip_suffix(']'))
+        .ok_or_else(|| format!("quality [{section}] {key} must be an array"))?;
+    let values = inner
+        .split(',')
+        .map(str::trim)
+        .map(|value| value.trim_matches('"'))
+        .filter(|value| !value.is_empty())
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    if values.is_empty() {
+        Err(format!("quality [{section}] {key} array is empty"))
+    } else {
+        Ok(values)
     }
 }
 

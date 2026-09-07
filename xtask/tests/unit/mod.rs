@@ -3,9 +3,10 @@
 //! Tests for dependency-boundary policy failures.
 
 use super::{
-    constants, contract_ids, ensure_ids_covered, ensure_syntax_complete, render_rustdoc_index,
-    rustdoc_header_configuration, set, source_has_non_path_test_configuration,
-    validate_allowed_packages, validate_direct_dependencies,
+    constants, contract_ids, ensure_ids_covered, ensure_syntax_complete, quality_value_from,
+    render_rustdoc_index, rustdoc_header_configuration, set,
+    source_has_non_path_test_configuration, validate_allowed_packages,
+    validate_direct_dependencies,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -13,6 +14,21 @@ use std::collections::{BTreeMap, BTreeSet};
 /// Verifies that invalid automation command syntax is rejected.
 fn automation_rejects_an_invalid_command() {
     assert!(super::run(["unknown".to_owned()]).is_err());
+}
+
+#[test]
+/// Verifies Stage 9 tool arguments come from the quality-gate configuration.
+fn automation_reads_named_quality_values() {
+    let configuration =
+        "[coverage]\nminimum_line_percent = 85\n\n[fuzz]\ntargets = [\"source\", \"ir\"]\n";
+    assert_eq!(
+        quality_value_from(configuration, "coverage", "minimum_line_percent"),
+        Some("85".to_owned())
+    );
+    assert_eq!(
+        quality_value_from(configuration, "fuzz", "targets"),
+        Some("[\"source\", \"ir\"]".to_owned())
+    );
 }
 
 #[test]

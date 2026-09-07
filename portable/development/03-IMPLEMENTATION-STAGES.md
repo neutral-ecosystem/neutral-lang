@@ -627,7 +627,7 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 
 - [ ] No known input causes unbounded work, panic, stack exhaustion, invalid
       typed IR, stale source facts, cross-request leakage, or partial success.
-- [ ] Determinism holds under repeated/concurrent/adversarial execution.
+- [x] Determinism holds under repeated/concurrent/adversarial execution.
 - [ ] All approved quality gates and residual-risk reviews pass.
 
 ---
@@ -639,7 +639,9 @@ Execute [05-RELEASE.md](05-RELEASE.md).
 ### Stage 10 — v0 Release Validation
 
 - [ ] All previous stage gates pass from a clean release-candidate build.
+- [ ] clean folder structure
 - [ ] The complete v0 release can be built, tested, validated, and packaged using the documented release workflow.
+- [ ] make all dependecy neede to future dev in a requirements (dev env)
 - [ ] Versioning is centralized so that changing a release version, for example `v0.1.0` → `v0.1.1`, requires changing it in only one authoritative location.
 - [ ] A single release/update command propagates the version and generated metadata across all required crates, packages, manifests, documentation, and artifacts.
 - [ ] Repetitive development and release tasks are automated wherever practical instead of requiring manual edits across multiple files.
@@ -654,6 +656,7 @@ Execute [05-RELEASE.md](05-RELEASE.md).
 - [ ] Release validation records the exact versions of all independent contracts, schemas, protocols, and compatibility boundaries.
 - [ ] The release record documents known limitations, residual risks, exclusions, compatibility guarantees, and deferred work.
 - [ ] No known release-blocking issue remains unresolved.
+- [ ] Clean stage dependent logic, like stageX command and just make it neutral command
 
 #### Stage Gate
 

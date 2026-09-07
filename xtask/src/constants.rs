@@ -42,6 +42,8 @@ pub const SYNTAX_CONTRACT_FILE: &str = "portable/specs/contracts/syntax.md";
 pub const SYNTAX_CHECKLIST_FILE: &str = "portable/specs/contracts/syntax-checklist.md";
 /// Complete implementation evidence index relative to the workspace root.
 pub const TRACEABILITY_FILE: &str = "portable/specs/TRACEABILITY.md";
+/// Stage 9 quality-gate configuration relative to the workspace root.
+pub const QUALITY_GATES_FILE: &str = "config/quality-gates.toml";
 /// Normative fixture root relative to the workspace root.
 pub const FIXTURE_DIRECTORY: &str = "portable/specs/fixtures";
 /// Normative oracle root relative to the workspace root.

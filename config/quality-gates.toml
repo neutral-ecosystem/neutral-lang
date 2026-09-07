@@ -7,7 +7,10 @@ tool = "cargo-llvm-cov"
 minimum_line_percent = 85
 minimum_function_percent = 90
 minimum_region_percent = 80
-status = "blocked-missing-llvm-tools"
+observed_line_percent = 84.91
+observed_function_percent = 80.46
+observed_region_percent = 75.55
+status = "measured-below-threshold"
 
 [mutation]
 tool = "cargo-mutants"
@@ -21,7 +24,8 @@ status = "pass"
 tool = "cargo-fuzz"
 targets = ["source", "vocabulary", "ir", "formatter", "probe"]
 minimum_seconds_per_target = 900
-status = "targets-ready-campaign-not-run"
+readiness_runs_per_target = 256
+status = "readiness-pass-full-campaign-not-run"
 
 [performance]
 harness = "neutral-bench/stage9"

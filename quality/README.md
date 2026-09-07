@@ -15,3 +15,5 @@ owners, and follow-up decisions needed to interpret those results.
 - `quality-evaluation.md` evaluates the selected product characteristics.
 - `residual-risks.md` prevents incomplete external campaigns from being called
   passes.
+- `stage9-dynamic-evidence.md` records measured coverage, mutation,
+  coverage-guided readiness, and local performance outcomes.

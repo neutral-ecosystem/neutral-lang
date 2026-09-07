@@ -2,7 +2,7 @@
 
 # Stage 9 product-quality evaluation
 
-Evaluation date: 2026-09-06. Owner: maintainer.
+Evaluation date: 2026-09-07. Owner: maintainer.
 
 | Characteristic | Method/evidence | Current conclusion |
 | --- | --- | --- |
@@ -12,7 +12,7 @@ Evaluation date: 2026-09-06. Owner: maintainer.
 | Interaction capability | CLI/process tests and source-linked diagnostics | Pass on declared host matrix |
 | Reliability | Repeated/concurrent determinism, cancellation checkpoints, atomic output | Pass |
 | Security | Threat model, hostile suites, limits, RustSec and effect-boundary review | Indeterminate until coverage-guided campaigns finish |
-| Maintainability | Crate boundaries, rustdoc, no inline tests, Clippy, mutation target | Indeterminate until coverage measurement finishes |
+| Maintainability | Crate boundaries, rustdoc, no inline tests, Clippy, mutation target | Indeterminate because measured coverage remains below threshold |
 | Flexibility | Explicit capture, reader, encoding, probe, and host boundaries | Pass |
 | Safety | Fail-closed results, no partial authority, no unsafe/native code | Pass for reviewed paths |
 

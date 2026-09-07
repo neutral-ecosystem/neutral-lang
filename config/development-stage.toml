@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# The active stage selects the completed Stage 8 formatter/CLI/probe/docs slice.
+# Stage 8 is complete; Stage 9 hardening is the active, not-yet-approved gate.
 # Advancing this value requires its complete vertical slice and reviewed evidence.
-active_stage = 8
-active_step = 4
+active_stage = 9
+active_step = 1
