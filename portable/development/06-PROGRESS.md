@@ -39,7 +39,7 @@ Status: Stage 9 hardening in progress.
 
 - [x] 2026-09-07: Added exact-number canonical reconstruction and source
   normalization boundary tests. The focused `ExactNumber` mutation subset now
-  catches 32 of 37 generated mutants (with 3 unviable and 2 still missed).
+  catches 34 of 37 generated mutants (with 3 unviable and none missed).
   Workspace formatting, strict Clippy, all targets, traceability, dependency
   boundaries, and crate-local test-layout checks pass.
 

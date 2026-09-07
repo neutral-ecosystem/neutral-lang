@@ -2,8 +2,10 @@
 
 //! Exact boundary tests for private frame and logical-schema validation.
 
-use super::{DecodeErrorClass, DecodeLimits, SchemaBudget, constants, decode_frame};
+use super::{DecodeErrorClass, DecodeLimits, SchemaBudget, constants, decode_frame, decode_type};
+use crate::decoder::{CborValue, LocatedValue};
 use neutral_core::{CancellationToken, StructuralLimits};
+use neutral_ir::ResolvedType;
 
 /// Total-length field offset in the frozen frame header.
 const TOTAL_LENGTH_OFFSET: usize = 16;
@@ -86,6 +88,84 @@ fn frame_error(bytes: &[u8], limits: DecodeLimits) -> DecodeErrorClass {
         Ok(_) => panic!("frame was expected to fail"),
         Err(error) => error.class(),
     }
+}
+
+/// Builds one located closed CBOR map for direct schema-decoder tests.
+fn map(members: Vec<(&str, CborValue)>) -> LocatedValue {
+    LocatedValue {
+        offset: 0,
+        value: CborValue::Map(
+            members
+                .into_iter()
+                .map(|(key, value)| (key.to_owned(), LocatedValue { offset: 0, value }))
+                .collect(),
+        ),
+    }
+}
+
+/// Creates a mutable schema budget with caller-selected nesting capacity.
+fn type_budget(cancellation: &CancellationToken, nesting_depth: u64) -> SchemaBudget<'_> {
+    SchemaBudget {
+        limits: StructuralLimits::new(64, 4)
+            .expect("base limits should be valid")
+            .with_nesting_depth(nesting_depth)
+            .expect("nesting depth should be valid"),
+        nodes: 0,
+        cancellation,
+    }
+}
+
+#[test]
+/// Verifies closed recursive type decoding rejects unknown kinds and enforces depth.
+fn recursive_type_schema_is_closed_and_depth_bounded() {
+    let cancellation = CancellationToken::new();
+    let unknown = map(vec![
+        (constants::key::KIND, CborValue::Text("unknown".to_owned())),
+        (
+            constants::key::INNER,
+            CborValue::Map(vec![(
+                constants::key::KIND.to_owned(),
+                LocatedValue {
+                    offset: 0,
+                    value: CborValue::Text(constants::kind::NUM.to_owned()),
+                },
+            )]),
+        ),
+    ]);
+    assert_eq!(
+        decode_type(&unknown, &mut type_budget(&cancellation, 4), 1)
+            .expect_err("unknown recursive type kind must fail")
+            .class(),
+        DecodeErrorClass::InvalidEncodedSchema
+    );
+
+    let list = map(vec![
+        (
+            constants::key::KIND,
+            CborValue::Text(constants::kind::LIST.to_owned()),
+        ),
+        (
+            constants::key::INNER,
+            CborValue::Map(vec![(
+                constants::key::KIND.to_owned(),
+                LocatedValue {
+                    offset: 0,
+                    value: CborValue::Text(constants::kind::NUM.to_owned()),
+                },
+            )]),
+        ),
+    ]);
+    assert_eq!(
+        decode_type(&list, &mut type_budget(&cancellation, 2), 1)
+            .expect("nested type at the exact depth must decode"),
+        ResolvedType::list(ResolvedType::Num)
+    );
+    assert_eq!(
+        decode_type(&list, &mut type_budget(&cancellation, 1), 1)
+            .expect_err("nested type one over the depth must fail")
+            .class(),
+        DecodeErrorClass::EncodedSizeLimit
+    );
 }
 
 #[test]

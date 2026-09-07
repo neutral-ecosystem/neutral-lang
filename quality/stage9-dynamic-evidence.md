@@ -34,6 +34,10 @@ No threshold was reduced. Missing coverage is concentrated in automation,
 parser/decoder failure paths, and host command handling. The coverage gate
 remains open until tests meet every configured threshold.
 
+The current production-only diagnostic scope (excluding `xtask`) measures
+93.11% lines, 89.53% functions, and 84.12% regions. It exceeds the line and
+region thresholds but remains below the required 90% function threshold.
+
 ## Mutation
 
 `cargo xtask mutate` tested the configured critical target,
@@ -41,10 +45,10 @@ remains open until tests meet every configured threshold.
 All 38 generated mutants were caught, meeting the configured 100% target.
 
 The wider 271-mutant review caught 178, missed 66, and classified 27 as
-unviable. Follow-up exact-number boundary tests reduced the focused
-`ExactNumber` subset to 32 caught, 2 missed, and 3 unviable out of 37. The
-broader mutation gate remains open until every viable selected mutant is either
-caught or reviewed as an accepted equivalent-risk decision.
+unviable. Follow-up exact-number boundary tests closed the focused
+`ExactNumber` subset at 34 caught and 3 unviable out of 37, with no missed
+mutants. The broader mutation gate remains open until every viable selected
+mutant is either caught or reviewed as an accepted equivalent-risk decision.
 
 ## Coverage-guided fuzzing
 

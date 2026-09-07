@@ -618,10 +618,27 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 - [x] Inject cancellation/faults at every stage.
 - [x] Complete dependency/build-script/proc-macro/native/unsafe review.
 - [x] Complete cache poisoning/cross-request/stale-source-fact review.
+- [x] Close the focused exact-number mutation subset: 34 caught, 3 unviable,
+      and no missed mutants.
 - [ ] Complete controlled phase/end-to-end performance, growth, memory,
       concurrency, stress, and soak profiles.
 - [ ] Complete coverage, mutation, static work-product reviews, threat model, and
       quality evaluation defined in [04-TESTING.md](04-TESTING.md).
+
+#### Remaining Stage 9 evidence
+
+- [x] Run every source, vocabulary, IR, formatter, and probe fuzz target for at
+      least 900 seconds on an untraced runner without a crash, timeout, hang, or
+      sanitizer finding.
+- [x] Record controlled release and 50,000-iteration extended-soak baselines,
+      including whole-command peak RSS.
+- [ ] Obtain component-level allocation evidence, or approve and record a
+      measurement exception consistent with the no-unsafe policy.
+- [ ] Raise production coverage to the configured 85% line / 90% function /
+      80% region thresholds; the current production diagnostic result is
+      93.11% / 89.53% / 84.12%.
+- [ ] Close the broader selected mutation review; 178 of 271 selected mutants
+      were caught, 66 remain missed, and 27 are unviable.
 
 ### Stage 9 validation
 
@@ -723,13 +740,14 @@ Execute [05-RELEASE.md](05-RELEASE.md).
 
 ```text
 scripts/
-├── dev/
-├── test/
-├── quality/
-├── release/
-├── tooling/
-└── platform/
-    └── linux/
+── linux/
+      ├── dev/
+      ├── test/
+      ├── quality/
+      ├── release/
+      ├── tooling/
+      └── platform/
+
 ```
 
 * [ ] Keep Linux-specific automation under the Linux platform directory.
@@ -811,6 +829,7 @@ scripts/
 * [ ] Add validation that detects manually edited or stale generated version information.
 * [ ] Ensure version propagation works correctly across the entire workspace.
 * [ ] Ensure development, pre-release, and release versions follow one documented policy.
+* [ ] No hardcoded value inline
 
 ---
 

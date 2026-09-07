@@ -397,3 +397,7 @@ impl Drop for TemporaryOutput {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "../tests/host/mod.rs"]
+mod tests;

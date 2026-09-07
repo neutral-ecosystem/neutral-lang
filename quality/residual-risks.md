@@ -8,7 +8,7 @@ The following work prevents Stage 9 validation from being approved today:
 
 - The official whole-workspace coverage gate remains below its configured
   85%/90%/80% line/function/region thresholds. A production-only diagnostic
-  run reached 92.99%/89.15%/83.92%, but it still misses the function threshold
+  run reached 93.11%/89.53%/84.12%, but it still misses the function threshold
   and is not a substitute for the configured gate.
 - All five required 900-second fuzz campaigns completed cleanly on an untraced
   runner. This item is closed.

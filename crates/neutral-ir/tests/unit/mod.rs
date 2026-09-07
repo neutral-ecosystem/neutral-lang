@@ -10,8 +10,10 @@ use super::{
     Declaration, DeclarationFingerprint, ElementId, ExactNumber, IdentityReference,
     LogicalDocument, LogicalModuleIdentity, LogicalValue, ModuleSymbolIdentity,
     NominalTypeIdentity, RecordFieldSchema, RecordTypeDefinition, RecordValue, RecordValueField,
-    ResolvedType,
+    ResolvedType, VocabularyContract, VocabularyFieldContract, VocabularyIdentity,
+    VocabularyTypeContract, VocabularyTypeIdentity,
 };
+use neutral_core::VocabularyContentDigest;
 
 /// Frozen language behavior version used by standalone IR test graphs.
 const TEST_LANGUAGE_BEHAVIOR_VERSION: &str = "0.1.0";
@@ -170,6 +172,66 @@ fn exact_number_source_accepts_the_exact_digit_limit() {
         .expect("a coefficient at the configured digit ceiling should normalize");
     assert_eq!(number.coefficient(), "123");
     assert_eq!(number.scale(), 0);
+}
+
+#[test]
+/// Verifies trailing-zero normalization may end exactly at the scale ceiling.
+fn exact_number_source_accepts_the_exact_normalized_scale_limit() {
+    let number = ExactNumber::from_source("100", 3, 2)
+        .expect("a normalized scale at the configured ceiling should normalize");
+    assert_eq!(number.coefficient(), "1");
+    assert_eq!(number.scale(), 2);
+}
+
+#[test]
+/// Verifies captured vocabulary contracts retain and expose every immutable fact.
+fn vocabulary_contract_accessors_preserve_exact_captured_facts() {
+    let identity = VocabularyIdentity::new(
+        "Fixture",
+        "1.0.0",
+        "0.1.0",
+        "json-1",
+        VocabularyContentDigest::from_bytes(b"fixture-vocabulary"),
+        vec!["records".to_owned()],
+    );
+    let type_identity = VocabularyTypeIdentity::new("Fixture", "Entry");
+    let field = VocabularyFieldContract::new(
+        "value",
+        ResolvedType::String,
+        Some(LogicalValue::String("default".to_owned())),
+    );
+    let contract = VocabularyContract::new(
+        identity.clone(),
+        vec![VocabularyTypeContract::new(
+            type_identity.clone(),
+            vec![field],
+        )],
+    );
+
+    assert_eq!(identity.identity(), "Fixture");
+    assert_eq!(identity.version(), "1.0.0");
+    assert_eq!(identity.schema_version(), "0.1.0");
+    assert_eq!(identity.encoding_version(), "json-1");
+    assert_eq!(
+        identity.content_digest(),
+        VocabularyContentDigest::from_bytes(b"fixture-vocabulary")
+    );
+    assert_eq!(identity.required_features(), ["records"]);
+    assert_eq!(type_identity.vocabulary(), "Fixture");
+    assert_eq!(type_identity.name(), "Entry");
+    assert_eq!(type_identity.to_string(), "Fixture::Entry");
+    let entry = contract
+        .type_by_name("Entry")
+        .expect("type should be discoverable");
+    assert_eq!(entry.identity(), &type_identity);
+    assert_eq!(entry.fields()[0].name(), "value");
+    assert_eq!(entry.fields()[0].resolved_type(), &ResolvedType::String);
+    assert_eq!(
+        entry.fields()[0].default_value(),
+        Some(&LogicalValue::String("default".to_owned()))
+    );
+    assert!(contract.logically_equivalent(&contract));
+    assert!(contract.type_by_name("missing").is_none());
 }
 
 #[test]
