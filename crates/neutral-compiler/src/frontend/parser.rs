@@ -10,6 +10,10 @@ use super::{
 use crate::language::names;
 use neutral_core::{ByteSpan, StructuralLimits};
 
+#[cfg(test)]
+#[path = "../../tests/parser/mod.rs"]
+mod tests;
+
 /// Parses one active document or returns no private syntax model.
 pub(super) fn parse(
     source: LexedSource,

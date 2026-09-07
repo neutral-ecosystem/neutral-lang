@@ -50,3 +50,33 @@ fn host_failures_expose_stable_classification() {
     assert_eq!(failure.class(), ExitClass::Input);
     assert_eq!(failure.messages(), ["input-read-failed"]);
 }
+
+/// Reader that deterministically injects a host I/O fault.
+struct FailingReader;
+
+impl std::io::Read for FailingReader {
+    /// Fails every input operation without consuming bytes.
+    fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> {
+        Err(std::io::Error::other("injected input failure"))
+    }
+}
+
+#[test]
+/// Host input faults and formatter failures retain their public classifications.
+fn host_faults_do_not_become_partial_success() {
+    assert_eq!(
+        read_bounded(Box::new(FailingReader), 16)
+            .unwrap_err()
+            .class(),
+        ExitClass::Input
+    );
+    for (error, expected) in [
+        (
+            super::FormatError::OutputLimitExceeded,
+            ExitClass::Validation,
+        ),
+        (super::FormatError::InternalDefect, ExitClass::Internal),
+    ] {
+        assert_eq!(super::format_failure(error).class(), expected);
+    }
+}

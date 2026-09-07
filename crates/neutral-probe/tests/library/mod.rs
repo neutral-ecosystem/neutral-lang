@@ -100,3 +100,39 @@ fn probe_summary_exposes_every_projection() {
         Err(ProbeError::UnknownElement)
     );
 }
+
+#[test]
+/// Verifies rendering includes each optional summary category in its documented order.
+fn renderer_preserves_all_summary_categories() {
+    let summary = ProbeSummary {
+        module: "sample".into(),
+        metadata: vec!["meta".into()],
+        vocabulary: Some("Fixture".into()),
+        vocabulary_types: vec!["Entry".into()],
+        record_types: vec!["Record".into()],
+        declarations: vec!["answer".into()],
+        source_mappings: vec!["span".into()],
+        value_provenance: vec!["value".into()],
+        field_provenance: vec!["field".into()],
+        reuse_provenance: vec!["reuse".into()],
+        reference_provenance: vec!["reference".into()],
+        diagnostics: vec!["observation".into()],
+    };
+    assert_eq!(
+        render_summary(&summary),
+        [
+            "module sample",
+            "metadata meta",
+            "vocabulary Fixture",
+            "record Record",
+            "vocabulary-type Entry",
+            "declaration answer",
+            "source-map span",
+            "value-provenance value",
+            "field-provenance field",
+            "reuse-provenance reuse",
+            "reference-provenance reference",
+            "diagnostic observation"
+        ]
+    );
+}

@@ -17,6 +17,61 @@ fn automation_rejects_an_invalid_command() {
 }
 
 #[test]
+/// Unsupported profiles must fail before starting an external campaign.
+fn automation_rejects_unknown_campaign_profiles() {
+    for arguments in [
+        vec!["build", "--profile", "unknown"],
+        vec!["test", "unknown"],
+        vec!["test", "performance", "--profile", "unknown"],
+        vec!["fuzz", "unknown"],
+        vec!["ci", "unknown"],
+        vec!["quality", "unknown"],
+    ] {
+        assert!(super::run(arguments.into_iter().map(str::to_owned)).is_err());
+    }
+}
+
+#[test]
+/// Missing files and process failures retain actionable diagnostics.
+fn automation_reports_io_failures() {
+    let directory =
+        std::env::temp_dir().join(format!("neutral-xtask-missing-{}", std::process::id()));
+    assert!(!directory.exists());
+    assert!(
+        super::read_workspace_text(&directory, "missing")
+            .unwrap_err()
+            .contains("could not read missing")
+    );
+    assert!(
+        super::collect_regular_files(&directory, &mut Vec::new())
+            .unwrap_err()
+            .contains("could not inspect")
+    );
+    assert!(
+        super::command_output(directory.to_str().unwrap(), &[])
+            .unwrap_err()
+            .contains("could not run")
+    );
+    assert!(
+        super::command_output("rustc", &["--invalid-neutral-test-option"])
+            .unwrap_err()
+            .contains("failed with")
+    );
+    assert!(super::test_minimums("missing").is_err());
+}
+
+#[cfg(unix)]
+#[test]
+/// Successful commands with malformed bytes cannot bypass UTF-8 validation.
+fn automation_rejects_non_utf8_command_output() {
+    assert!(
+        super::command_output("sh", &["-c", "printf '\\377'"])
+            .unwrap_err()
+            .contains("non-UTF-8")
+    );
+}
+
+#[test]
 /// Verifies Stage 9 tool arguments come from the quality-gate configuration.
 fn automation_reads_named_quality_values() {
     let configuration =
@@ -192,7 +247,6 @@ fn xtask_commands_and_helpers() {
     assert!(super::run(["test-layout".into(), "check".into()]).is_ok());
     assert!(super::run(["traceability".into(), "check".into()]).is_ok());
     assert!(super::run(["boundary".into(), "help".into()]).is_ok());
-    assert!(super::run(["clean-results".into()]).is_ok());
 
     assert_eq!(
         super::json_string("hello\n\"world\""),

@@ -15,6 +15,49 @@ use super::{
 };
 use neutral_core::VocabularyContentDigest;
 
+/// Wraps a valid logical graph in independent, non-semantic companion records.
+fn comparison_artifacts(document: LogicalDocument, source: &[u8]) -> super::CompilationArtifacts {
+    let digest = neutral_core::SourceContentDigest::from_bytes(source);
+    let length = source.len() as u64;
+    super::CompilationArtifacts::new(
+        document,
+        super::SourceMap::new(
+            digest,
+            length,
+            neutral_core::ByteSpan::new(0, length).unwrap(),
+            vec![],
+        ),
+        vec![],
+        super::DerivationManifest::new(
+            super::LANGUAGE_BEHAVIOR_VERSION,
+            digest,
+            super::AcceptancePartition::from_limits(
+                neutral_core::StructuralLimits::new(4096, 16).unwrap(),
+            ),
+            super::ResourceFacts::new(length, 4, 0, 0),
+        ),
+    )
+}
+
+#[test]
+/// Artifact meaning ignores companions and alpha-renaming, but not changed logical content.
+fn artifact_equivalence_compares_the_logical_payload_only() {
+    let left = comparison_artifacts(reference_document([1, 2, 3, 4]), b"first capture");
+    let right = comparison_artifacts(reference_document([10, 20, 30, 40]), b"second capture");
+    assert_ne!(left, right);
+    assert!(left.logically_equivalent(&right));
+    assert!(right.logically_equivalent(&left));
+    let different = comparison_artifacts(
+        LogicalDocument::new(
+            LogicalModuleIdentity::new(super::LANGUAGE_BEHAVIOR_VERSION, "empty"),
+            vec![],
+        ),
+        b"first capture",
+    );
+    assert!(!left.logically_equivalent(&different));
+    assert!(!different.logically_equivalent(&left));
+}
+
 /// Frozen language behavior version used by standalone IR test graphs.
 const TEST_LANGUAGE_BEHAVIOR_VERSION: &str = "0.1.0";
 
@@ -181,6 +224,78 @@ fn exact_number_source_accepts_the_exact_normalized_scale_limit() {
         .expect("a normalized scale at the configured ceiling should normalize");
     assert_eq!(number.coefficient(), "1");
     assert_eq!(number.scale(), 2);
+}
+
+#[test]
+/// Verifies vocabulary equality compares every meaning field but ignores captured bytes.
+fn vocabulary_equivalence_checks_each_meaning_partition() {
+    let identity = VocabularyIdentity::new(
+        "Fixture",
+        "1.0.0",
+        super::LOGICAL_IR_SCHEMA_VERSION,
+        "encoding-a",
+        VocabularyContentDigest::from_bytes(b"a"),
+        Vec::new(),
+    );
+    let baseline = VocabularyContract::new(identity, Vec::new());
+    let mut recaptured = baseline.clone();
+    recaptured.identity.encoding_version = "encoding-b".into();
+    recaptured.identity.content_digest = VocabularyContentDigest::from_bytes(b"b");
+    assert!(baseline.logically_equivalent(&recaptured));
+    let mut variants = Vec::new();
+    let mut value = baseline.clone();
+    value.identity.identity = "Other".into();
+    variants.push(value);
+    let mut value = baseline.clone();
+    value.identity.version = "2.0.0".into();
+    variants.push(value);
+    let mut value = baseline.clone();
+    value.identity.schema_version = "2.0.0".into();
+    variants.push(value);
+    let mut value = baseline.clone();
+    value.identity.required_features.push("feature".into());
+    variants.push(value);
+    let mut value = baseline.clone();
+    value.types.push(VocabularyTypeContract::new(
+        VocabularyTypeIdentity::new("Fixture", "Entry"),
+        Vec::new(),
+    ));
+    variants.push(value);
+    let document = reference_document([1, 2, 3, 4]).with_vocabulary(baseline.clone());
+    assert!(document.logically_equivalent(&document));
+    for value in variants {
+        assert!(!baseline.logically_equivalent(&value));
+        assert!(
+            !document
+                .logically_equivalent(&reference_document([1, 2, 3, 4]).with_vocabulary(value))
+        );
+    }
+}
+
+#[test]
+/// Verifies outer nullability and invariant list compatibility through public type queries.
+fn nullable_and_list_queries_preserve_type_boundaries() {
+    let nullable = ResolvedType::nullable(ResolvedType::String);
+    assert!(nullable.is_nullable());
+    assert_eq!(nullable.nullable_inner(), Some(&ResolvedType::String));
+    assert!(!ResolvedType::String.is_nullable());
+    assert_eq!(ResolvedType::String.nullable_inner(), None);
+    let list = ResolvedType::list(ResolvedType::String);
+    assert!(
+        list.accepts_value(&LogicalValue::List(vec![LogicalValue::String(
+            "value".into()
+        )]))
+    );
+    assert!(!list.accepts_value(&LogicalValue::List(vec![LogicalValue::Boolean(true)])));
+    for enabled in [true, false] {
+        assert_eq!(
+            super::DiagnosticPartition {
+                safe_bounded_output: enabled
+            }
+            .safe_bounded_output(),
+            enabled
+        );
+    }
 }
 
 #[test]

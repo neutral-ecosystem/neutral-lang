@@ -317,3 +317,152 @@ fn frame_directory_fields_are_independently_validated() {
         DecodeErrorClass::MalformedFrame
     );
 }
+
+#[test]
+/// Verifies malformed directory fields report their exact offsets and size precedence.
+fn directory_diagnostics_identify_the_offending_entry_field() {
+    for index in 0..constants::SECTION_COUNT {
+        let entry = constants::HEADER_BYTES + index * constants::DIRECTORY_ENTRY_BYTES;
+        let mut bytes = valid_frame();
+        invalidate(&mut bytes, entry + 2, 2);
+        let failure = decode_frame(&bytes, DecodeLimits::hard())
+            .err()
+            .expect("bad revision");
+        assert_eq!(failure.class(), DecodeErrorClass::UnsupportedVersion);
+        assert_eq!(failure.offset(), Some(u64::try_from(entry + 2).unwrap()));
+
+        for (length, limit, expected) in [
+            (0_u64, 1, DecodeErrorClass::MalformedFrame),
+            (1, 1, DecodeErrorClass::MalformedFrame),
+            (2, 1, DecodeErrorClass::EncodedSizeLimit),
+        ] {
+            let mut bytes = valid_frame();
+            bytes[entry + ENTRY_SECTION_OFFSET..entry + ENTRY_SECTION_OFFSET + 8]
+                .copy_from_slice(&0_u64.to_be_bytes());
+            bytes[entry + ENTRY_SECTION_LENGTH..entry + ENTRY_SECTION_LENGTH + 8]
+                .copy_from_slice(&length.to_be_bytes());
+            let failure = decode_frame(&bytes, DecodeLimits::hard().with_section_bytes(limit))
+                .err()
+                .expect("invalid offset must fail even at the exact length ceiling");
+            assert_eq!(failure.class(), expected);
+            assert_eq!(
+                failure.offset(),
+                Some(u64::try_from(entry + ENTRY_SECTION_OFFSET).unwrap())
+            );
+        }
+    }
+}
+
+/// Builds a scalar null value for recursive schema boundary tests.
+fn null_value() -> LocatedValue {
+    map(vec![(
+        constants::key::KIND,
+        CborValue::Text(constants::kind::NULL.into()),
+    )])
+}
+
+/// Builds a valid module-owned identity for a record or reference symbol.
+fn owned_identity(name: &str) -> CborValue {
+    map(vec![
+        (
+            constants::key::MODULE,
+            map(vec![
+                (
+                    constants::key::LANGUAGE_BEHAVIOR_VERSION,
+                    CborValue::Text(neutral_ir::LANGUAGE_BEHAVIOR_VERSION.into()),
+                ),
+                (constants::key::NAME, CborValue::Text("schema_test".into())),
+            ])
+            .value,
+        ),
+        (constants::key::NAME, CborValue::Text(name.into())),
+    ])
+    .value
+}
+
+/// Builds one reference-shaped value with a caller-selected discriminator.
+fn reference_value(kind: &str) -> LocatedValue {
+    map(vec![
+        (constants::key::KIND, CborValue::Text(kind.into())),
+        (constants::key::TARGET_ELEMENT_ID, CborValue::Unsigned(1)),
+        (constants::key::TARGET_SYMBOL, owned_identity("target")),
+        (
+            constants::key::TARGET_TYPE,
+            map(vec![(
+                constants::key::KIND,
+                CborValue::Text(constants::kind::NUM.into()),
+            )])
+            .value,
+        ),
+    ])
+}
+
+/// Builds a record with a single null field for exact recursive depth tests.
+fn record_value(kind: &str) -> LocatedValue {
+    let identity = if kind == constants::kind::RECORD {
+        owned_identity("Entry")
+    } else {
+        map(vec![
+            (
+                constants::key::VOCABULARY,
+                CborValue::Text("Fixture".into()),
+            ),
+            (constants::key::NAME, CborValue::Text("Entry".into())),
+        ])
+        .value
+    };
+    map(vec![
+        (constants::key::KIND, CborValue::Text(kind.into())),
+        (constants::key::IDENTITY, identity),
+        (
+            constants::key::FIELDS,
+            CborValue::Array(vec![map(vec![
+                (constants::key::NAME, CborValue::Text("value".into())),
+                (constants::key::VALUE, null_value().value),
+            ])]),
+        ),
+    ])
+}
+
+#[test]
+/// Verifies every recursive value edge consumes depth and preserves closed discriminators.
+fn recursive_values_account_for_each_child_depth() {
+    let cancellation = CancellationToken::new();
+    let list = map(vec![
+        (
+            constants::key::KIND,
+            CborValue::Text(constants::kind::LIST.into()),
+        ),
+        (constants::key::ITEMS, CborValue::Array(vec![null_value()])),
+    ]);
+    for (value, required_depth) in [
+        (list, 2),
+        (reference_value(constants::kind::REF), 2),
+        (record_value(constants::kind::RECORD), 3),
+        (record_value(constants::kind::VOCABULARY_RECORD), 3),
+    ] {
+        assert!(
+            super::decode_value(&value, &mut type_budget(&cancellation, required_depth), 1).is_ok()
+        );
+        assert_eq!(
+            super::decode_value(
+                &value,
+                &mut type_budget(&cancellation, required_depth - 1),
+                1
+            )
+            .expect_err("a child beyond the depth ceiling must fail")
+            .class(),
+            DecodeErrorClass::EncodedSizeLimit
+        );
+    }
+    assert_eq!(
+        super::decode_value(
+            &reference_value("unknown"),
+            &mut type_budget(&cancellation, 4),
+            1
+        )
+        .expect_err("reference-shaped unknown kind must fail")
+        .class(),
+        DecodeErrorClass::InvalidEncodedSchema
+    );
+}
