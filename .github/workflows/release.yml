@@ -4,18 +4,72 @@ name: Release qualification
 
 on:
   push:
-    tags: ['*']
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  release-shell:
+  qualify:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      - name: Verify tag identifies main HEAD
+        if: github.event_name == 'push'
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          tag_commit="$(git rev-list -n 1 "$RELEASE_TAG")"
+          main_commit="$(git rev-parse HEAD)"
+          test "$tag_commit" = "$main_commit"
       - run: cargo xtask release prepare
+      - name: Resolve package directory
+        id: package
+        run: |
+          candidate_commit="$(git rev-parse HEAD)"
+          host="$(rustc -vV | sed -n 's/^host: //p')"
+          package_directory="$(find test-results/release/package -mindepth 3 -maxdepth 3 -type d -path "*/$candidate_commit/$host" -print -quit)"
+          test -n "$package_directory"
+          test -f "$package_directory/SHA256SUMS"
+          echo "directory=$package_directory" >> "$GITHUB_OUTPUT"
+      - name: Verify assembled checksums
+        working-directory: ${{ steps.package.outputs.directory }}
+        run: sha256sum --check SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neutral-${{ github.sha }}
+          path: ${{ steps.package.outputs.directory }}/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    if: github.event_name == 'push'
+    needs: qualify
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: neutral-${{ github.sha }}
+          path: release-assets
+      - name: Verify downloaded checksums
+        working-directory: release-assets
+        run: sha256sum --check SHA256SUMS
+      - name: Publish immutable GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: >-
+          gh release create "$RELEASE_TAG" release-assets/*
+          --repo "$GITHUB_REPOSITORY"
+          --verify-tag
+          --title "Neutral $RELEASE_TAG"
+          --generate-notes

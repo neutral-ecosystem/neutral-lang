@@ -33,5 +33,8 @@ numbered lifecycle gates without becoming normative language specifications.
 - [Stage 10 distribution-assembly record](stage10-distribution-assembly.md)
   records selected artifacts, checksums, source archive, dependency/SBOM and
   provenance outputs, transient-output exclusion, and packaged-form testing.
+- [Stage 10 release-publication record](stage10-release-publication.md) records
+  final approval ownership, publication-workflow controls, completed local
+  validation, and the explicit remote operations still required for Step 9.
 
 New evidence belongs here only when no numbered lifecycle document owns it.

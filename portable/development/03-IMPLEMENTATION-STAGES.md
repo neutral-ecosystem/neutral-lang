@@ -969,13 +969,13 @@ must not become a second user-facing command system.
 
 ### Step 9: record approvals and publish
 
-- [ ] Complete the technical, test/quality, security, release, and standards
+- [x] Complete the technical, test/quality, security, release, and standards
       approval entries in [05-RELEASE.md](05-RELEASE.md). When the sole
       maintainer fills multiple roles, record that staffing exception and its
       compensating review honestly.
-- [ ] Confirm the tag-triggered release workflow uses the same `cargo xtask ci
-      release` command as local qualification and has no credentials available
-      to pull-request execution.
+- [x] Confirm the tag-triggered release workflow uses the same
+      `cargo xtask release prepare` command as local qualification and has no
+      credentials available to pull-request execution.
 - [ ] Publish only after all selected artifacts, evidence, and approvals pass;
       then record immutable release URLs and artifact digests.
 - [ ] Archive the completed v0 portable plan and evidence according to the

@@ -449,6 +449,23 @@ fn check_workflow_contract() -> Result<(), String> {
     if !release.contains("cargo xtask release prepare") {
         return Err("release.yml does not delegate to `cargo xtask release prepare`".to_owned());
     }
+    for requirement in [
+        "tags: ['v*']",
+        "ref: main",
+        "Verify tag identifies main HEAD",
+        "contents: write",
+        "if: github.event_name == 'push'",
+        "gh release create",
+    ] {
+        if !release.contains(requirement) {
+            return Err(format!(
+                "release.yml does not enforce publication requirement `{requirement}`"
+            ));
+        }
+    }
+    if ci.contains("pull_request:") || ci.contains("contents: write") {
+        return Err("push CI must not expose release credentials or write permission".to_owned());
+    }
     if ci.contains("cargo xtask ci ") || release.contains("cargo xtask ci ") {
         return Err("workflow YAML must call stable commands, not internal CI aliases".to_owned());
     }

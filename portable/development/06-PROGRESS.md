@@ -7,13 +7,19 @@ Status: Stage 10 workflow overhaul in progress.
 ## Current focus
 
 - Stage: Stage 10 workflow overhaul and v0 qualification
-- Status: Steps 1–8 complete; Step 9 is next
+- Status: Step 9 approvals and publication automation complete; final
+  qualification, publication, and roadmap archive remain
 - Last updated: 2026-09-08
 
 ## Next actions
 
-- [ ] Implement Stage 10 Step 9: record final approvals, publish the approved
-      source tag and GitHub assets, and archive the completed v0 portable plan.
+- [x] Record the sole-maintainer approval and compensating review.
+- [x] Implement tag-to-`main` identity enforcement and tag-only GitHub release
+      publication with verified artifact transfer.
+- [ ] Commit these final tracked changes on `main`, rerun
+      `cargo xtask release prepare`, and sign `v0.1.0` at that exact HEAD.
+- [ ] Push `main` and the signed tag, verify the immutable release and asset
+      digests, then archive the v0 portable snapshot in the roadmap repository.
 
 ## Candidate policy
 
@@ -22,6 +28,17 @@ Status: Stage 10 workflow overhaul in progress.
   qualification and approval gate; it never selects an earlier source revision.
 
 ## Completed log
+
+- [x] 2026-09-08: Recorded the Stage 10 Step 9 technical, test/quality,
+  security, release, and standards approvals under the disclosed
+  sole-maintainer staffing exception. Hardened the release workflow to fetch
+  `main`, reject a pushed tag that does not identify that exact HEAD, run the
+  same stable `cargo xtask release prepare` command used locally, verify
+  checksums before and after artifact transfer, and grant `contents: write`
+  only to the tag-only publication job. Local YAML parsing, automation tests,
+  formatting, and repository checks pass. Publication and roadmap archival
+  remain pending the final clean committed HEAD and authenticated GitHub
+  operations.
 
 - [x] 2026-09-08: Completed Stage 10, Step 8 from clean `main` revision
   `b1353acc6d93c796795492d9e96976ed96f4f7fa`. The atomic package command
