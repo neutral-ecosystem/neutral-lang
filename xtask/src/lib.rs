@@ -882,14 +882,20 @@ fn package() -> Result<(), String> {
         .join(&plan.release_tag)
         .join(&candidate_commit)
         .join(&host);
-    let assets =
-        release_distribution_assets(&root, &source_directory, &plan, &candidate_commit, &host)?;
     let summary = format!(
         "{{\"release_tag\":\"{}\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"host\":\"{}\",\"channel\":\"github-binaries\",\"status\":\"assembled\"}}\n",
         json_string(&plan.release_tag),
         json_string(&candidate_commit),
         json_string(&host)
     );
+    let assets = release_distribution_assets(
+        &root,
+        &source_directory,
+        &plan,
+        &candidate_commit,
+        &host,
+        &summary,
+    )?;
     stage_binary_package(
         &root,
         &source_directory,
@@ -913,31 +919,16 @@ fn release_distribution_assets(
     plan: &release::ReleasePlan,
     candidate_commit: &str,
     host: &str,
+    package_summary: &str,
 ) -> Result<Vec<DistributionAsset>, String> {
     let version = plan.release_tag.trim_start_matches('v');
     let source_name = format!("neutral-lang-{}-source.tar", plan.release_tag);
-    let archive = Command::new("git")
-        .current_dir(root)
-        .args([
-            "archive",
-            "--format=tar",
-            &format!("--prefix=neutral-lang-{version}/"),
-            candidate_commit,
-        ])
-        .output()
-        .map_err(|error| format!("could not create source archive: {error}"))?;
-    if !archive.status.success() {
-        return Err(format!(
-            "git archive failed: {}",
-            String::from_utf8_lossy(&archive.stderr).trim()
-        ));
-    }
     let lock_bytes = fs::read(root.join(constants::CARGO_LOCK_FILE))
         .map_err(|error| format!("could not read release dependency lock: {error}"))?;
     let mut assets = vec![
         DistributionAsset {
             filename: source_name,
-            bytes: archive.stdout,
+            bytes: source_archive(root, version, candidate_commit)?,
         },
         DistributionAsset {
             filename: constants::RELEASE_SBOM_FILE.to_owned(),
@@ -986,16 +977,67 @@ fn release_distribution_assets(
             candidate_commit,
         );
     }
+    for (filename, bytes) in [
+        (
+            constants::LICENSE_FILE,
+            fs::read(root.join(constants::LICENSE_FILE))
+                .map_err(|error| format!("could not hash LICENSE: {error}"))?,
+        ),
+        (
+            constants::ROOT_README_FILE,
+            fs::read(root.join(constants::ROOT_README_FILE))
+                .map_err(|error| format!("could not hash README: {error}"))?,
+        ),
+        ("package-summary.json", package_summary.as_bytes().to_vec()),
+    ] {
+        append_release_entry(
+            &mut entries,
+            &mut checksums,
+            filename,
+            &bytes,
+            "github-release-metadata",
+            version,
+            candidate_commit,
+        );
+    }
+    let manifest = format!("{{\"schema_version\":1,\"release_tag\":\"{}\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"license\":\"Apache-2.0\",\"supported_targets\":[\"{}\"],\"crates_io_selected\":false,\"known_limitations\":[\"single supported Linux x86_64 target\",\"no runtime or application semantics\"],\"deferred\":[\"additional host targets\",\"crates.io publication\"],\"artifacts\":[{}]}}\n", json_string(&plan.release_tag), json_string(candidate_commit), json_string(host), entries.join(",")).into_bytes();
+    checksums.push(format!(
+        "{}  {}\n",
+        sha256_hex(&manifest),
+        constants::RELEASE_MANIFEST_FILE
+    ));
+    assets.push(DistributionAsset {
+        filename: constants::RELEASE_MANIFEST_FILE.to_owned(),
+        bytes: manifest,
+    });
     checksums.sort();
     assets.push(DistributionAsset {
         filename: constants::RELEASE_CHECKSUM_FILE.to_owned(),
         bytes: checksums.concat().into_bytes(),
     });
-    assets.push(DistributionAsset {
-        filename: constants::RELEASE_MANIFEST_FILE.to_owned(),
-        bytes: format!("{{\"schema_version\":1,\"release_tag\":\"{}\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"license\":\"Apache-2.0\",\"supported_targets\":[\"{}\"],\"crates_io_selected\":false,\"known_limitations\":[\"single supported Linux x86_64 target\",\"no runtime or application semantics\"],\"deferred\":[\"additional host targets\",\"crates.io publication\"],\"artifacts\":[{}]}}\n", json_string(&plan.release_tag), json_string(candidate_commit), json_string(host), entries.join(",")).into_bytes(),
-    });
     Ok(assets)
+}
+
+/// Produces deterministic tracked source bytes for one exact candidate commit.
+fn source_archive(root: &Path, version: &str, candidate_commit: &str) -> Result<Vec<u8>, String> {
+    let archive = Command::new("git")
+        .current_dir(root)
+        .args([
+            "archive",
+            "--format=tar",
+            &format!("--prefix=neutral-lang-{version}/"),
+            candidate_commit,
+        ])
+        .output()
+        .map_err(|error| format!("could not create source archive: {error}"))?;
+    if archive.status.success() {
+        Ok(archive.stdout)
+    } else {
+        Err(format!(
+            "git archive failed: {}",
+            String::from_utf8_lossy(&archive.stderr).trim()
+        ))
+    }
 }
 
 /// Adds one selected file to the release manifest and checksum list.
