@@ -851,6 +851,14 @@ fn require_main_head_checkout() -> Result<String, String> {
     Ok(head)
 }
 
+/// One immutable generated distribution file.
+struct DistributionAsset {
+    /// Plain filename beneath the release package directory.
+    filename: String,
+    /// Exact file bytes.
+    bytes: Vec<u8>,
+}
+
 /// Assembles the selected binary distribution into the ignored release root.
 fn package() -> Result<(), String> {
     let plan = release_plan()?;
@@ -872,7 +880,10 @@ fn package() -> Result<(), String> {
         .join(constants::RELEASE_RESULT_DIRECTORY)
         .join("package")
         .join(&plan.release_tag)
+        .join(&candidate_commit)
         .join(&host);
+    let assets =
+        release_distribution_assets(&root, &source_directory, &plan, &candidate_commit, &host)?;
     let summary = format!(
         "{{\"release_tag\":\"{}\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"host\":\"{}\",\"channel\":\"github-binaries\",\"status\":\"assembled\"}}\n",
         json_string(&plan.release_tag),
@@ -884,6 +895,7 @@ fn package() -> Result<(), String> {
         &source_directory,
         &output_directory,
         &plan.binaries,
+        &assets,
         &summary,
     )?;
     println!(
@@ -894,12 +906,120 @@ fn package() -> Result<(), String> {
     Ok(())
 }
 
+/// Generates the source archive, SBOM, provenance, installation, manifest, and checksums.
+fn release_distribution_assets(
+    root: &Path,
+    source_directory: &Path,
+    plan: &release::ReleasePlan,
+    candidate_commit: &str,
+    host: &str,
+) -> Result<Vec<DistributionAsset>, String> {
+    let version = plan.release_tag.trim_start_matches('v');
+    let source_name = format!("neutral-lang-{}-source.tar", plan.release_tag);
+    let archive = Command::new("git")
+        .current_dir(root)
+        .args([
+            "archive",
+            "--format=tar",
+            &format!("--prefix=neutral-lang-{version}/"),
+            candidate_commit,
+        ])
+        .output()
+        .map_err(|error| format!("could not create source archive: {error}"))?;
+    if !archive.status.success() {
+        return Err(format!(
+            "git archive failed: {}",
+            String::from_utf8_lossy(&archive.stderr).trim()
+        ));
+    }
+    let lock_bytes = fs::read(root.join(constants::CARGO_LOCK_FILE))
+        .map_err(|error| format!("could not read release dependency lock: {error}"))?;
+    let mut assets = vec![
+        DistributionAsset {
+            filename: source_name,
+            bytes: archive.stdout,
+        },
+        DistributionAsset {
+            filename: constants::RELEASE_SBOM_FILE.to_owned(),
+            bytes: lock_bytes.clone(),
+        },
+        DistributionAsset {
+            filename: constants::RELEASE_INSTALL_FILE.to_owned(),
+            bytes: format!("<!-- SPDX-License-Identifier: Apache-2.0 -->\n\n# Install Neutral {version}\n\nSupported target: `{host}`. Verify the downloaded files with `sha256sum --check SHA256SUMS`, install `neutral-cli` and `neutral-probe` into a directory on `PATH`, then run `neutral-cli --version` and `neutral-probe --help`.\n").into_bytes(),
+        },
+        DistributionAsset {
+            filename: constants::RELEASE_PROVENANCE_FILE.to_owned(),
+            bytes: format!("{{\"schema_version\":1,\"builder\":\"cargo xtask package\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"release_tag\":\"{}\",\"target\":\"{}\",\"rustc\":\"{}\",\"cargo_lock_sha256\":\"{}\",\"reproducible_command\":\"cargo xtask package\"}}\n", json_string(candidate_commit), json_string(&plan.release_tag), json_string(host), json_string(&command_output(constants::RUSTC_COMMAND, &["--version"])?), sha256_hex(&lock_bytes)).into_bytes(),
+        },
+    ];
+    let mut entries = Vec::new();
+    let mut checksums = Vec::new();
+    for binary in &plan.binaries {
+        let filename = release_binary_path(Path::new(""), binary)
+            .to_string_lossy()
+            .into_owned();
+        let bytes = fs::read(release_binary_path(source_directory, binary))
+            .map_err(|error| format!("could not hash release binary {binary}: {error}"))?;
+        append_release_entry(
+            &mut entries,
+            &mut checksums,
+            &filename,
+            &bytes,
+            "github-binaries",
+            version,
+            candidate_commit,
+        );
+    }
+    for asset in &assets {
+        let channel = if asset.filename.ends_with("-source.tar") {
+            "source-tag"
+        } else {
+            "github-release-metadata"
+        };
+        append_release_entry(
+            &mut entries,
+            &mut checksums,
+            &asset.filename,
+            &asset.bytes,
+            channel,
+            version,
+            candidate_commit,
+        );
+    }
+    checksums.sort();
+    assets.push(DistributionAsset {
+        filename: constants::RELEASE_CHECKSUM_FILE.to_owned(),
+        bytes: checksums.concat().into_bytes(),
+    });
+    assets.push(DistributionAsset {
+        filename: constants::RELEASE_MANIFEST_FILE.to_owned(),
+        bytes: format!("{{\"schema_version\":1,\"release_tag\":\"{}\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"license\":\"Apache-2.0\",\"supported_targets\":[\"{}\"],\"crates_io_selected\":false,\"known_limitations\":[\"single supported Linux x86_64 target\",\"no runtime or application semantics\"],\"deferred\":[\"additional host targets\",\"crates.io publication\"],\"artifacts\":[{}]}}\n", json_string(&plan.release_tag), json_string(candidate_commit), json_string(host), entries.join(",")).into_bytes(),
+    });
+    Ok(assets)
+}
+
+/// Adds one selected file to the release manifest and checksum list.
+fn append_release_entry(
+    entries: &mut Vec<String>,
+    checksums: &mut Vec<String>,
+    filename: &str,
+    bytes: &[u8],
+    channel: &str,
+    version: &str,
+    candidate_commit: &str,
+) {
+    let digest = sha256_hex(bytes);
+    checksums.push(format!("{digest}  {filename}\n"));
+    entries.push(format!("{{\"filename\":\"{}\",\"sha256\":\"{}\",\"license\":\"Apache-2.0\",\"producer_version\":\"{}\",\"source_commit\":\"{}\",\"channel\":\"{}\"}}", json_string(filename), digest, json_string(version), json_string(candidate_commit), json_string(channel)));
+}
+
 /// Atomically stages selected binaries, license material, and package metadata.
 fn stage_binary_package(
     root: &Path,
     source_directory: &Path,
     output_directory: &Path,
     binaries: &[String],
+    assets: &[DistributionAsset],
     summary: &str,
 ) -> Result<(), String> {
     if output_directory.exists() {
@@ -936,6 +1056,10 @@ fn stage_binary_package(
     for file in [constants::LICENSE_FILE, constants::ROOT_README_FILE] {
         fs::copy(root.join(file), partial_directory.join(file))
             .map_err(|error| format!("could not stage {file}: {error}"))?;
+    }
+    for asset in assets {
+        fs::write(partial_directory.join(&asset.filename), &asset.bytes)
+            .map_err(|error| format!("could not stage {}: {error}", asset.filename))?;
     }
     fs::write(partial_directory.join("package-summary.json"), summary)
         .map_err(|error| format!("could not write package summary: {error}"))?;

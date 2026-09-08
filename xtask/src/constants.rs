@@ -86,6 +86,16 @@ pub const CARGO_RELEASE_DIRECTORY: &str = "target/release";
 pub const LICENSE_FILE: &str = "LICENSE";
 /// Repository overview included in binary distributions.
 pub const ROOT_README_FILE: &str = "README.md";
+/// Generated distribution manifest filename.
+pub const RELEASE_MANIFEST_FILE: &str = "release-manifest.json";
+/// Generated distribution checksums filename.
+pub const RELEASE_CHECKSUM_FILE: &str = "SHA256SUMS";
+/// Generated installation guide filename.
+pub const RELEASE_INSTALL_FILE: &str = "INSTALL.md";
+/// Exact locked dependency inventory shipped as the v0 SBOM.
+pub const RELEASE_SBOM_FILE: &str = "SBOM-Cargo.lock";
+/// Generated build-provenance filename.
+pub const RELEASE_PROVENANCE_FILE: &str = "provenance.json";
 /// Active portable root relative to the workspace root.
 pub const PORTABLE_DIRECTORY: &str = "portable";
 /// Active portable plan relative to the workspace root.

@@ -381,11 +381,20 @@ fn automation_stages_the_selected_binary_package() {
         constants::NEUTRAL_CLI_BINARY.to_owned(),
         constants::NEUTRAL_PROBE_BINARY.to_owned(),
     ];
-    assert!(super::stage_binary_package(&root, &source, &output, &binaries, "{}\n").is_ok());
+    let assets = vec![super::DistributionAsset {
+        filename: constants::RELEASE_CHECKSUM_FILE.to_owned(),
+        bytes: b"checksums".to_vec(),
+    }];
+    assert!(
+        super::stage_binary_package(&root, &source, &output, &binaries, &assets, "{}\n").is_ok()
+    );
     assert!(output.join("package-summary.json").is_file());
     assert!(output.join(constants::LICENSE_FILE).is_file());
     assert!(output.join(constants::ROOT_README_FILE).is_file());
-    assert!(super::stage_binary_package(&root, &source, &output, &binaries, "{}\n").is_err());
+    assert!(output.join(constants::RELEASE_CHECKSUM_FILE).is_file());
+    assert!(
+        super::stage_binary_package(&root, &source, &output, &binaries, &assets, "{}\n").is_err()
+    );
     std::fs::remove_dir_all(root).expect("temporary package tree should be removable");
 }
 

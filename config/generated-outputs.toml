@@ -55,8 +55,8 @@ tracking = "ignored"
 name = "sbom"
 path = "test-results/release/sbom"
 owner = "xtask"
-generate = "Stage 10 Step 8"
-validate = "Stage 10 Step 8"
+generate = "cargo xtask package"
+validate = "cargo xtask package"
 tracking = "ignored"
 
 [[output]]
