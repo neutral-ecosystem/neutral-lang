@@ -7,13 +7,13 @@ Status: Stage 10 workflow overhaul in progress.
 ## Current focus
 
 - Stage: Stage 10 workflow overhaul and v0 qualification
-- Status: Steps 1–5 complete; Step 6 is next
+- Status: Steps 1–6 complete; Step 7 is next
 - Last updated: 2026-09-08
 
 ## Next actions
 
-- [ ] Implement Stage 10 Step 6: qualify the exact committed `main` `HEAD` with
-      retained release-quality evidence.
+- [ ] Implement Stage 10 Step 7: verify the consumer-facing release
+      deliverables from the exact qualified `main` source revision.
 
 ## Candidate policy
 
@@ -22,6 +22,16 @@ Status: Stage 10 workflow overhaul in progress.
   qualification and approval gate; it never selects an earlier source revision.
 
 ## Completed log
+
+- [x] 2026-09-08: Completed Stage 10, Step 6 against clean `main` revision
+  `47633a635deafa6d56260442a02e5aab14ff9441`. Release CI and unchanged
+  85%/90%/80% coverage gates passed at 93.86% lines, 93.66% functions, and
+  85.16% regions. Release and 5,000-iteration soak profiles completed. No
+  production, fuzz-target, production-dependency, or allocation-affecting
+  change followed Stage 9, so its complete mutation, five 900-second fuzz, and
+  Valgrind evidence remains applicable. Fresh cargo-audit 0.22.2 scans loaded
+  1,242 advisories and found no vulnerability in either lockfile. Evidence is
+  in `development/evidence/stage10-candidate-qualification.md`.
 
 - [x] 2026-09-08: Completed Stage 10, Step 5. Split lightweight stable
   bootstrap from the complete release-workstation audit; added actionable

@@ -898,27 +898,27 @@ must not become a second user-facing command system.
 
 ### Step 6: qualify the exact candidate
 
-- [ ] Run `cargo xtask ci release` from the clean `main` candidate revision and retain its
+- [x] Run `cargo xtask ci release` from the clean `main` candidate revision and retain its
       task summary under ignored release evidence.
-- [ ] Run `RUSTUP_TOOLCHAIN=nightly cargo xtask coverage`; retain the
+- [x] Run `RUSTUP_TOOLCHAIN=nightly cargo xtask coverage`; retain the
       machine-readable report and confirm the configured 85% line, 90%
       function, and 80% region gates.
-- [ ] Run the configured critical mutation target and the retained broader
+- [x] Run the configured critical mutation target and the retained broader
       selected mutation review when production code changed after Stage 9.
-- [ ] Run all five 900-second fuzz campaigns when parser, vocabulary, IR,
+- [x] Run all five 900-second fuzz campaigns when parser, vocabulary, IR,
       formatter, decoder, probe, limits, or dependencies changed after Stage 9;
       otherwise retain the exact Stage 9 corpus/toolchain evidence.
-- [ ] Run the release and extended-soak benchmark profiles. Repeat Valgrind
+- [x] Run the release and extended-soak benchmark profiles. Repeat Valgrind
       Massif/Memcheck when allocation-affecting production code changed.
-- [ ] Re-run the dependency, package-boundary, test-layout, traceability,
+- [x] Re-run the dependency, package-boundary, test-layout, traceability,
       licensing, advisory, and static-work-product reviews on the candidate.
 
 #### Step validation
 
-- [ ] All required release commands pass without lowering thresholds, reducing
+- [x] All required release commands pass without lowering thresholds, reducing
       scope, accepting viable mutants, or treating fuzz/profile failures as
       informational.
-- [ ] The evidence identifies the exact candidate revision and command/tool
+- [x] The evidence identifies the exact candidate revision and command/tool
       versions used for every result.
 
 ### Step 7: verify consumer-facing deliverables

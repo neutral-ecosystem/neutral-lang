@@ -24,5 +24,8 @@ numbered lifecycle gates without becoming normative language specifications.
 - [Stage 10 environment reproduction record](stage10-environment-reproduction.md)
   records supported-host bootstrap, complete tool identities, offline clean-tree
   CI, stable/nightly isolation, ignore policy, and release-input independence.
+- [Stage 10 candidate qualification record](stage10-candidate-qualification.md)
+  records the exact `main` revision, release CI, coverage, campaign
+  applicability, benchmarks, candidate reviews, and tool identities for Step 6.
 
 New evidence belongs here only when no numbered lifecycle document owns it.
