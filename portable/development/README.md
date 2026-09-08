@@ -13,4 +13,5 @@ order; begin with the [portable execution plan](../PLAN.md).
 - [04 Testing](04-TESTING.md)
 - [05 Release](05-RELEASE.md)
 - [06 Progress](06-PROGRESS.md)
+- [07 Portable lifecycle](07-PORTABLE-LIFECYCLE.md)
 - [Retained implementation evidence](evidence/README.md)

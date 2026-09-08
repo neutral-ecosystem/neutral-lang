@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# Generated products are reproducible, ignored, and never normative inputs.
+schema_version = 1
+
+[[output]]
+name = "rustdoc"
+path = "target/doc"
+owner = "cargo-doc"
+generate = "cargo xtask docs"
+validate = "cargo xtask docs"
+tracking = "ignored"
+
+[[output]]
+name = "coverage"
+path = "test-results/analysis/coverage"
+owner = "xtask"
+generate = "RUSTUP_TOOLCHAIN=nightly cargo xtask coverage"
+validate = "cargo xtask quality --profile release"
+tracking = "ignored"
+
+[[output]]
+name = "fuzz"
+path = "test-results/analysis/fuzz"
+owner = "xtask"
+generate = "RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign"
+validate = "cargo xtask quality --profile release"
+tracking = "ignored"
+
+[[output]]
+name = "mutation"
+path = "test-results/analysis/mutation"
+owner = "xtask"
+generate = "cargo xtask mutate"
+validate = "cargo xtask quality --profile release"
+tracking = "ignored"
+
+[[output]]
+name = "benchmark"
+path = "test-results/performance"
+owner = "neutral-bench"
+generate = "cargo xtask test performance --profile release"
+validate = "cargo xtask quality --profile release"
+tracking = "ignored"
+
+[[output]]
+name = "package"
+path = "test-results/release/package"
+owner = "xtask"
+generate = "cargo xtask package"
+validate = "cargo xtask validate binaries"
+tracking = "ignored"
+
+[[output]]
+name = "sbom"
+path = "test-results/release/sbom"
+owner = "xtask"
+generate = "Stage 10 Step 8"
+validate = "Stage 10 Step 8"
+tracking = "ignored"
+
+[[output]]
+name = "release"
+path = "test-results/release/preparation"
+owner = "xtask"
+generate = "cargo xtask release prepare"
+validate = "cargo xtask quality --profile release"
+tracking = "ignored"
+
+[[output]]
+name = "portable-snapshot"
+path = "test-results/portable/snapshot"
+owner = "xtask"
+generate = "cargo xtask portable snapshot"
+validate = "cargo xtask portable verify"
+tracking = "ignored"

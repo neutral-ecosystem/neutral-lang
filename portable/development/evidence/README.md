@@ -15,5 +15,8 @@ numbered lifecycle gates without becoming normative language specifications.
 - [Stage 10 workflow-overhaul record](stage10-workflow-overhaul.md) records the
   stable command boundary, policy ownership, platform/CI adapters, fail-closed
   release behavior, and executed Step 2 validation.
+- [Stage 10 version and portable lifecycle record](stage10-version-portable-lifecycle.md)
+  records centralized package-version, lock/source, generated-output, snapshot,
+  archive-boundary, and rollover evidence for Step 3.
 
 New evidence belongs here only when no numbered lifecycle document owns it.

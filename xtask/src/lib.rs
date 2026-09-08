@@ -6,9 +6,12 @@
 //! trusting package documentation. It is intentionally outside production
 //! dependency graphs and does not implement Neutral language behavior.
 
+use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
-    env, fs,
+    env,
+    fmt::Write as _,
+    fs,
     path::{Component, Path, PathBuf},
     process::Command,
 };
@@ -222,6 +225,9 @@ fn check() -> Result<(), String> {
     check_boundaries()?;
     check_test_layout()?;
     check_traceability()?;
+    check_versions()?;
+    verify_portable()?;
+    check_generated_outputs()?;
     check_workflow_contract()
 }
 
@@ -558,7 +564,12 @@ fn run_program(program: &Path, arguments: &[&std::ffi::OsStr]) -> Result<(), Str
 /// Reads and verifies the explicit release-authority selection and candidate tag.
 fn release_plan() -> Result<release::ReleasePlan, String> {
     let root = workspace_root()?;
-    let plan = release::ReleasePlan::read(&root.join(constants::RELEASE_CONFIG_FILE))?;
+    let package_version = workspace_package_version(&read_workspace_text(
+        &root,
+        constants::WORKSPACE_MANIFEST_FILE,
+    )?)?;
+    let plan =
+        release::ReleasePlan::read(&root.join(constants::RELEASE_CONFIG_FILE), &package_version)?;
     let residual_risks = read_workspace_text(&root, constants::RESIDUAL_RISKS_FILE)?;
     if !residual_risks.contains("Approval state: approved") {
         return Err("Stage 9 residual-risk record is not approved".to_owned());
@@ -768,15 +779,8 @@ fn show_versions() -> Result<(), String> {
     )?)?;
     println!("{} package-release {package}", constants::INFO);
     let freeze = read_workspace_text(&root, constants::CONTRACT_FREEZE_FILE)?;
-    for line in freeze.lines().map(str::trim).filter(|line| {
-        line.starts_with("language_behavior =")
-            || line.starts_with("logical_ir_schema =")
-            || line.starts_with("vocabulary_schema =")
-            || line.starts_with("vocabulary_bundle_encoding =")
-            || line.starts_with("digest_transcript_profile =")
-            || line.starts_with("external_ir_encoding =")
-    }) {
-        println!("{} contract {line}", constants::INFO);
+    for (name, value) in configuration_section(&freeze, "contract_versions")? {
+        println!("{} contract {name}={value}", constants::INFO);
     }
     Ok(())
 }
@@ -784,7 +788,7 @@ fn show_versions() -> Result<(), String> {
 /// Checks that package versions inherit the one workspace release version.
 fn check_versions() -> Result<(), String> {
     let root = workspace_root()?;
-    workspace_package_version(&read_workspace_text(
+    let package_version = workspace_package_version(&read_workspace_text(
         &root,
         constants::WORKSPACE_MANIFEST_FILE,
     )?)?;
@@ -800,9 +804,66 @@ fn check_versions() -> Result<(), String> {
                 manifest.display()
             ));
         }
+        for inherited in ["license.workspace = true", "repository.workspace = true"] {
+            if !content.lines().any(|line| line.trim() == inherited) {
+                return Err(format!(
+                    "workspace package must inherit {inherited}: {}",
+                    manifest.display()
+                ));
+            }
+        }
     }
+    verify_dependency_lock(&root, &package_version)?;
+    let freeze = read_workspace_text(&root, constants::CONTRACT_FREEZE_FILE)?;
+    if configuration_value(&freeze, "status").as_deref() != Some("approved")
+        || configuration_section(&freeze, "contract_versions")?.is_empty()
+    {
+        return Err("contract freeze must remain approved and version-complete".to_owned());
+    }
+    ensure_no_unreviewed_contract_changes(&root)?;
     println!("{} centralized package versions: pass", constants::INFO);
     Ok(())
+}
+
+/// Rejects ordinary version work mixed with unreviewed normative changes.
+fn ensure_no_unreviewed_contract_changes(root: &Path) -> Result<(), String> {
+    let output = Command::new("git")
+        .current_dir(root)
+        .args([
+            "diff",
+            "--name-only",
+            "HEAD",
+            "--",
+            constants::CONTRACT_FREEZE_FILE,
+            "portable/ARCHITECTURE.md",
+            "portable/specs/REQUIREMENTS.md",
+            "portable/specs/contracts",
+            "portable/specs/decisions",
+            "portable/specs/fixtures",
+            constants::CONFORMANCE_MANIFEST_FILE,
+            "portable/conformance/oracles",
+            "portable/conformance/fixture-oracle-review.toml",
+            "portable/development/01-IDENTITY-AND-VOCABULARY.md",
+            "config/ir-encoding.toml",
+        ])
+        .output()
+        .map_err(|error| format!("could not inspect normative changes: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "could not inspect normative changes: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    let changed = String::from_utf8(output.stdout)
+        .map_err(|error| format!("Git emitted non-UTF-8 paths: {error}"))?;
+    if changed.trim().is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "ordinary package-version work includes normative changes requiring contract-freeze review: {}",
+            changed.lines().collect::<Vec<_>>().join(", ")
+        ))
+    }
 }
 
 /// Emits a reviewable version-change plan without tagging or publishing.
@@ -813,6 +874,11 @@ fn prepare_version(requested: &str) -> Result<(), String> {
         &root,
         constants::WORKSPACE_MANIFEST_FILE,
     )?)?;
+    validate_version_transition(&current, requested)?;
+    check_versions()?;
+    let freeze_bytes = fs::read(root.join(constants::CONTRACT_FREEZE_FILE))
+        .map_err(|error| format!("could not read contract freeze: {error}"))?;
+    let freeze_digest = sha256_hex(&freeze_bytes);
     let directory = result_root()?.join(constants::VERSION_RESULT_DIRECTORY);
     fs::create_dir_all(&directory)
         .map_err(|error| format!("could not create {}: {error}", directory.display()))?;
@@ -820,13 +886,144 @@ fn prepare_version(requested: &str) -> Result<(), String> {
     fs::write(
         &output,
         format!(
-            "{{\"current\":\"{}\",\"requested\":\"{}\",\"frozen_contracts_changed\":false,\"status\":\"review-required\"}}\n",
+            "{{\"schema_version\":1,\"current\":\"{}\",\"requested\":\"{}\",\"derived_updates\":[],\"contract_freeze_sha256\":\"{}\",\"frozen_contracts_changed\":false,\"actions\":[\"edit-workspace-package-version\",\"run-version-check\",\"review\"],\"status\":\"review-required\"}}\n",
             json_string(&current),
-            json_string(requested)
+            json_string(requested),
+            freeze_digest
         ),
     )
     .map_err(|error| format!("could not write {}: {error}", output.display()))?;
     println!("{} version plan: {}", constants::INFO, output.display());
+    Ok(())
+}
+
+/// Reads scalar key/value pairs from one exact TOML section.
+fn configuration_section(content: &str, section: &str) -> Result<Vec<(String, String)>, String> {
+    let heading = format!("[{section}]");
+    let mut selected = false;
+    let mut values = Vec::new();
+    for line in content.lines().map(str::trim) {
+        if line.starts_with('[') {
+            selected = line == heading;
+            continue;
+        }
+        if !selected || line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let (name, value) = line
+            .split_once('=')
+            .ok_or_else(|| format!("invalid [{section}] entry: {line}"))?;
+        values.push((
+            name.trim().to_owned(),
+            value.trim().trim_matches('"').to_owned(),
+        ));
+    }
+    Ok(values)
+}
+
+/// Reads one unsectioned scalar from constrained TOML-like configuration.
+fn configuration_value(content: &str, key: &str) -> Option<String> {
+    content.lines().map(str::trim).find_map(|line| {
+        let (candidate, value) = line.split_once('=')?;
+        (candidate.trim() == key).then(|| value.trim().trim_matches('"').to_owned())
+    })
+}
+
+/// Checks the root release lock and its declared dependency-source policy.
+fn verify_dependency_lock(root: &Path, package_version: &str) -> Result<(), String> {
+    let policy = read_workspace_text(root, constants::DEPENDENCY_SOURCES_FILE)?;
+    for requirement in [
+        "lockfile = \"Cargo.lock\"",
+        "review = \"quality/dependency-review.md\"",
+        "allow_crates_io_registry = true",
+        "allow_git_sources = false",
+        "allow_external_paths = false",
+    ] {
+        if !policy.contains(requirement) {
+            return Err(format!(
+                "dependency-source policy must declare `{requirement}`"
+            ));
+        }
+    }
+    let review = read_workspace_text(root, "quality/dependency-review.md")?;
+    if !review.contains("Result: pass for the current lockfile") || !review.contains("cargo audit")
+    {
+        return Err("dependency and advisory review is absent or not passing".to_owned());
+    }
+    let lock = read_workspace_text(root, constants::CARGO_LOCK_FILE)?;
+    for package in lock.split("[[package]]").skip(1) {
+        if package.contains("source = \"git+") {
+            return Err("Cargo.lock contains a forbidden Git dependency".to_owned());
+        }
+        if package.contains("source = \"registry+") && !package.contains("checksum = \"") {
+            return Err("Cargo.lock contains a registry package without a checksum".to_owned());
+        }
+    }
+    for manifest in workspace_package_manifests(root)? {
+        verify_manifest_dependency_paths(root, &manifest)?;
+        let package_name = manifest
+            .parent()
+            .and_then(Path::file_name)
+            .and_then(std::ffi::OsStr::to_str)
+            .ok_or_else(|| {
+                format!(
+                    "package manifest has no package directory: {}",
+                    manifest.display()
+                )
+            })?;
+        let expected = format!("name = \"{package_name}\"\nversion = \"{package_version}\"");
+        if !lock.contains(&expected) {
+            return Err(format!(
+                "Cargo.lock is stale for workspace package {package_name} {package_version}"
+            ));
+        }
+    }
+    let output = Command::new(constants::CARGO_COMMAND)
+        .current_dir(root)
+        .args([
+            "metadata",
+            "--locked",
+            "--offline",
+            "--format-version",
+            "1",
+            "--no-deps",
+        ])
+        .output()
+        .map_err(|error| format!("could not validate Cargo.lock: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "Cargo.lock is stale or unavailable offline: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    Ok(())
+}
+
+/// Requires every manifest path dependency to resolve inside the workspace.
+fn verify_manifest_dependency_paths(root: &Path, manifest: &Path) -> Result<(), String> {
+    let content = fs::read_to_string(manifest)
+        .map_err(|error| format!("could not read {}: {error}", manifest.display()))?;
+    let canonical_root = fs::canonicalize(root)
+        .map_err(|error| format!("could not canonicalize workspace root: {error}"))?;
+    for tail in content.split("path = \"").skip(1) {
+        let dependency = tail
+            .split_once('"')
+            .map(|(value, _)| value)
+            .ok_or_else(|| format!("malformed path dependency in {}", manifest.display()))?;
+        let path = manifest.parent().unwrap_or(root).join(dependency);
+        let canonical = fs::canonicalize(&path).map_err(|error| {
+            format!(
+                "could not resolve path dependency {}: {error}",
+                path.display()
+            )
+        })?;
+        if !canonical.starts_with(&canonical_root) {
+            return Err(format!(
+                "manifest path dependency escapes the workspace: {}",
+                path.display()
+            ));
+        }
+    }
     Ok(())
 }
 
@@ -894,9 +1091,15 @@ fn validate_semver(value: &str) -> Result<(), String> {
         });
     let valid_suffix = suffix.is_none_or(|suffix| {
         !suffix.is_empty()
-            && suffix
-                .bytes()
-                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'.' || byte == b'-')
+            && suffix.split('.').all(|identifier| {
+                !identifier.is_empty()
+                    && identifier
+                        .bytes()
+                        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+                    && (!identifier.bytes().all(|byte| byte.is_ascii_digit())
+                        || identifier == "0"
+                        || !identifier.starts_with('0'))
+            })
     });
     if numeric && valid_suffix {
         Ok(())
@@ -905,14 +1108,90 @@ fn validate_semver(value: &str) -> Result<(), String> {
     }
 }
 
+/// Rejects package-version downgrades and invalid prerelease transitions.
+fn validate_version_transition(current: &str, requested: &str) -> Result<(), String> {
+    let current = parsed_semver(current)?;
+    let requested = parsed_semver(requested)?;
+    if compare_semver(&requested, &current) != std::cmp::Ordering::Greater {
+        return Err(
+            "requested package version must be greater than the current version".to_owned(),
+        );
+    }
+    Ok(())
+}
+
+/// Parses supported `SemVer` into numeric core and prerelease identifiers.
+fn parsed_semver(value: &str) -> Result<(u64, u64, u64, Vec<String>), String> {
+    validate_semver(value)?;
+    let (core, prerelease) = value
+        .split_once('-')
+        .map_or((value, ""), |(core, prerelease)| (core, prerelease));
+    let mut numbers = core.split('.').map(|value| {
+        value
+            .parse::<u64>()
+            .map_err(|error| format!("invalid package SemVer component: {error}"))
+    });
+    let parsed = (
+        numbers.next().transpose()?.unwrap_or_default(),
+        numbers.next().transpose()?.unwrap_or_default(),
+        numbers.next().transpose()?.unwrap_or_default(),
+        prerelease
+            .split('.')
+            .filter(|value| !value.is_empty())
+            .map(str::to_owned)
+            .collect(),
+    );
+    Ok(parsed)
+}
+
+/// Compares two parsed `SemVer` values using numeric prerelease precedence.
+fn compare_semver(
+    left: &(u64, u64, u64, Vec<String>),
+    right: &(u64, u64, u64, Vec<String>),
+) -> std::cmp::Ordering {
+    let core = (left.0, left.1, left.2).cmp(&(right.0, right.1, right.2));
+    if core != std::cmp::Ordering::Equal {
+        return core;
+    }
+    match (left.3.is_empty(), right.3.is_empty()) {
+        (true, false) => std::cmp::Ordering::Greater,
+        (false, true) => std::cmp::Ordering::Less,
+        (true, true) => std::cmp::Ordering::Equal,
+        (false, false) => compare_prerelease(&left.3, &right.3),
+    }
+}
+
+/// Compares `SemVer` prerelease identifier sequences.
+fn compare_prerelease(left: &[String], right: &[String]) -> std::cmp::Ordering {
+    for (left, right) in left.iter().zip(right) {
+        let ordering = match (left.parse::<u64>(), right.parse::<u64>()) {
+            (Ok(left), Ok(right)) => left.cmp(&right),
+            (Ok(_), Err(_)) => std::cmp::Ordering::Less,
+            (Err(_), Ok(_)) => std::cmp::Ordering::Greater,
+            (Err(_), Err(_)) => left.cmp(right),
+        };
+        if ordering != std::cmp::Ordering::Equal {
+            return ordering;
+        }
+    }
+    left.len().cmp(&right.len())
+}
+
+/// Returns the lowercase SHA-256 digest of exact bytes.
+fn sha256_hex(bytes: &[u8]) -> String {
+    let digest = Sha256::digest(bytes);
+    let mut output = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        write!(&mut output, "{byte:02x}").expect("writing to a String cannot fail");
+    }
+    output
+}
+
 /// Executes the active portable lifecycle command family.
 fn portable(action: PortableAction) -> Result<(), String> {
     match action {
         PortableAction::Verify => verify_portable(),
-        PortableAction::Snapshot => Err(
-            "portable snapshot is unavailable until its Stage 10 lifecycle manifest is configured"
-                .to_owned(),
-        ),
+        PortableAction::Snapshot => snapshot_portable(),
     }
 }
 
@@ -921,6 +1200,7 @@ fn verify_portable() -> Result<(), String> {
     let root = workspace_root()?;
     for relative in [
         constants::PORTABLE_PLAN_FILE,
+        constants::PORTABLE_LIFECYCLE_FILE,
         constants::CONTRACT_FREEZE_FILE,
         constants::CONFORMANCE_MANIFEST_FILE,
     ] {
@@ -928,8 +1208,365 @@ fn verify_portable() -> Result<(), String> {
             return Err(format!("active portable file is missing: {relative}"));
         }
     }
+    let package_version = workspace_package_version(&read_workspace_text(
+        &root,
+        constants::WORKSPACE_MANIFEST_FILE,
+    )?)?;
+    let major = package_version
+        .split('.')
+        .next()
+        .ok_or_else(|| "workspace version has no major component".to_owned())?;
+    let lifecycle = read_workspace_text(&root, constants::PORTABLE_LIFECYCLE_FILE)?;
+    let expected_series = format!("v{major}");
+    if configuration_value(&lifecycle, "status").as_deref() != Some("active")
+        || configuration_value(&lifecycle, "active_series").as_deref()
+            != Some(expected_series.as_str())
+    {
+        return Err(format!(
+            "active portable series must be {expected_series} for package {package_version}"
+        ));
+    }
     check_traceability()?;
+    verify_fixture_freeze_digests(&root)?;
+    verify_portable_links(&root)?;
+    ensure_no_archived_portable_dependencies(&root)?;
+    verify_existing_portable_snapshots(&root)?;
     println!("{} active portable package: pass", constants::INFO);
+    Ok(())
+}
+
+/// Verifies every locally retained digest-addressed portable snapshot.
+fn verify_existing_portable_snapshots(root: &Path) -> Result<(), String> {
+    let snapshot_root = result_root()?.join(constants::PORTABLE_SNAPSHOT_DIRECTORY);
+    if !snapshot_root.exists() {
+        return Ok(());
+    }
+    for entry in fs::read_dir(&snapshot_root)
+        .map_err(|error| format!("could not inspect {}: {error}", snapshot_root.display()))?
+    {
+        let entry = entry.map_err(|error| format!("could not inspect snapshot entry: {error}"))?;
+        if !entry
+            .file_type()
+            .map_err(|error| format!("could not inspect {}: {error}", entry.path().display()))?
+            .is_dir()
+            || entry.file_name().to_string_lossy().starts_with('.')
+        {
+            continue;
+        }
+        verify_portable_snapshot_directory(root, &entry.path())?;
+    }
+    Ok(())
+}
+
+/// Verifies one snapshot manifest, directory digest, and copied file set.
+fn verify_portable_snapshot_directory(root: &Path, directory: &Path) -> Result<(), String> {
+    let manifest = fs::read_to_string(directory.join("manifest.sha256"))
+        .map_err(|error| format!("could not read snapshot manifest: {error}"))?;
+    let mut records = String::new();
+    for line in manifest
+        .lines()
+        .filter(|line| !line.starts_with('#') && !line.is_empty())
+    {
+        writeln!(&mut records, "{line}").expect("writing to a String cannot fail");
+    }
+    let expected_tree = directory
+        .file_name()
+        .and_then(std::ffi::OsStr::to_str)
+        .ok_or_else(|| "portable snapshot directory has no UTF-8 digest name".to_owned())?;
+    if sha256_hex(records.as_bytes()) != expected_tree {
+        return Err(format!(
+            "portable snapshot directory {expected_tree} does not match its manifest"
+        ));
+    }
+    for record in records.lines() {
+        let mut fields = record.splitn(3, "  ");
+        let expected_digest = fields
+            .next()
+            .ok_or_else(|| format!("invalid portable snapshot record: {record}"))?;
+        let expected_size = fields
+            .next()
+            .ok_or_else(|| format!("invalid portable snapshot record: {record}"))?
+            .parse::<usize>()
+            .map_err(|error| format!("invalid portable snapshot size: {error}"))?;
+        let relative = fields
+            .next()
+            .ok_or_else(|| format!("invalid portable snapshot record: {record}"))?;
+        let path = directory.join("content").join(relative);
+        let bytes = fs::read(&path)
+            .map_err(|error| format!("could not read snapshot file {}: {error}", path.display()))?;
+        if bytes.len() != expected_size || sha256_hex(&bytes) != expected_digest {
+            return Err(format!(
+                "portable snapshot file differs from manifest: {}",
+                path.strip_prefix(root).unwrap_or(&path).display()
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Verifies immutable fixture-manifest identities recorded by the freeze.
+fn verify_fixture_freeze_digests(root: &Path) -> Result<(), String> {
+    let freeze = read_workspace_text(root, constants::CONTRACT_FREEZE_FILE)?;
+    for (path_key, digest_key) in [
+        ("manifest_path", "manifest_sha256"),
+        ("fixture_oracle_review_path", "fixture_oracle_review_sha256"),
+    ] {
+        let path = configuration_value(&freeze, path_key)
+            .ok_or_else(|| format!("contract freeze has no {path_key}"))?;
+        let expected = configuration_value(&freeze, digest_key)
+            .ok_or_else(|| format!("contract freeze has no {digest_key}"))?;
+        let bytes = fs::read(root.join(&path))
+            .map_err(|error| format!("could not read frozen input {path}: {error}"))?;
+        let actual = sha256_hex(&bytes);
+        if actual != expected {
+            return Err(format!(
+                "frozen input {path} has SHA-256 {actual}, expected {expected}; contract review is required"
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Verifies repository-local links in every active portable Markdown file.
+fn verify_portable_links(root: &Path) -> Result<(), String> {
+    let portable_root = root.join(constants::PORTABLE_DIRECTORY);
+    let canonical_root = fs::canonicalize(root)
+        .map_err(|error| format!("could not canonicalize workspace root: {error}"))?;
+    let mut files = Vec::new();
+    collect_regular_files(&portable_root, &mut files)?;
+    let mut missing = Vec::new();
+    for file in files
+        .iter()
+        .filter(|path| path.extension().and_then(|value| value.to_str()) == Some("md"))
+    {
+        let content = fs::read_to_string(file)
+            .map_err(|error| format!("could not read {}: {error}", file.display()))?;
+        for target in markdown_link_targets(&content) {
+            let candidate = file.parent().unwrap_or(&portable_root).join(&target);
+            let valid = fs::canonicalize(&candidate)
+                .is_ok_and(|candidate| candidate.starts_with(&canonical_root));
+            if !valid {
+                missing.push(format!(
+                    "{} -> {target}",
+                    file.strip_prefix(root).unwrap_or(file).display()
+                ));
+            }
+        }
+    }
+    if missing.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "active portable links are missing: {}",
+            missing.join(", ")
+        ))
+    }
+}
+
+/// Extracts local, anchor-free Markdown link paths from document text.
+fn markdown_link_targets(content: &str) -> Vec<String> {
+    content
+        .split("](")
+        .skip(1)
+        .filter_map(|tail| tail.split_once(')').map(|(target, _)| target))
+        .map(str::trim)
+        .map(|target| target.trim_matches(['<', '>']))
+        .filter(|target| {
+            !target.is_empty()
+                && !target.starts_with('#')
+                && !target.contains("://")
+                && !target.starts_with("mailto:")
+        })
+        .map(|target| target.split('#').next().unwrap_or(target))
+        .filter(|target| !target.is_empty())
+        .map(str::to_owned)
+        .collect()
+}
+
+/// Rejects production or executable-test references to archived roadmap inputs.
+fn ensure_no_archived_portable_dependencies(root: &Path) -> Result<(), String> {
+    let mut files = Vec::new();
+    collect_regular_files(&root.join("crates"), &mut files)?;
+    collect_regular_files(&root.join("xtask"), &mut files)?;
+    let forbidden = [
+        concat!("neutral-roadmap", "/neutral-lang/"),
+        concat!("portable", "/archive/"),
+        concat!("portable", "/archived/"),
+    ];
+    let violations = files
+        .iter()
+        .filter(|path| {
+            matches!(
+                path.extension().and_then(|value| value.to_str()),
+                Some("rs" | "toml")
+            )
+        })
+        .filter_map(|path| {
+            let content = fs::read_to_string(path).ok()?;
+            forbidden
+                .iter()
+                .any(|value| content.contains(value))
+                .then(|| {
+                    path.strip_prefix(root)
+                        .unwrap_or(path)
+                        .display()
+                        .to_string()
+                })
+        })
+        .collect::<Vec<_>>();
+    if violations.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "code depends on archived portable material: {}",
+            violations.join(", ")
+        ))
+    }
+}
+
+/// Creates an atomic digest-addressed copy of the active portable package.
+fn snapshot_portable() -> Result<(), String> {
+    verify_portable()?;
+    let root = workspace_root()?;
+    let portable_root = root.join(constants::PORTABLE_DIRECTORY);
+    let mut files = Vec::new();
+    collect_regular_files(&portable_root, &mut files)?;
+    files.sort();
+    let records = portable_digest_records(&root, &files)?;
+    let tree_digest = sha256_hex(records.as_bytes());
+    let parent = result_root()?.join(constants::PORTABLE_SNAPSHOT_DIRECTORY);
+    let output = parent.join(&tree_digest);
+    let manifest = format!(
+        "# SPDX-License-Identifier: Apache-2.0\n# sha256  bytes  repository-relative-path\n{records}"
+    );
+    if output.exists() {
+        let existing = fs::read_to_string(output.join("manifest.sha256"))
+            .map_err(|error| format!("could not read existing snapshot manifest: {error}"))?;
+        if existing != manifest {
+            return Err(format!(
+                "portable snapshot collision at {}",
+                output.display()
+            ));
+        }
+        println!(
+            "{} portable snapshot: {}",
+            constants::INFO,
+            output.display()
+        );
+        return Ok(());
+    }
+    fs::create_dir_all(&parent)
+        .map_err(|error| format!("could not create {}: {error}", parent.display()))?;
+    let partial = parent.join(format!(".{tree_digest}.partial-{}", std::process::id()));
+    fs::create_dir(&partial)
+        .map_err(|error| format!("could not create {}: {error}", partial.display()))?;
+    let content_root = partial.join("content").join(constants::PORTABLE_DIRECTORY);
+    for source in &files {
+        let relative = source
+            .strip_prefix(&portable_root)
+            .map_err(|error| format!("portable path escaped its root: {error}"))?;
+        let destination = content_root.join(relative);
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|error| format!("could not create {}: {error}", parent.display()))?;
+        }
+        fs::copy(source, &destination).map_err(|error| {
+            format!(
+                "could not copy {} to {}: {error}",
+                source.display(),
+                destination.display()
+            )
+        })?;
+    }
+    fs::write(partial.join("manifest.sha256"), &manifest)
+        .map_err(|error| format!("could not write portable snapshot manifest: {error}"))?;
+    let lifecycle = read_workspace_text(&root, constants::PORTABLE_LIFECYCLE_FILE)?;
+    let report = format!(
+        "{{\"schema_version\":1,\"tree_sha256\":\"{tree_digest}\",\"file_count\":{},\"archive_repository\":\"{}\",\"archive_path\":\"{}\",\"next_series\":\"{}\",\"status\":\"review-required\"}}\n",
+        files.len(),
+        json_string(&configuration_value(&lifecycle, "archive_repository").unwrap_or_default()),
+        json_string(&configuration_value(&lifecycle, "archive_path").unwrap_or_default()),
+        json_string(&configuration_value(&lifecycle, "next_series").unwrap_or_default())
+    );
+    fs::write(partial.join("migration-report.json"), report)
+        .map_err(|error| format!("could not write portable migration report: {error}"))?;
+    fs::rename(&partial, &output).map_err(|error| {
+        format!(
+            "could not publish portable snapshot {} as {}: {error}",
+            partial.display(),
+            output.display()
+        )
+    })?;
+    println!(
+        "{} portable snapshot: {}",
+        constants::INFO,
+        output.display()
+    );
+    Ok(())
+}
+
+/// Builds sorted exact-byte digest records for active portable files.
+fn portable_digest_records(root: &Path, files: &[PathBuf]) -> Result<String, String> {
+    let mut records = String::new();
+    for path in files {
+        let bytes = fs::read(path)
+            .map_err(|error| format!("could not read {}: {error}", path.display()))?;
+        let relative = path
+            .strip_prefix(root)
+            .map_err(|error| format!("portable path escaped workspace: {error}"))?
+            .to_string_lossy()
+            .replace('\\', "/");
+        writeln!(
+            &mut records,
+            "{}  {}  {relative}",
+            sha256_hex(&bytes),
+            bytes.len()
+        )
+        .expect("writing to a String cannot fail");
+    }
+    Ok(records)
+}
+
+/// Verifies generated-output ownership and ignored tracking policy.
+fn check_generated_outputs() -> Result<(), String> {
+    let root = workspace_root()?;
+    let inventory = read_workspace_text(&root, constants::GENERATED_OUTPUTS_FILE)?;
+    for name in [
+        "rustdoc",
+        "coverage",
+        "fuzz",
+        "mutation",
+        "benchmark",
+        "package",
+        "sbom",
+        "release",
+        "portable-snapshot",
+    ] {
+        if !inventory.contains(&format!("name = \"{name}\"")) {
+            return Err(format!("generated-output inventory is missing {name}"));
+        }
+    }
+    for entry in inventory.split("[[output]]").skip(1) {
+        let path = configuration_value(entry, "path")
+            .ok_or_else(|| "generated output has no path".to_owned())?;
+        if !(path.starts_with("target/") || path.starts_with("test-results/"))
+            || configuration_value(entry, "tracking").as_deref() != Some("ignored")
+            || configuration_value(entry, "owner").is_none()
+            || configuration_value(entry, "generate").is_none()
+            || configuration_value(entry, "validate").is_none()
+        {
+            return Err(format!(
+                "generated output {path} has an unsafe or incomplete policy"
+            ));
+        }
+    }
+    let ignore = read_workspace_text(&root, ".gitignore")?;
+    if !ignore.lines().any(|line| line.trim() == "target")
+        || !ignore.lines().any(|line| line.trim() == "test-results/")
+    {
+        return Err("target and test-results must remain ignored generated roots".to_owned());
+    }
+    println!("{} generated-output ownership: pass", constants::INFO);
     Ok(())
 }
 
@@ -1558,7 +2195,7 @@ fn direct_dependency_policy() -> BTreeMap<&'static str, BTreeSet<&'static str>> 
             constants::NEUTRAL_VOCABULARY,
             set([constants::NEUTRAL_CORE, constants::NEUTRAL_IR]),
         ),
-        (constants::XTASK, set([])),
+        (constants::XTASK, set(["sha2"])),
     ])
 }
 

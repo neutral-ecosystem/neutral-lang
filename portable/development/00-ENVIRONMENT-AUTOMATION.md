@@ -103,7 +103,9 @@ Rules:
 
 ## Dependency acquisition and offline execution
 
-- Commit `Cargo.lock` because the workspace ships binaries and test tooling.
+- Commit root `Cargo.lock` as the sole release dependency lock because the
+  workspace ships binaries. `fuzz/Cargo.lock` is an explicitly isolated,
+  non-release cargo-fuzz tool lock and cannot enter shipped package closures.
 - Pin Git dependencies to immutable revisions; prefer registry releases with
   checksums.
 - Review build scripts, proc macros, native dependencies, default features,
@@ -115,6 +117,9 @@ Rules:
   digests.
 - A cache hit cannot bypass integrity checks or quality gates.
 - Generate an SBOM/dependency manifest for release artifacts.
+- `config/dependency-sources.toml` owns allowed lockfiles and source classes;
+  `cargo xtask version check` validates the release lock offline and rejects
+  Git sources, missing registry checksums, or stale workspace package entries.
 
 ## Repository automation package
 
@@ -155,6 +160,14 @@ Command rules:
   inline test bodies;
 - traceability checks reject missing accepted IDs, unchecked master syntax,
   unregistered normative fixtures/oracles, and missing manifest paths;
+- version checks derive the release tag from the root workspace version, keep
+  all frozen contract domains separate, and emit review-only transition plans;
+- portable checks validate active-series identity, local links, fixture freeze
+  digests, manifest ownership, and the archive dependency boundary;
+- portable snapshots are atomic, digest-addressed copies under ignored
+  `test-results/portable/snapshot/` and never write to the roadmap repository;
+- `config/generated-outputs.toml` owns generation, validation, and tracking
+  policy for every generated product class;
 - `cargo docs` generates crate rustdoc plus a Cargo-metadata-driven workspace
   index without a fixed package list;
 - no automatic retry changes a failed required result to pass;

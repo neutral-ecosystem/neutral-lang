@@ -767,61 +767,61 @@ must not become a second user-facing command system.
 
 ### Step 3: centralize versioning, generated metadata, and portable lifecycle
 
-- [ ] Retain `[workspace.package].version` in the root `Cargo.toml` as the
+- [x] Retain `[workspace.package].version` in the root `Cargo.toml` as the
       single authoritative package-release version. Every workspace package
       must use `version.workspace = true`; no crate manifest, script, workflow,
       documentation badge, package filename, or release record may become a
       second manually synchronized package-version source.
-- [ ] Keep the package-release version explicitly separate from frozen language
+- [x] Keep the package-release version explicitly separate from frozen language
       behavior, logical-IR schema, vocabulary, external-encoding, digest, and
       fixture contract versions. The version tool must display all domains and
       reject an attempted package bump that silently changes a normative
       contract, or a contract bump that lacks its required freeze decision.
-- [ ] Implement `cargo xtask version show`, `check`, and `prepare <version>`.
+- [x] Implement `cargo xtask version show`, `check`, and `prepare <version>`.
       `prepare` must make only reviewed, deterministic derived updates, emit a
       machine-readable change plan, reject invalid SemVer/channel transitions,
       and never create a tag, publish, or alter frozen contracts.
-- [ ] No hard coded version checking in tests and code use dynamic linking.
-- [ ] Make `Cargo.lock` the sole resolved dependency lock. Add automated
+- [x] No hard coded version checking in tests and code use dynamic linking.
+- [x] Make root `Cargo.lock` the sole release dependency lock; retain only the
+      explicitly isolated non-release `fuzz/Cargo.lock` tool lock. Add automated
       locked metadata/build checks, dependency/license/advisory review, and a
       clear failure when the lock or its declared source policy is stale.
-- [ ] Inventory generated outputs and assign each one an owner, source of
+- [x] Inventory generated outputs and assign each one an owner, source of
       truth, regeneration command, validation command, and tracking policy.
       Rustdoc, coverage, fuzz, mutation, benchmark, package, SBOM, and release
       reports belong under ignored generated-result roots; they are never
       hand-edited or committed accidentally.
-- [ ] Distinguish immutable normative digests in freeze/fixture manifests from
+- [x] Distinguish immutable normative digests in freeze/fixture manifests from
       generated lock metadata. A command may verify or propose a contract-digest
       update, but changing it requires the governing freeze/change-control
       review and cannot be an automatic version-bump side effect.
-- [ ] Define `portable/` as the active, version-scoped execution package: it
+- [x] Define `portable/` as the active, version-scoped execution package: it
       contains the current version's plan, contracts, fixtures, decisions, and
       progress records. Production crates and executable tests must never depend
       on archived portable material.
-- [ ] Implement `cargo xtask portable verify` to check active portable links,
+- [x] Implement `cargo xtask portable verify` to check active portable links,
       fixture ownership, manifest registration, version identity, and absence
       of test dependencies on archived/mutable roadmap material.
-- [ ] Implement `cargo xtask portable snapshot` to create a deterministic,
+- [x] Implement `cargo xtask portable snapshot` to create a deterministic,
       digest-identified archive candidate and migration report without writing
       to another repository. The maintainer then lands that reviewed snapshot
       in the neutral-roadmap version archive as a separate immutable commit.
-- [ ] Define the rollover procedure: after v0 release evidence is immutable,
-      archive the v0 portable snapshot in the roadmap repository, this
-      repository's active `portable/` package will be archived and chnaged with the v1 portable (in the future)
-      , and retain a
-      local redirect/identity record rather than silently mixing v0 and v1
-      planning files.
-- [ ] Document and test the archive boundary: historical portable plans are
+- [x] Define the rollover procedure: after v0 release evidence is immutable,
+      archive the v0 portable snapshot in the roadmap repository, replace this
+      repository's active `portable/` package with the future v1 portable
+      package, and retain a local redirect/identity record rather than silently
+      mixing v0 and v1 planning files.
+- [x] Document and test the archive boundary: historical portable plans are
       readable evidence, not mutable fixtures, build inputs, or CI dependencies.
 
 #### Step validation
 
-- [ ] Changing a package release version requires one `Cargo.toml` edit plus
+- [x] Changing a package release version requires one `Cargo.toml` edit plus
       `cargo xtask version prepare`, and `cargo xtask version check` detects
       every stale derived value.
-- [ ] Frozen contract versions and fixture digests remain unchanged by ordinary
+- [x] Frozen contract versions and fixture digests remain unchanged by ordinary
       package releases and fail verification if changed without review.
-- [ ] A portable snapshot can be verified from its manifest/digests, and a v1
+- [x] A portable snapshot can be verified from its manifest/digests, and a v1
       rollover cannot make v0 tests, links, or release records ambiguous.
 
 ### Step 4: standardize repository ownership, tests, quality, and contributor flow

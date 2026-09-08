@@ -15,6 +15,12 @@ generated-evidence paths, release-candidate validation, and fail-closed package
 assembly. It orchestrates production crates but does not implement Neutral
 syntax, semantics, IR, encoding, reading, formatting, or host acquisition.
 
+The root `[workspace.package].version` is the sole package-release version.
+`version` commands verify its inheritance and lock coherence, while release
+commands derive tag `v<version>` instead of reading a duplicated version.
+`portable verify` enforces the active-package boundary and `portable snapshot`
+creates an ignored, SHA-256-addressed archive candidate without network access.
+
 Inputs are tracked repository configuration and explicit command arguments.
 Outputs are terminal messages prefixed with a category and ignored generated
 files beneath `target/` or `test-results/`. It does not tag, push, upload,

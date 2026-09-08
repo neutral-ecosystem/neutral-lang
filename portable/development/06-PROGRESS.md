@@ -7,21 +7,32 @@ Status: Stage 10 workflow overhaul in progress.
 ## Current focus
 
 - Stage: Stage 10 workflow overhaul and v0 qualification
-- Status: Steps 1 and 2 complete; Step 3 is next
+- Status: Steps 1–3 complete; Step 4 is next
 - Last updated: 2026-09-08
 
 ## Next actions
 
-- [ ] Implement Stage 10 Step 3: centralize version transitions, generated
-      metadata ownership, and the active portable snapshot/rollover lifecycle.
+- [ ] Implement Stage 10 Step 4: standardize repository ownership, test and
+      quality structure, contributor flow, and generated-output hygiene.
 
 ## Blockers
 
-- No technical blocker remains for Stage 10 Step 3. Final tag `v0.1.0` is the
-  selected release identity; package/release commands remain fail-closed until
-  that annotated tag names the clean reviewed checkout.
+- The signed local `v0.1.0` tag identifies the pre-Step-3 commit. Step 3 changes
+  intentionally make release preparation fail closed until the maintainer
+  chooses a new version/tag or explicitly replaces that unpublished local tag.
 
 ## Completed log
+
+- [x] 2026-09-08: Completed Stage 10, Step 3. Root
+  `[workspace.package].version` now derives the release tag and every package
+  inherits it. Version tooling displays all independent frozen contract
+  domains, verifies offline lock/source policy, enforces forward SemVer
+  transitions, and emits deterministic review plans without editing contracts
+  or tagging. Added generated-output ownership, active portable lifecycle
+  identity, local-link/fixture-digest/archive-boundary checks, atomic
+  digest-addressed snapshots, snapshot revalidation, and the explicit
+  v0-roadmap-archive to v1-rollover procedure. Evidence is in
+  `development/evidence/stage10-version-portable-lifecycle.md`.
 
 - [x] 2026-09-08: Simplified release identity configuration to the final
   `v0.1.0` tag. Removed duplicated `candidate_commit` and

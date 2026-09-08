@@ -27,8 +27,8 @@ pub(crate) struct ReleasePlan {
 }
 
 impl ReleasePlan {
-    /// Reads and validates the release-selection configuration.
-    pub(crate) fn read(path: &Path) -> Result<Self, String> {
+    /// Reads release scope and derives its tag from the workspace version.
+    pub(crate) fn read(path: &Path, package_version: &str) -> Result<Self, String> {
         let content = fs::read_to_string(path)
             .map_err(|error| format!("could not read {}: {error}", path.display()))?;
         if !required_bool(&content, "stage9_residual_risk")? {
@@ -45,7 +45,7 @@ impl ReleasePlan {
             channels.insert(DistributionChannel::CratesIo);
         }
         let plan = Self {
-            candidate_tag: required_string(&content, "candidate_tag")?,
+            candidate_tag: format!("v{package_version}"),
             channels,
             binaries: required_array(&content, "binaries")?,
         };
@@ -80,16 +80,6 @@ impl ReleasePlan {
         }
         Ok(())
     }
-}
-
-/// Reads one required quoted string from the constrained release TOML.
-fn required_string(content: &str, key: &str) -> Result<String, String> {
-    let value = required_value(content, key)?;
-    value
-        .strip_prefix('"')
-        .and_then(|value| value.strip_suffix('"'))
-        .map(str::to_owned)
-        .ok_or_else(|| format!("release {key} must be a quoted string"))
 }
 
 /// Reads one required Boolean from the constrained release TOML.

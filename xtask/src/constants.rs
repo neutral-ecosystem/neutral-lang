@@ -52,6 +52,10 @@ pub const RESIDUAL_RISKS_FILE: &str = "quality/residual-risks.md";
 pub const WORKSPACE_MANIFEST_FILE: &str = "Cargo.toml";
 /// Root dependency lock relative to the workspace root.
 pub const CARGO_LOCK_FILE: &str = "Cargo.lock";
+/// Declared dependency-source policy relative to the workspace root.
+pub const DEPENDENCY_SOURCES_FILE: &str = "config/dependency-sources.toml";
+/// Generated-output ownership inventory relative to the workspace root.
+pub const GENERATED_OUTPUTS_FILE: &str = "config/generated-outputs.toml";
 /// Durable test-minimum profile used by normal commands.
 pub const CURRENT_TEST_PROFILE: &str = "current";
 /// Cargo release output directory relative to the workspace root.
@@ -64,6 +68,8 @@ pub const ROOT_README_FILE: &str = "README.md";
 pub const PORTABLE_DIRECTORY: &str = "portable";
 /// Active portable plan relative to the workspace root.
 pub const PORTABLE_PLAN_FILE: &str = "portable/PLAN.md";
+/// Active portable lifecycle identity relative to the workspace root.
+pub const PORTABLE_LIFECYCLE_FILE: &str = "portable/lifecycle.toml";
 /// Approved contract-freeze manifest relative to the workspace root.
 pub const CONTRACT_FREEZE_FILE: &str = "portable/specs/contracts/freeze.toml";
 /// Normative fixture root relative to the workspace root.
@@ -112,3 +118,5 @@ pub const RELEASE_RESULT_DIRECTORY: &str = "release";
 pub const QUALITY_REPORT_DIRECTORY: &str = "analysis/quality-report";
 /// Generated version-plan directory relative to the result root.
 pub const VERSION_RESULT_DIRECTORY: &str = "version";
+/// Generated portable snapshot root relative to the result root.
+pub const PORTABLE_SNAPSHOT_DIRECTORY: &str = "portable/snapshot";

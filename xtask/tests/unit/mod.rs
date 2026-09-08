@@ -138,6 +138,78 @@ fn automation_reads_named_quality_values() {
 }
 
 #[test]
+/// Package transitions follow `SemVer` precedence and reject invalid versions.
+fn automation_validates_package_version_transitions() {
+    assert!(super::validate_version_transition("0.1.0-rc.1", "0.1.0-rc.2").is_ok());
+    assert!(super::validate_version_transition("0.1.0-rc.2", "0.1.0").is_ok());
+    assert!(super::validate_version_transition("0.1.0", "0.2.0").is_ok());
+    assert!(super::validate_version_transition("0.1.0", "0.1.0").is_err());
+    assert!(super::validate_version_transition("0.2.0", "0.1.0").is_err());
+    assert!(super::validate_semver("0.1.0-rc.01").is_err());
+    assert!(super::validate_semver("0.1.0-rc..1").is_err());
+}
+
+#[test]
+/// Contract-version sections stay separate from package release versions.
+fn automation_reads_all_contract_version_domains() {
+    let values = super::configuration_section(
+        "[contract_versions]\nlanguage_behavior = \"0.1.0\"\nexternal_ir_encoding = \"NIR-CBOR/0.1\"\n",
+        "contract_versions",
+    )
+    .expect("contract version section should parse");
+    assert_eq!(values.len(), 2);
+    assert_eq!(values[1].0, "external_ir_encoding");
+}
+
+#[test]
+/// Portable link discovery excludes remote URLs and document anchors.
+fn automation_extracts_only_local_portable_links() {
+    let links = super::markdown_link_targets(
+        "[local](specs/README.md) [anchor](#part) [remote](https://example.com) [section](PLAN.md#gate)",
+    );
+    assert_eq!(links, ["specs/README.md", "PLAN.md"]);
+}
+
+#[test]
+/// Exact-byte SHA-256 output is stable and lowercase.
+fn automation_hashes_snapshot_bytes_deterministically() {
+    assert_eq!(
+        super::sha256_hex(b"abc"),
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    );
+}
+
+#[test]
+/// Portable snapshot verification detects copied-byte corruption.
+fn automation_revalidates_portable_snapshot_bytes() {
+    let root = std::env::temp_dir().join(format!(
+        "neutral-portable-snapshot-test-{}",
+        std::process::id()
+    ));
+    let bytes = b"portable";
+    let record = format!(
+        "{}  {}  portable/test.txt\n",
+        super::sha256_hex(bytes),
+        bytes.len()
+    );
+    let tree = super::sha256_hex(record.as_bytes());
+    let snapshot = root.join("snapshots").join(tree);
+    let copied = snapshot.join("content/portable/test.txt");
+    std::fs::create_dir_all(copied.parent().expect("copied file should have a parent"))
+        .expect("snapshot content should be creatable");
+    std::fs::write(&copied, bytes).expect("snapshot content should be writable");
+    std::fs::write(
+        snapshot.join("manifest.sha256"),
+        format!("# SPDX-License-Identifier: Apache-2.0\n{record}"),
+    )
+    .expect("snapshot manifest should be writable");
+    assert!(super::verify_portable_snapshot_directory(&root, &snapshot).is_ok());
+    std::fs::write(&copied, b"corrupt").expect("snapshot corruption should be writable");
+    assert!(super::verify_portable_snapshot_directory(&root, &snapshot).is_err());
+    std::fs::remove_dir_all(root).expect("temporary snapshot should be removable");
+}
+
+#[test]
 /// Verifies that the environment manifest identifies the selected toolchain channel.
 fn environment_manifest_identifies_the_toolchain_channel() {
     let manifest = super::environment_manifest().expect("environment manifest should be available");
@@ -354,7 +426,7 @@ fn xtask_commands_and_helpers() {
     assert!(!files.is_empty());
 
     assert!(super::ensure_registered_paths_exist(&root, "portable/specs/REQUIREMENTS.md").is_ok());
-    assert!(super::ensure_inventory_registered(&root, "config", "config/development-stage.toml config/host-policy.toml config/ir-encoding.toml config/quality-gates.toml config/release.toml config/test-suites.toml").is_ok());
+    assert!(super::ensure_inventory_registered(&root, "config", "config/dependency-sources.toml config/development-stage.toml config/generated-outputs.toml config/host-policy.toml config/ir-encoding.toml config/quality-gates.toml config/release.toml config/test-suites.toml").is_ok());
 
     assert!(super::print_environment_manifest().is_ok());
     assert_eq!(super::active_test_profile(), "current");

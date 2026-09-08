@@ -12,10 +12,16 @@ Start with [PLAN.md](PLAN.md). The mandatory
 [contract-freeze gate](development/02-CONTRACT-FREEZE.md) was approved before
 production language behavior began.
 
+The machine-readable active-series and archive destinations are in
+[`lifecycle.toml`](lifecycle.toml). The verified snapshot and v0-to-v1 rollover
+procedure is in
+[`development/07-PORTABLE-LIFECYCLE.md`](development/07-PORTABLE-LIFECYCLE.md).
+
 ## Layout
 
 ```text
 README.md                     package lifecycle and navigation
+lifecycle.toml                active series and roadmap rollover destinations
 ARCHITECTURE.md               normative v0 architecture
 PLAN.md                       operational implementation entry point
 ROADMAP.md                    product milestone summary

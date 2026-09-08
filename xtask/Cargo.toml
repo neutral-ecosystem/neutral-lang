@@ -12,5 +12,8 @@ repository.workspace = true
 [package.metadata.neutral]
 owner = "repository-automation"
 
+[dependencies]
+sha2.workspace = true
+
 [lints]
 workspace = true

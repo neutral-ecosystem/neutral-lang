@@ -2,8 +2,8 @@
 
 # This file records explicit release-authority selections. It does not publish,
 # upload, tag, or authorize skipping any Stage 10 qualification gate.
+# The release tag is derived as `v<workspace.package.version>`.
 schema_version = 1
-candidate_tag = "v0.1.0"
 
 [approval]
 stage9_residual_risk = true

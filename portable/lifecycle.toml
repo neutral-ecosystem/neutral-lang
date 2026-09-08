@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+status = "active"
+active_series = "v0"
+archive_repository = "https://github.com/neutral-ecosystem/neutral-roadmap"
+archive_path = "neutral-lang/v0/portable"
+next_series = "v1"
+next_source_path = "neutral-lang/v1"
+local_redirect = "PORTABLE-ARCHIVE.md"

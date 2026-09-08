@@ -12,7 +12,6 @@ fn release_plan_accepts_an_explicit_scope() {
     fs::write(
         &path,
         concat!(
-            "candidate_tag = \"v0.1.0\"\n",
             "stage9_residual_risk = true\n",
             "source_tag = true\n",
             "github_binaries = true\n",
@@ -21,7 +20,9 @@ fn release_plan_accepts_an_explicit_scope() {
         ),
     )
     .expect("temporary release plan should be writable");
-    let plan = ReleasePlan::read(&path).expect("explicit release plan should parse");
+    let version = env!("CARGO_PKG_VERSION");
+    let plan = ReleasePlan::read(&path, version).expect("explicit release plan should parse");
+    assert_eq!(plan.candidate_tag, format!("v{version}"));
     assert!(plan.channels.contains(&DistributionChannel::SourceTag));
     assert!(plan.channels.contains(&DistributionChannel::GithubBinaries));
     assert!(!plan.channels.contains(&DistributionChannel::CratesIo));
@@ -35,7 +36,6 @@ fn release_plan_rejects_unapproved_empty_scope() {
     fs::write(
         &path,
         concat!(
-            "candidate_tag = \"v0.1.0\"\n",
             "stage9_residual_risk = false\n",
             "source_tag = false\n",
             "github_binaries = false\n",
@@ -44,7 +44,7 @@ fn release_plan_rejects_unapproved_empty_scope() {
         ),
     )
     .expect("temporary release plan should be writable");
-    assert!(ReleasePlan::read(&path).is_err());
+    assert!(ReleasePlan::read(&path, "0.1.0").is_err());
     fs::remove_file(path).expect("temporary release plan should be removable");
 }
 

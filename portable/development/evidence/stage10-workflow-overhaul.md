@@ -36,11 +36,12 @@ stage therefore cannot rename commands or deactivate the implemented suites.
 - `release prepare` composes release quality, documentation, and package
   assembly. It cannot tag, push, upload, publish, or change frozen contracts.
 
-`config/release.toml` records final tag `v0.1.0` plus the selected
-GitHub-binary scope; crates.io is false. Git is authoritative for the commit,
-so no duplicated commit or evidence path is configured. The constrained parser
-rejects missing approval, empty distribution scope, unsafe binary names, and
-empty binary selection for GitHub assets.
+`config/release.toml` records only the selected GitHub-binary scope; crates.io
+is false. The release tag is derived as `v<workspace package version>` and Git
+is authoritative for its commit, so no duplicated tag version, commit, or
+evidence path is configured. The constrained parser rejects missing approval,
+empty distribution scope, unsafe binary names, and empty binary selection for
+GitHub assets.
 
 ## Platform and CI adapters
 
