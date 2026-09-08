@@ -7,13 +7,13 @@ Status: Stage 10 workflow overhaul in progress.
 ## Current focus
 
 - Stage: Stage 10 workflow overhaul and v0 qualification
-- Status: Steps 1–7 complete; Step 8 is next
+- Status: Steps 1–8 complete; Step 9 is next
 - Last updated: 2026-09-08
 
 ## Next actions
 
-- [ ] Implement Stage 10 Step 8: assemble and verify only the explicitly
-      selected source-tag and GitHub-binary distribution artifacts.
+- [ ] Implement Stage 10 Step 9: record final approvals, publish the approved
+      source tag and GitHub assets, and archive the completed v0 portable plan.
 
 ## Candidate policy
 
@@ -22,6 +22,16 @@ Status: Stage 10 workflow overhaul in progress.
   qualification and approval gate; it never selects an earlier source revision.
 
 ## Completed log
+
+- [x] 2026-09-08: Completed Stage 10, Step 8 from clean `main` revision
+  `b1353acc6d93c796795492d9e96976ed96f4f7fa`. The atomic package command
+  generated the selected binaries, deterministic source archive, complete
+  release manifest and checksums, locked dependency/SBOM inventory,
+  provenance, installation guide, license, and release notes. crates.io was
+  explicitly unselected. Every digest passed, the source archive regenerated
+  byte-for-byte and excluded transient outputs, and an isolated consumer used
+  the packaged CLI and probe successfully. Evidence is in
+  `development/evidence/stage10-distribution-assembly.md`.
 
 - [x] 2026-09-08: Completed Stage 10, Step 7 from clean `main` revision
   `088541693a9382bd1d00abd3ce32437ed496ed7e`. Built every release deliverable

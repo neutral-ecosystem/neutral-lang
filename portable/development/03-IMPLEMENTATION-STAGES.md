@@ -946,24 +946,24 @@ must not become a second user-facing command system.
 
 ### Step 8: assemble only the declared distribution artifacts
 
-- [ ] Produce a release manifest listing each selected artifact, exact filename,
+- [x] Produce a release manifest listing each selected artifact, exact filename,
       SHA-256 digest, license/notices, producer version, source commit, and
       intended distribution channel.
-- [ ] If publishing Cargo packages is selected, run `cargo package --locked`
+- [x] If publishing Cargo packages is selected, run `cargo package --locked`
       for each public package, inspect package contents, and test each packaged
       artifact in a clean consumer directory before upload.
-- [ ] If GitHub binary assets are selected, build only the documented supported
+- [x] If GitHub binary assets are selected, build only the documented supported
       target matrix and publish checksums plus installation/verification steps.
-- [ ] Generate the SBOM/dependency manifest and build provenance required by
+- [x] Generate the SBOM/dependency manifest and build provenance required by
       [05-RELEASE.md](05-RELEASE.md); record known limitations, explicit v0
       exclusions, supported hosts, and deferred work.
-- [ ] Keep transient coverage, mutation, fuzz, profiler, and build outputs out
+- [x] Keep transient coverage, mutation, fuzz, profiler, and build outputs out
       of the release artifact set; retain only the evidence required to audit
       qualification.
 
 #### Step validation
 
-- [ ] Every shipped file is intentional, license-complete, digest-identified,
+- [x] Every shipped file is intentional, license-complete, digest-identified,
       reproducible from the candidate, and verified as the packaged form rather
       than merely as a workspace build.
 

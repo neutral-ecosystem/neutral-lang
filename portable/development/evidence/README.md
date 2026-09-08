@@ -30,5 +30,8 @@ numbered lifecycle gates without becoming normative language specifications.
 - [Stage 10 consumer-deliverable record](stage10-consumer-deliverables.md)
   records release builds, CLI fail-closed behavior, reader/probe equivalence,
   clean-consumer execution, dependency isolation, and Rustdoc inspection.
+- [Stage 10 distribution-assembly record](stage10-distribution-assembly.md)
+  records selected artifacts, checksums, source archive, dependency/SBOM and
+  provenance outputs, transient-output exclusion, and packaged-form testing.
 
 New evidence belongs here only when no numbered lifecycle document owns it.
