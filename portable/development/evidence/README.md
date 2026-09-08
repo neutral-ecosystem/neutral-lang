@@ -12,5 +12,8 @@ numbered lifecycle gates without becoming normative language specifications.
 - [Stage 10 candidate-preparation record](stage10-candidate-preparation.md)
   records the reproducible source, dependency, toolchain, fixture, and contract
   identities collected before a release-authority decision creates a candidate.
+- [Stage 10 workflow-overhaul record](stage10-workflow-overhaul.md) records the
+  stable command boundary, policy ownership, platform/CI adapters, fail-closed
+  release behavior, and executed Step 2 validation.
 
 New evidence belongs here only when no numbered lifecycle document owns it.

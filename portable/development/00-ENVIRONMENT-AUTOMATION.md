@@ -127,22 +127,23 @@ Stable commands:
 ```text
 cargo xtask bootstrap
 cargo xtask environment verify|manifest
-cargo xtask boundary check
-cargo xtask test-layout check
-cargo xtask traceability check
-cargo xtask format [--write]
+cargo xtask fmt [--write]
 cargo xtask lint
-cargo xtask build --profile dev|test|release
+cargo xtask check
+cargo xtask build --profile dev|release
 cargo docs
 cargo xtask test smoke|unit|integration|system|conformance|property|security|all
 cargo xtask test performance --profile pr|release|soak
 cargo xtask fuzz smoke|campaign
 cargo xtask coverage
 cargo xtask mutate
-cargo xtask golden check|update
-cargo xtask quality report
-cargo xtask ci stage1|pr|nightly|release
-cargo xtask clean-results
+cargo xtask quality [--profile pr|release]
+cargo xtask validate <artifact>|binaries
+cargo xtask package
+cargo xtask release prepare
+cargo xtask version show|check|prepare <version>
+cargo xtask portable verify|snapshot
+cargo xtask clean
 ```
 
 Command rules:
@@ -158,7 +159,6 @@ Command rules:
   index without a fixed package list;
 - no automatic retry changes a failed required result to pass;
 - check commands do not modify tracked files;
-- golden update is explicit and lists every changed oracle;
 - every aggregate command emits a machine-readable summary;
 - interruption marks the run incomplete;
 - verbose mode prints exact nonsecret commands/configuration;
@@ -175,12 +175,13 @@ test-results/
 ├── bootstrap/
 │   └── environment.json
 ├── ci/
-│   ├── stage1/
+│   ├── pr/
 │   │   └── run-<process-id>-<sequence>/
 │   │       └── task-summary.json
-│   ├── pr/
-│   ├── nightly/
 │   └── release/
+├── release/
+│   └── package/
+├── version/
 ├── suites/
 │   ├── conformance/
 │   ├── fuzz/
@@ -193,7 +194,7 @@ test-results/
     └── quality-report/
 ```
 
-Only directories for executed tasks are created. The CI profile/stage is part of
+Only directories for executed tasks are created. The durable CI profile is part of
 the directory path, while `run-<process-id>-<sequence>` is unique and carries no
 semantic identity. Reports identify commit, tree cleanliness, toolchain, target,
 profile, fixture-manifest digest, limits, seed, host image, and task status.
@@ -201,43 +202,20 @@ Sensitive input excerpts and credentials are excluded.
 
 ## CI profiles
 
-### Stage 1
-
-Runs only active Stage 1 checks:
-
-- environment verification;
-- workspace metadata/build/docs;
-- formatting/lint/dependency boundaries;
-- automation unit tests;
-- package shell smoke; and
-- probe dependency allowlist.
-
-No compiler/conformance/performance placeholder is intentionally failed.
-
-### Pull request
+### Push and pull request
 
 - environment and repository coherence;
 - formatting/lint/docs/dependencies;
-- active smoke/unit/integration/system/conformance suites;
+- smoke/unit/integration/system/conformance/property/security suites;
 - bounded property/security/fuzz smoke;
-- coverage on affected production code; and
-- informational performance smoke or gross-complexity guard.
-
-### Nightly
-
-- full declared host/MSRV matrix;
-- extended property/fuzz/security;
-- performance baseline comparison;
-- stress/soak;
-- mutation analysis;
-- dependency/advisory refresh; and
-- complete quality report.
+- standalone probe dependency check; and
+- generated workspace documentation.
 
 ### Release
 
 - clean protected release candidate;
 - prevalidated offline dependencies;
-- full supported matrix and all active release suites;
+- full supported matrix and all release suites;
 - controlled performance and resource profiles;
 - retained immutable evidence;
 - package/SBOM/license verification; and

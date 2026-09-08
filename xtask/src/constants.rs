@@ -44,6 +44,20 @@ pub const SYNTAX_CHECKLIST_FILE: &str = "portable/specs/contracts/syntax-checkli
 pub const TRACEABILITY_FILE: &str = "portable/specs/TRACEABILITY.md";
 /// Stage 9 quality-gate configuration relative to the workspace root.
 pub const QUALITY_GATES_FILE: &str = "config/quality-gates.toml";
+/// Stage 10 release-selection configuration relative to the workspace root.
+pub const RELEASE_CONFIG_FILE: &str = "config/release.toml";
+/// Approved Stage 9 residual-risk record relative to the workspace root.
+pub const RESIDUAL_RISKS_FILE: &str = "quality/residual-risks.md";
+/// Root workspace manifest relative to the workspace root.
+pub const WORKSPACE_MANIFEST_FILE: &str = "Cargo.toml";
+/// Root dependency lock relative to the workspace root.
+pub const CARGO_LOCK_FILE: &str = "Cargo.lock";
+/// Active portable root relative to the workspace root.
+pub const PORTABLE_DIRECTORY: &str = "portable";
+/// Active portable plan relative to the workspace root.
+pub const PORTABLE_PLAN_FILE: &str = "portable/PLAN.md";
+/// Approved contract-freeze manifest relative to the workspace root.
+pub const CONTRACT_FREEZE_FILE: &str = "portable/specs/contracts/freeze.toml";
 /// Normative fixture root relative to the workspace root.
 pub const FIXTURE_DIRECTORY: &str = "portable/specs/fixtures";
 /// Normative oracle root relative to the workspace root.
@@ -58,6 +72,8 @@ pub const TEST_PATH_ATTRIBUTE_MARKER: &str = "#[path =";
 pub const NEUTRAL_BENCH: &str = "neutral-bench";
 /// Workspace package name for the command-line shell.
 pub const NEUTRAL_CLI: &str = "neutral-cli";
+/// Release binary filename for the Neutral host command line.
+pub const NEUTRAL_CLI_BINARY: &str = "neutral-cli";
 /// Workspace package name for the compiler.
 pub const NEUTRAL_COMPILER: &str = "neutral-compiler";
 /// Workspace package name for the core contract types.
@@ -68,6 +84,8 @@ pub const NEUTRAL_ENCODING: &str = "neutral-encoding";
 pub const NEUTRAL_IR: &str = "neutral-ir";
 /// Workspace package name for the probe executable.
 pub const NEUTRAL_PROBE: &str = "neutral-probe";
+/// Release binary filename for the standalone Neutral probe.
+pub const NEUTRAL_PROBE_BINARY: &str = "neutral-probe";
 /// Workspace package name for the reader.
 pub const NEUTRAL_READER: &str = "neutral-reader";
 /// Workspace package name for the test suite.
@@ -80,3 +98,5 @@ pub const NEUTRAL_VOCABULARY: &str = "neutral-vocabulary";
 pub const XTASK: &str = "xtask";
 /// Harness-free Stage 9 benchmark target name.
 pub const STAGE9_BENCHMARK: &str = "stage9";
+/// Relative root for generated release preparation and packages.
+pub const RELEASE_RESULT_DIRECTORY: &str = "release";

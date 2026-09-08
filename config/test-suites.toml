@@ -102,3 +102,22 @@ fuzz_vocabulary = 1
 fuzz_ir = 1
 fuzz_formatter = 1
 fuzz_probe = 1
+
+# Durable post-hardening baseline used by stable developer and CI commands.
+# Historical stage sections remain evidence for earlier gates; normal commands
+# never select behavior by implementation-stage name.
+[current.minimum]
+unit = 2
+smoke = 1
+integration = 3
+system = 18
+conformance = 26
+property = 26
+security = 19
+fuzz_smoke = 2
+fuzz_decoder = 3
+fuzz_source = 1
+fuzz_vocabulary = 1
+fuzz_ir = 1
+fuzz_formatter = 1
+fuzz_probe = 1

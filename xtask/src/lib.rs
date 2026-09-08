@@ -14,6 +14,13 @@ use std::{
 };
 
 pub mod constants;
+mod interface;
+mod release;
+
+use interface::{
+    BuildProfile, CiProfile, FuzzMode, PerformanceProfile, PortableAction, QualityProfile, Task,
+    TestLevel, ValidationTarget, VersionAction,
+};
 
 /// Source template for the generated workspace rustdoc landing page.
 const RUSTDOC_INDEX_TEMPLATE: &str = include_str!("rustdoc-index.html");
@@ -28,52 +35,39 @@ const RUSTDOC_HEADER_TEMPLATE: &str = include_str!("rustdoc-header.html");
 /// graph violates the boundary policy.
 pub fn run(arguments: impl IntoIterator<Item = String>) -> Result<(), String> {
     let arguments = arguments.into_iter().collect::<Vec<_>>();
+    execute(interface::parse(&arguments)?)
+}
 
-    match arguments.as_slice() {
-        [command] if command == "bootstrap" => bootstrap(),
-        [command, action] if command == "environment" && action == "verify" => verify_environment(),
-        [command, action] if command == "environment" && action == "manifest" => {
-            print_environment_manifest()
-        }
-        [command, action] if command == "boundary" && action == "check" => check_boundaries(),
-        [command, action] if command == "test-layout" && action == "check" => check_test_layout(),
-        [command, action] if command == "traceability" && action == "check" => check_traceability(),
-        [command] if command == "format" => run_cargo(&["fmt", "--all", "--", "--check"]),
-        [command, action] if command == "format" && action == "--write" => {
-            run_cargo(&["fmt", "--all"])
-        }
-        [command] if command == "lint" => run_cargo(&[
-            "clippy",
-            "--workspace",
-            "--all-targets",
-            "--all-features",
-            "--",
-            "-D",
-            "warnings",
-        ]),
-        [command] if command == "docs" => documentation(),
-        [command, flag, profile] if command == "build" && flag == "--profile" => build(profile),
-        [command, suite] if command == "test" => test_suite(suite),
-        [command, suite, flag, profile]
-            if command == "test" && suite == "performance" && flag == "--profile" =>
-        {
-            performance(profile)
-        }
-        [command, mode] if command == "fuzz" => fuzz(mode),
-        [command] if command == "coverage" => coverage(),
-        [command] if command == "mutate" => mutate(),
-        [command, action] if command == "golden" || command == "quality" => {
-            not_active(&format!("{command} {action}"))
-        }
-        [command, profile] if command == "ci" => ci(profile),
-        [command] if command == "clean-results" => clean_results(),
-        [command, action] if command == "boundary" && action == "help" => {
-            println!("{} usage: cargo xtask boundary check", constants::INFO);
+/// Executes one parsed stable automation task.
+fn execute(task: Task) -> Result<(), String> {
+    match task {
+        Task::Help => {
+            for line in interface::HELP.lines() {
+                println!("{} {line}", constants::INFO);
+            }
             Ok(())
         }
-        _ => Err(
-            "unsupported command; see portable/development/00-ENVIRONMENT-AUTOMATION.md".to_owned(),
-        ),
+        Task::Bootstrap => bootstrap(),
+        Task::EnvironmentVerify => verify_environment(),
+        Task::EnvironmentManifest => print_environment_manifest(),
+        Task::Format { write } => format_workspace(write),
+        Task::Lint => lint(),
+        Task::Check => check(),
+        Task::Build(profile) => build(profile),
+        Task::Docs => documentation(),
+        Task::Test(level) => test_suite(level),
+        Task::Performance(profile) => performance(profile),
+        Task::Fuzz(mode) => fuzz(mode),
+        Task::Coverage => coverage(),
+        Task::Mutate => mutate(),
+        Task::Quality(profile) => quality(profile),
+        Task::Validate(target) => validate(target),
+        Task::Package => package(),
+        Task::ReleasePrepare => release_prepare(),
+        Task::Version(action) => version(action),
+        Task::Portable(action) => portable(action),
+        Task::Clean => clean_results(),
+        Task::Ci(profile) => ci(profile),
     }
 }
 
@@ -102,6 +96,7 @@ fn verify_environment() -> Result<(), String> {
         "config/host-policy.toml",
         "config/ir-encoding.toml",
         "config/quality-gates.toml",
+        "config/release.toml",
         "config/test-suites.toml",
         "portable/conformance/manifest.toml",
     ] {
@@ -199,13 +194,87 @@ fn json_string(value: &str) -> String {
     value.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
-/// Runs the requested Cargo build profile without introducing source behavior.
-fn build(profile: &str) -> Result<(), String> {
+/// Checks or applies Rust formatting across the complete workspace.
+fn format_workspace(write: bool) -> Result<(), String> {
+    if write {
+        run_cargo(&["fmt", "--all"])
+    } else {
+        run_cargo(&["fmt", "--all", "--", "--check"])
+    }
+}
+
+/// Runs warning-free Clippy across every workspace target and feature.
+fn lint() -> Result<(), String> {
+    run_cargo(&[
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--all-features",
+        "--",
+        "-D",
+        "warnings",
+    ])
+}
+
+/// Runs locked compilation plus repository boundary and coherence checks.
+fn check() -> Result<(), String> {
+    run_cargo(&["check", "--workspace", "--all-targets", "--locked"])?;
+    check_boundaries()?;
+    check_test_layout()?;
+    check_traceability()?;
+    check_workflow_contract()
+}
+
+/// Verifies command documentation, platform adapters, and CI stay synchronized.
+fn check_workflow_contract() -> Result<(), String> {
+    let root = workspace_root()?;
+    for relative in [
+        "README.md",
+        "portable/development/00-ENVIRONMENT-AUTOMATION.md",
+    ] {
+        let content = read_workspace_text(&root, relative)?;
+        for command in interface::DOCUMENTED_COMMANDS {
+            if !content.contains(command) {
+                return Err(format!("{relative} does not document `{command}`"));
+            }
+        }
+    }
+
+    let ci = read_workspace_text(&root, ".github/workflows/ci.yml")?;
+    for command in ["cargo xtask quality --profile pr", "cargo xtask docs"] {
+        if !ci.contains(command) {
+            return Err(format!("ci.yml does not delegate to `{command}`"));
+        }
+    }
+    let release = read_workspace_text(&root, ".github/workflows/release.yml")?;
+    if !release.contains("cargo xtask release prepare") {
+        return Err("release.yml does not delegate to `cargo xtask release prepare`".to_owned());
+    }
+    if ci.contains("cargo xtask ci ") || release.contains("cargo xtask ci ") {
+        return Err("workflow YAML must call stable commands, not internal CI aliases".to_owned());
+    }
+
+    for (relative, command) in [
+        ("scripts/linux/bootstrap.sh", "xtask bootstrap"),
+        ("scripts/linux/environment.sh", "xtask environment"),
+        ("scripts/linux/release.sh", "xtask release prepare"),
+        ("scripts/win/bootstrap.ps1", "xtask bootstrap"),
+        ("scripts/win/environment.ps1", "xtask environment"),
+        ("scripts/win/release.ps1", "xtask release prepare"),
+    ] {
+        if !read_workspace_text(&root, relative)?.contains(command) {
+            return Err(format!("{relative} does not delegate to `{command}`"));
+        }
+    }
+    println!("{} stable workflow contract: pass", constants::INFO);
+    Ok(())
+}
+
+/// Runs the requested durable Cargo build profile.
+fn build(profile: BuildProfile) -> Result<(), String> {
     match profile {
-        "dev" => run_cargo(&["build", "--workspace"]),
-        "test" => run_cargo(&["test", "--workspace", "--all-targets", "--no-run"]),
-        "release" => run_cargo(&["build", "--workspace", "--release"]),
-        _ => Err(format!("unknown build profile: {profile}")),
+        BuildProfile::Dev => run_cargo(&["build", "--workspace", "--locked"]),
+        BuildProfile::Release => run_cargo(&["build", "--workspace", "--release", "--locked"]),
     }
 }
 
@@ -300,21 +369,20 @@ fn render_rustdoc_index(metadata: &str) -> Result<String, String> {
     Ok(RUSTDOC_INDEX_TEMPLATE.replacen(constants::CARGO_METADATA_PLACEHOLDER, &safe_metadata, 1))
 }
 
-/// Runs an active Stage 1 suite or rejects a future-stage suite selection.
-fn test_suite(suite: &str) -> Result<(), String> {
-    match suite {
-        "all" | "unit" => {
+/// Runs one independently selectable, stage-free test level.
+fn test_suite(level: TestLevel) -> Result<(), String> {
+    match level {
+        TestLevel::All => {
             run_cargo(&["test", "--workspace", "--all-targets"])?;
-            verify_test_counts(&active_test_profile()?)
+            verify_test_counts(active_test_profile())
         }
-        "smoke" => run_shell_smoke(),
-        "integration" | "system" | "conformance" | "property" | "security"
-            if active_stage()? >= 2 =>
-        {
-            run_active_test_filter(suite)
-        }
-        "integration" | "system" | "conformance" | "property" | "security" => not_active(suite),
-        _ => Err(format!("unknown or empty test suite: {suite}")),
+        TestLevel::Unit => run_cargo(&["test", "--workspace", "--lib", "--bins"]),
+        TestLevel::Smoke => run_shell_smoke(),
+        TestLevel::Integration => run_active_test_filter("integration"),
+        TestLevel::System => run_active_test_filter("system"),
+        TestLevel::Conformance => run_active_test_filter("conformance"),
+        TestLevel::Property => run_active_test_filter("property"),
+        TestLevel::Security => run_active_test_filter("security"),
     }
 }
 
@@ -329,13 +397,11 @@ fn run_active_test_filter(suite: &str) -> Result<(), String> {
     ])
 }
 
-/// Runs an active bounded fuzz selection or rejects future campaigns.
-fn fuzz(mode: &str) -> Result<(), String> {
+/// Runs the selected durable fuzz mode.
+fn fuzz(mode: FuzzMode) -> Result<(), String> {
     match mode {
-        "smoke" if active_stage()? >= 2 => run_active_test_filter("fuzz_smoke"),
-        "campaign" if active_stage()? >= 9 => coverage_guided_fuzz_campaign(),
-        "campaign" if active_stage()? >= 7 => run_active_test_filter("fuzz_decoder"),
-        _ => not_active(&format!("fuzz mode {mode}")),
+        FuzzMode::Smoke => run_active_test_filter("fuzz_smoke"),
+        FuzzMode::Campaign => coverage_guided_fuzz_campaign(),
     }
 }
 
@@ -357,9 +423,6 @@ fn coverage_guided_fuzz_campaign() -> Result<(), String> {
 
 /// Runs workspace coverage and enforces every configured percentage threshold.
 fn coverage() -> Result<(), String> {
-    if active_stage()? < 9 {
-        return not_active("coverage");
-    }
     let lines = quality_value("coverage", "minimum_line_percent")?;
     let functions = quality_value("coverage", "minimum_function_percent")?;
     let regions = quality_value("coverage", "minimum_region_percent")?;
@@ -378,11 +441,445 @@ fn coverage() -> Result<(), String> {
 
 /// Runs mutation analysis for the configured critical production target.
 fn mutate() -> Result<(), String> {
-    if active_stage()? < 9 {
-        return not_active("mutate");
-    }
     let target = quality_value("mutation", "critical_target")?;
     run_cargo(&["mutants", "--file", &target])
+}
+
+/// Runs the documented aggregate quality composition for one durable profile.
+fn quality(profile: QualityProfile) -> Result<(), String> {
+    format_workspace(false)?;
+    lint()?;
+    check()?;
+    test_suite(TestLevel::All)?;
+    test_suite(TestLevel::Smoke)?;
+    fuzz(FuzzMode::Smoke)?;
+    run_cargo(&["build", "--locked", "--package", constants::NEUTRAL_PROBE])?;
+    if profile == QualityProfile::Release {
+        verify_recorded_quality_gates()?;
+        build(BuildProfile::Release)?;
+        validate(ValidationTarget::Binaries)?;
+    }
+    let profile = match profile {
+        QualityProfile::Pr => "pr",
+        QualityProfile::Release => "release",
+    };
+    let result_directory = unique_generated_directory(
+        &result_root()?
+            .join("analysis")
+            .join("quality-report")
+            .join(profile),
+    )?;
+    write_task_summary(&result_directory, "quality", profile)?;
+    println!("{} quality {profile}: pass", constants::INFO);
+    Ok(())
+}
+
+/// Verifies that every configured expensive quality gate has retained pass evidence.
+fn verify_recorded_quality_gates() -> Result<(), String> {
+    for (section, accepted) in [
+        ("coverage", "pass"),
+        ("mutation", "pass"),
+        ("fuzz", "full-campaign-pass"),
+        ("performance", "pass-local-profiled-runner"),
+    ] {
+        let actual = quality_value(section, "status")?;
+        if actual != accepted {
+            return Err(format!(
+                "quality [{section}] status must be {accepted}; found {actual}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Validates either built release binaries or one encoded artifact.
+fn validate(target: ValidationTarget) -> Result<(), String> {
+    match target {
+        ValidationTarget::Binaries => {
+            validate_release_binaries(&workspace_root()?.join("target/release"))
+        }
+        ValidationTarget::Artifact(path) => {
+            if !path.is_file() {
+                return Err(format!("artifact does not exist: {}", path.display()));
+            }
+            let probe = release_binary_path(
+                &workspace_root()?.join("target/release"),
+                constants::NEUTRAL_PROBE_BINARY,
+            );
+            if !probe.is_file() {
+                return Err(format!(
+                    "release probe is missing: {}; run `cargo xtask build --profile release`",
+                    probe.display()
+                ));
+            }
+            run_program(&probe, &[path.as_os_str()])
+        }
+    }
+}
+
+/// Validates release-mode CLI and probe entry points plus the probe boundary.
+fn validate_release_binaries(directory: &Path) -> Result<(), String> {
+    for binary in [
+        constants::NEUTRAL_CLI_BINARY,
+        constants::NEUTRAL_PROBE_BINARY,
+    ] {
+        let path = release_binary_path(directory, binary);
+        if !path.is_file() {
+            return Err(format!(
+                "release binary is missing: {}; run `cargo xtask build --profile release`",
+                path.display()
+            ));
+        }
+        run_program(&path, &[std::ffi::OsStr::new("--help")])?;
+    }
+    check_boundaries()?;
+    println!("{} release binaries: valid", constants::INFO);
+    Ok(())
+}
+
+/// Returns a platform-correct release binary path.
+fn release_binary_path(directory: &Path, binary: &str) -> PathBuf {
+    let extension = if cfg!(windows) { ".exe" } else { "" };
+    directory.join(format!("{binary}{extension}"))
+}
+
+/// Runs one already-resolved executable with inherited standard streams.
+fn run_program(program: &Path, arguments: &[&std::ffi::OsStr]) -> Result<(), String> {
+    let status = Command::new(program)
+        .current_dir(workspace_root()?)
+        .args(arguments)
+        .status()
+        .map_err(|error| format!("could not run {}: {error}", program.display()))?;
+    status
+        .success()
+        .then_some(())
+        .ok_or_else(|| format!("{} failed with {status}", program.display()))
+}
+
+/// Reads and verifies the explicit release-authority selection and candidate tag.
+fn release_plan() -> Result<release::ReleasePlan, String> {
+    let root = workspace_root()?;
+    let plan = release::ReleasePlan::read(&root.join(constants::RELEASE_CONFIG_FILE))?;
+    if !root.join(&plan.candidate_evidence).is_file() {
+        return Err(format!(
+            "candidate evidence is missing: {}",
+            plan.candidate_evidence
+        ));
+    }
+    let residual_risks = read_workspace_text(&root, constants::RESIDUAL_RISKS_FILE)?;
+    if !residual_risks.contains("Approval state: approved") {
+        return Err("Stage 9 residual-risk record is not approved".to_owned());
+    }
+    let tagged_commit = command_output("git", &["rev-list", "-n", "1", &plan.candidate_tag])?;
+    if tagged_commit != plan.candidate_commit {
+        return Err(format!(
+            "candidate tag {} resolves to {tagged_commit}, expected {}",
+            plan.candidate_tag, plan.candidate_commit
+        ));
+    }
+    if plan
+        .channels
+        .contains(&release::DistributionChannel::GithubBinaries)
+    {
+        let expected = BTreeSet::from([
+            constants::NEUTRAL_CLI.to_owned(),
+            constants::NEUTRAL_PROBE.to_owned(),
+        ]);
+        let selected = plan.binaries.iter().cloned().collect::<BTreeSet<_>>();
+        if selected != expected {
+            return Err(format!(
+                "GitHub binary scope must select exactly {expected:?}; found {selected:?}"
+            ));
+        }
+    }
+    Ok(plan)
+}
+
+/// Requires the working checkout to be the clean selected candidate revision.
+fn require_candidate_checkout(plan: &release::ReleasePlan) -> Result<(), String> {
+    let head = command_output("git", &["rev-parse", "HEAD"])?;
+    if head != plan.candidate_commit {
+        return Err(format!(
+            "release preparation requires candidate {}; HEAD is {head}",
+            plan.candidate_commit
+        ));
+    }
+    let status = command_output("git", &["status", "--porcelain"])?;
+    if !status.is_empty() {
+        return Err("release preparation requires a clean candidate worktree".to_owned());
+    }
+    Ok(())
+}
+
+/// Assembles the selected binary distribution into the ignored release root.
+fn package() -> Result<(), String> {
+    let plan = release_plan()?;
+    require_candidate_checkout(&plan)?;
+    if !plan
+        .channels
+        .contains(&release::DistributionChannel::GithubBinaries)
+    {
+        return Err("GitHub binary distribution is not selected".to_owned());
+    }
+    for binary in &plan.binaries {
+        run_cargo(&["build", "--release", "--locked", "--package", binary])?;
+    }
+    let root = workspace_root()?;
+    let host = rust_host()?;
+    let source_directory = root.join("target/release");
+    validate_release_binaries(&source_directory)?;
+    let output_directory = result_root()?
+        .join(constants::RELEASE_RESULT_DIRECTORY)
+        .join("package")
+        .join(&plan.candidate_tag)
+        .join(&host);
+    fs::create_dir_all(&output_directory)
+        .map_err(|error| format!("could not create {}: {error}", output_directory.display()))?;
+    for binary in &plan.binaries {
+        let source = release_binary_path(&source_directory, binary);
+        let destination = release_binary_path(&output_directory, binary);
+        fs::copy(&source, &destination).map_err(|error| {
+            format!(
+                "could not copy {} to {}: {error}",
+                source.display(),
+                destination.display()
+            )
+        })?;
+    }
+    for file in ["LICENSE", "README.md"] {
+        fs::copy(root.join(file), output_directory.join(file))
+            .map_err(|error| format!("could not stage {file}: {error}"))?;
+    }
+    fs::write(
+        output_directory.join("package-summary.json"),
+        format!(
+            "{{\"candidate_tag\":\"{}\",\"candidate_commit\":\"{}\",\"host\":\"{}\",\"channel\":\"github-binaries\",\"status\":\"assembled\"}}\n",
+            json_string(&plan.candidate_tag),
+            json_string(&plan.candidate_commit),
+            json_string(&host)
+        ),
+    )
+    .map_err(|error| format!("could not write package summary: {error}"))?;
+    println!(
+        "{} package assembled: {}",
+        constants::INFO,
+        output_directory.display()
+    );
+    Ok(())
+}
+
+/// Runs release checks and assembles artifacts without tagging or publishing.
+fn release_prepare() -> Result<(), String> {
+    let plan = release_plan()?;
+    require_candidate_checkout(&plan)?;
+    quality(QualityProfile::Release)?;
+    documentation()?;
+    package()?;
+    let result_directory = unique_generated_directory(
+        &result_root()?
+            .join(constants::RELEASE_RESULT_DIRECTORY)
+            .join("preparation"),
+    )?;
+    write_task_summary(&result_directory, "release-prepare", &plan.candidate_tag)?;
+    println!(
+        "{} release {} prepared; no publish action was performed",
+        constants::INFO,
+        plan.candidate_tag
+    );
+    Ok(())
+}
+
+/// Returns the host triple reported by the selected Rust compiler.
+fn rust_host() -> Result<String, String> {
+    let verbose = command_output(constants::RUSTC_COMMAND, &["-vV"])?;
+    verbose
+        .lines()
+        .find_map(|line| line.strip_prefix("host: "))
+        .map(str::to_owned)
+        .ok_or_else(|| "rustc -vV did not report a host triple".to_owned())
+}
+
+/// Executes the stable version command family.
+fn version(action: VersionAction) -> Result<(), String> {
+    match action {
+        VersionAction::Show => show_versions(),
+        VersionAction::Check => check_versions(),
+        VersionAction::Prepare(requested) => prepare_version(&requested),
+    }
+}
+
+/// Displays the package version separately from every frozen contract version.
+fn show_versions() -> Result<(), String> {
+    let root = workspace_root()?;
+    let package = workspace_package_version(&read_workspace_text(
+        &root,
+        constants::WORKSPACE_MANIFEST_FILE,
+    )?)?;
+    println!("{} package-release {package}", constants::INFO);
+    let freeze = read_workspace_text(&root, constants::CONTRACT_FREEZE_FILE)?;
+    for line in freeze.lines().map(str::trim).filter(|line| {
+        line.starts_with("language_behavior =")
+            || line.starts_with("logical_ir_schema =")
+            || line.starts_with("vocabulary_schema =")
+            || line.starts_with("vocabulary_bundle_encoding =")
+            || line.starts_with("digest_transcript_profile =")
+            || line.starts_with("external_ir_encoding =")
+    }) {
+        println!("{} contract {line}", constants::INFO);
+    }
+    Ok(())
+}
+
+/// Checks that package versions inherit the one workspace release version.
+fn check_versions() -> Result<(), String> {
+    let root = workspace_root()?;
+    workspace_package_version(&read_workspace_text(
+        &root,
+        constants::WORKSPACE_MANIFEST_FILE,
+    )?)?;
+    for manifest in workspace_package_manifests(&root)? {
+        let content = fs::read_to_string(&manifest)
+            .map_err(|error| format!("could not read {}: {error}", manifest.display()))?;
+        if !content
+            .lines()
+            .any(|line| line.trim() == "version.workspace = true")
+        {
+            return Err(format!(
+                "workspace package must inherit version.workspace: {}",
+                manifest.display()
+            ));
+        }
+    }
+    println!("{} centralized package versions: pass", constants::INFO);
+    Ok(())
+}
+
+/// Emits a reviewable version-change plan without tagging or publishing.
+fn prepare_version(requested: &str) -> Result<(), String> {
+    validate_semver(requested)?;
+    let root = workspace_root()?;
+    let current = workspace_package_version(&read_workspace_text(
+        &root,
+        constants::WORKSPACE_MANIFEST_FILE,
+    )?)?;
+    let directory = result_root()?.join("version");
+    fs::create_dir_all(&directory)
+        .map_err(|error| format!("could not create {}: {error}", directory.display()))?;
+    let output = directory.join(format!("prepare-{requested}.json"));
+    fs::write(
+        &output,
+        format!(
+            "{{\"current\":\"{}\",\"requested\":\"{}\",\"frozen_contracts_changed\":false,\"status\":\"review-required\"}}\n",
+            json_string(&current),
+            json_string(requested)
+        ),
+    )
+    .map_err(|error| format!("could not write {}: {error}", output.display()))?;
+    println!("{} version plan: {}", constants::INFO, output.display());
+    Ok(())
+}
+
+/// Reads the root workspace package version from its exact TOML section.
+fn workspace_package_version(manifest: &str) -> Result<String, String> {
+    let mut selected = false;
+    for line in manifest.lines().map(str::trim) {
+        if line.starts_with('[') {
+            selected = line == "[workspace.package]";
+            continue;
+        }
+        if selected
+            && let Some(value) = line
+                .strip_prefix("version = \"")
+                .and_then(|line| line.strip_suffix('"'))
+        {
+            validate_semver(value)?;
+            return Ok(value.to_owned());
+        }
+    }
+    Err("root Cargo.toml has no [workspace.package] version".to_owned())
+}
+
+/// Returns every non-root workspace package manifest.
+fn workspace_package_manifests(root: &Path) -> Result<Vec<PathBuf>, String> {
+    let mut manifests = Vec::new();
+    for directory in [root.join("crates"), root.join("xtask")] {
+        collect_named_files(&directory, "Cargo.toml", &mut manifests)?;
+    }
+    manifests.sort();
+    Ok(manifests)
+}
+
+/// Collects regular files with one exact filename below a directory.
+fn collect_named_files(
+    directory: &Path,
+    name: &str,
+    files: &mut Vec<PathBuf>,
+) -> Result<(), String> {
+    for entry in fs::read_dir(directory)
+        .map_err(|error| format!("could not inspect {}: {error}", directory.display()))?
+    {
+        let entry = entry.map_err(|error| format!("could not inspect directory entry: {error}"))?;
+        let path = entry.path();
+        if path.is_dir() {
+            collect_named_files(&path, name, files)?;
+        } else if path.file_name().and_then(std::ffi::OsStr::to_str) == Some(name) {
+            files.push(path);
+        }
+    }
+    Ok(())
+}
+
+/// Validates the supported numeric `SemVer` core with an optional prerelease suffix.
+fn validate_semver(value: &str) -> Result<(), String> {
+    let (core, suffix) = value
+        .split_once('-')
+        .map_or((value, None), |(core, suffix)| (core, Some(suffix)));
+    let components = core.split('.').collect::<Vec<_>>();
+    let numeric = components.len() == 3
+        && components.iter().all(|component| {
+            !component.is_empty()
+                && component.bytes().all(|byte| byte.is_ascii_digit())
+                && (component == &"0" || !component.starts_with('0'))
+        });
+    let valid_suffix = suffix.is_none_or(|suffix| {
+        !suffix.is_empty()
+            && suffix
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'.' || byte == b'-')
+    });
+    if numeric && valid_suffix {
+        Ok(())
+    } else {
+        Err(format!("invalid package SemVer: {value}"))
+    }
+}
+
+/// Executes the active portable lifecycle command family.
+fn portable(action: PortableAction) -> Result<(), String> {
+    match action {
+        PortableAction::Verify => verify_portable(),
+        PortableAction::Snapshot => Err(
+            "portable snapshot is unavailable until its Stage 10 lifecycle manifest is configured"
+                .to_owned(),
+        ),
+    }
+}
+
+/// Verifies the active portable package's required roots and traceability.
+fn verify_portable() -> Result<(), String> {
+    let root = workspace_root()?;
+    for relative in [
+        constants::PORTABLE_PLAN_FILE,
+        constants::CONTRACT_FREEZE_FILE,
+        constants::CONFORMANCE_MANIFEST_FILE,
+    ] {
+        if !root.join(relative).is_file() {
+            return Err(format!("active portable file is missing: {relative}"));
+        }
+    }
+    check_traceability()?;
+    println!("{} active portable package: pass", constants::INFO);
+    Ok(())
 }
 
 /// Reads one scalar value from a section of the Stage 9 quality configuration.
@@ -435,13 +932,15 @@ fn quality_array(section: &str, key: &str) -> Result<Vec<String>, String> {
     }
 }
 
-/// Runs one controlled Stage 9 benchmark, stress, or soak profile.
-fn performance(profile: &str) -> Result<(), String> {
-    if active_stage()? < 9 {
-        return not_active(&format!("performance profile {profile}"));
-    }
+/// Runs one controlled benchmark, stress, or soak profile.
+fn performance(profile: PerformanceProfile) -> Result<(), String> {
+    let profile = match profile {
+        PerformanceProfile::Pr => "pr",
+        PerformanceProfile::Release => "release",
+        PerformanceProfile::Soak => "soak",
+    };
     match profile {
-        "pr" | "release" | "soak" | "extended-soak" => run_cargo(&[
+        "pr" | "release" | "soak" => run_cargo(&[
             "bench",
             "--package",
             constants::NEUTRAL_BENCH,
@@ -450,7 +949,7 @@ fn performance(profile: &str) -> Result<(), String> {
             "--",
             profile,
         ]),
-        _ => Err(format!("unknown performance profile: {profile}")),
+        _ => unreachable!("performance profile is closed by command parsing"),
     }
 }
 
@@ -509,9 +1008,9 @@ fn validate_test_minimums(
     Ok(())
 }
 
-/// Returns the test-minimum profile matching the configured active stage.
-fn active_test_profile() -> Result<String, String> {
-    Ok(format!("stage{}", active_stage()?))
+/// Returns the durable current test-minimum profile.
+fn active_test_profile() -> &'static str {
+    "current"
 }
 
 /// Reads the simple Stage 1 test-minimum configuration owned by the workspace.
@@ -548,75 +1047,24 @@ fn test_minimums(profile: &str) -> Result<BTreeMap<String, usize>, String> {
     }
 }
 
-/// Runs the currently active checks for each declared CI profile.
-fn ci(profile: &str) -> Result<(), String> {
+/// Runs one internal CI profile using only stable public task compositions.
+fn ci(profile: CiProfile) -> Result<(), String> {
     match profile {
-        "stage1" => run_ci_gate(profile, false),
-        "pr" | "nightly" | "release" => run_ci_gate(profile, true),
-        _ => Err(format!("unknown CI profile: {profile}")),
+        CiProfile::Pr => run_ci_gate("pr", QualityProfile::Pr),
+        CiProfile::Release => run_ci_gate("release", QualityProfile::Release),
     }
 }
 
-/// Runs the Stage 1 gate and writes a generated summary beneath the result root.
-fn run_ci_gate(profile: &str, include_behavior: bool) -> Result<(), String> {
+/// Runs a stable quality composition and writes its generated CI summary.
+fn run_ci_gate(profile: &str, quality_profile: QualityProfile) -> Result<(), String> {
     verify_environment()?;
-    run_cargo(&["metadata", "--format-version", "1", "--no-deps"])?;
-    check_boundaries()?;
-    check_test_layout()?;
-    check_traceability()?;
-    run_cargo(&["fmt", "--all", "--", "--check"])?;
-    run_cargo(&[
-        "clippy",
-        "--workspace",
-        "--all-targets",
-        "--all-features",
-        "--",
-        "-D",
-        "warnings",
-    ])?;
-    run_cargo(&["check", "--workspace", "--all-targets", "--locked"])?;
-    run_cargo(&["test", "--workspace", "--all-targets"])?;
-    let test_profile = if include_behavior {
-        active_test_profile()?
-    } else {
-        "stage1".to_owned()
-    };
-    verify_test_counts(&test_profile)?;
-    run_shell_smoke()?;
-    if include_behavior {
-        for suite in [
-            "integration",
-            "system",
-            "conformance",
-            "property",
-            "security",
-        ] {
-            run_active_test_filter(suite)?;
-        }
-        fuzz("smoke")?;
-    }
-    run_cargo(&["build", "--locked", "--package", constants::NEUTRAL_PROBE])?;
+    quality(quality_profile)?;
     documentation()?;
 
     let result_directory = unique_result_directory(profile)?;
-    fs::write(
-        result_directory.join("task-summary.json"),
-        format!(
-            "{{\"profile\":\"{}\",\"status\":\"pass\"}}\n",
-            json_string(profile)
-        ),
-    )
-    .map_err(|error| format!("could not write task summary: {error}"))?;
+    write_task_summary(&result_directory, "ci", profile)?;
     println!("{} CI {profile}: pass", constants::INFO);
     Ok(())
-}
-
-/// Rejects a command whose evidence is intentionally inactive in Stage 1.
-fn not_active(command: &str) -> Result<(), String> {
-    let stage = active_stage().unwrap_or_default();
-    Err(format!(
-        "{command} is not active during configured Stage {stage}"
-    ))
 }
 
 /// Runs Cargo with inherited standard streams and converts failures to task errors.
@@ -658,14 +1106,19 @@ fn command_output(command: &str, arguments: &[&str]) -> Result<String, String> {
 /// Creates a unique generated-evidence directory beneath the relevant CI profile.
 fn unique_result_directory(profile: &str) -> Result<PathBuf, String> {
     let profile_root = result_root()?.join("ci").join(profile);
-    fs::create_dir_all(&profile_root).map_err(|error| {
+    unique_generated_directory(&profile_root)
+}
+
+/// Creates a process-unique directory below one approved generated-output root.
+fn unique_generated_directory(parent: &Path) -> Result<PathBuf, String> {
+    fs::create_dir_all(parent).map_err(|error| {
         format!(
-            "could not create CI evidence directory {}: {error}",
-            profile_root.display()
+            "could not create generated evidence directory {}: {error}",
+            parent.display()
         )
     })?;
     for suffix in 0_u16..1000 {
-        let directory = profile_root.join(format!("run-{}-{suffix}", std::process::id()));
+        let directory = parent.join(format!("run-{}-{suffix}", std::process::id()));
         match fs::create_dir(&directory) {
             Ok(()) => return Ok(directory),
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
@@ -673,6 +1126,19 @@ fn unique_result_directory(profile: &str) -> Result<PathBuf, String> {
         }
     }
     Err("could not allocate a unique result directory".to_owned())
+}
+
+/// Writes one minimal machine-readable passing task summary.
+fn write_task_summary(directory: &Path, task: &str, profile: &str) -> Result<(), String> {
+    fs::write(
+        directory.join("task-summary.json"),
+        format!(
+            "{{\"task\":\"{}\",\"profile\":\"{}\",\"status\":\"pass\"}}\n",
+            json_string(task),
+            json_string(profile)
+        ),
+    )
+    .map_err(|error| format!("could not write task summary: {error}"))
 }
 
 /// Returns the configured result root after rejecting unsafe paths.

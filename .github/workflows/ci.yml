@@ -18,4 +18,5 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - run: cargo xtask ci pr
+      - run: cargo xtask quality --profile pr
+      - run: cargo xtask docs

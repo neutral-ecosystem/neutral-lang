@@ -2,8 +2,8 @@
 
 # Neutral language v0 development plan
 
-Status: active v0 operational index — Stage 9 evidence complete; maintainer
-approval and Stage 10 workflow overhaul pending
+Status: active v0 operational index — Stage 9 approved; Stage 10 workflow
+overhaul active
 
 This is the entry point for implementing and tracking Neutral language v0 in
 this repository. The directory is a self-contained, version-scoped package of
@@ -179,9 +179,10 @@ tests. CI rejects missing IDs, unchecked master syntax, orphaned normative
 fixtures/oracles, and broken registered paths; the published full-language
 example compiles as conformance evidence. Stage 9 hardening now has complete
 stable property, structural-limit, cancellation, isolation, dependency, static
-review, critical mutation evidence, whole-workspace LLVM coverage, and
-coverage-guided fuzzing. Controlled performance/allocation evidence remains
-open.
+review, critical and broad mutation evidence, whole-workspace LLVM coverage,
+coverage-guided fuzzing, controlled performance, extended soak, and allocation
+evidence. The sole maintainer approved its residual-risk treatment before
+Stage 10 began.
 The approved
 [freeze manifest](specs/contracts/freeze.toml) identifies
 the v0 contract family, and the
@@ -237,11 +238,18 @@ After host bootstrap, run from this implementation repository root:
 
 ```bash
 cargo xtask environment verify
-cargo xtask ci stage1       # before contract freeze / during Stage 1
-cargo xtask ci pr           # Stage 2 onward; selects active suites
-cargo xtask ci nightly
-cargo xtask ci release      # release candidates only
+cargo xtask fmt
+cargo xtask lint
+cargo xtask check
+cargo xtask test all
+cargo xtask quality
+cargo xtask build --profile release
+cargo xtask validate binaries
 ```
+
+Release operators use `cargo xtask release prepare`; it fails unless the
+approved candidate identity, distribution scope, evidence, tag target, and
+checkout agree. It never pushes, uploads, publishes, or creates a tag.
 
 Generate the workspace API site with `cargo docs`, then open
 [`target/doc/index.html`](../target/doc/index.html). The automation runs rustdoc

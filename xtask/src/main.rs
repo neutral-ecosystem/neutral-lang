@@ -3,9 +3,9 @@
 //! Repository automation entry point for Neutral.
 //!
 //! This non-published package owns developer, CI, and evidence workflows. It
-//! must remain outside every production dependency graph. Stage 1, Step 2
-//! provides the boundary check; the remaining stable automation commands are
-//! introduced in Step 3.
+//! must remain outside every production dependency graph. The library owns the
+//! stable command grammar and repository policy; this binary only maps failures
+//! to categorized terminal output.
 
 /// Runs the repository-automation command-line entry point.
 fn main() {

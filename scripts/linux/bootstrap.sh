@@ -9,7 +9,7 @@ neutral_rustc_command="${NEUTRAL_RUSTC_COMMAND:-rustc}"
 host_os="$(uname -s)"
 host_architecture="$(uname -m)"
 case "$host_os" in
-    Linux|Darwin) ;;
+    Linux) ;;
     *)
         printf '%s\n' "[error] unsupported bootstrap host: $host_os" >&2
         exit 1

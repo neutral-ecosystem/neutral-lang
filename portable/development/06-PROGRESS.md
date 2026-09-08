@@ -2,25 +2,42 @@
 
 # Neutral v0 development progress
 
-Status: Stage 9 hardening in progress.
+Status: Stage 10 workflow overhaul in progress.
 
 ## Current focus
 
-- Stage: Stage 9 hardening
-- Status: technical evidence complete; maintainer approval pending
+- Stage: Stage 10 workflow overhaul and v0 qualification
+- Status: Steps 1 and 2 complete; Step 3 is next
 - Last updated: 2026-09-08
 
 ## Next actions
 
-- [ ] Implement Stage 10 Step 2: replace the stage-dependent/manual workflow
-      with the stable `xtask` command interface and thin platform adapters.
+- [ ] Implement Stage 10 Step 3: centralize version transitions, generated
+      metadata ownership, and the active portable snapshot/rollover lifecycle.
 
 ## Blockers
 
-- No technical blocker remains for Stage 10 Step 2. The `v0.1.0-rc.1` tag is
-  local only and final release remains gated by the later qualification steps.
+- No technical blocker remains for Stage 10 Step 3. The workflow changes are
+  newer than local candidate `v0.1.0-rc.1`, so package/release commands
+  correctly remain fail-closed until a clean reviewed successor candidate is
+  recorded.
 
 ## Completed log
+
+- [x] 2026-09-08: Completed Stage 10, Step 2 as an implementation overhaul.
+  Added one typed, stage-free `xtask` grammar; durable format/lint/check/test/
+  quality/build/validate/package/release/version/portable/clean entry points;
+  current rather than stage-selected test minimums; fail-closed release-scope,
+  tag, evidence, clean-tree, and binary selection checks; machine-readable
+  aggregate summaries; and executable command-document/workflow coherence.
+  Added the exact Linux/Windows bootstrap/environment/release adapter trees and
+  responsibility READMEs, replaced duplicated CI YAML policy with stable
+  commands, and published the root migration table. The PR quality composition,
+  release build/binary validation, Linux bootstrap, version/portable checks,
+  strict Clippy, automation tests, traceability, and workflow checks pass.
+  Package assembly correctly rejected the superseded candidate rather than
+  building from the wrong revision; full evidence is in
+  `development/evidence/stage10-workflow-overhaul.md`.
 
 - [x] 2026-09-08: Completed Stage 10, Step 1. The sole maintainer approved the
   Stage 9 residual-risk treatment for candidate preparation and selected an

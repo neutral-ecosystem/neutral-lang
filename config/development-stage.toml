@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# Stage 8 is complete; Stage 9 hardening is the active, not-yet-approved gate.
-# Advancing this value requires its complete vertical slice and reviewed evidence.
-active_stage = 9
-active_step = 1
+# Stage 9 is approved; Stage 10 is the active workflow and release gate.
+# Normal developer commands do not derive their names or test selection from
+# these tracking values.
+active_stage = 10
+active_step = 2

@@ -659,50 +659,50 @@ frozen v0 contracts.
 
 ### Step 1: approve Stage 9 and create an identified release candidate
 
-- [ ] The maintainer approves the completed
+- [x] The maintainer approves the completed
       [Stage 9 residual-risk record](../../quality/residual-risks.md).
-- [ ] Start from a clean, reviewed commit on `main`; record its full Git ID,
+- [x] Start from a clean, reviewed commit on `main`; record its full Git ID,
       `Cargo.lock` digest, `rust-toolchain.toml` contents, and fixture-manifest
       digest in the release evidence.
 - [x] Reconfirm the contract-freeze manifest and every governing language, IR,
       vocabulary, external-encoding, digest, diagnostic, and limits revision.
-- [ ] Decide the v0 distribution scope before changing version metadata:
+- [x] Decide the v0 distribution scope before changing version metadata:
       source-only tag, GitHub binary assets, crates.io packages, or an explicit
       combination. No publishing target is assumed implicitly.
-- [ ] Create an annotated candidate tag only after the candidate identity and
+- [x] Create an annotated candidate tag only after the candidate identity and
       distribution scope are recorded.
 
 #### Step validation
 
-- [ ] The candidate can be identified from its source, dependency, toolchain,
+- [x] The candidate can be identified from its source, dependency, toolchain,
       fixture, and contract identities without local state.
-- [ ] No Stage 9 technical evidence gap or unapproved residual risk remains.
+- [x] No Stage 9 technical evidence gap or unapproved residual risk remains.
 
 ### Step 2: implement the stable repository structure and command interface
 
 This step replaces the current manual/stage-dependent workflow. It is an
 implementation task, not a documentation-only audit.
 
-- [ ] Make `xtask` the one platform-neutral project command interface. Its
+- [x] Make `xtask` the one platform-neutral project command interface. Its
       public commands must be stable and stage-free: `fmt`, `lint`, `check`,
       `test`, `coverage`, `fuzz`, `quality`, `build`, `validate`, `package`,
       `release`, `version`, `portable`, and `clean`.
-- [ ] Define subcommands only where they express a durable user purpose, for
+- [x] Define subcommands only where they express a durable user purpose, for
       example `test unit|smoke|integration|system|conformance|security`,
       `test performance --profile pr|release|soak`, `fuzz smoke|campaign`,
       and `build --profile dev|release`. Do not expose `stage1`, `stage9`, or
       other implementation-stage command names to normal users.
-- [ ] Implement `cargo xtask quality` as the documented composition of format,
+- [x] Implement `cargo xtask quality` as the documented composition of format,
       lint, check, boundary/traceability checks, tests, and configured quality
       gates. Each component must also remain runnable independently.
-- [ ] Implement `cargo xtask validate` for the released CLI/probe artifact
+- [x] Implement `cargo xtask validate` for the released CLI/probe artifact
       checks, `cargo xtask package` for selected distribution assembly and
       inspection, and `cargo xtask release` for release preparation. They must
       fail closed when the distribution scope or required evidence is absent.
-- [ ] Replace handwritten multi-command release instructions with those
+- [x] Replace handwritten multi-command release instructions with those
       commands. CI may choose a profile, but it must invoke the same public
       `xtask` commands rather than reproduce their logic in YAML.
-- [ ] Keep platform-specific setup and host integration as thin adapters under
+- [x] Keep platform-specific setup and host integration as thin adapters under
       this exact structure:
 
       ```text
@@ -723,11 +723,11 @@ implementation task, not a documentation-only audit.
       Platform scripts may install/verify host tools and invoke `cargo xtask`,
       but must not implement compiler, test, quality, packaging, or release
       policy themselves.
-- [ ] Move or remove obsolete scripts, duplicate command wrappers, legacy
+- [x] Move or remove obsolete scripts, duplicate command wrappers, legacy
       stage-named command paths, and manually maintained release metadata only
       after their replacement command is tested. Preserve a short migration
       table in the root documentation.
-- [ ] Add a README to every retained script directory stating its ecosystem
+- [x] Add a README to every retained script directory stating its ecosystem
       role, ownership, inputs, outputs, supported host, and the `xtask`
       command it delegates to.
 
@@ -756,13 +756,13 @@ must not become a second user-facing command system.
 
 #### Step validation
 
-- [ ] A new contributor needs one platform bootstrap command followed by the
+- [x] A new contributor needs one platform bootstrap command followed by the
       stable `cargo xtask` commands; no long Cargo flag sequence is required.
-- [ ] `ci.yml` and `release.yml` are thin trigger/checkout/toolchain wrappers
+- [x] `ci.yml` and `release.yml` are thin trigger/checkout/toolchain wrappers
       around the same stable commands used locally.
-- [ ] Removing a stage from the planning documents does not change a normal
+- [x] Removing a stage from the planning documents does not change a normal
       developer or release command name.
-- [ ] The command help, root README, platform-script READMEs, and CI examples
+- [x] The command help, root README, platform-script READMEs, and CI examples
       all expose the same command names and argument shapes.
 
 ### Step 3: centralize versioning, generated metadata, and portable lifecycle

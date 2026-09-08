@@ -2,6 +2,10 @@
 
 //! Tests for dependency-boundary policy failures.
 
+use super::interface::{
+    BuildProfile, CiProfile, FuzzMode, PerformanceProfile, QualityProfile, Task, TestLevel,
+    ValidationTarget, VersionAction,
+};
 use super::{
     constants, contract_ids, ensure_ids_covered, ensure_syntax_complete, quality_value_from,
     render_rustdoc_index, rustdoc_header_configuration, set,
@@ -26,8 +30,55 @@ fn automation_rejects_unknown_campaign_profiles() {
         vec!["fuzz", "unknown"],
         vec!["ci", "unknown"],
         vec!["quality", "unknown"],
+        vec!["ci", "stage1"],
+        vec!["format"],
+        vec!["clean-results"],
     ] {
         assert!(super::run(arguments.into_iter().map(str::to_owned)).is_err());
+    }
+}
+
+#[test]
+/// Stable command shapes parse independently from external command execution.
+fn automation_parses_the_stable_command_surface() {
+    let cases = [
+        (vec!["fmt"], Task::Format { write: false }),
+        (vec!["fmt", "--write"], Task::Format { write: true }),
+        (vec!["lint"], Task::Lint),
+        (vec!["check"], Task::Check),
+        (
+            vec!["build", "--profile", "release"],
+            Task::Build(BuildProfile::Release),
+        ),
+        (
+            vec!["test", "conformance"],
+            Task::Test(TestLevel::Conformance),
+        ),
+        (
+            vec!["test", "performance", "--profile", "soak"],
+            Task::Performance(PerformanceProfile::Soak),
+        ),
+        (vec!["fuzz", "campaign"], Task::Fuzz(FuzzMode::Campaign)),
+        (
+            vec!["quality", "--profile", "release"],
+            Task::Quality(QualityProfile::Release),
+        ),
+        (
+            vec!["validate", "artifact.nir"],
+            Task::Validate(ValidationTarget::Artifact("artifact.nir".into())),
+        ),
+        (vec!["package"], Task::Package),
+        (vec!["release", "prepare"], Task::ReleasePrepare),
+        (
+            vec!["version", "prepare", "0.2.0-rc.1"],
+            Task::Version(VersionAction::Prepare("0.2.0-rc.1".to_owned())),
+        ),
+        (vec!["clean"], Task::Clean),
+        (vec!["ci", "pr"], Task::Ci(CiProfile::Pr)),
+    ];
+    for (arguments, expected) in cases {
+        let arguments = arguments.into_iter().map(str::to_owned).collect::<Vec<_>>();
+        assert_eq!(super::interface::parse(&arguments), Ok(expected));
     }
 }
 
@@ -243,10 +294,11 @@ fn automation_rejects_inline_test_module_bodies() {
 /// Verifies xtask commands run successfully.
 fn xtask_commands_and_helpers() {
     assert!(super::run(["environment".into(), "manifest".into()]).is_ok());
-    assert!(super::run(["boundary".into(), "check".into()]).is_ok());
-    assert!(super::run(["test-layout".into(), "check".into()]).is_ok());
-    assert!(super::run(["traceability".into(), "check".into()]).is_ok());
-    assert!(super::run(["boundary".into(), "help".into()]).is_ok());
+    assert!(super::check_boundaries().is_ok());
+    assert!(super::check_test_layout().is_ok());
+    assert!(super::check_traceability().is_ok());
+    assert!(super::check_workflow_contract().is_ok());
+    assert!(super::run(["--help".into()]).is_ok());
 
     assert_eq!(
         super::json_string("hello\n\"world\""),
@@ -272,10 +324,10 @@ fn xtask_commands_and_helpers() {
     assert!(!files.is_empty());
 
     assert!(super::ensure_registered_paths_exist(&root, "portable/specs/REQUIREMENTS.md").is_ok());
-    assert!(super::ensure_inventory_registered(&root, "config", "config/development-stage.toml config/host-policy.toml config/ir-encoding.toml config/quality-gates.toml config/test-suites.toml").is_ok());
+    assert!(super::ensure_inventory_registered(&root, "config", "config/development-stage.toml config/host-policy.toml config/ir-encoding.toml config/quality-gates.toml config/release.toml config/test-suites.toml").is_ok());
 
     assert!(super::print_environment_manifest().is_ok());
-    assert!(super::active_test_profile().is_ok());
-    let min_map = super::test_minimums("stage9").expect("test minimums");
+    assert_eq!(super::active_test_profile(), "current");
+    let min_map = super::test_minimums("current").expect("test minimums");
     assert!(!min_map.is_empty());
 }
