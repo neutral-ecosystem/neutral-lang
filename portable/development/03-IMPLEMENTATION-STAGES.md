@@ -781,6 +781,7 @@ must not become a second user-facing command system.
       `prepare` must make only reviewed, deterministic derived updates, emit a
       machine-readable change plan, reject invalid SemVer/channel transitions,
       and never create a tag, publish, or alter frozen contracts.
+- [ ] No hard coded version checking in tests and code use dynamic linking.
 - [ ] Make `Cargo.lock` the sole resolved dependency lock. Add automated
       locked metadata/build checks, dependency/license/advisory review, and a
       clear failure when the lock or its declared source policy is stale.

@@ -29,17 +29,18 @@ stage therefore cannot rename commands or deactivate the implemented suites.
 - `validate binaries` exercises release CLI/probe entry points and rechecks the
   compiler-free probe boundary. `validate <artifact>` uses the built standalone
   release probe.
-- `package` reads the typed explicit release selection, verifies approval,
-  evidence, annotated tag target, exact candidate checkout, and clean tree,
+- `package` reads the typed explicit release selection, verifies canonical
+  approval, the annotated tag target, exact tagged checkout, and clean tree,
   then stages only selected binaries plus `LICENSE` and `README.md` beneath the
   ignored release result root.
 - `release prepare` composes release quality, documentation, and package
   assembly. It cannot tag, push, upload, publish, or change frozen contracts.
 
-`config/release.toml` records the selected source-tag plus GitHub-binary scope;
-crates.io is false. Its constrained parser rejects missing approval, malformed
-full commit IDs, empty distribution scope, unsafe binary names, and empty binary
-selection for GitHub assets.
+`config/release.toml` records final tag `v0.1.0` plus the selected
+GitHub-binary scope; crates.io is false. Git is authoritative for the commit,
+so no duplicated commit or evidence path is configured. The constrained parser
+rejects missing approval, empty distribution scope, unsafe binary names, and
+empty binary selection for GitHub assets.
 
 ## Platform and CI adapters
 
@@ -57,18 +58,22 @@ YAML policy or internal `ci` aliases.
 
 - `cargo fmt --all`
 - `cargo clippy -p xtask --all-targets --all-features -- -D warnings`
-- `cargo test -p xtask --all-targets` — 22 passed
+- `cargo test -p xtask --all-targets` — 23 passed
 - `cargo xtask check` — dependency, test layout, traceability, and workflow
   contracts passed
 - `cargo xtask quality --profile pr` — full ordinary suite and composition
   passed
+- `cargo xtask quality --profile release` — retained expensive-gate statuses,
+  full ordinary suite, optimized build, and released-binary validation passed
 - `scripts/linux/bootstrap.sh` and `scripts/linux/environment.sh manifest` —
   passed on `x86_64-unknown-linux-gnu` with Rust/Cargo 1.98.1
 - `cargo xtask version show`, `version check`, and `portable verify` — passed
 - `cargo xtask build --profile release` and `validate binaries` — passed
-- `cargo xtask package` — correctly failed closed because the current workflow
-  revision is newer than candidate `v0.1.0-rc.1`; it did not assemble or publish
-  artifacts from the wrong revision
+- `cargo xtask package` — remains fail-closed until annotated final tag
+  `v0.1.0` names the clean reviewed checkout; it cannot assemble or publish
+  artifacts from an untagged revision
+- `cargo xtask release prepare` — enforces the same tag-derived identity before
+  running qualification, assembly, or publication work
 
 Generated quality and bootstrap evidence is retained beneath ignored
 `test-results/`. Release package assembly remains intentionally blocked until a

@@ -18,12 +18,8 @@ pub(crate) enum DistributionChannel {
 /// One reviewed release-candidate and distribution selection.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct ReleasePlan {
-    /// Annotated Git tag naming the selected candidate.
+    /// Annotated Git tag naming the selected release source.
     pub(crate) candidate_tag: String,
-    /// Full Git revision selected by the candidate tag.
-    pub(crate) candidate_commit: String,
-    /// Repository-relative evidence record for the candidate identity.
-    pub(crate) candidate_evidence: String,
     /// Explicitly selected distribution channels.
     pub(crate) channels: BTreeSet<DistributionChannel>,
     /// Binary package names selected for GitHub distribution.
@@ -50,8 +46,6 @@ impl ReleasePlan {
         }
         let plan = Self {
             candidate_tag: required_string(&content, "candidate_tag")?,
-            candidate_commit: required_string(&content, "candidate_commit")?,
-            candidate_evidence: required_string(&content, "candidate_evidence")?,
             channels,
             binaries: required_array(&content, "binaries")?,
         };
@@ -67,14 +61,6 @@ impl ReleasePlan {
             return Err(
                 "release candidate_tag must be a whitespace-free v-prefixed tag".to_owned(),
             );
-        }
-        if self.candidate_commit.len() != 40
-            || !self
-                .candidate_commit
-                .bytes()
-                .all(|byte| byte.is_ascii_hexdigit())
-        {
-            return Err("release candidate_commit must be a full 40-digit Git ID".to_owned());
         }
         if self.channels.is_empty() {
             return Err("at least one release distribution channel must be selected".to_owned());

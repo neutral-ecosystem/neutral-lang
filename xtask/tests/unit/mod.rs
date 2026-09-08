@@ -271,6 +271,36 @@ fn automation_rejects_unsafe_result_paths() {
 }
 
 #[test]
+/// Binary package staging is atomic and contains only selected release files.
+fn automation_stages_the_selected_binary_package() {
+    let root = std::env::temp_dir().join(format!("neutral-package-stage-{}", std::process::id()));
+    let source = root.join("source");
+    let output = root.join("output").join("host");
+    std::fs::create_dir_all(&source).expect("temporary package source should be created");
+    std::fs::write(root.join(constants::LICENSE_FILE), "license")
+        .expect("temporary license should be written");
+    std::fs::write(root.join(constants::ROOT_README_FILE), "readme")
+        .expect("temporary README should be written");
+    for binary in [
+        constants::NEUTRAL_CLI_BINARY,
+        constants::NEUTRAL_PROBE_BINARY,
+    ] {
+        std::fs::write(super::release_binary_path(&source, binary), binary)
+            .expect("temporary binary should be written");
+    }
+    let binaries = vec![
+        constants::NEUTRAL_CLI_BINARY.to_owned(),
+        constants::NEUTRAL_PROBE_BINARY.to_owned(),
+    ];
+    assert!(super::stage_binary_package(&root, &source, &output, &binaries, "{}\n").is_ok());
+    assert!(output.join("package-summary.json").is_file());
+    assert!(output.join(constants::LICENSE_FILE).is_file());
+    assert!(output.join(constants::ROOT_README_FILE).is_file());
+    assert!(super::stage_binary_package(&root, &source, &output, &binaries, "{}\n").is_err());
+    std::fs::remove_dir_all(root).expect("temporary package tree should be removable");
+}
+
+#[test]
 /// Verifies that active-suite discovery fails when a required category is empty.
 fn automation_rejects_a_zero_active_suite() {
     let minimums = BTreeMap::from([("automation".to_owned(), 1)]);

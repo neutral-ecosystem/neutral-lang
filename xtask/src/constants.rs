@@ -52,6 +52,14 @@ pub const RESIDUAL_RISKS_FILE: &str = "quality/residual-risks.md";
 pub const WORKSPACE_MANIFEST_FILE: &str = "Cargo.toml";
 /// Root dependency lock relative to the workspace root.
 pub const CARGO_LOCK_FILE: &str = "Cargo.lock";
+/// Durable test-minimum profile used by normal commands.
+pub const CURRENT_TEST_PROFILE: &str = "current";
+/// Cargo release output directory relative to the workspace root.
+pub const CARGO_RELEASE_DIRECTORY: &str = "target/release";
+/// Repository license file included in binary distributions.
+pub const LICENSE_FILE: &str = "LICENSE";
+/// Repository overview included in binary distributions.
+pub const ROOT_README_FILE: &str = "README.md";
 /// Active portable root relative to the workspace root.
 pub const PORTABLE_DIRECTORY: &str = "portable";
 /// Active portable plan relative to the workspace root.
@@ -100,3 +108,7 @@ pub const XTASK: &str = "xtask";
 pub const STAGE9_BENCHMARK: &str = "stage9";
 /// Relative root for generated release preparation and packages.
 pub const RELEASE_RESULT_DIRECTORY: &str = "release";
+/// Generated quality-report directory relative to the result root.
+pub const QUALITY_REPORT_DIRECTORY: &str = "analysis/quality-report";
+/// Generated version-plan directory relative to the result root.
+pub const VERSION_RESULT_DIRECTORY: &str = "version";

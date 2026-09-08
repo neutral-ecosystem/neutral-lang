@@ -61,8 +61,8 @@ release preparation:
 | Active portable lifecycle | `cargo xtask portable verify\|snapshot` |
 | Generated-evidence cleanup | `cargo xtask clean` |
 
-The release commands fail closed unless the selected candidate tag, full source
-commit, Stage 9 approval, evidence path, distribution scope, and clean checkout
+The release commands fail closed unless the selected annotated tag resolves to
+the clean checked-out `HEAD` and the Stage 9 approval and distribution scope
 agree. They never push, upload, publish, or create tags.
 
 ## Workflow migration

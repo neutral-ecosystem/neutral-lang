@@ -18,8 +18,8 @@ Thin `scripts/linux/bootstrap.sh` and `scripts/win/bootstrap.ps1` scripts:
 1. detect supported host/architecture;
 2. verify required shell/PowerShell, TLS, certificate, archive, and checksum
    facilities;
-3. verify or install the exact approved Rust toolchain using an explicit user
-   action;
+3. verify the approved Rust toolchain and direct the user to an explicit
+   installation action when it is missing;
 4. verify download checksums/signatures when supplied by the publisher;
 5. refuse unsupported/unpinned versions unless an explicit development override
    is recorded; and
@@ -36,9 +36,9 @@ The host scripts resolve tool executables through the optional
 
 ### Layer 1: workspace bootstrap
 
-`cargo xtask bootstrap` verifies or installs approved Cargo tools, configures
-local ignored result/cache directories, and emits an environment manifest. It
-does not install Rust itself.
+`cargo xtask bootstrap` verifies the core repository files and selected Rust
+toolchain, configures local ignored result directories, and emits an environment
+manifest. It does not install Rust or external Cargo tools.
 
 ### Layer 2: development container
 
@@ -150,7 +150,7 @@ Command rules:
 
 - local and CI automation call the same commands;
 - invalid or empty suite selection fails;
-- active suite minimum counts come from the stage/test manifest;
+- active suite minimum counts come from the durable `current` test profile;
 - source files may declare path-based private test modules but may not contain
   inline test bodies;
 - traceability checks reject missing accepted IDs, unchecked master syntax,

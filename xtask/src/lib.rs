@@ -373,7 +373,7 @@ fn render_rustdoc_index(metadata: &str) -> Result<String, String> {
 fn test_suite(level: TestLevel) -> Result<(), String> {
     match level {
         TestLevel::All => {
-            run_cargo(&["test", "--workspace", "--all-targets"])?;
+            run_cargo(&["test", "--workspace", "--lib", "--bins", "--tests"])?;
             verify_test_counts(active_test_profile())
         }
         TestLevel::Unit => run_cargo(&["test", "--workspace", "--lib", "--bins"]),
@@ -465,8 +465,7 @@ fn quality(profile: QualityProfile) -> Result<(), String> {
     };
     let result_directory = unique_generated_directory(
         &result_root()?
-            .join("analysis")
-            .join("quality-report")
+            .join(constants::QUALITY_REPORT_DIRECTORY)
             .join(profile),
     )?;
     write_task_summary(&result_directory, "quality", profile)?;
@@ -496,14 +495,14 @@ fn verify_recorded_quality_gates() -> Result<(), String> {
 fn validate(target: ValidationTarget) -> Result<(), String> {
     match target {
         ValidationTarget::Binaries => {
-            validate_release_binaries(&workspace_root()?.join("target/release"))
+            validate_release_binaries(&workspace_root()?.join(constants::CARGO_RELEASE_DIRECTORY))
         }
         ValidationTarget::Artifact(path) => {
             if !path.is_file() {
                 return Err(format!("artifact does not exist: {}", path.display()));
             }
             let probe = release_binary_path(
-                &workspace_root()?.join("target/release"),
+                &workspace_root()?.join(constants::CARGO_RELEASE_DIRECTORY),
                 constants::NEUTRAL_PROBE_BINARY,
             );
             if !probe.is_file() {
@@ -560,21 +559,21 @@ fn run_program(program: &Path, arguments: &[&std::ffi::OsStr]) -> Result<(), Str
 fn release_plan() -> Result<release::ReleasePlan, String> {
     let root = workspace_root()?;
     let plan = release::ReleasePlan::read(&root.join(constants::RELEASE_CONFIG_FILE))?;
-    if !root.join(&plan.candidate_evidence).is_file() {
-        return Err(format!(
-            "candidate evidence is missing: {}",
-            plan.candidate_evidence
-        ));
-    }
     let residual_risks = read_workspace_text(&root, constants::RESIDUAL_RISKS_FILE)?;
     if !residual_risks.contains("Approval state: approved") {
         return Err("Stage 9 residual-risk record is not approved".to_owned());
     }
-    let tagged_commit = command_output("git", &["rev-list", "-n", "1", &plan.candidate_tag])?;
-    if tagged_commit != plan.candidate_commit {
+    let tag_type =
+        command_output("git", &["cat-file", "-t", &plan.candidate_tag]).map_err(|error| {
+            format!(
+                "release tag {} is missing or unreadable: {error}",
+                plan.candidate_tag
+            )
+        })?;
+    if tag_type != "tag" {
         return Err(format!(
-            "candidate tag {} resolves to {tagged_commit}, expected {}",
-            plan.candidate_tag, plan.candidate_commit
+            "candidate {} must be an annotated tag; found Git object type {tag_type}",
+            plan.candidate_tag
         ));
     }
     if plan
@@ -595,26 +594,37 @@ fn release_plan() -> Result<release::ReleasePlan, String> {
     Ok(plan)
 }
 
-/// Requires the working checkout to be the clean selected candidate revision.
-fn require_candidate_checkout(plan: &release::ReleasePlan) -> Result<(), String> {
+/// Resolves the selected annotated tag to its authoritative source commit.
+fn candidate_tag_commit(plan: &release::ReleasePlan) -> Result<String, String> {
+    command_output("git", &["rev-list", "-n", "1", &plan.candidate_tag]).map_err(|error| {
+        format!(
+            "could not resolve release tag {} to a commit: {error}",
+            plan.candidate_tag
+        )
+    })
+}
+
+/// Requires a clean tagged checkout and returns the tag-derived commit.
+fn require_candidate_checkout(plan: &release::ReleasePlan) -> Result<String, String> {
+    let tagged_commit = candidate_tag_commit(plan)?;
     let head = command_output("git", &["rev-parse", "HEAD"])?;
-    if head != plan.candidate_commit {
+    if head != tagged_commit {
         return Err(format!(
-            "release preparation requires candidate {}; HEAD is {head}",
-            plan.candidate_commit
+            "release preparation requires tag {} at {tagged_commit}; HEAD is {head}",
+            plan.candidate_tag
         ));
     }
     let status = command_output("git", &["status", "--porcelain"])?;
     if !status.is_empty() {
         return Err("release preparation requires a clean candidate worktree".to_owned());
     }
-    Ok(())
+    Ok(tagged_commit)
 }
 
 /// Assembles the selected binary distribution into the ignored release root.
 fn package() -> Result<(), String> {
     let plan = release_plan()?;
-    require_candidate_checkout(&plan)?;
+    let candidate_commit = require_candidate_checkout(&plan)?;
     if !plan
         .channels
         .contains(&release::DistributionChannel::GithubBinaries)
@@ -626,18 +636,65 @@ fn package() -> Result<(), String> {
     }
     let root = workspace_root()?;
     let host = rust_host()?;
-    let source_directory = root.join("target/release");
+    let source_directory = root.join(constants::CARGO_RELEASE_DIRECTORY);
     validate_release_binaries(&source_directory)?;
     let output_directory = result_root()?
         .join(constants::RELEASE_RESULT_DIRECTORY)
         .join("package")
         .join(&plan.candidate_tag)
         .join(&host);
-    fs::create_dir_all(&output_directory)
-        .map_err(|error| format!("could not create {}: {error}", output_directory.display()))?;
-    for binary in &plan.binaries {
-        let source = release_binary_path(&source_directory, binary);
-        let destination = release_binary_path(&output_directory, binary);
+    let summary = format!(
+        "{{\"candidate_tag\":\"{}\",\"candidate_commit\":\"{}\",\"host\":\"{}\",\"channel\":\"github-binaries\",\"status\":\"assembled\"}}\n",
+        json_string(&plan.candidate_tag),
+        json_string(&candidate_commit),
+        json_string(&host)
+    );
+    stage_binary_package(
+        &root,
+        &source_directory,
+        &output_directory,
+        &plan.binaries,
+        &summary,
+    )?;
+    println!(
+        "{} package assembled: {}",
+        constants::INFO,
+        output_directory.display()
+    );
+    Ok(())
+}
+
+/// Atomically stages selected binaries, license material, and package metadata.
+fn stage_binary_package(
+    root: &Path,
+    source_directory: &Path,
+    output_directory: &Path,
+    binaries: &[String],
+    summary: &str,
+) -> Result<(), String> {
+    if output_directory.exists() {
+        return Err(format!(
+            "package output already exists: {}; run `cargo xtask clean` before a new assembly",
+            output_directory.display()
+        ));
+    }
+    let parent = output_directory
+        .parent()
+        .ok_or_else(|| "package output has no parent directory".to_owned())?;
+    fs::create_dir_all(parent)
+        .map_err(|error| format!("could not create {}: {error}", parent.display()))?;
+    let partial_directory = parent.join(format!(".partial-{}", std::process::id()));
+    if partial_directory.exists() {
+        return Err(format!(
+            "partial package output already exists: {}; run `cargo xtask clean`",
+            partial_directory.display()
+        ));
+    }
+    fs::create_dir(&partial_directory)
+        .map_err(|error| format!("could not create {}: {error}", partial_directory.display()))?;
+    for binary in binaries {
+        let source = release_binary_path(source_directory, binary);
+        let destination = release_binary_path(&partial_directory, binary);
         fs::copy(&source, &destination).map_err(|error| {
             format!(
                 "could not copy {} to {}: {error}",
@@ -646,25 +703,19 @@ fn package() -> Result<(), String> {
             )
         })?;
     }
-    for file in ["LICENSE", "README.md"] {
-        fs::copy(root.join(file), output_directory.join(file))
+    for file in [constants::LICENSE_FILE, constants::ROOT_README_FILE] {
+        fs::copy(root.join(file), partial_directory.join(file))
             .map_err(|error| format!("could not stage {file}: {error}"))?;
     }
-    fs::write(
-        output_directory.join("package-summary.json"),
+    fs::write(partial_directory.join("package-summary.json"), summary)
+        .map_err(|error| format!("could not write package summary: {error}"))?;
+    fs::rename(&partial_directory, output_directory).map_err(|error| {
         format!(
-            "{{\"candidate_tag\":\"{}\",\"candidate_commit\":\"{}\",\"host\":\"{}\",\"channel\":\"github-binaries\",\"status\":\"assembled\"}}\n",
-            json_string(&plan.candidate_tag),
-            json_string(&plan.candidate_commit),
-            json_string(&host)
-        ),
-    )
-    .map_err(|error| format!("could not write package summary: {error}"))?;
-    println!(
-        "{} package assembled: {}",
-        constants::INFO,
-        output_directory.display()
-    );
+            "could not publish staged package {} as {}: {error}",
+            partial_directory.display(),
+            output_directory.display()
+        )
+    })?;
     Ok(())
 }
 
@@ -762,7 +813,7 @@ fn prepare_version(requested: &str) -> Result<(), String> {
         &root,
         constants::WORKSPACE_MANIFEST_FILE,
     )?)?;
-    let directory = result_root()?.join("version");
+    let directory = result_root()?.join(constants::VERSION_RESULT_DIRECTORY);
     fs::create_dir_all(&directory)
         .map_err(|error| format!("could not create {}: {error}", directory.display()))?;
     let output = directory.join(format!("prepare-{requested}.json"));
@@ -882,7 +933,7 @@ fn verify_portable() -> Result<(), String> {
     Ok(())
 }
 
-/// Reads one scalar value from a section of the Stage 9 quality configuration.
+/// Reads one scalar value from a section of the quality configuration.
 fn quality_value(section: &str, key: &str) -> Result<String, String> {
     let configuration_path = workspace_root()?.join(constants::QUALITY_GATES_FILE);
     let configuration = fs::read_to_string(&configuration_path)
@@ -911,7 +962,7 @@ fn quality_value_from(configuration: &str, section: &str, key: &str) -> Option<S
     None
 }
 
-/// Reads one quoted-string array from the Stage 9 quality configuration.
+/// Reads one quoted-string array from the quality configuration.
 fn quality_array(section: &str, key: &str) -> Result<Vec<String>, String> {
     let value = quality_value(section, key)?;
     let inner = value
@@ -953,7 +1004,7 @@ fn performance(profile: PerformanceProfile) -> Result<(), String> {
     }
 }
 
-/// Runs the behavior-free command-shell checks active during Stage 1.
+/// Runs the built CLI and probe command-shell smoke checks.
 fn run_shell_smoke() -> Result<(), String> {
     run_cargo(&[
         "run",
@@ -973,11 +1024,19 @@ fn run_shell_smoke() -> Result<(), String> {
     ])
 }
 
-/// Verifies that every active Stage 1 test category has its configured minimum.
+/// Verifies that every current test category has its configured minimum.
 fn verify_test_counts(profile: &str) -> Result<(), String> {
     let test_list = command_output(
         constants::CARGO_COMMAND,
-        &["test", "--workspace", "--all-targets", "--", "--list"],
+        &[
+            "test",
+            "--workspace",
+            "--lib",
+            "--bins",
+            "--tests",
+            "--",
+            "--list",
+        ],
     )?;
     let minimums = test_minimums(profile)?;
     let discovered = minimums
@@ -1010,10 +1069,10 @@ fn validate_test_minimums(
 
 /// Returns the durable current test-minimum profile.
 fn active_test_profile() -> &'static str {
-    "current"
+    constants::CURRENT_TEST_PROFILE
 }
 
-/// Reads the simple Stage 1 test-minimum configuration owned by the workspace.
+/// Reads one test-minimum configuration owned by the workspace.
 fn test_minimums(profile: &str) -> Result<BTreeMap<String, usize>, String> {
     let configuration_path = workspace_root()?.join("config/test-suites.toml");
     let configuration = fs::read_to_string(&configuration_path)

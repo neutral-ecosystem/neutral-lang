@@ -2,7 +2,11 @@
 
 # Stage 10 candidate-preparation record
 
-Status: approved and tagged release candidate; not a published release.
+Status: superseded historical RC record; not a published release.
+
+The final release source is now selected solely by annotated tag `v0.1.0` in
+`config/release.toml`. This historical record is retained for auditability but
+is no longer a configured release input.
 
 This record identifies the clean `main` revision approved for Stage 10
 workflow work. It is a candidate record, not a release claim: final publication

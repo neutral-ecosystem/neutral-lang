@@ -17,12 +17,17 @@ Status: Stage 10 workflow overhaul in progress.
 
 ## Blockers
 
-- No technical blocker remains for Stage 10 Step 3. The workflow changes are
-  newer than local candidate `v0.1.0-rc.1`, so package/release commands
-  correctly remain fail-closed until a clean reviewed successor candidate is
-  recorded.
+- No technical blocker remains for Stage 10 Step 3. Final tag `v0.1.0` is the
+  selected release identity; package/release commands remain fail-closed until
+  that annotated tag names the clean reviewed checkout.
 
 ## Completed log
+
+- [x] 2026-09-08: Simplified release identity configuration to the final
+  `v0.1.0` tag. Removed duplicated `candidate_commit` and
+  `candidate_evidence` inputs: release tooling now resolves the authoritative
+  commit from Git and requires the annotated tag to name the clean checked-out
+  `HEAD`; canonical Stage 9 residual-risk approval remains mandatory.
 
 - [x] 2026-09-08: Completed Stage 10, Step 2 as an implementation overhaul.
   Added one typed, stage-free `xtask` grammar; durable format/lint/check/test/

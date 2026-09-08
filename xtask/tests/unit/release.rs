@@ -12,9 +12,7 @@ fn release_plan_accepts_an_explicit_scope() {
     fs::write(
         &path,
         concat!(
-            "candidate_tag = \"v0.1.0-rc.1\"\n",
-            "candidate_commit = \"0123456789012345678901234567890123456789\"\n",
-            "candidate_evidence = \"portable/evidence.md\"\n",
+            "candidate_tag = \"v0.1.0\"\n",
             "stage9_residual_risk = true\n",
             "source_tag = true\n",
             "github_binaries = true\n",
@@ -37,9 +35,7 @@ fn release_plan_rejects_unapproved_empty_scope() {
     fs::write(
         &path,
         concat!(
-            "candidate_tag = \"v0.1.0-rc.1\"\n",
-            "candidate_commit = \"0123456789012345678901234567890123456789\"\n",
-            "candidate_evidence = \"portable/evidence.md\"\n",
+            "candidate_tag = \"v0.1.0\"\n",
             "stage9_residual_risk = false\n",
             "source_tag = false\n",
             "github_binaries = false\n",
