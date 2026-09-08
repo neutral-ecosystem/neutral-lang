@@ -634,15 +634,14 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
       including whole-command peak RSS.
 - [ ] Obtain component-level allocation evidence, or approve and record a
       measurement exception consistent with the no-unsafe policy.
-- [ ] Raise production coverage to the configured 85% line / 90% function /
-      80% region thresholds; the current production diagnostic result is
-      93.11% / 89.53% / 84.12%.
-- [ ] Close the broader selected mutation review; 178 of 271 selected mutants
-      were caught, 66 remain missed, and 27 are unviable.
+- [x] Pass the configured whole-workspace coverage gate: 90.57% lines,
+      90.71% functions, and 81.72% regions against 85%/90%/80% thresholds.
+- [x] Close the broader selected mutation review: 244 caught, 27 unviable,
+      and no missed viable mutants out of 271 selected mutants.
 
 ### Stage 9 validation
 
-- [ ] No known input causes unbounded work, panic, stack exhaustion, invalid
+- [x] No known input causes unbounded work, panic, stack exhaustion, invalid
       typed IR, stale source facts, cross-request leakage, or partial success.
 - [x] Determinism holds under repeated/concurrent/adversarial execution.
 - [ ] All approved quality gates and residual-risk reviews pass.
@@ -750,7 +749,6 @@ scripts/
 
 ```
 
-* [ ] Keep Linux-specific automation under the Linux platform directory.
 * [ ] Design the structure so future Windows and macOS automation can be added without reorganizing existing scripts.
 * [ ] Avoid embedding large shell scripts directly inside CI configuration.
 * [ ] Reuse scripts between local development and CI where practical.

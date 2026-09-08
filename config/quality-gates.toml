@@ -7,10 +7,10 @@ tool = "cargo-llvm-cov"
 minimum_line_percent = 85
 minimum_function_percent = 90
 minimum_region_percent = 80
-observed_line_percent = 84.91
-observed_function_percent = 80.46
-observed_region_percent = 75.55
-status = "measured-below-threshold"
+observed_line_percent = 90.57
+observed_function_percent = 90.71
+observed_region_percent = 81.72
+status = "pass"
 
 [mutation]
 tool = "cargo-mutants"

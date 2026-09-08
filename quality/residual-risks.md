@@ -2,24 +2,21 @@
 
 # Stage 9 residual risks
 
-Review date: 2026-09-07. Owner: maintainer. Approval state: open.
+Review date: 2026-09-08. Owner: maintainer. Approval state: open.
 
-The following work prevents Stage 9 validation from being approved today:
+Completed and remaining Stage 9 review items are recorded below:
 
-- The official whole-workspace coverage gate remains below its configured
-  85%/90%/80% line/function/region thresholds. A production-only diagnostic
-  run reached 93.11%/89.53%/84.12%, but it still misses the function threshold
-  and is not a substitute for the configured gate.
-- All five required 900-second fuzz campaigns completed cleanly on an untraced
-  runner. This item is closed.
+- Coverage passes at 90.57% lines, 90.71% functions, and 81.72% regions
+  against its 85%/90%/80% thresholds; this item is closed.
+- All five required 900-second fuzz campaigns completed cleanly; this item is
+  closed.
 - Release and 50,000-iteration extended-soak baselines completed with retained
   peak-RSS evidence, but component-level allocation accounting remains
   unavailable because no supported allocation profiler is installed and the
   repository forbids an unsafe replacement global allocator.
-- Mutation strength remains 38/38 for the configured critical language target.
-  The broader 271-mutant review caught 178, missed 66, and found 27 unviable
-  mutants; exact-number and decoder-boundary tests need further strengthening
-  before this review can close.
+- Mutation is closed: 38/38 caught for the configured critical target and 244
+  caught, 27 unviable, and no missed viable mutant in the broader 271-mutant
+  review.
 - Static review was performed by the sole maintainer and is not independent.
 
 These are evidence gaps, not known correctness defects. Stage 10 must not begin

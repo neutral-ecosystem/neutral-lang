@@ -178,8 +178,9 @@ tests. CI rejects missing IDs, unchecked master syntax, orphaned normative
 fixtures/oracles, and broken registered paths; the published full-language
 example compiles as conformance evidence. Stage 9 hardening now has complete
 stable property, structural-limit, cancellation, isolation, dependency, static
-review, and critical mutation evidence. LLVM coverage, coverage-guided fuzzing,
-broader mutation, and controlled release/memory/soak evidence remain open.
+review, critical mutation evidence, whole-workspace LLVM coverage, and
+coverage-guided fuzzing. Controlled performance/allocation evidence remains
+open.
 The approved
 [freeze manifest](specs/contracts/freeze.toml) identifies
 the v0 contract family, and the

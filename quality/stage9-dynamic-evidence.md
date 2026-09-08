@@ -2,21 +2,20 @@
 
 # Stage 9 dynamic quality evidence
 
-Evaluation date: 2026-09-07. Owner: maintainer. Candidate state: modified
-development tree, not a release candidate.
+Evaluation date: 2026-09-08. Owner: maintainer. Candidate state: commit
+`994dc5c`, not a release candidate.
 
 ## Toolchain
 
-- Repository compiler: `rustc 1.98.0` stable.
-- Isolated campaign compiler: `rustc 1.100.0-nightly (5a2be9f5f
-  2026-09-06)` with `llvm-tools-preview`.
+- Repository compiler: stable Rust selected by `rust-toolchain.toml`.
+- Coverage compiler: `rustc 1.100.0-nightly (cea272fa3 2026-09-07)` with
+  `llvm-tools-preview`.
 - `cargo-llvm-cov 0.9.1`.
 - `cargo-mutants 27.1.0`.
 - `cargo-fuzz 0.13.2`.
 
-The nightly toolchain and Cargo tools were installed beneath `/tmp` and did not
-change the repository's stable toolchain contract or the user's global Cargo
-installation.
+The stable repository toolchain contract remains unchanged. Nightly is selected
+only for LLVM coverage and coverage-guided fuzz commands.
 
 ## Coverage
 
@@ -26,17 +25,12 @@ retained machine-readable summary is generated at
 
 | Measure | Required | Observed | Result |
 | --- | ---: | ---: | --- |
-| Lines | 85% | 84.91% | Fail |
-| Functions | 90% | 80.46% | Fail |
-| Regions | 80% | 75.55% | Fail |
+| Lines | 85% | 90.57% | Pass |
+| Functions | 90% | 90.71% | Pass |
+| Regions | 80% | 81.72% | Pass |
 
-No threshold was reduced. Missing coverage is concentrated in automation,
-parser/decoder failure paths, and host command handling. The coverage gate
-remains open until tests meet every configured threshold.
-
-The current production-only diagnostic scope (excluding `xtask`) measures
-93.11% lines, 89.53% functions, and 84.12% regions. It exceeds the line and
-region thresholds but remains below the required 90% function threshold.
+No threshold or coverage scope was reduced. The pass comes from the configured
+`RUSTUP_TOOLCHAIN=nightly cargo xtask coverage` workspace/all-targets command.
 
 ## Mutation
 
@@ -44,11 +38,10 @@ region thresholds but remains below the required 90% function threshold.
 `crates/neutral-ir/src/language.rs`, in cargo-mutants' isolated scratch tree.
 All 38 generated mutants were caught, meeting the configured 100% target.
 
-The wider 271-mutant review caught 178, missed 66, and classified 27 as
-unviable. Follow-up exact-number boundary tests closed the focused
-`ExactNumber` subset at 34 caught and 3 unviable out of 37, with no missed
-mutants. The broader mutation gate remains open until every viable selected
-mutant is either caught or reviewed as an accepted equivalent-risk decision.
+The final wider 271-mutant review caught 244 mutants, classified 27 as
+unviable, and left no missed viable mutant. Follow-up exact-number, decoder,
+diagnostic, logical-equality, parser-fault, CLI-fault, and automation tests
+closed the broader review without accepting an equivalent-risk exception.
 
 ## Coverage-guided fuzzing
 

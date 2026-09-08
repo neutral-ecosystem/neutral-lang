@@ -12,7 +12,7 @@ Evaluation date: 2026-09-07. Owner: maintainer.
 | Interaction capability | CLI/process tests and source-linked diagnostics | Pass on declared host matrix |
 | Reliability | Repeated/concurrent determinism, cancellation checkpoints, atomic output | Pass |
 | Security | Threat model, hostile suites, limits, RustSec and effect-boundary review, five clean 900-second fuzz campaigns | Pass for reviewed v0 boundaries |
-| Maintainability | Crate boundaries, rustdoc, no inline tests, Clippy, mutation target | Indeterminate because measured coverage remains below threshold |
+| Maintainability | Crate boundaries, rustdoc, no inline tests, Clippy, full coverage gate, and broader mutation review | Pass for reviewed source quality gates |
 | Flexibility | Explicit capture, reader, encoding, probe, and host boundaries | Pass |
 | Safety | Fail-closed results, no partial authority, no unsafe/native code | Pass for reviewed paths |
 

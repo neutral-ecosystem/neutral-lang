@@ -7,27 +7,26 @@ Status: Stage 9 hardening in progress.
 ## Current focus
 
 - Stage: Stage 9 hardening
-- Status: coverage remediation, broader mutation strengthening, and allocation evidence remain
+- Status: controlled performance/allocation evidence remains
 - Last updated: 2026-09-07
 
 ## Next actions
 
-- [ ] Raise line/function/region coverage to the configured 85%/90%/80% thresholds.
-- [ ] Strengthen and rerun the broader 271-mutant review until every viable
-      selected mutant is caught.
 - [ ] Obtain component-level allocation evidence or record an approved
       measurement exception.
 
 ## Blockers
 
-- The official whole-workspace coverage gate remains below its configured
-  85%/90%/80% thresholds; a production-only diagnostic run is also below the
-  required 90% function threshold at 89.15%.
-- Broader mutation review found 66 surviving viable mutants in exact-number and
-  decoder-boundary logic.
 - Component-level allocation accounting is unavailable on the current runner.
 
 ## Completed log
+
+- [x] 2026-09-08: Installed the approved system-wide Stage 9 tooling and reran
+  the configured whole-workspace LLVM coverage gate on nightly. It passed at
+  90.57% lines, 90.71% functions, and 81.72% regions against 85%/90%/80%
+  thresholds. The final 271-mutant broad review caught 244, classified 27 as
+  unviable, and left no missed viable mutant. Coverage and mutation are closed;
+  component-level allocation evidence remains the only recorded Stage 9 gap.
 
 - [x] 2026-09-07: Completed every required full-duration libFuzzer campaign on
   an untraced runner: source (7,517,511 executions), vocabulary (10,720,881),
