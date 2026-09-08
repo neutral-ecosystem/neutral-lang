@@ -22,7 +22,7 @@ fn release_plan_accepts_an_explicit_scope() {
     .expect("temporary release plan should be writable");
     let version = env!("CARGO_PKG_VERSION");
     let plan = ReleasePlan::read(&path, version).expect("explicit release plan should parse");
-    assert_eq!(plan.candidate_tag, format!("v{version}"));
+    assert_eq!(plan.release_tag, format!("v{version}"));
     assert!(plan.channels.contains(&DistributionChannel::SourceTag));
     assert!(plan.channels.contains(&DistributionChannel::GithubBinaries));
     assert!(!plan.channels.contains(&DistributionChannel::CratesIo));

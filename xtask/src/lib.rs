@@ -804,7 +804,7 @@ fn run_program(program: &Path, arguments: &[&std::ffi::OsStr]) -> Result<(), Str
         .ok_or_else(|| format!("{} failed with {status}", program.display()))
 }
 
-/// Reads and verifies the explicit release-authority selection and candidate tag.
+/// Reads and verifies the explicit release-authority selection for a `main`-head candidate.
 fn release_plan() -> Result<release::ReleasePlan, String> {
     let root = workspace_root()?;
     let package_version = workspace_package_version(&read_workspace_text(
@@ -816,19 +816,6 @@ fn release_plan() -> Result<release::ReleasePlan, String> {
     let residual_risks = read_workspace_text(&root, constants::RESIDUAL_RISKS_FILE)?;
     if !residual_risks.contains("Approval state: approved") {
         return Err("Stage 9 residual-risk record is not approved".to_owned());
-    }
-    let tag_type =
-        command_output("git", &["cat-file", "-t", &plan.candidate_tag]).map_err(|error| {
-            format!(
-                "release tag {} is missing or unreadable: {error}",
-                plan.candidate_tag
-            )
-        })?;
-    if tag_type != "tag" {
-        return Err(format!(
-            "candidate {} must be an annotated tag; found Git object type {tag_type}",
-            plan.candidate_tag
-        ));
     }
     if plan
         .channels
@@ -848,37 +835,26 @@ fn release_plan() -> Result<release::ReleasePlan, String> {
     Ok(plan)
 }
 
-/// Resolves the selected annotated tag to its authoritative source commit.
-fn candidate_tag_commit(plan: &release::ReleasePlan) -> Result<String, String> {
-    command_output("git", &["rev-list", "-n", "1", &plan.candidate_tag]).map_err(|error| {
-        format!(
-            "could not resolve release tag {} to a commit: {error}",
-            plan.candidate_tag
-        )
-    })
-}
-
-/// Requires a clean tagged checkout and returns the tag-derived commit.
-fn require_candidate_checkout(plan: &release::ReleasePlan) -> Result<String, String> {
-    let tagged_commit = candidate_tag_commit(plan)?;
-    let head = command_output("git", &["rev-parse", "HEAD"])?;
-    if head != tagged_commit {
+/// Requires a clean checked-out `main` and returns its exact current candidate commit.
+fn require_main_head_checkout() -> Result<String, String> {
+    let branch = command_output("git", &["branch", "--show-current"])?;
+    if branch != "main" {
         return Err(format!(
-            "release preparation requires tag {} at {tagged_commit}; HEAD is {head}",
-            plan.candidate_tag
+            "release qualification requires checked-out main; found {branch:?}"
         ));
     }
+    let head = command_output("git", &["rev-parse", "HEAD"])?;
     let status = command_output("git", &["status", "--porcelain"])?;
     if !status.is_empty() {
-        return Err("release preparation requires a clean candidate worktree".to_owned());
+        return Err("release qualification requires a clean main worktree".to_owned());
     }
-    Ok(tagged_commit)
+    Ok(head)
 }
 
 /// Assembles the selected binary distribution into the ignored release root.
 fn package() -> Result<(), String> {
     let plan = release_plan()?;
-    let candidate_commit = require_candidate_checkout(&plan)?;
+    let candidate_commit = require_main_head_checkout()?;
     if !plan
         .channels
         .contains(&release::DistributionChannel::GithubBinaries)
@@ -895,11 +871,11 @@ fn package() -> Result<(), String> {
     let output_directory = result_root()?
         .join(constants::RELEASE_RESULT_DIRECTORY)
         .join("package")
-        .join(&plan.candidate_tag)
+        .join(&plan.release_tag)
         .join(&host);
     let summary = format!(
-        "{{\"candidate_tag\":\"{}\",\"candidate_commit\":\"{}\",\"host\":\"{}\",\"channel\":\"github-binaries\",\"status\":\"assembled\"}}\n",
-        json_string(&plan.candidate_tag),
+        "{{\"release_tag\":\"{}\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"host\":\"{}\",\"channel\":\"github-binaries\",\"status\":\"assembled\"}}\n",
+        json_string(&plan.release_tag),
         json_string(&candidate_commit),
         json_string(&host)
     );
@@ -976,7 +952,7 @@ fn stage_binary_package(
 /// Runs release checks and assembles artifacts without tagging or publishing.
 fn release_prepare() -> Result<(), String> {
     let plan = release_plan()?;
-    require_candidate_checkout(&plan)?;
+    require_main_head_checkout()?;
     quality(QualityProfile::Release)?;
     documentation()?;
     package()?;
@@ -985,11 +961,11 @@ fn release_prepare() -> Result<(), String> {
             .join(constants::RELEASE_RESULT_DIRECTORY)
             .join("preparation"),
     )?;
-    write_task_summary(&result_directory, "release-prepare", &plan.candidate_tag)?;
+    write_task_summary(&result_directory, "release-prepare", "main")?;
     println!(
         "{} release {} prepared; no publish action was performed",
         constants::INFO,
-        plan.candidate_tag
+        plan.release_tag
     );
     Ok(())
 }

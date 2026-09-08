@@ -657,7 +657,7 @@ approval roles, and exit condition are in
 work for this repository; it must not add language features or weaken the
 frozen v0 contracts.
 
-### Step 1: approve Stage 9 and create an identified release candidate
+### Step 1: approve Stage 9 and identify the release candidate
 
 - [x] The maintainer approves the completed
       [Stage 9 residual-risk record](../../quality/residual-risks.md).
@@ -669,13 +669,14 @@ frozen v0 contracts.
 - [x] Decide the v0 distribution scope before changing version metadata:
       source-only tag, GitHub binary assets, crates.io packages, or an explicit
       combination. No publishing target is assumed implicitly.
-- [x] Create an annotated candidate tag only after the candidate identity and
-      distribution scope are recorded.
+- [x] Record that qualification uses the clean current `main` `HEAD`; create
+      the annotated publication tag only after qualification and approvals.
 
 #### Step validation
 
-- [x] The candidate can be identified from its source, dependency, toolchain,
-      fixture, and contract identities without local state.
+- [x] The candidate can be identified from its `main` source revision,
+      dependency, toolchain, fixture, and contract identities without local
+      state.
 - [x] No Stage 9 technical evidence gap or unapproved residual risk remains.
 
 ### Step 2: implement the stable repository structure and command interface
@@ -897,7 +898,7 @@ must not become a second user-facing command system.
 
 ### Step 6: qualify the exact candidate
 
-- [ ] Run `cargo xtask ci release` from the candidate revision and retain its
+- [ ] Run `cargo xtask ci release` from the clean `main` candidate revision and retain its
       task summary under ignored release evidence.
 - [ ] Run `RUSTUP_TOOLCHAIN=nightly cargo xtask coverage`; retain the
       machine-readable report and confirm the configured 85% line, 90%

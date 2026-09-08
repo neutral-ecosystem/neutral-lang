@@ -15,11 +15,11 @@ pub(crate) enum DistributionChannel {
     CratesIo,
 }
 
-/// One reviewed release-candidate and distribution selection.
+/// One reviewed distribution selection for the `main`-head release candidate.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct ReleasePlan {
-    /// Annotated Git tag naming the selected release source.
-    pub(crate) candidate_tag: String,
+    /// Release tag that will name the publication after qualification completes.
+    pub(crate) release_tag: String,
     /// Explicitly selected distribution channels.
     pub(crate) channels: BTreeSet<DistributionChannel>,
     /// Binary package names selected for GitHub distribution.
@@ -27,7 +27,7 @@ pub(crate) struct ReleasePlan {
 }
 
 impl ReleasePlan {
-    /// Reads release scope and derives its tag from the workspace version.
+    /// Reads release scope and derives its eventual publication tag from the workspace version.
     pub(crate) fn read(path: &Path, package_version: &str) -> Result<Self, String> {
         let content = fs::read_to_string(path)
             .map_err(|error| format!("could not read {}: {error}", path.display()))?;
@@ -45,7 +45,7 @@ impl ReleasePlan {
             channels.insert(DistributionChannel::CratesIo);
         }
         let plan = Self {
-            candidate_tag: format!("v{package_version}"),
+            release_tag: format!("v{package_version}"),
             channels,
             binaries: required_array(&content, "binaries")?,
         };
@@ -55,12 +55,8 @@ impl ReleasePlan {
 
     /// Rejects incomplete or malformed release-authority selections.
     fn validate(&self) -> Result<(), String> {
-        if !self.candidate_tag.starts_with('v')
-            || self.candidate_tag.chars().any(char::is_whitespace)
-        {
-            return Err(
-                "release candidate_tag must be a whitespace-free v-prefixed tag".to_owned(),
-            );
+        if !self.release_tag.starts_with('v') || self.release_tag.chars().any(char::is_whitespace) {
+            return Err("release tag must be a whitespace-free v-prefixed tag".to_owned());
         }
         if self.channels.is_empty() {
             return Err("at least one release distribution channel must be selected".to_owned());

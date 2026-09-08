@@ -2,7 +2,8 @@
 
 # This file records explicit release-authority selections. It does not publish,
 # upload, tag, or authorize skipping any Stage 10 qualification gate.
-# The release tag is derived as `v<workspace.package.version>`.
+# Qualification always uses clean `main` HEAD. The release tag is derived as
+# `v<workspace.package.version>` and created only after approval.
 schema_version = 1
 
 [approval]

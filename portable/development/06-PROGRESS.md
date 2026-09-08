@@ -12,14 +12,14 @@ Status: Stage 10 workflow overhaul in progress.
 
 ## Next actions
 
-- [ ] Implement Stage 10 Step 6: qualify the exact committed and tagged
-      candidate with retained release-quality evidence.
+- [ ] Implement Stage 10 Step 6: qualify the exact committed `main` `HEAD` with
+      retained release-quality evidence.
 
-## Blockers
+## Candidate policy
 
-- The signed local `v0.1.0` tag identifies the pre-Step-3 commit. Step 3 changes
-  intentionally make release preparation fail closed until the maintainer
-  chooses a new version/tag or explicitly replaces that unpublished local tag.
+- Qualification always uses the clean checked-out `main` `HEAD`. `v0.1.0` is an
+  eventual publication tag, created only after the candidate has passed every
+  qualification and approval gate; it never selects an earlier source revision.
 
 ## Completed log
 

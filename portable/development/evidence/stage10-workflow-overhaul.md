@@ -2,8 +2,8 @@
 
 # Stage 10 stable workflow overhaul
 
-Review date: 2026-09-08. Status: Step 2 implementation complete; final candidate
-retagging and later release qualification remain separate Stage 10 work.
+Review date: 2026-09-08. Status: Step 2 implementation complete; later release
+qualification remains separate Stage 10 work.
 
 ## Stable command boundary
 
@@ -30,18 +30,18 @@ stage therefore cannot rename commands or deactivate the implemented suites.
   compiler-free probe boundary. `validate <artifact>` uses the built standalone
   release probe.
 - `package` reads the typed explicit release selection, verifies canonical
-  approval, the annotated tag target, exact tagged checkout, and clean tree,
-  then stages only selected binaries plus `LICENSE` and `README.md` beneath the
-  ignored release result root.
+  approval and a clean checked-out `main` `HEAD`, then stages only selected
+  binaries plus `LICENSE` and `README.md` beneath the ignored release result
+  root.
 - `release prepare` composes release quality, documentation, and package
   assembly. It cannot tag, push, upload, publish, or change frozen contracts.
 
 `config/release.toml` records only the selected GitHub-binary scope; crates.io
-is false. The release tag is derived as `v<workspace package version>` and Git
-is authoritative for its commit, so no duplicated tag version, commit, or
-evidence path is configured. The constrained parser rejects missing approval,
-empty distribution scope, unsafe binary names, and empty binary selection for
-GitHub assets.
+is false. Qualification uses the clean current `main` `HEAD`; the eventual
+publication tag derives as `v<workspace package version>` only after approval.
+No duplicated tag version, commit, or evidence path is configured. The
+constrained parser rejects missing approval, empty distribution scope, unsafe
+binary names, and empty binary selection for GitHub assets.
 
 ## Platform and CI adapters
 
@@ -70,12 +70,11 @@ YAML policy or internal `ci` aliases.
   passed on `x86_64-unknown-linux-gnu` with Rust/Cargo 1.98.1
 - `cargo xtask version show`, `version check`, and `portable verify` — passed
 - `cargo xtask build --profile release` and `validate binaries` — passed
-- `cargo xtask package` — remains fail-closed until annotated final tag
-  `v0.1.0` names the clean reviewed checkout; it cannot assemble or publish
-  artifacts from an untagged revision
-- `cargo xtask release prepare` — enforces the same tag-derived identity before
+- `cargo xtask package` — requires a clean reviewed `main` `HEAD`; it cannot
+  assemble or publish artifacts from another branch or a dirty checkout
+- `cargo xtask release prepare` — enforces that same `main`-head identity before
   running qualification, assembly, or publication work
 
 Generated quality and bootstrap evidence is retained beneath ignored
 `test-results/`. Release package assembly remains intentionally blocked until a
-new clean reviewed candidate includes this workflow implementation.
+new clean reviewed `main` candidate includes this workflow implementation.

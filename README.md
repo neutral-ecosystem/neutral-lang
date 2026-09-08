@@ -67,10 +67,11 @@ verify` additionally audits the complete release workstation and reports an
 installation command for every missing analysis or packaging tool. `cargo xtask
 environment manifest` prints the path-independent host and tool identity record.
 
-The release commands derive annotated tag `v<workspace package version>` from
-the root `Cargo.toml`. They fail closed unless that tag resolves to the clean
-checked-out `HEAD` and the Stage 9 approval and distribution scope agree. They
-never push, upload, publish, or create tags.
+Release qualification always uses the clean checked-out `main` `HEAD`. The
+eventual annotated publication tag `v<workspace package version>` derives from
+the root `Cargo.toml`, but it is created only after qualification and approvals.
+Release commands fail closed when `main`, Stage 9 approval, or distribution
+scope is wrong. They never push, upload, publish, or create tags.
 
 ## Workflow migration
 
@@ -156,8 +157,8 @@ targets.
 - Run the failing stable subcommand locally; CI contains no separate test logic.
 - Inspect `test-results/` for generated summaries. Run `cargo xtask clean` only
   when those ignored results should be discarded.
-- Release preparation requires a clean checkout at the derived signed tag. It
-  will reject a dirty tree, the wrong `HEAD`, missing approval, or stale scope.
+- Release preparation requires a clean checked-out `main` `HEAD`. It rejects a
+  dirty tree, another branch, missing approval, or stale scope.
 
 For the language and implementation lifecycle, start with
 [the active v0 plan](portable/PLAN.md). Quality evidence and residual risks are
