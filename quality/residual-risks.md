@@ -2,7 +2,8 @@
 
 # Stage 9 residual risks
 
-Review date: 2026-09-08. Owner: maintainer. Approval state: open.
+Review date: 2026-09-08. Owner: maintainer. Approval state: evidence complete;
+maintainer release approval pending.
 
 Completed and remaining Stage 9 review items are recorded below:
 
@@ -11,14 +12,14 @@ Completed and remaining Stage 9 review items are recorded below:
 - All five required 900-second fuzz campaigns completed cleanly; this item is
   closed.
 - Release and 50,000-iteration extended-soak baselines completed with retained
-  peak-RSS evidence, but component-level allocation accounting remains
-  unavailable because no supported allocation profiler is installed and the
-  repository forbids an unsafe replacement global allocator.
+  peak-RSS evidence. Valgrind Massif reports a 524,640 B total peak for both
+  profiles, and Memcheck reports zero errors and no definite, indirect, or
+  possible leaks. This item is closed.
 - Mutation is closed: 38/38 caught for the configured critical target and 244
   caught, 27 unviable, and no missed viable mutant in the broader 271-mutant
   review.
 - Static review was performed by the sole maintainer and is not independent.
 
-These are evidence gaps, not known correctness defects. Stage 10 must not begin
-until the required Stage 9 gates are executed, reviewed, and this record is
-closed or explicitly accepted under release policy.
+There are no remaining technical evidence gaps. The sole-maintainer review is
+not independent; release approval remains the maintainer's decision before
+Stage 10 begins.

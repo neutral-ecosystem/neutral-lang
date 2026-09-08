@@ -7,26 +7,43 @@ Status: Stage 9 hardening in progress.
 ## Current focus
 
 - Stage: Stage 9 hardening
-- Status: controlled performance/allocation evidence remains
-- Last updated: 2026-09-07
+- Status: technical evidence complete; maintainer approval pending
+- Last updated: 2026-09-08
 
 ## Next actions
 
-- [ ] Obtain component-level allocation evidence or record an approved
-      measurement exception.
+- [ ] Review and approve the completed Stage 9 residual-risk record before
+      beginning Stage 10.
 
 ## Blockers
 
-- Component-level allocation accounting is unavailable on the current runner.
+- No technical blocker remains; Stage 10 requires maintainer approval of the
+  completed residual-risk record.
 
 ## Completed log
+
+- [x] 2026-09-08: Reframed Stage 10 as a workflow overhaul followed by v0
+  qualification. It now requires implementation of a stable stage-free `xtask`
+  interface, thin `scripts/linux` / `scripts/win` adapters, centralized
+  workspace version tooling, deterministic generated/lock metadata checks, and
+  the active-portable → immutable-roadmap-archive → next-version-portable
+  lifecycle before candidate qualification, packaging, and publication proceed.
 
 - [x] 2026-09-08: Installed the approved system-wide Stage 9 tooling and reran
   the configured whole-workspace LLVM coverage gate on nightly. It passed at
   90.57% lines, 90.71% functions, and 81.72% regions against 85%/90%/80%
   thresholds. The final 271-mutant broad review caught 244, classified 27 as
-  unviable, and left no missed viable mutant. Coverage and mutation are closed;
-  component-level allocation evidence remains the only recorded Stage 9 gap.
+  unviable, and left no missed viable mutant. Coverage and mutation were
+  closed; component-level allocation evidence remained the only Stage 9 gap at
+  that point.
+
+- [x] 2026-09-08: Ran Valgrind 3.27.1 against the direct optimized Stage 9
+  benchmark. Massif measured a 524,640 B total peak for both release and the
+  50,000-iteration extended soak; useful heap differed by only six bytes.
+  Memcheck found zero memory errors and no definite, indirect, or possible
+  leaks across 322,503 allocations. Five direct release samples completed in
+  0.02 seconds each with 3,616–3,848 KiB peak RSS. Allocation evidence is
+  closed; Stage 9 is ready for maintainer residual-risk approval.
 
 - [x] 2026-09-07: Completed every required full-duration libFuzzer campaign on
   an untraced runner: source (7,517,511 executions), vocabulary (10,720,881),

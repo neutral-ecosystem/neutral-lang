@@ -2,7 +2,8 @@
 
 # Neutral language v0 development plan
 
-Status: active v0 operational index — Stage 8 complete
+Status: active v0 operational index — Stage 9 evidence complete; maintainer
+approval and Stage 10 workflow overhaul pending
 
 This is the entry point for implementing and tracking Neutral language v0 in
 this repository. The directory is a self-contained, version-scoped package of
@@ -95,7 +96,7 @@ Stage 8: formatter, CLI, standalone probe, documentation
     ↓
 Stage 9: correctness, security, determinism, performance hardening
     ↓
-Stage 10: release qualification
+Stage 10: workflow overhaul and release qualification
 ```
 
 ## Current gate status

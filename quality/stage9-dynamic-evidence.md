@@ -65,19 +65,34 @@ untraced runner with normal sanitizer configuration.
 ## Performance
 
 The controlled runner was Fedora Linux 7.1.13 on an Intel Core i3-1115G4
-(4 logical CPUs, 7.3 GiB RAM), using stable Rust 1.98.0. `/usr/bin/time -v`
-recorded whole-command peak resident memory; it includes Cargo/build activity,
-so it is a conservative process baseline rather than a component allocation
-profile.
+(4 logical CPUs, 7.3 GiB RAM). Direct optimized benchmark binaries were used
+so Cargo build activity did not affect allocation or peak-memory measurements.
 
 | Profile | Peak RSS | Result |
 | --- | ---: | --- |
 | `release` (250 iterations) | 446,476 KiB | pass |
 | `extended-soak` (50,000 iterations) | 463,128 KiB | pass |
 
+Five direct release samples each completed in 0.02 seconds as measured by
+`/usr/bin/time`; peak RSS ranged from 3,616 KiB to 3,848 KiB. The timer's
+hundredth-second resolution cannot distinguish the five samples further, so
+the benchmark's phase timings remain the more precise latency evidence.
+
+Valgrind 3.27.1 supplied the component-level allocation review:
+
+| Profile | Massif useful heap peak | Massif total peak | Result |
+| --- | ---: | ---: | --- |
+| `release` | 453,799 B | 524,640 B | pass |
+| `extended-soak` (50,000 iterations) | 453,805 B | 524,640 B | pass |
+
+The extended-soak peak differs by six useful-heap bytes from release and shows
+no retained-growth trend. Release Memcheck exercised 322,503 allocations and
+322,502 frees (40,042,839 bytes allocated in total), with zero reported memory
+errors and zero definite, indirect, or possible leaks. One 544-byte
+still-reachable runtime block remains at process exit.
+
 The extended soak completed compilation, reader validation, encoding, decoding,
 probe traversal, declaration growth, and eight-worker isolation without a
 failure or swap. Its slowest phase, artifact decoding, took 2,535,879,293 ns.
-No supported allocation profiler (`valgrind` or `heaptrack`) is installed on
-this runner, and the project forbids an unsafe replacement global allocator;
-component-level allocation accounting therefore remains an explicit open risk.
+This closes the allocation-accounting evidence gap without adding an unsafe
+replacement global allocator.

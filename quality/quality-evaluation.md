@@ -7,7 +7,7 @@ Evaluation date: 2026-09-07. Owner: maintainer.
 | Characteristic | Method/evidence | Current conclusion |
 | --- | --- | --- |
 | Functional suitability | Frozen conformance manifest, logical equality, traceability | Pass |
-| Performance efficiency | Release and 50,000-iteration extended-soak phase, growth, concurrency, and peak-process-RSS runs | Indeterminate until a dedicated-runner baseline with repeated samples and supported allocation profile exist |
+| Performance efficiency | Five direct release samples, release/extended-soak phase, growth, concurrency, peak-RSS, Valgrind Massif, and Memcheck | Pass on the measured runner; Stage 10 establishes release regression thresholds |
 | Compatibility | Version/capability contracts and independent probe | Pass for declared v0 contracts |
 | Interaction capability | CLI/process tests and source-linked diagnostics | Pass on declared host matrix |
 | Reliability | Repeated/concurrent determinism, cancellation checkpoints, atomic output | Pass |

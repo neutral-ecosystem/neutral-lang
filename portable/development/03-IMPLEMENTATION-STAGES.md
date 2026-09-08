@@ -620,9 +620,9 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 - [x] Complete cache poisoning/cross-request/stale-source-fact review.
 - [x] Close the focused exact-number mutation subset: 34 caught, 3 unviable,
       and no missed mutants.
-- [ ] Complete controlled phase/end-to-end performance, growth, memory,
+- [x] Complete controlled phase/end-to-end performance, growth, memory,
       concurrency, stress, and soak profiles.
-- [ ] Complete coverage, mutation, static work-product reviews, threat model, and
+- [x] Complete coverage, mutation, static work-product reviews, threat model, and
       quality evaluation defined in [04-TESTING.md](04-TESTING.md).
 
 #### Remaining Stage 9 evidence
@@ -632,8 +632,8 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
       sanitizer finding.
 - [x] Record controlled release and 50,000-iteration extended-soak baselines,
       including whole-command peak RSS.
-- [ ] Obtain component-level allocation evidence, or approve and record a
-      measurement exception consistent with the no-unsafe policy.
+- [x] Obtain component-level allocation evidence using Valgrind Massif and
+      Memcheck on the release and 50,000-iteration extended-soak profiles.
 - [x] Pass the configured whole-workspace coverage gate: 90.57% lines,
       90.71% functions, and 81.72% regions against 85%/90%/80% thresholds.
 - [x] Close the broader selected mutation review: 244 caught, 27 unviable,
@@ -644,400 +644,345 @@ it. It does not parse record, list, reuse, reference, or vocabulary productions.
 - [x] No known input causes unbounded work, panic, stack exhaustion, invalid
       typed IR, stale source facts, cross-request leakage, or partial success.
 - [x] Determinism holds under repeated/concurrent/adversarial execution.
-- [ ] All approved quality gates and residual-risk reviews pass.
+- [x] All approved quality gates and residual-risk reviews pass.
 
 ---
 
-## Stage 10: qualify and release v0
-
-Execute [05-RELEASE.md](05-RELEASE.md).
-
-### Stage 10 — v0 Release Validation
-# v0 Release Engineering & Repository Overhaul
-
-## 1. Repository Structure and Cleanup
-
-* [ ] Review and overhaul the repository structure for clarity, maintainability, and future growth.
-* [ ] Organize crates, tools, scripts, tests, fixtures, documentation, generated files, reports, and release artifacts into clearly defined locations.
-* [ ] Remove obsolete, deprecated, duplicated, experimental, or stage-specific files that are no longer required.
-* [ ] Remove old test outputs, stale generated results, temporary files, deprecated documentation, and unused fixtures.
-* [ ] Preserve useful historical development logs/evidence only where required for archival purposes.
-* [ ] Ensure archived development evidence is clearly separated from active tests and release validation.
-* [ ] Ensure tests never depend directly on archived or mutable development artifacts.
-* [ ] Where historical/portable artifacts are needed for testing, copy or convert them into stable test fixtures owned by the test suite.
-* [ ] Review the repository from the perspective of a new contributor cloning it for the first time.
-* [ ] Ensure there are no hidden assumptions about local files, manually created directories, environment variables, tools, or developer-specific state.
-* [ ] Review and correct `.gitignore`.
-* [ ] Ensure generated files, build outputs, coverage data, fuzz artifacts, temporary files, IDE files, local environment files, and release outputs are ignored appropriately.
-* [ ] Ensure required fixtures, lock files, manifests, schemas, contracts, and reproducibility-critical files are not accidentally ignored.
-
----
-
-## 2. Development Environment
-
-* [ ] Define all tools and dependencies required for development in a documented development-environment specification.
-* [ ] Provide a single development-environment setup command/script.
-* [ ] The setup process should install or verify:
-
-  * Rust toolchain and required components.
-  * Formatting tools.
-  * Linting tools.
-  * Testing tools.
-  * Coverage tooling.
-  * Fuzzing tooling.
-  * Benchmark/performance tooling.
-  * Packaging/release tooling.
-  * Validation/probe tooling.
-  * Any external utilities required by scripts or tests.
-* [ ] Clearly separate runtime dependencies from development-only dependencies.
-* [ ] Pin or constrain tool versions where reproducibility requires it.
-* [ ] Detect missing tools and provide actionable error messages.
-* [ ] Make environment setup idempotent where practical.
-* [ ] Document the supported development platforms and known platform-specific requirements.
-* [ ] Ensure a clean checkout can be prepared for development using only the documented setup process.
-
----
-
-## 3. Project-Level Developer Commands
-
-* [ ] Simplify common Cargo workflows behind easy-to-remember project-level commands.
-* [ ] Avoid requiring developers to remember long combinations of `cargo` flags, package selections, feature flags, or tool-specific commands.
-* [ ] Provide simple commands for at least:
-
-  * `setup`
-  * `fmt`
-  * `lint`
-  * `check`
-  * `test`
-  * `test-unit`
-  * `test-smoke`
-  * `test-integration`
-  * `test-performance`
-  * `coverage`
-  * `fuzz`
-  * `quality`
-  * `build`
-  * `validate`
-  * `package`
-  * `release`
-  * `clean`
-* [ ] Commands should work from the repository root.
-* [ ] Commands should fail fast with clear diagnostics.
-* [ ] Commands should compose existing project tooling rather than duplicating logic.
-* [ ] CI must invoke the same project-level commands used by developers locally.
-* [ ] Remove obsolete `stageX`, stage-numbered, or stage-dependent developer commands.
-* [ ] Replace stage-specific command logic with stable Neutral project commands.
-* [ ] Future development stages must extend existing commands rather than introduce parallel release/test systems.
-
----
-
-## 4. Automation Scripts
-
-* [ ] Create a clear `scripts/` hierarchy grouped by responsibility.
-* [ ] Separate platform-specific automation from platform-neutral project automation.
-* [ ] Provide a structure that can grow cleanly, for example:
-
-```text
-scripts/
-── linux/
-      ├── dev/
-      ├── test/
-      ├── quality/
-      ├── release/
-      ├── tooling/
-      └── platform/
-
-```
-
-* [ ] Design the structure so future Windows and macOS automation can be added without reorganizing existing scripts.
-* [ ] Avoid embedding large shell scripts directly inside CI configuration.
-* [ ] Reuse scripts between local development and CI where practical.
-* [ ] Document the responsibility and expected inputs/outputs of non-trivial scripts.
-
----
-
-## 5. Testing Strategy
-
-* [ ] Keep unit testing as the lowest-level test layer.
-* [ ] Add a clearly defined smoke-test suite.
-* [ ] Add a clearly defined integration-test suite.
-* [ ] Add performance/regression testing.
-* [ ] Clearly document what belongs in each test category.
-* [ ] Ensure test categories can be run independently.
-* [ ] Ensure the complete test suite can also be executed with one command.
-* [ ] Ensure tests use controlled fixtures rather than mutable release/archive files.
-* [ ] Review existing tests and remove obsolete, duplicated, brittle, or implementation-detail-heavy tests.
-* [ ] Ensure tests verify behavior and contracts rather than incidental repository layout where possible.
-* [ ] Ensure explicitly unsupported or forbidden behavior has negative tests proving it remains rejected.
-* [ ] Ensure regression tests exist for previously discovered release-critical defects.
-* [ ] Ensure tests are deterministic where practical.
-
----
-
-## 6. Coverage
-
-* [ ] Replace or improve the current coverage workflow with a reliable and portable coverage tool.
-* [ ] Make coverage tooling installable through the documented development-environment setup.
-* [ ] Provide one simple project-level coverage command.
-* [ ] Generate human-readable coverage reports.
-* [ ] Generate machine-readable coverage output where useful for CI.
-* [ ] Store generated coverage reports in a clearly defined repository-local report directory.
-* [ ] Keep generated coverage output out of version control unless a specific release-evidence file is intentionally retained.
-* [ ] Make coverage collection work consistently across supported development and CI environments.
-* [ ] Document coverage exclusions.
-* [ ] Avoid misleading coverage numbers caused by generated code, fixtures, test helpers, or intentionally unreachable compatibility code.
-* [ ] Establish reasonable coverage gates for release-critical components where appropriate.
-
----
-
-## 7. Fuzzing and Quality Tooling
-
-* [ ] Review and improve the fuzzing strategy.
-* [ ] Make fuzz tooling installable through the normal development-environment setup.
-* [ ] Provide one simple fuzz command.
-* [ ] Clearly separate fuzz targets by subsystem.
-* [ ] Preserve minimized regression inputs discovered by fuzzing as deterministic test fixtures where appropriate.
-* [ ] Keep temporary fuzz corpora, crashes, and generated artifacts organized and ignored correctly.
-* [ ] Add broader automated quality checks where appropriate.
-* [ ] Create a unified `quality` command that can execute the required formatting, linting, static checks, tests, and other quality gates.
-* [ ] Avoid introducing quality tools that duplicate existing checks without providing meaningful additional coverage.
-
----
-
-## 8. Warnings and Static Quality
-
-* [ ] Fix all existing compiler warnings.
-* [ ] Fix warnings emitted by project tooling, tests, examples, benchmarks, and build scripts.
-* [ ] Remove deprecated API usage where practical.
-* [ ] Remove dead code unless explicitly justified.
-* [ ] Review unnecessary `allow` attributes and warning suppressions.
-* [ ] Any remaining suppression must have a clear documented reason.
-* [ ] Configure CI so new release-relevant warnings cannot silently accumulate.
-* [ ] Ensure the release candidate builds cleanly without unexpected warnings.
-
----
-
-## 9. Versioning
-
-* [ ] Centralize the project version in one authoritative source of truth.
-* [ ] Changing a release version, for example `v0.1.0` → `v0.1.1`, must require editing only that authoritative source.
-* [ ] Individual crates, packages, manifests, generated metadata, documentation, and release records must not require manual version synchronization.
-* [ ] Define clearly which version values are authoritative and which are generated.
-* [ ] Generate derived version metadata deterministically.
-* [ ] Add validation that detects manually edited or stale generated version information.
-* [ ] Ensure version propagation works correctly across the entire workspace.
-* [ ] Ensure development, pre-release, and release versions follow one documented policy.
-* [ ] No hardcoded value inline
-
----
-
-## 10. Locking and Generated Metadata
-
-* [ ] Overhaul the current lock system.
-* [ ] Eliminate workflows that require manually editing lock versions, hashes, SHAs, or generated identifiers.
-* [ ] Define a single authoritative source for lock metadata.
-* [ ] Automatically regenerate derived lock information when its source changes.
-* [ ] Validate lock consistency automatically.
-* [ ] Fail clearly when generated lock information is stale.
-* [ ] Ensure generated lock files are deterministic.
-* [ ] Ensure lock generation does not depend on undocumented local machine state.
-* [ ] Document exactly when lock information should change and why.
-* [ ] Avoid coupling unrelated components through shared manually maintained hashes or version values.
-
----
-
-## 11. Generated Files
-
-* [ ] Identify every generated file in the repository.
-* [ ] Document the source of truth for each generated file.
-* [ ] Provide commands to regenerate generated files.
-* [ ] Generated files must be reproducible from their authoritative inputs.
-* [ ] Add validation that detects stale generated files.
-* [ ] Avoid manually editing generated files.
-* [ ] Clearly mark generated files where appropriate.
-* [ ] Ensure generated data does not introduce unnecessary diffs between machines.
-* [ ] Keep release-only generated artifacts separate from source-controlled generated metadata.
-
----
-
-## 12. Release Workflow
-
-* [ ] Define one documented release workflow for the entire v0 project.
-* [ ] The complete v0 release must be buildable, testable, validatable, and packageable through that workflow.
-* [ ] Provide a single high-level release/update command.
-* [ ] The release command should orchestrate, as appropriate:
-
-  * Version propagation.
-  * Metadata generation.
-  * Lock regeneration.
-  * Formatting checks.
-  * Linting.
-  * Unit tests.
-  * Smoke tests.
-  * Integration tests.
-  * Performance/regression checks.
-  * Coverage checks.
-  * Fuzz/quality gates where required.
-  * Build.
-  * Independent validation.
-  * Packaging.
-  * Release evidence generation.
-* [ ] Repetitive release tasks must be automated wherever practical.
-* [ ] Avoid manual edits across multiple files during release preparation.
-* [ ] Release preparation must fail when generated metadata is stale or inconsistent.
-* [ ] Release preparation must fail when required validation is incomplete.
-* [ ] A clean checkout must be able to reproduce the release using only documented commands.
-* [ ] The release must not depend on undocumented developer-local state.
-
----
-
-## 13. Release Artifacts and Reports
-
-* [ ] Define exactly which artifacts constitute a valid release.
-* [ ] Generate all required release artifacts automatically.
-* [ ] Store release outputs in a predictable location.
-* [ ] Separate temporary build output from retained release artifacts.
-* [ ] Generate a release validation report automatically where practical.
-* [ ] Retain required validation evidence.
-* [ ] Retained evidence should include enough information to reproduce or audit the release.
-* [ ] Ensure reports capture failures clearly rather than silently producing incomplete evidence.
-* [ ] Avoid retaining unnecessary transient test output as permanent release evidence.
-
----
-
-## 14. Independent Validation
-
-* [ ] Independent probe validation passes against the actual release candidate.
-* [ ] Probe validation must not accidentally use workspace-only state unavailable to downstream users.
-* [ ] Validate the packaged/released output rather than only the development workspace where applicable.
-* [ ] Ensure probe tooling is clearly separated from the implementation being validated.
-* [ ] Record the exact probe version used for the release.
-* [ ] Record the exact inputs and compatibility contracts used by the probe.
-* [ ] Retain the required independent-validation evidence.
-
----
-
-## 15. Contracts and Compatibility Boundaries
-
-* [ ] Record the exact versions of every release-relevant independent contract.
-* [ ] This includes, where applicable:
-
-  * File formats.
-  * Schemas.
-  * Encoding contracts.
-  * Protocol versions.
-  * Vocabulary versions.
-  * IR contracts.
-  * CLI compatibility guarantees.
-  * Package interfaces.
-  * Probe interfaces.
-  * External tool requirements.
-* [ ] Avoid relying on implicit compatibility assumptions.
-* [ ] Ensure contract/version information can be generated or validated automatically where possible.
-* [ ] Document compatibility guarantees for the v0 release.
-* [ ] Document explicitly unsupported compatibility scenarios.
-
----
-
-## 16. Negative and Exclusion Validation
-
-* [ ] All explicitly excluded behavior remains rejected.
-* [ ] All unsupported behavior remains rejected.
-* [ ] All forbidden syntax, formats, contracts, or compatibility paths remain rejected.
-* [ ] Add automated tests for release-critical exclusions.
-* [ ] Ensure cleanup/refactoring does not accidentally re-enable deprecated behavior.
-* [ ] Record deliberate exclusions in the release documentation.
-
----
-
-## 17. CI/CD Alignment
-
-* [ ] CI uses the same formatting command used locally.
-* [ ] CI uses the same lint command used locally.
-* [ ] CI uses the same test commands used locally.
-* [ ] CI uses the same validation commands used locally.
-* [ ] CI uses the same build/package commands used locally.
-* [ ] Avoid maintaining a second implementation of the release process inside CI configuration.
-* [ ] Keep CI orchestration thin and move reusable logic into project-owned commands/scripts.
-* [ ] Ensure a CI failure can be reproduced locally using the same command.
-* [ ] Ensure CI starts from a sufficiently clean environment to detect missing dependencies and hidden local assumptions.
-
----
-
-## 18. Contributor Experience
-
-* [ ] A new contributor should be able to clone the repository and understand how to build it without studying internal stage history.
-* [ ] Provide a short, obvious getting-started path.
-* [ ] Document:
-
-  * Environment setup.
-  * Build.
-  * Test.
-  * Quality checks.
-  * Coverage.
-  * Fuzzing.
-  * Validation.
-  * Packaging.
-  * Release preparation.
-* [ ] Prefer a small set of stable commands over many specialized scripts.
-* [ ] Ensure command names remain stable as the project grows.
-* [ ] Avoid exposing internal implementation/stage terminology in normal developer workflows.
-* [ ] Ensure failures explain what the contributor needs to fix rather than assuming project knowledge.
-
----
-
-## 19. Future Development Maintainability
-
-* [ ] Future stages must be able to extend the repository without modifying unrelated components.
-* [ ] Avoid duplicated release logic between crates or future products.
-* [ ] Keep platform-specific functionality isolated behind appropriate boundaries.
-* [ ] Keep testing infrastructure reusable across future crates and components.
-* [ ] Keep release/versioning logic centralized.
-* [ ] Keep generated metadata logic centralized.
-* [ ] Avoid architecture that requires manually synchronizing files across multiple crates.
-* [ ] Make adding new crates, vocabularies, packages, probes, or platform integrations straightforward.
-* [ ] Ensure future Windows/macOS support can reuse the same project-level development and release model.
-
----
-
-# Final v0 Release Gate
-
-The v0 release is approved only when all of the following are true:
-
-* [ ] All previous stage gates pass from a clean release-candidate build.
-* [ ] Repository structure and cleanup requirements pass.
-* [ ] All required development tools can be installed or verified through the documented environment setup.
-* [ ] All compiler, test, build, and release-relevant warnings are resolved or explicitly justified.
-* [ ] Unit tests pass.
-* [ ] Smoke tests pass.
-* [ ] Integration tests pass.
-* [ ] Required performance/regression tests pass.
-* [ ] Required coverage gates pass.
-* [ ] Required fuzzing/quality gates pass.
-* [ ] All explicitly unsupported, excluded, deprecated, or forbidden behavior remains rejected.
-* [ ] Generated files are current and reproducible.
-* [ ] Version metadata is consistent across the entire project.
-* [ ] Lock metadata is current, automated, and reproducible.
-* [ ] The release can be reproduced from a clean checkout.
-* [ ] CI and local development use the same validation/build workflow.
-* [ ] The complete v0 release can be built, tested, validated, and packaged through the documented release command.
-* [ ] All required release artifacts are generated successfully.
-* [ ] All required validation evidence is retained.
-* [ ] Independent probe validation passes against the release candidate.
-* [ ] Exact versions of all independent contracts, schemas, protocols, tools, and compatibility boundaries are recorded.
-* [ ] The release record documents:
-
-  * Known limitations.
-  * Residual risks.
-  * Explicit exclusions.
-  * Compatibility guarantees.
-  * Unsupported behavior.
-  * Deferred work.
-* [ ] No known release-blocking issue remains unresolved.
-* [ ] A new user can clone, set up, build, test, and validate the project using only documented commands.
-* [ ] A future patch release such as `v0.1.0` → `v0.1.1` requires changing the version in one authoritative location and running one release/update command.
-* [ ] Future development does not require reintroducing stage-specific commands, duplicated release logic, or manual cross-repository metadata synchronization.
-
-#### Stage Gate
-
-Stage 10 passes only when the project can be reproduced from a clean checkout, validated through the standard automated workflow, released with centralized version management, and extended in future versions without relying on repetitive manual project-wide edits.
+## Stage 10: overhaul the workflow, then qualify and release v0
+
+This stage first replaces the manual project workflow with a durable operating
+model, then uses that model to qualify v0. Its release contract, artifact list,
+approval roles, and exit condition are in
+[05-RELEASE.md](05-RELEASE.md). This checklist owns the practical order of
+work for this repository; it must not add language features or weaken the
+frozen v0 contracts.
+
+### Step 1: approve Stage 9 and create an identified release candidate
+
+- [ ] The maintainer approves the completed
+      [Stage 9 residual-risk record](../../quality/residual-risks.md).
+- [ ] Start from a clean, reviewed commit on `main`; record its full Git ID,
+      `Cargo.lock` digest, `rust-toolchain.toml` contents, and fixture-manifest
+      digest in the release evidence.
+- [ ] Reconfirm the contract-freeze manifest and every governing language, IR,
+      vocabulary, external-encoding, digest, diagnostic, and limits revision.
+- [ ] Decide the v0 distribution scope before changing version metadata:
+      source-only tag, GitHub binary assets, crates.io packages, or an explicit
+      combination. No publishing target is assumed implicitly.
+- [ ] Create an annotated candidate tag only after the candidate identity and
+      distribution scope are recorded.
+
+#### Step validation
+
+- [ ] The candidate can be identified from its source, dependency, toolchain,
+      fixture, and contract identities without local state.
+- [ ] No Stage 9 technical evidence gap or unapproved residual risk remains.
+
+### Step 2: implement the stable repository structure and command interface
+
+This step replaces the current manual/stage-dependent workflow. It is an
+implementation task, not a documentation-only audit.
+
+- [ ] Make `xtask` the one platform-neutral project command interface. Its
+      public commands must be stable and stage-free: `fmt`, `lint`, `check`,
+      `test`, `coverage`, `fuzz`, `quality`, `build`, `validate`, `package`,
+      `release`, `version`, `portable`, and `clean`.
+- [ ] Define subcommands only where they express a durable user purpose, for
+      example `test unit|smoke|integration|system|conformance|security`,
+      `test performance --profile pr|release|soak`, `fuzz smoke|campaign`,
+      and `build --profile dev|release`. Do not expose `stage1`, `stage9`, or
+      other implementation-stage command names to normal users.
+- [ ] Implement `cargo xtask quality` as the documented composition of format,
+      lint, check, boundary/traceability checks, tests, and configured quality
+      gates. Each component must also remain runnable independently.
+- [ ] Implement `cargo xtask validate` for the released CLI/probe artifact
+      checks, `cargo xtask package` for selected distribution assembly and
+      inspection, and `cargo xtask release` for release preparation. They must
+      fail closed when the distribution scope or required evidence is absent.
+- [ ] Replace handwritten multi-command release instructions with those
+      commands. CI may choose a profile, but it must invoke the same public
+      `xtask` commands rather than reproduce their logic in YAML.
+- [ ] Keep platform-specific setup and host integration as thin adapters under
+      this exact structure:
+
+      ```text
+      scripts/
+      ├── README.md
+      ├── linux/
+      │   ├── README.md
+      │   ├── bootstrap.sh
+      │   ├── environment.sh
+      │   └── release.sh
+      └── win/
+          ├── README.md
+          ├── bootstrap.ps1
+          ├── environment.ps1
+          └── release.ps1
+      ```
+
+      Platform scripts may install/verify host tools and invoke `cargo xtask`,
+      but must not implement compiler, test, quality, packaging, or release
+      policy themselves.
+- [ ] Move or remove obsolete scripts, duplicate command wrappers, legacy
+      stage-named command paths, and manually maintained release metadata only
+      after their replacement command is tested. Preserve a short migration
+      table in the root documentation.
+- [ ] Add a README to every retained script directory stating its ecosystem
+      role, ownership, inputs, outputs, supported host, and the `xtask`
+      command it delegates to.
+
+The required migration target is:
+
+| Purpose | Stable user entry point | Policy owner |
+| --- | --- | --- |
+| Host setup | `scripts/linux/bootstrap.sh` or `scripts/win/bootstrap.ps1` | platform adapter |
+| Format | `cargo xtask fmt [--write]` | `xtask` |
+| Lint/check | `cargo xtask lint`, `cargo xtask check` | `xtask` |
+| Tests | `cargo xtask test <level>` | `xtask` |
+| Performance | `cargo xtask test performance --profile <profile>` | `xtask` |
+| Coverage | `RUSTUP_TOOLCHAIN=nightly cargo xtask coverage` | `xtask` |
+| Fuzzing | `RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz <mode>` | `xtask` |
+| Quality | `cargo xtask quality [--profile <profile>]` | `xtask` |
+| Build | `cargo xtask build --profile <profile>` | `xtask` |
+| Artifact validation | `cargo xtask validate <artifact>` | `xtask` |
+| Package/release preparation | `cargo xtask package`, `cargo xtask release prepare` | `xtask` |
+| Version inspection/update | `cargo xtask version show|check|prepare <version>` | `xtask` |
+| Portable lifecycle | `cargo xtask portable verify|snapshot` | `xtask` |
+| Generated evidence cleanup | `cargo xtask clean` | `xtask` |
+
+`cargo xtask ci pr` and `cargo xtask ci release` may remain internal CI
+profiles during the migration, but they must call the stable commands above and
+must not become a second user-facing command system.
+
+#### Step validation
+
+- [ ] A new contributor needs one platform bootstrap command followed by the
+      stable `cargo xtask` commands; no long Cargo flag sequence is required.
+- [ ] `ci.yml` and `release.yml` are thin trigger/checkout/toolchain wrappers
+      around the same stable commands used locally.
+- [ ] Removing a stage from the planning documents does not change a normal
+      developer or release command name.
+- [ ] The command help, root README, platform-script READMEs, and CI examples
+      all expose the same command names and argument shapes.
+
+### Step 3: centralize versioning, generated metadata, and portable lifecycle
+
+- [ ] Retain `[workspace.package].version` in the root `Cargo.toml` as the
+      single authoritative package-release version. Every workspace package
+      must use `version.workspace = true`; no crate manifest, script, workflow,
+      documentation badge, package filename, or release record may become a
+      second manually synchronized package-version source.
+- [ ] Keep the package-release version explicitly separate from frozen language
+      behavior, logical-IR schema, vocabulary, external-encoding, digest, and
+      fixture contract versions. The version tool must display all domains and
+      reject an attempted package bump that silently changes a normative
+      contract, or a contract bump that lacks its required freeze decision.
+- [ ] Implement `cargo xtask version show`, `check`, and `prepare <version>`.
+      `prepare` must make only reviewed, deterministic derived updates, emit a
+      machine-readable change plan, reject invalid SemVer/channel transitions,
+      and never create a tag, publish, or alter frozen contracts.
+- [ ] Make `Cargo.lock` the sole resolved dependency lock. Add automated
+      locked metadata/build checks, dependency/license/advisory review, and a
+      clear failure when the lock or its declared source policy is stale.
+- [ ] Inventory generated outputs and assign each one an owner, source of
+      truth, regeneration command, validation command, and tracking policy.
+      Rustdoc, coverage, fuzz, mutation, benchmark, package, SBOM, and release
+      reports belong under ignored generated-result roots; they are never
+      hand-edited or committed accidentally.
+- [ ] Distinguish immutable normative digests in freeze/fixture manifests from
+      generated lock metadata. A command may verify or propose a contract-digest
+      update, but changing it requires the governing freeze/change-control
+      review and cannot be an automatic version-bump side effect.
+- [ ] Define `portable/` as the active, version-scoped execution package: it
+      contains the current version's plan, contracts, fixtures, decisions, and
+      progress records. Production crates and executable tests must never depend
+      on archived portable material.
+- [ ] Implement `cargo xtask portable verify` to check active portable links,
+      fixture ownership, manifest registration, version identity, and absence
+      of test dependencies on archived/mutable roadmap material.
+- [ ] Implement `cargo xtask portable snapshot` to create a deterministic,
+      digest-identified archive candidate and migration report without writing
+      to another repository. The maintainer then lands that reviewed snapshot
+      in the neutral-roadmap version archive as a separate immutable commit.
+- [ ] Define the rollover procedure: after v0 release evidence is immutable,
+      archive the v0 portable snapshot in the roadmap repository, replace this
+      repository's active `portable/` package with the reviewed v1 portable
+      template from the roadmap, update active links/manifests, and retain a
+      local redirect/identity record rather than silently mixing v0 and v1
+      planning files.
+- [ ] Document and test the archive boundary: historical portable plans are
+      readable evidence, not mutable fixtures, build inputs, or CI dependencies.
+
+#### Step validation
+
+- [ ] Changing a package release version requires one `Cargo.toml` edit plus
+      `cargo xtask version prepare`, and `cargo xtask version check` detects
+      every stale derived value.
+- [ ] Frozen contract versions and fixture digests remain unchanged by ordinary
+      package releases and fail verification if changed without review.
+- [ ] A portable snapshot can be verified from its manifest/digests, and a v1
+      rollover cannot make v0 tests, links, or release records ambiguous.
+
+### Step 4: standardize repository ownership, tests, quality, and contributor flow
+
+- [ ] Publish a root repository map that assigns ownership and lifecycle to
+      `crates/`, `portable/`, `quality/`, `config/`, `scripts/`, `fuzz/`,
+      `test-results/`, and release-output roots. Every retained top-level and
+      script directory needs a concise README describing its ecosystem role.
+- [ ] Move, remove, or archive obsolete/duplicate experiments, generated
+      outputs, superseded fixtures, and manual release files only after a
+      replacement owner and verification command exist. Do not delete frozen
+      evidence or mutable user work through an automated cleanup command.
+- [ ] Make test levels durable and independently runnable: crate-local unit,
+      package smoke, cross-package integration/system, conformance fixture,
+      property/metamorphic, security/adversarial, fuzz regression, and
+      performance/soak. The complete suite must compose them without relying
+      on stage history or archived portable files.
+- [ ] Keep production sources free of inline test bodies; test-only behavior is
+      owned by the crate's `tests/` directory, and fixtures remain grouped by
+      positive/negative feature ownership with immutable oracle manifests.
+- [ ] Make coverage a documented nightly-only command with both human-readable
+      HTML and machine-readable output under ignored `test-results/analysis/`.
+      Keep the 85%/90%/80% configured gates and document any future exclusion
+      as an explicit reviewed policy rather than an ad-hoc tool filter.
+- [ ] Make fuzz targets subsystem-owned (`source`, `vocabulary`, `ir`,
+      `formatter`, `probe`), preserve minimized findings as deterministic
+      regressions when relevant, and keep corpora/crashes/coverage artifacts
+      ignored and separate from normative fixtures.
+- [ ] Enforce a warning-free release candidate across libraries, binaries,
+      tests, examples, benches, manifests, build scripts, and documentation.
+      Remove stale suppressions or document a narrow reason next to each one;
+      CI must fail new release-relevant warnings.
+- [ ] Make the root README a new-contributor path: bootstrap, command map,
+      supported hosts, normal build/test/quality flow, coverage/fuzz setup,
+      artifact validation, packaging, release preparation, and troubleshooting.
+- [ ] Keep CI orchestration thin: push-to-main and tag/manual triggers select
+      only a stable command/profile; reusable logic, summaries, error policy,
+      and path safety live in `xtask` or the platform adapter.
+
+#### Step validation
+
+- [ ] A clean clone can discover the owner of every directory, run each test
+      level alone, run all quality checks, and find generated evidence without
+      reading previous-stage history.
+- [ ] No generated or archived file is accidentally committed, required as a
+      mutable test input, or silently accepted as a source of truth.
+- [ ] The release candidate emits no unreviewed warning, and any CI failure is
+      reproducible locally through the documented stable command.
+
+### Step 5: reproduce the supported developer and release environment
+
+- [ ] Run the platform bootstrap documented in `scripts/linux/README.md` on a
+      clean supported Linux checkout; record the host image and installed tool
+      versions.
+- [ ] Verify stable Rust, Rustfmt, Clippy, Cargo, LLVM coverage tools, fuzzing
+      tools, mutation tools, Valgrind, and the release shell prerequisites with
+      actionable missing-tool diagnostics.
+- [ ] Recreate the normal stable build/test environment from `Cargo.lock`
+      without modifying tracked files or normative fixtures.
+- [ ] Recreate the isolated nightly LLVM/fuzz environment only for the
+      configured coverage and fuzz commands; it must not replace the stable v0
+      build toolchain.
+- [ ] Audit `.gitignore` so `target/`, `test-results/`, fuzz corpora/crashes,
+      profiling reports, editor state, and local release output are ignored,
+      while contracts, fixtures, lockfiles, scripts, and manifests remain
+      tracked.
+
+#### Step validation
+
+- [ ] A clean checkout reaches `cargo xtask ci pr` using only documented setup.
+- [ ] No release command relies on a user-specific path, ambient artifact,
+      mutable archive, or network lookup for source/vocabulary resolution.
+
+### Step 6: qualify the exact candidate
+
+- [ ] Run `cargo xtask ci release` from the candidate revision and retain its
+      task summary under ignored release evidence.
+- [ ] Run `RUSTUP_TOOLCHAIN=nightly cargo xtask coverage`; retain the
+      machine-readable report and confirm the configured 85% line, 90%
+      function, and 80% region gates.
+- [ ] Run the configured critical mutation target and the retained broader
+      selected mutation review when production code changed after Stage 9.
+- [ ] Run all five 900-second fuzz campaigns when parser, vocabulary, IR,
+      formatter, decoder, probe, limits, or dependencies changed after Stage 9;
+      otherwise retain the exact Stage 9 corpus/toolchain evidence.
+- [ ] Run the release and extended-soak benchmark profiles. Repeat Valgrind
+      Massif/Memcheck when allocation-affecting production code changed.
+- [ ] Re-run the dependency, package-boundary, test-layout, traceability,
+      licensing, advisory, and static-work-product reviews on the candidate.
+
+#### Step validation
+
+- [ ] All required release commands pass without lowering thresholds, reducing
+      scope, accepting viable mutants, or treating fuzz/profile failures as
+      informational.
+- [ ] The evidence identifies the exact candidate revision and command/tool
+      versions used for every result.
+
+### Step 7: verify consumer-facing deliverables
+
+- [ ] Build release-mode `neutral-cli`, `neutral-probe`, libraries, reference
+      formatter, and workspace documentation from the candidate.
+- [ ] Compile, validate, and format representative positive fixtures through
+      the released CLI boundary; verify negative, cancellation, size-limit,
+      vocabulary-lock, and output-publication failures leave no valid output.
+- [ ] Encode one successful compilation, inspect it with the in-process reader,
+      the probe library, and the standalone `neutral-probe` executable; require
+      equivalent summaries modulo envelope-only metadata.
+- [ ] Confirm the standalone probe's resolved dependency graph contains no
+      compiler, frontend, or host-I/O dependency beyond its reviewed allowlist.
+- [ ] Run public documentation examples and inspect generated Rustdoc from
+      `target/doc/index.html`.
+
+#### Step validation
+
+- [ ] A clean consumer can use explicit source and vocabulary inputs to compile
+      or inspect an artifact without private compiler models, workspace caches,
+      or ambient lookup.
+- [ ] The published CLI, reader, encoding, and probe boundaries match the
+      frozen v0 API, diagnostic, compatibility, and exclusion contracts.
+
+### Step 8: assemble only the declared distribution artifacts
+
+- [ ] Produce a release manifest listing each selected artifact, exact filename,
+      SHA-256 digest, license/notices, producer version, source commit, and
+      intended distribution channel.
+- [ ] If publishing Cargo packages is selected, run `cargo package --locked`
+      for each public package, inspect package contents, and test each packaged
+      artifact in a clean consumer directory before upload.
+- [ ] If GitHub binary assets are selected, build only the documented supported
+      target matrix and publish checksums plus installation/verification steps.
+- [ ] Generate the SBOM/dependency manifest and build provenance required by
+      [05-RELEASE.md](05-RELEASE.md); record known limitations, explicit v0
+      exclusions, supported hosts, and deferred work.
+- [ ] Keep transient coverage, mutation, fuzz, profiler, and build outputs out
+      of the release artifact set; retain only the evidence required to audit
+      qualification.
+
+#### Step validation
+
+- [ ] Every shipped file is intentional, license-complete, digest-identified,
+      reproducible from the candidate, and verified as the packaged form rather
+      than merely as a workspace build.
+
+### Step 9: record approvals and publish
+
+- [ ] Complete the technical, test/quality, security, release, and standards
+      approval entries in [05-RELEASE.md](05-RELEASE.md). When the sole
+      maintainer fills multiple roles, record that staffing exception and its
+      compensating review honestly.
+- [ ] Confirm the tag-triggered release workflow uses the same `cargo xtask ci
+      release` command as local qualification and has no credentials available
+      to pull-request execution.
+- [ ] Publish only after all selected artifacts, evidence, and approvals pass;
+      then record immutable release URLs and artifact digests.
+- [ ] Archive the completed v0 portable plan and evidence according to the
+      roadmap policy before initializing the v1 portable plan.
+
+#### Stage 10 validation
+
+- [ ] A clean checkout can reproduce every selected artifact and its validation
+      evidence using documented commands.
+- [ ] Every release artifact passes standalone consumer/probe verification.
+- [ ] No unapproved residual risk, version/contract mismatch, missing license,
+      mutable fixture, or release-blocking issue remains.

@@ -3,7 +3,7 @@
 # Static work-product review
 
 Review date: 2026-09-08. Owner/reviewer: sole maintainer. Independence: not
-claimed. Result: pass; only the performance/allocation evidence remains open.
+claimed. Result: pass with the sole-maintainer review limitation recorded.
 
 Reviewed work products include accepted requirements and syntax inventories,
 contract decisions, fixture/oracle manifest, grouped fixtures, public APIs,
@@ -29,5 +29,8 @@ Findings resolved during Stage 9:
   27 unviable, with no missed viable mutant.
 - The configured all-target coverage gate now passes at 90.57% lines, 90.71%
   functions, and 81.72% regions without a reduced threshold or scope.
+- Valgrind Massif and Memcheck now cover the direct benchmark executable.
+  Release and 50,000-iteration extended-soak profiles have the same 524,640 B
+  Massif total peak; Memcheck reports no memory errors or leak classes.
 
 No unresolved normative contradiction or unsafe/native build surface was found.
