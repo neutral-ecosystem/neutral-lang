@@ -27,5 +27,8 @@ numbered lifecycle gates without becoming normative language specifications.
 - [Stage 10 candidate qualification record](stage10-candidate-qualification.md)
   records the exact `main` revision, release CI, coverage, campaign
   applicability, benchmarks, candidate reviews, and tool identities for Step 6.
+- [Stage 10 consumer-deliverable record](stage10-consumer-deliverables.md)
+  records release builds, CLI fail-closed behavior, reader/probe equivalence,
+  clean-consumer execution, dependency isolation, and Rustdoc inspection.
 
 New evidence belongs here only when no numbered lifecycle document owns it.

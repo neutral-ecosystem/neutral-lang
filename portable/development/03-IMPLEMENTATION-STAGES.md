@@ -923,25 +923,25 @@ must not become a second user-facing command system.
 
 ### Step 7: verify consumer-facing deliverables
 
-- [ ] Build release-mode `neutral-cli`, `neutral-probe`, libraries, reference
+- [x] Build release-mode `neutral-cli`, `neutral-probe`, libraries, reference
       formatter, and workspace documentation from the candidate.
-- [ ] Compile, validate, and format representative positive fixtures through
+- [x] Compile, validate, and format representative positive fixtures through
       the released CLI boundary; verify negative, cancellation, size-limit,
       vocabulary-lock, and output-publication failures leave no valid output.
-- [ ] Encode one successful compilation, inspect it with the in-process reader,
+- [x] Encode one successful compilation, inspect it with the in-process reader,
       the probe library, and the standalone `neutral-probe` executable; require
       equivalent summaries modulo envelope-only metadata.
-- [ ] Confirm the standalone probe's resolved dependency graph contains no
+- [x] Confirm the standalone probe's resolved dependency graph contains no
       compiler, frontend, or host-I/O dependency beyond its reviewed allowlist.
-- [ ] Run public documentation examples and inspect generated Rustdoc from
+- [x] Run public documentation examples and inspect generated Rustdoc from
       `target/doc/index.html`.
 
 #### Step validation
 
-- [ ] A clean consumer can use explicit source and vocabulary inputs to compile
+- [x] A clean consumer can use explicit source and vocabulary inputs to compile
       or inspect an artifact without private compiler models, workspace caches,
       or ambient lookup.
-- [ ] The published CLI, reader, encoding, and probe boundaries match the
+- [x] The published CLI, reader, encoding, and probe boundaries match the
       frozen v0 API, diagnostic, compatibility, and exclusion contracts.
 
 ### Step 8: assemble only the declared distribution artifacts

@@ -7,13 +7,13 @@ Status: Stage 10 workflow overhaul in progress.
 ## Current focus
 
 - Stage: Stage 10 workflow overhaul and v0 qualification
-- Status: Steps 1–6 complete; Step 7 is next
+- Status: Steps 1–7 complete; Step 8 is next
 - Last updated: 2026-09-08
 
 ## Next actions
 
-- [ ] Implement Stage 10 Step 7: verify the consumer-facing release
-      deliverables from the exact qualified `main` source revision.
+- [ ] Implement Stage 10 Step 8: assemble and verify only the explicitly
+      selected source-tag and GitHub-binary distribution artifacts.
 
 ## Candidate policy
 
@@ -22,6 +22,16 @@ Status: Stage 10 workflow overhaul in progress.
   qualification and approval gate; it never selects an earlier source revision.
 
 ## Completed log
+
+- [x] 2026-09-08: Completed Stage 10, Step 7 from clean `main` revision
+  `088541693a9382bd1d00abd3ce32437ed496ed7e`. Built every release deliverable
+  and Rustdoc; passed public documentation tests; exercised positive compile,
+  validation, formatting, and standalone inspection; and proved invalid,
+  cancellation, source-limit, vocabulary-lock, and output-publication paths
+  leave no valid replacement. Copies of only the release CLI/probe ran outside
+  the workspace with explicit source and vocabulary inputs. Reader/probe
+  equivalence and the compiler-free probe dependency closure passed. Evidence
+  is in `development/evidence/stage10-consumer-deliverables.md`.
 
 - [x] 2026-09-08: Completed Stage 10, Step 6 against clean `main` revision
   `47633a635deafa6d56260442a02e5aab14ff9441`. Release CI and unchanged
