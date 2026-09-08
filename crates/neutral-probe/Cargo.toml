@@ -1,7 +1,6 @@
 [package]
 name = "neutral-probe"
 description = "Reader-only inspection library and standalone probe for Neutral artifacts"
-readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

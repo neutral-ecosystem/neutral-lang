@@ -7,13 +7,13 @@ Status: Stage 10 workflow overhaul in progress.
 ## Current focus
 
 - Stage: Stage 10 workflow overhaul and v0 qualification
-- Status: Steps 1–3 complete; Step 4 is next
+- Status: Steps 1–4 complete; Step 5 is next
 - Last updated: 2026-09-08
 
 ## Next actions
 
-- [ ] Implement Stage 10 Step 4: standardize repository ownership, test and
-      quality structure, contributor flow, and generated-output hygiene.
+- [ ] Implement Stage 10 Step 5: reproduce the supported stable and isolated
+      nightly environments from documented platform setup.
 
 ## Blockers
 
@@ -22,6 +22,18 @@ Status: Stage 10 workflow overhaul in progress.
   chooses a new version/tag or explicitly replaces that unpublished local tag.
 
 ## Completed log
+
+- [x] 2026-09-08: Completed Stage 10, Step 4. Added an executable top-level
+  ownership/lifecycle inventory and missing directory READMEs; made every
+  durable test level independently runnable across owning crates; enforced
+  generated/archive hygiene, fixture/test layout, subsystem fuzz ownership,
+  and manifest/Rustdoc warning policy; expanded the contributor path; and kept
+  CI as thin stable-command adapters. Nightly coverage now retains HTML and
+  JSON and passes unchanged 85%/90%/80% gates at 93.86% lines, 93.66%
+  functions, and 85.16% regions under the reviewed production scope. Release
+  quality, documentation, all individual test levels, fuzz regression, and the
+  PR performance profile pass. Evidence is in
+  `development/evidence/stage10-repository-quality-overhaul.md`.
 
 - [x] 2026-09-08: Completed Stage 10, Step 3. Root
   `[workspace.package].version` now derives the release tag and every package

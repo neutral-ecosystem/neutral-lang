@@ -4,12 +4,17 @@
 # produced retained evidence for the exact candidate under review.
 [coverage]
 tool = "cargo-llvm-cov"
+toolchain = "nightly-only"
+html_output = "test-results/analysis/coverage/html/index.html"
+json_output = "test-results/analysis/coverage/coverage.json"
+exclusion_regex = "(^|/)xtask/"
+exclusion_policy = "reviewed: repository automation is command-tested separately; production coverage excludes only xtask"
 minimum_line_percent = 85
 minimum_function_percent = 90
 minimum_region_percent = 80
-observed_line_percent = 90.57
-observed_function_percent = 90.71
-observed_region_percent = 81.72
+observed_line_percent = 93.86
+observed_function_percent = 93.66
+observed_region_percent = 85.16
 status = "pass"
 
 [mutation]
@@ -23,6 +28,13 @@ status = "pass"
 [fuzz]
 tool = "cargo-fuzz"
 targets = ["source", "vocabulary", "ir", "formatter", "probe"]
+source_owner = "neutral-compiler source capture/frontend"
+vocabulary_owner = "neutral-vocabulary strict bundle decoder"
+ir_owner = "neutral-encoding external artifact decoder"
+formatter_owner = "neutral-compiler reference formatter"
+probe_owner = "neutral-probe reader-only traversal"
+finding_policy = "minimize and promote confirmed findings to deterministic regressions"
+mutable_state = "ignored fuzz/corpus and fuzz/artifacts; never portable fixtures"
 minimum_seconds_per_target = 900
 readiness_runs_per_target = 256
 status = "full-campaign-pass"

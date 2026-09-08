@@ -1,7 +1,6 @@
 [package]
 name = "xtask"
 description = "Developer, CI, and evidence automation for Neutral"
-readme = "README.md"
 publish = false
 version.workspace = true
 edition.workspace = true

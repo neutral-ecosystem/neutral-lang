@@ -826,49 +826,49 @@ must not become a second user-facing command system.
 
 ### Step 4: standardize repository ownership, tests, quality, and contributor flow
 
-- [ ] Publish a root repository map that assigns ownership and lifecycle to
+- [x] Publish a root repository map that assigns ownership and lifecycle to
       `crates/`, `portable/`, `quality/`, `config/`, `scripts/`, `fuzz/`,
       `test-results/`, and release-output roots. Every retained top-level and
       script directory needs a concise README describing its ecosystem role.
-- [ ] Move, remove, or archive obsolete/duplicate experiments, generated
+- [x] Move, remove, or archive obsolete/duplicate experiments, generated
       outputs, superseded fixtures, and manual release files only after a
       replacement owner and verification command exist. Do not delete frozen
       evidence or mutable user work through an automated cleanup command.
-- [ ] Make test levels durable and independently runnable: crate-local unit,
+- [x] Make test levels durable and independently runnable: crate-local unit,
       package smoke, cross-package integration/system, conformance fixture,
       property/metamorphic, security/adversarial, fuzz regression, and
       performance/soak. The complete suite must compose them without relying
       on stage history or archived portable files.
-- [ ] Keep production sources free of inline test bodies; test-only behavior is
+- [x] Keep production sources free of inline test bodies; test-only behavior is
       owned by the crate's `tests/` directory, and fixtures remain grouped by
       positive/negative feature ownership with immutable oracle manifests.
-- [ ] Make coverage a documented nightly-only command with both human-readable
+- [x] Make coverage a documented nightly-only command with both human-readable
       HTML and machine-readable output under ignored `test-results/analysis/`.
       Keep the 85%/90%/80% configured gates and document any future exclusion
       as an explicit reviewed policy rather than an ad-hoc tool filter.
-- [ ] Make fuzz targets subsystem-owned (`source`, `vocabulary`, `ir`,
+- [x] Make fuzz targets subsystem-owned (`source`, `vocabulary`, `ir`,
       `formatter`, `probe`), preserve minimized findings as deterministic
       regressions when relevant, and keep corpora/crashes/coverage artifacts
       ignored and separate from normative fixtures.
-- [ ] Enforce a warning-free release candidate across libraries, binaries,
+- [x] Enforce a warning-free release candidate across libraries, binaries,
       tests, examples, benches, manifests, build scripts, and documentation.
       Remove stale suppressions or document a narrow reason next to each one;
       CI must fail new release-relevant warnings.
-- [ ] Make the root README a new-contributor path: bootstrap, command map,
+- [x] Make the root README a new-contributor path: bootstrap, command map,
       supported hosts, normal build/test/quality flow, coverage/fuzz setup,
       artifact validation, packaging, release preparation, and troubleshooting.
-- [ ] Keep CI orchestration thin: push-to-main and tag/manual triggers select
+- [x] Keep CI orchestration thin: push-to-main and tag/manual triggers select
       only a stable command/profile; reusable logic, summaries, error policy,
       and path safety live in `xtask` or the platform adapter.
 
 #### Step validation
 
-- [ ] A clean clone can discover the owner of every directory, run each test
+- [x] A clean clone can discover the owner of every directory, run each test
       level alone, run all quality checks, and find generated evidence without
       reading previous-stage history.
-- [ ] No generated or archived file is accidentally committed, required as a
+- [x] No generated or archived file is accidentally committed, required as a
       mutable test input, or silently accepted as a source of truth.
-- [ ] The release candidate emits no unreviewed warning, and any CI failure is
+- [x] The release candidate emits no unreviewed warning, and any CI failure is
       reproducible locally through the documented stable command.
 
 ### Step 5: reproduce the supported developer and release environment

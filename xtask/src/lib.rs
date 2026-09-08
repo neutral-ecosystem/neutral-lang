@@ -96,10 +96,14 @@ fn verify_environment() -> Result<(), String> {
         "Cargo.lock",
         "rust-toolchain.toml",
         "config/development-stage.toml",
+        "config/dependency-sources.toml",
+        "config/generated-outputs.toml",
         "config/host-policy.toml",
         "config/ir-encoding.toml",
         "config/quality-gates.toml",
         "config/release.toml",
+        "config/repository-layout.toml",
+        "config/test-levels.toml",
         "config/test-suites.toml",
         "portable/conformance/manifest.toml",
     ] {
@@ -228,6 +232,7 @@ fn check() -> Result<(), String> {
     check_versions()?;
     verify_portable()?;
     check_generated_outputs()?;
+    check_repository_structure()?;
     check_workflow_contract()
 }
 
@@ -330,6 +335,10 @@ fn run_rustdoc() -> Result<(), String> {
     rustdoc_flags.push(constants::RUSTDOC_FLAG_SEPARATOR);
     rustdoc_flags.push_str(header_path);
     rustdoc_flags.push(constants::RUSTDOC_FLAG_SEPARATOR);
+    rustdoc_flags.push_str("-D");
+    rustdoc_flags.push(constants::RUSTDOC_FLAG_SEPARATOR);
+    rustdoc_flags.push_str("warnings");
+    rustdoc_flags.push(constants::RUSTDOC_FLAG_SEPARATOR);
     rustdoc_flags.push_str("--cfg");
     rustdoc_flags.push(constants::RUSTDOC_FLAG_SEPARATOR);
     rustdoc_flags.push_str(&rustdoc_header_configuration());
@@ -396,8 +405,10 @@ fn test_suite(level: TestLevel) -> Result<(), String> {
 fn run_active_test_filter(suite: &str) -> Result<(), String> {
     run_cargo(&[
         "test",
-        "--package",
-        constants::NEUTRAL_TEST_SUITE,
+        "--workspace",
+        "--lib",
+        "--bins",
+        "--tests",
         "--",
         &format!("{suite}_"),
     ])
@@ -432,17 +443,61 @@ fn coverage() -> Result<(), String> {
     let lines = quality_value("coverage", "minimum_line_percent")?;
     let functions = quality_value("coverage", "minimum_function_percent")?;
     let regions = quality_value("coverage", "minimum_region_percent")?;
+    let exclusions = quality_value("coverage", "exclusion_regex")?;
+    let root = result_root()?;
+    let html = root.join(constants::COVERAGE_HTML_DIRECTORY);
+    let html_index = html.join("html/index.html");
+    let json = root.join(constants::COVERAGE_JSON_FILE);
+    fs::create_dir_all(
+        json.parent()
+            .ok_or_else(|| "coverage JSON output has no parent".to_owned())?,
+    )
+    .map_err(|error| format!("could not create coverage result directory: {error}"))?;
+    let html = html
+        .to_str()
+        .ok_or_else(|| "coverage HTML path is not valid UTF-8".to_owned())?;
+    let json = json
+        .to_str()
+        .ok_or_else(|| "coverage JSON path is not valid UTF-8".to_owned())?;
+    run_cargo(&["llvm-cov", "--workspace", "--all-targets", "--no-report"])?;
     run_cargo(&[
         "llvm-cov",
-        "--workspace",
-        "--all-targets",
+        "report",
+        "--html",
+        "--output-dir",
+        html,
+        "--ignore-filename-regex",
+        &exclusions,
         "--fail-under-lines",
         &lines,
         "--fail-under-functions",
         &functions,
         "--fail-under-regions",
         &regions,
-    ])
+    ])?;
+    run_cargo(&[
+        "llvm-cov",
+        "report",
+        "--json",
+        "--summary-only",
+        "--output-path",
+        json,
+        "--ignore-filename-regex",
+        &exclusions,
+        "--fail-under-lines",
+        &lines,
+        "--fail-under-functions",
+        &functions,
+        "--fail-under-regions",
+        &regions,
+    ])?;
+    println!(
+        "{} coverage HTML: {}",
+        constants::INFO,
+        html_index.display()
+    );
+    println!("{} coverage JSON: {json}", constants::INFO);
+    Ok(())
 }
 
 /// Runs mutation analysis for the configured critical production target.
@@ -994,6 +1049,13 @@ fn verify_dependency_lock(root: &Path, package_version: &str) -> Result<(), Stri
         return Err(format!(
             "Cargo.lock is stale or unavailable offline: {}",
             String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if stderr.lines().any(|line| line.contains("warning:")) {
+        return Err(format!(
+            "Cargo metadata emitted a release-relevant warning: {}",
+            stderr.trim()
         ));
     }
     Ok(())
@@ -1568,6 +1630,193 @@ fn check_generated_outputs() -> Result<(), String> {
     }
     println!("{} generated-output ownership: pass", constants::INFO);
     Ok(())
+}
+
+/// Verifies directory ownership, durable test levels, fuzz ownership, and hygiene.
+fn check_repository_structure() -> Result<(), String> {
+    let root = workspace_root()?;
+    let layout = read_workspace_text(&root, constants::REPOSITORY_LAYOUT_FILE)?;
+    let expected = BTreeSet::from([
+        ".cargo".to_owned(),
+        ".devcontainer".to_owned(),
+        ".github".to_owned(),
+        "config".to_owned(),
+        "crates".to_owned(),
+        "fuzz".to_owned(),
+        "portable".to_owned(),
+        "quality".to_owned(),
+        "scripts".to_owned(),
+        "xtask".to_owned(),
+    ]);
+    let mut configured = BTreeSet::new();
+    for entry in layout.split("[[directory]]").skip(1) {
+        let path = configuration_value(entry, "path")
+            .ok_or_else(|| "repository directory has no path".to_owned())?;
+        let readme = configuration_value(entry, "readme")
+            .ok_or_else(|| format!("repository directory {path} has no README"))?;
+        if configuration_value(entry, "owner").is_none()
+            || configuration_value(entry, "lifecycle").is_none()
+            || !root.join(&path).is_dir()
+            || !root.join(&readme).is_file()
+        {
+            return Err(format!(
+                "repository directory {path} has incomplete ownership"
+            ));
+        }
+        let readme_content = read_workspace_text(&root, &readme)?;
+        if !readme_content.starts_with("<!-- SPDX-License-Identifier: Apache-2.0 -->") {
+            return Err(format!(
+                "repository README lacks its license marker: {readme}"
+            ));
+        }
+        configured.insert(path);
+    }
+    if configured != expected {
+        return Err(format!(
+            "repository layout differs from required tracked roots: expected {expected:?}, found {configured:?}"
+        ));
+    }
+    for manifest in workspace_package_manifests(&root)? {
+        let readme = manifest.parent().unwrap_or(&root).join("README.md");
+        if !readme.is_file() {
+            return Err(format!(
+                "workspace package has no responsibility README: {}",
+                manifest.display()
+            ));
+        }
+    }
+    for readme in ["scripts/linux/README.md", "scripts/win/README.md"] {
+        if !root.join(readme).is_file() {
+            return Err(format!(
+                "script directory has no responsibility README: {readme}"
+            ));
+        }
+    }
+    verify_test_level_inventory(&root)?;
+    verify_coverage_policy()?;
+    verify_fuzz_ownership(&root)?;
+    verify_generated_file_hygiene(&root)?;
+    println!("{} repository ownership and hygiene: pass", constants::INFO);
+    Ok(())
+}
+
+/// Verifies coverage environment, outputs, thresholds, and exclusion policy.
+fn verify_coverage_policy() -> Result<(), String> {
+    for (key, expected) in [
+        ("toolchain", "nightly-only"),
+        (
+            "html_output",
+            "test-results/analysis/coverage/html/index.html",
+        ),
+        (
+            "json_output",
+            "test-results/analysis/coverage/coverage.json",
+        ),
+        ("minimum_line_percent", "85"),
+        ("minimum_function_percent", "90"),
+        ("minimum_region_percent", "80"),
+    ] {
+        if quality_value("coverage", key)? != expected {
+            return Err(format!(
+                "coverage policy {key} must remain configured as {expected}"
+            ));
+        }
+    }
+    if quality_value("coverage", "exclusion_regex")? != "(^|/)xtask/" {
+        return Err("coverage may exclude only the separately command-tested xtask".to_owned());
+    }
+    let exclusions = quality_value("coverage", "exclusion_policy")?;
+    if !exclusions.starts_with("reviewed:") || !exclusions.contains("only xtask") {
+        return Err("coverage exclusions require an explicit reviewed rationale".to_owned());
+    }
+    Ok(())
+}
+
+/// Verifies every durable test purpose has one documented stable command.
+fn verify_test_level_inventory(root: &Path) -> Result<(), String> {
+    let inventory = read_workspace_text(root, constants::TEST_LEVELS_FILE)?;
+    for (name, command) in [
+        ("unit", "cargo xtask test unit"),
+        ("smoke", "cargo xtask test smoke"),
+        ("integration", "cargo xtask test integration"),
+        ("system", "cargo xtask test system"),
+        ("conformance", "cargo xtask test conformance"),
+        ("property", "cargo xtask test property"),
+        ("security", "cargo xtask test security"),
+        ("fuzz-regression", "cargo xtask fuzz smoke"),
+        ("performance", "cargo xtask test performance --profile pr"),
+        ("all", "cargo xtask test all"),
+    ] {
+        if !inventory.contains(&format!("name = \"{name}\""))
+            || !inventory.contains(&format!("command = \"{command}\""))
+        {
+            return Err(format!("test-level inventory is missing {name}: {command}"));
+        }
+    }
+    Ok(())
+}
+
+/// Verifies configured fuzz targets have harnesses, owners, and state policy.
+fn verify_fuzz_ownership(root: &Path) -> Result<(), String> {
+    let quality = read_workspace_text(root, constants::QUALITY_GATES_FILE)?;
+    for target in quality_array("fuzz", "targets")? {
+        if !root
+            .join("fuzz/fuzz_targets")
+            .join(format!("{target}.rs"))
+            .is_file()
+            || !quality.contains(&format!("{target}_owner = \""))
+        {
+            return Err(format!(
+                "fuzz target {target} has no harness or subsystem owner"
+            ));
+        }
+    }
+    for required in ["finding_policy = \"", "mutable_state = \""] {
+        if !quality.contains(required) {
+            return Err(format!("fuzz policy is missing {required}"));
+        }
+    }
+    Ok(())
+}
+
+/// Rejects tracked generated products while retaining documented empty roots.
+fn verify_generated_file_hygiene(root: &Path) -> Result<(), String> {
+    let output = Command::new("git")
+        .current_dir(root)
+        .args([
+            "ls-files",
+            "--",
+            "target",
+            "test-results",
+            "mutants.out",
+            "mutants.out.old",
+            "fuzz/artifacts",
+            "fuzz/corpus",
+            "portable/archive",
+            "portable/archived",
+        ])
+        .output()
+        .map_err(|error| format!("could not inspect tracked generated files: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "could not inspect tracked generated files: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    let tracked = String::from_utf8(output.stdout)
+        .map_err(|error| format!("Git emitted non-UTF-8 paths: {error}"))?
+        .lines()
+        .filter(|path| *path != "fuzz/corpus/README.md")
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    if tracked.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "generated or archived products are tracked: {}",
+            tracked.join(", ")
+        ))
+    }
 }
 
 /// Reads one scalar value from a section of the quality configuration.

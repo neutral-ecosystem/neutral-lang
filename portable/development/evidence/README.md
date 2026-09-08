@@ -18,5 +18,8 @@ numbered lifecycle gates without becoming normative language specifications.
 - [Stage 10 version and portable lifecycle record](stage10-version-portable-lifecycle.md)
   records centralized package-version, lock/source, generated-output, snapshot,
   archive-boundary, and rollover evidence for Step 3.
+- [Stage 10 repository and quality overhaul record](stage10-repository-quality-overhaul.md)
+  records directory ownership, durable test levels, generated-file hygiene,
+  coverage/fuzz policy, warning enforcement, and executed Step 4 validation.
 
 New evidence belongs here only when no numbered lifecycle document owns it.

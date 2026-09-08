@@ -3,7 +3,6 @@
 [package]
 name = "neutral-encoding"
 description = "Validated-document encoder for Neutral IR Framed CBOR"
-readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

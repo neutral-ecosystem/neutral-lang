@@ -1,7 +1,6 @@
 [package]
 name = "neutral-cli"
 description = "Host command-line adapter for Neutral capture, compilation, validation, and formatting"
-readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

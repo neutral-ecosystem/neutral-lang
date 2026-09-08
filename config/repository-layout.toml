@@ -1,0 +1,63 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+
+[[directory]]
+path = ".cargo"
+readme = ".cargo/README.md"
+owner = "repository-automation"
+lifecycle = "tracked configuration"
+
+[[directory]]
+path = ".devcontainer"
+readme = ".devcontainer/README.md"
+owner = "developer-environment"
+lifecycle = "tracked reproducible environment"
+
+[[directory]]
+path = ".github"
+readme = ".github/README.md"
+owner = "repository-automation"
+lifecycle = "tracked thin CI adapters"
+
+[[directory]]
+path = "config"
+readme = "config/README.md"
+owner = "repository-policy"
+lifecycle = "tracked machine-readable policy"
+
+[[directory]]
+path = "crates"
+readme = "crates/README.md"
+owner = "implementation"
+lifecycle = "tracked production and verification packages"
+
+[[directory]]
+path = "fuzz"
+readme = "fuzz/README.md"
+owner = "security-testing"
+lifecycle = "tracked harnesses; ignored mutable corpora and findings"
+
+[[directory]]
+path = "portable"
+readme = "portable/README.md"
+owner = "active-version-plan"
+lifecycle = "tracked active package; immutable after roadmap archive"
+
+[[directory]]
+path = "quality"
+readme = "quality/README.md"
+owner = "quality-evidence"
+lifecycle = "tracked reviewed conclusions"
+
+[[directory]]
+path = "scripts"
+readme = "scripts/README.md"
+owner = "platform-adapters"
+lifecycle = "tracked thin host adapters"
+
+[[directory]]
+path = "xtask"
+readme = "xtask/README.md"
+owner = "repository-automation"
+lifecycle = "tracked command and policy implementation"

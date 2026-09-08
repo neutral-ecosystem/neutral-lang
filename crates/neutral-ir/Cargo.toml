@@ -1,7 +1,6 @@
 [package]
 name = "neutral-ir"
 description = "Public logical IR and source-accounting contracts for Neutral"
-readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

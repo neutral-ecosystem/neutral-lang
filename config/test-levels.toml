@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+
+[[level]]
+name = "unit"
+command = "cargo xtask test unit"
+owner = "owning crate tests/"
+
+[[level]]
+name = "smoke"
+command = "cargo xtask test smoke"
+owner = "released command shells"
+
+[[level]]
+name = "integration"
+command = "cargo xtask test integration"
+owner = "cross-package tests"
+
+[[level]]
+name = "system"
+command = "cargo xtask test system"
+owner = "host and process boundary tests"
+
+[[level]]
+name = "conformance"
+command = "cargo xtask test conformance"
+owner = "portable fixture manifest"
+
+[[level]]
+name = "property"
+command = "cargo xtask test property"
+owner = "property and metamorphic tests"
+
+[[level]]
+name = "security"
+command = "cargo xtask test security"
+owner = "adversarial tests"
+
+[[level]]
+name = "fuzz-regression"
+command = "cargo xtask fuzz smoke"
+owner = "subsystem regression tests"
+
+[[level]]
+name = "performance"
+command = "cargo xtask test performance --profile pr"
+owner = "neutral-bench"
+
+[[level]]
+name = "all"
+command = "cargo xtask test all"
+owner = "xtask composition"

@@ -1,7 +1,6 @@
 [package]
 name = "neutral-core"
 description = "Foundational source identity, diagnostics, limits, and cancellation contracts for Neutral"
-readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

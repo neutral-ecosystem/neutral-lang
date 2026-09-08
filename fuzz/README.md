@@ -10,3 +10,19 @@ stable compiler.
 
 Confirmed failures must be minimized and promoted into deterministic fixtures
 or regression tests before they are considered resolved.
+
+## Subsystem ownership
+
+| Target | Owning boundary |
+| --- | --- |
+| `source` | `neutral-compiler` source capture and frontend |
+| `vocabulary` | `neutral-vocabulary` strict bundle decoding |
+| `ir` | `neutral-encoding` external artifact decoding |
+| `formatter` | `neutral-compiler` reference formatting |
+| `probe` | `neutral-probe` reader-only traversal |
+
+Harnesses and seed documentation are tracked. Mutable state under
+`fuzz/corpus/` and failures under `fuzz/artifacts/` are ignored and remain
+separate from the immutable normative fixtures under `portable/`. A confirmed
+finding is minimized first, then retained in the owning crate's deterministic
+regression suite when it represents a real defect.

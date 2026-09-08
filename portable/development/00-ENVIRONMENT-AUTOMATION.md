@@ -168,6 +168,13 @@ Command rules:
   `test-results/portable/snapshot/` and never write to the roadmap repository;
 - `config/generated-outputs.toml` owns generation, validation, and tracking
   policy for every generated product class;
+- `config/repository-layout.toml` owns top-level directory responsibility and
+  lifecycle, while `config/test-levels.toml` maps every durable test purpose to
+  its independently runnable command;
+- coverage is nightly-only and writes browsable HTML plus machine-readable JSON
+  beneath ignored `test-results/analysis/coverage/`; its 85% line, 90% function,
+  and 80% region thresholds exclude only separately command-tested repository
+  automation; a future exclusion requires an explicit reviewed policy change;
 - `cargo docs` generates crate rustdoc plus a Cargo-metadata-driven workspace
   index without a fixed package list;
 - no automatic retry changes a failed required result to pass;

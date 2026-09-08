@@ -56,6 +56,10 @@ pub const CARGO_LOCK_FILE: &str = "Cargo.lock";
 pub const DEPENDENCY_SOURCES_FILE: &str = "config/dependency-sources.toml";
 /// Generated-output ownership inventory relative to the workspace root.
 pub const GENERATED_OUTPUTS_FILE: &str = "config/generated-outputs.toml";
+/// Repository-directory ownership inventory relative to the workspace root.
+pub const REPOSITORY_LAYOUT_FILE: &str = "config/repository-layout.toml";
+/// Durable test-level ownership inventory relative to the workspace root.
+pub const TEST_LEVELS_FILE: &str = "config/test-levels.toml";
 /// Durable test-minimum profile used by normal commands.
 pub const CURRENT_TEST_PROFILE: &str = "current";
 /// Cargo release output directory relative to the workspace root.
@@ -120,3 +124,7 @@ pub const QUALITY_REPORT_DIRECTORY: &str = "analysis/quality-report";
 pub const VERSION_RESULT_DIRECTORY: &str = "version";
 /// Generated portable snapshot root relative to the result root.
 pub const PORTABLE_SNAPSHOT_DIRECTORY: &str = "portable/snapshot";
+/// Human-readable LLVM coverage directory relative to the result root.
+pub const COVERAGE_HTML_DIRECTORY: &str = "analysis/coverage";
+/// Machine-readable LLVM coverage file relative to the result root.
+pub const COVERAGE_JSON_FILE: &str = "analysis/coverage/coverage.json";
