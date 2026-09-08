@@ -251,8 +251,8 @@ Release operators use `cargo xtask release prepare`; it fails unless the
 approved candidate identity, distribution scope, evidence, tag target, and
 checkout agree. It never pushes, uploads, publishes, or creates a tag.
 
-Generate the workspace API site with `cargo docs`, then open
-[`target/doc/index.html`](../target/doc/index.html). The automation runs rustdoc
+Generate the workspace API site with `cargo docs`, then open the generated
+`target/doc/index.html`. The automation runs rustdoc
 and builds the landing page from Cargo metadata, so package names, versions,
 descriptions, ownership, publication groups, and workspace dependency links
 stay synchronized without a hand-maintained crate list. All generated site

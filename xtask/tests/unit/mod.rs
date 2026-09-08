@@ -217,6 +217,23 @@ fn environment_manifest_identifies_the_toolchain_channel() {
     let stage = super::active_stage().expect("active stage should be readable");
     assert!(manifest.contains(&format!("\"rust_channel\": \"{channel}\"")));
     assert!(manifest.contains(&format!("\"active_stage\": {stage}")));
+    assert!(manifest.contains("\"tools\": {"));
+    assert!(!manifest.contains("\"workspace_root\""));
+}
+
+#[test]
+/// Verifies missing workstation tools produce an actionable diagnostic.
+fn missing_environment_tool_reports_an_install_action() {
+    let tool = super::ToolSpec {
+        key: "missing",
+        label: "Missing test tool",
+        command: "neutral-command-that-must-not-exist",
+        arguments: &["--version"],
+        install_hint: "install the missing test tool",
+    };
+    let error = super::tool_version(&tool).expect_err("missing tool must fail");
+    assert!(error.contains("Missing test tool is unavailable"));
+    assert!(error.contains("install the missing test tool"));
 }
 
 #[test]

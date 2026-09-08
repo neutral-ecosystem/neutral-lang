@@ -16,7 +16,7 @@ case "$host_os" in
         ;;
 esac
 case "$host_architecture" in
-    x86_64|aarch64|arm64) ;;
+    x86_64) ;;
     *)
         printf '%s\n' "[error] unsupported bootstrap architecture: $host_architecture" >&2
         exit 1
@@ -45,12 +45,16 @@ command -v sha256sum >/dev/null || {
     exit 1
 }
 
-curl --version | grep -q 'Protocols:.*https' || {
-    printf '%s\n' '[error] curl must support HTTPS.' >&2
-    exit 1
-}
+curl_capabilities="$(curl --version)"
+case "$curl_capabilities" in
+    *Protocols:*https*) ;;
+    *)
+        printf '%s\n' '[error] curl must support HTTPS.' >&2
+        exit 1
+        ;;
+esac
 
-actual_toolchain="$("$neutral_rustc_command" --version | awk '{print $2}')"
+actual_toolchain="$("$neutral_rustc_command" --version)"
 case "$actual_toolchain" in
     *-nightly*|*-beta*|*-dev*)
         printf '%s\n' "[error] Latest stable Rust is required; found $actual_toolchain." >&2

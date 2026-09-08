@@ -61,6 +61,12 @@ release preparation:
 | Active portable lifecycle | `cargo xtask portable verify\|snapshot` |
 | Generated-evidence cleanup | `cargo xtask clean` |
 
+`cargo xtask bootstrap` performs the lightweight supported-host and stable
+toolchain check needed for ordinary development and CI. `cargo xtask environment
+verify` additionally audits the complete release workstation and reports an
+installation command for every missing analysis or packaging tool. `cargo xtask
+environment manifest` prints the path-independent host and tool identity record.
+
 The release commands derive annotated tag `v<workspace package version>` from
 the root `Cargo.toml`. They fail closed unless that tag resolves to the clean
 checked-out `HEAD` and the Stage 9 approval and distribution scope agree. They
@@ -118,6 +124,12 @@ RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz smoke
 
 Full fuzz campaigns use the configured 900-second budget per subsystem. Their
 mutable corpora and crashes are never normative fixtures.
+
+Keep stable as the repository-selected default. Nightly remains installed as a
+named Rustup toolchain and is selected only for coverage or fuzzing through the
+command-local `RUSTUP_TOOLCHAIN=nightly` prefix. Confirm the complete setup with
+`cargo xtask environment verify`; it must report the stable compiler and the
+separate nightly compiler rather than changing the repository default.
 
 Coverage is a nightly-only analysis command. It preserves a browsable report at
 `test-results/analysis/coverage/html/index.html` and a machine-readable summary

@@ -873,26 +873,26 @@ must not become a second user-facing command system.
 
 ### Step 5: reproduce the supported developer and release environment
 
-- [ ] Run the platform bootstrap documented in `scripts/linux/README.md` on a
+- [x] Run the platform bootstrap documented in `scripts/linux/README.md` on a
       clean supported Linux checkout; record the host image and installed tool
       versions.
-- [ ] Verify stable Rust, Rustfmt, Clippy, Cargo, LLVM coverage tools, fuzzing
+- [x] Verify stable Rust, Rustfmt, Clippy, Cargo, LLVM coverage tools, fuzzing
       tools, mutation tools, Valgrind, and the release shell prerequisites with
       actionable missing-tool diagnostics.
-- [ ] Recreate the normal stable build/test environment from `Cargo.lock`
+- [x] Recreate the normal stable build/test environment from `Cargo.lock`
       without modifying tracked files or normative fixtures.
-- [ ] Recreate the isolated nightly LLVM/fuzz environment only for the
+- [x] Recreate the isolated nightly LLVM/fuzz environment only for the
       configured coverage and fuzz commands; it must not replace the stable v0
       build toolchain.
-- [ ] Audit `.gitignore` so `target/`, `test-results/`, fuzz corpora/crashes,
+- [x] Audit `.gitignore` so `target/`, `test-results/`, fuzz corpora/crashes,
       profiling reports, editor state, and local release output are ignored,
       while contracts, fixtures, lockfiles, scripts, and manifests remain
       tracked.
 
 #### Step validation
 
-- [ ] A clean checkout reaches `cargo xtask ci pr` using only documented setup.
-- [ ] No release command relies on a user-specific path, ambient artifact,
+- [x] A clean checkout reaches `cargo xtask ci pr` using only documented setup.
+- [x] No release command relies on a user-specific path, ambient artifact,
       mutable archive, or network lookup for source/vocabulary resolution.
 
 ### Step 6: qualify the exact candidate

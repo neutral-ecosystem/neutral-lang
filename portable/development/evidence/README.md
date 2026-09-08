@@ -21,5 +21,8 @@ numbered lifecycle gates without becoming normative language specifications.
 - [Stage 10 repository and quality overhaul record](stage10-repository-quality-overhaul.md)
   records directory ownership, durable test levels, generated-file hygiene,
   coverage/fuzz policy, warning enforcement, and executed Step 4 validation.
+- [Stage 10 environment reproduction record](stage10-environment-reproduction.md)
+  records supported-host bootstrap, complete tool identities, offline clean-tree
+  CI, stable/nightly isolation, ignore policy, and release-input independence.
 
 New evidence belongs here only when no numbered lifecycle document owns it.

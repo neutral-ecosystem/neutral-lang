@@ -13,5 +13,5 @@
   "containerEnv": {
     "CARGO_NET_OFFLINE": "true"
   },
-  "postCreateCommand": "cargo xtask environment verify"
+  "postCreateCommand": "cargo xtask bootstrap"
 }

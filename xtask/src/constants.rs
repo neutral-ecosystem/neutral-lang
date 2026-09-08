@@ -4,6 +4,24 @@
 
 /// Cargo executable used by workspace automation.
 pub const CARGO_COMMAND: &str = "cargo";
+/// Rust formatter executable used for environment verification.
+pub const RUSTFMT_COMMAND: &str = "rustfmt";
+/// Rust toolchain manager used to isolate analysis-only nightly tools.
+pub const RUSTUP_COMMAND: &str = "rustup";
+/// Valgrind executable used for release allocation and memory review.
+pub const VALGRIND_COMMAND: &str = "valgrind";
+/// Git executable required for repository and release identity checks.
+pub const GIT_COMMAND: &str = "git";
+/// POSIX shell executable required by the supported Linux adapter.
+pub const POSIX_SHELL_COMMAND: &str = "sh";
+/// Archive executable required for release assembly.
+pub const TAR_COMMAND: &str = "tar";
+/// TLS-capable transfer executable required by verified setup procedures.
+pub const CURL_COMMAND: &str = "curl";
+/// SHA-256 executable required by verified setup and release procedures.
+pub const SHA256_COMMAND: &str = "sha256sum";
+/// Kernel/host identification executable used in environment evidence.
+pub const UNAME_COMMAND: &str = "uname";
 /// Environment variable carrying delimiter-separated rustdoc flags.
 pub const CARGO_ENCODED_RUSTDOCFLAGS: &str = "CARGO_ENCODED_RUSTDOCFLAGS";
 /// Cargo metadata placeholder replaced while generating the rustdoc landing page.

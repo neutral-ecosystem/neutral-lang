@@ -7,13 +7,13 @@ Status: Stage 10 workflow overhaul in progress.
 ## Current focus
 
 - Stage: Stage 10 workflow overhaul and v0 qualification
-- Status: Steps 1–4 complete; Step 5 is next
+- Status: Steps 1–5 complete; Step 6 is next
 - Last updated: 2026-09-08
 
 ## Next actions
 
-- [ ] Implement Stage 10 Step 5: reproduce the supported stable and isolated
-      nightly environments from documented platform setup.
+- [ ] Implement Stage 10 Step 6: qualify the exact committed and tagged
+      candidate with retained release-quality evidence.
 
 ## Blockers
 
@@ -22,6 +22,18 @@ Status: Stage 10 workflow overhaul in progress.
   chooses a new version/tag or explicitly replaces that unpublished local tag.
 
 ## Completed log
+
+- [x] 2026-09-08: Completed Stage 10, Step 5. Split lightweight stable
+  bootstrap from the complete release-workstation audit; added actionable
+  checks and path-independent evidence for Rust/Cargo, Rustfmt, Clippy, isolated
+  nightly LLVM/fuzz tooling, mutation, Valgrind, and release-shell utilities;
+  hardened supported-host and ignore policy; and rejected ambient effects in
+  the pure compiler closure plus user-specific release paths. A temporary clean
+  Git tree rebuilt and passed `cargo xtask ci pr` fully offline with empty final
+  status. Command-local nightly fuzz smoke and coverage passed while stable
+  Rust remained selected. The clean run also exposed and fixed a portable link
+  to absent generated Rustdoc. Evidence is in
+  `development/evidence/stage10-environment-reproduction.md`.
 
 - [x] 2026-09-08: Completed Stage 10, Step 4. Added an executable top-level
   ownership/lifecycle inventory and missing directory READMEs; made every
