@@ -7,8 +7,7 @@ Status: Stage 10 workflow overhaul in progress.
 ## Current focus
 
 - Stage: Stage 10 workflow overhaul and v0 qualification
-- Status: Step 9 approvals and publication automation complete; final
-  qualification, publication, and roadmap archive remain
+- Status: v0.1.0 draft prepared; publication and roadmap archive remain
 - Last updated: 2026-09-08
 
 ## Next actions
@@ -16,10 +15,12 @@ Status: Stage 10 workflow overhaul in progress.
 - [x] Record the sole-maintainer approval and compensating review.
 - [x] Implement tag-to-`main` identity enforcement and tag-only GitHub release
       publication with verified artifact transfer.
-- [ ] Commit these final tracked changes on `main`, rerun
+- [x] Commit the final release changes on `main`, rerun
       `cargo xtask release prepare`, and sign `v0.1.0` at that exact HEAD.
-- [ ] Push `main` and the signed tag, verify the immutable release and asset
-      digests, then archive the v0 portable snapshot in the roadmap repository.
+- [x] Push `main` and the signed tag, then verify the draft release assets and
+      their exact digests.
+- [ ] Publish the approved GitHub draft titled `neutral-lang v0.1.0`.
+- [ ] Archive the v0 portable snapshot in the roadmap repository.
 
 ## Candidate policy
 
@@ -28,6 +29,14 @@ Status: Stage 10 workflow overhaul in progress.
   qualification and approval gate; it never selects an earlier source revision.
 
 ## Completed log
+
+- [x] 2026-09-08: Prepared signed `v0.1.0` from qualified clean `main` commit
+  `ceb439b5af0644682c3be95f6d9593a86b5de796`. GitHub release run
+  `34245962106` passed tag-to-HEAD verification, the complete release
+  preparation, checksum verification, artifact transfer, and draft creation.
+  An isolated download of all eleven draft assets passed its own
+  `SHA256SUMS`. The draft identity and asset digests are retained in
+  `development/evidence/stage10-release-publication.md`.
 
 - [x] 2026-09-08: Recorded the Stage 10 Step 9 technical, test/quality,
   security, release, and standards approvals under the disclosed

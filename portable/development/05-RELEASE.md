@@ -12,7 +12,7 @@ contract-freeze manifest.
 - [x] Contract-freeze manifest identifies all governing versions.
 - [x] No blocking specification, implementation, security, test, performance,
       dependency, or standards-applicability issue remains.
-- [ ] Release source tree is clean, protected, reviewed, and identified.
+- [x] Release source tree is clean, protected, reviewed, and identified.
 - [x] Lockfile, toolchain, dependencies, environment image, test profiles,
       fixture manifest, benchmark corpus, and quality gates are immutable.
 - [x] Release credentials are unavailable to untrusted pull-request execution.
