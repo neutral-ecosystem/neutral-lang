@@ -2,8 +2,9 @@
 
 # Stage 9 residual risks
 
-Review date: 2026-09-08. Owner: maintainer. Approval state: evidence complete;
-maintainer release approval pending.
+Review date: 2026-09-08. Owner: maintainer. Approval state: approved by the
+sole maintainer for Stage 10 candidate preparation; final release approval
+remains subject to the remaining Stage 10 gates.
 
 Completed and remaining Stage 9 review items are recorded below:
 
@@ -21,5 +22,7 @@ Completed and remaining Stage 9 review items are recorded below:
 - Static review was performed by the sole maintainer and is not independent.
 
 There are no remaining technical evidence gaps. The sole-maintainer review is
-not independent; release approval remains the maintainer's decision before
-Stage 10 begins.
+not independent; the maintainer accepted that staffing limitation and approved
+the residual-risk treatment for Stage 10 candidate preparation on 2026-09-08.
+That approval does not waive any remaining Stage 10 qualification or final
+release-approval gate.

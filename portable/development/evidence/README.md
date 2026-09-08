@@ -9,5 +9,8 @@ numbered lifecycle gates without becoming normative language specifications.
   blocking freeze question was closed.
 - [Stage 7 decoder allocation review](stage7-decoder-allocation-review.md)
   records the bounds-before-allocation audit for hostile artifacts.
+- [Stage 10 candidate-preparation record](stage10-candidate-preparation.md)
+  records the reproducible source, dependency, toolchain, fixture, and contract
+  identities collected before a release-authority decision creates a candidate.
 
 New evidence belongs here only when no numbered lifecycle document owns it.

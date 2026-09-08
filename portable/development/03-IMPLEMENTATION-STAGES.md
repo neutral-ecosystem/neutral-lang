@@ -664,7 +664,7 @@ frozen v0 contracts.
 - [ ] Start from a clean, reviewed commit on `main`; record its full Git ID,
       `Cargo.lock` digest, `rust-toolchain.toml` contents, and fixture-manifest
       digest in the release evidence.
-- [ ] Reconfirm the contract-freeze manifest and every governing language, IR,
+- [x] Reconfirm the contract-freeze manifest and every governing language, IR,
       vocabulary, external-encoding, digest, diagnostic, and limits revision.
 - [ ] Decide the v0 distribution scope before changing version metadata:
       source-only tag, GitHub binary assets, crates.io packages, or an explicit
@@ -805,9 +805,9 @@ must not become a second user-facing command system.
       to another repository. The maintainer then lands that reviewed snapshot
       in the neutral-roadmap version archive as a separate immutable commit.
 - [ ] Define the rollover procedure: after v0 release evidence is immutable,
-      archive the v0 portable snapshot in the roadmap repository, replace this
-      repository's active `portable/` package with the reviewed v1 portable
-      template from the roadmap, update active links/manifests, and retain a
+      archive the v0 portable snapshot in the roadmap repository, this
+      repository's active `portable/` package will be archived and chnaged with the v1 portable (in the future)
+      , and retain a
       local redirect/identity record rather than silently mixing v0 and v1
       planning files.
 - [ ] Document and test the archive boundary: historical portable plans are

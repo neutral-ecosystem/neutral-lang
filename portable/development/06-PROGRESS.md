@@ -12,15 +12,30 @@ Status: Stage 9 hardening in progress.
 
 ## Next actions
 
-- [ ] Review and approve the completed Stage 9 residual-risk record before
-      beginning Stage 10.
+- [ ] Implement Stage 10 Step 2: replace the stage-dependent/manual workflow
+      with the stable `xtask` command interface and thin platform adapters.
 
 ## Blockers
 
-- No technical blocker remains; Stage 10 requires maintainer approval of the
-  completed residual-risk record.
+- No technical blocker remains for Stage 10 Step 2. The `v0.1.0-rc.1` tag is
+  local only and final release remains gated by the later qualification steps.
 
 ## Completed log
+
+- [x] 2026-09-08: Completed Stage 10, Step 1. The sole maintainer approved the
+  Stage 9 residual-risk treatment for candidate preparation and selected an
+  annotated source tag plus GitHub binary assets as the v0 distribution scope;
+  crates.io publication is excluded. Created local annotated tag
+  `v0.1.0-rc.1` for the recorded clean `main` revision. Nothing was pushed,
+  published, or uploaded.
+
+- [x] 2026-09-08: Began Stage 10, Step 1 without making release-authority
+  decisions. Reconfirmed the approved freeze and all governing contract
+  revisions, verified its fixture and oracle-manifest digests, passed
+  traceability coherence, and recorded the clean inspected `main` revision,
+  lockfile digest, toolchain contents, and fixture identities in
+  `development/evidence/stage10-candidate-preparation.md`. No candidate tag,
+  publication, version bump, or distribution target has been assumed.
 
 - [x] 2026-09-08: Reframed Stage 10 as a workflow overhaul followed by v0
   qualification. It now requires implementation of a stable stage-free `xtask`
