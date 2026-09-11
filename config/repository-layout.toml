@@ -39,10 +39,10 @@ owner = "security-testing"
 lifecycle = "tracked harnesses; ignored mutable corpora and findings"
 
 [[directory]]
-path = "portable"
-readme = "portable/README.md"
-owner = "active-version-plan"
-lifecycle = "tracked active package; immutable after roadmap archive"
+path = "conformance"
+readme = "conformance/README.md"
+owner = "release-conformance"
+lifecycle = "tracked immutable per-release verification bundles"
 
 [[directory]]
 path = "quality"

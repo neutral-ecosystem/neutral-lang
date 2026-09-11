@@ -69,6 +69,7 @@ Stable commands:\n\
   package                                        assemble the selected distribution\n\
   release prepare                                prepare, but never publish, a release\n\
   version show|check|prepare <version>            inspect or prepare package versioning\n\
+  portable install <directory>                   atomically install a reviewed portable\n\
   portable verify|snapshot                       verify or snapshot the active portable\n\
   clean                                          remove ignored generated evidence\n\n\
 CI-only commands:\n\
@@ -224,8 +225,10 @@ pub(crate) enum VersionAction {
 }
 
 /// Stable active-portable lifecycle actions.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum PortableAction {
+    /// Install a reviewed portable package from one source directory.
+    Install(PathBuf),
     /// Verify active portable ownership and links.
     Verify,
     /// Create a local deterministic archive candidate.
@@ -280,6 +283,9 @@ pub(crate) fn parse(arguments: &[String]) -> Result<Task, String> {
         }
         [PORTABLE_COMMAND, "verify"] => Ok(Task::Portable(PortableAction::Verify)),
         [PORTABLE_COMMAND, "snapshot"] => Ok(Task::Portable(PortableAction::Snapshot)),
+        [PORTABLE_COMMAND, "install", source] => Ok(Task::Portable(PortableAction::Install(
+            PathBuf::from(source),
+        ))),
         [CLEAN_COMMAND] => Ok(Task::Clean),
         [CI_COMMAND, "pr"] => Ok(Task::Ci(CiProfile::Pr)),
         [CI_COMMAND, "release"] => Ok(Task::Ci(CiProfile::Release)),

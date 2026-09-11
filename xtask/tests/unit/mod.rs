@@ -3,8 +3,8 @@
 //! Tests for dependency-boundary policy failures.
 
 use super::interface::{
-    BuildProfile, CiProfile, FuzzMode, PerformanceProfile, QualityProfile, Task, TestLevel,
-    ValidationTarget, VersionAction,
+    BuildProfile, CiProfile, FuzzMode, PerformanceProfile, PortableAction, QualityProfile, Task,
+    TestLevel, ValidationTarget, VersionAction,
 };
 use super::{
     constants, contract_ids, ensure_ids_covered, ensure_syntax_complete, quality_value_from,
@@ -72,6 +72,10 @@ fn automation_parses_the_stable_command_surface() {
         (
             vec!["version", "prepare", "0.2.0-rc.1"],
             Task::Version(VersionAction::Prepare("0.2.0-rc.1".to_owned())),
+        ),
+        (
+            vec!["portable", "install", "/tmp/reviewed-portable"],
+            Task::Portable(PortableAction::Install("/tmp/reviewed-portable".into())),
         ),
         (vec!["clean"], Task::Clean),
         (vec!["ci", "pr"], Task::Ci(CiProfile::Pr)),
@@ -177,6 +181,17 @@ fn automation_hashes_snapshot_bytes_deterministically() {
         super::sha256_hex(b"abc"),
         "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
     );
+}
+
+#[test]
+/// Portable series identifiers accept future numeric versions without package coupling.
+fn automation_accepts_numeric_portable_series() {
+    assert!(super::is_portable_series("v0"));
+    assert!(super::is_portable_series("v1"));
+    assert!(super::is_portable_series("v12"));
+    assert!(!super::is_portable_series("v"));
+    assert!(!super::is_portable_series("1"));
+    assert!(!super::is_portable_series("v1-beta"));
 }
 
 #[test]
@@ -451,7 +466,13 @@ fn xtask_commands_and_helpers() {
     assert!(super::collect_regular_files(&root.join("config"), &mut files).is_ok());
     assert!(!files.is_empty());
 
-    assert!(super::ensure_registered_paths_exist(&root, "portable/specs/REQUIREMENTS.md").is_ok());
+    assert!(
+        super::ensure_registered_paths_exist(
+            &root,
+            "conformance/releases/v0.1.0/specs/REQUIREMENTS.md"
+        )
+        .is_ok()
+    );
     assert!(super::ensure_inventory_registered(&root, "config", "config/dependency-sources.toml config/development-stage.toml config/generated-outputs.toml config/host-policy.toml config/ir-encoding.toml config/quality-gates.toml config/release.toml config/repository-layout.toml config/test-levels.toml config/test-suites.toml").is_ok());
 
     assert!(super::print_environment_manifest().is_ok());

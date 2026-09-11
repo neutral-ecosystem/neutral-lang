@@ -74,3 +74,11 @@ owner = "xtask"
 generate = "cargo xtask portable snapshot"
 validate = "cargo xtask portable verify"
 tracking = "ignored"
+
+[[output]]
+name = "portable-rejected"
+path = "test-results/portable/rejected"
+owner = "xtask"
+generate = "cargo xtask portable install <directory>"
+validate = "manual review before retrying installation"
+tracking = "ignored"

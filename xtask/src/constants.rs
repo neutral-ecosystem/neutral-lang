@@ -52,14 +52,15 @@ pub const RUSTDOC_HEADER_CFG_PREFIX: &str = "neutral_rustdoc_header";
 pub const RUSTDOC_HEADER_HASH_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 /// FNV-1a prime used for the non-security rustdoc cache token.
 pub const RUSTDOC_HEADER_HASH_PRIME: u64 = 0x0000_0100_0000_01b3;
-/// Accepted requirements document relative to the workspace root.
-pub const REQUIREMENTS_FILE: &str = "portable/specs/REQUIREMENTS.md";
-/// Authoritative syntax contract relative to the workspace root.
-pub const SYNTAX_CONTRACT_FILE: &str = "portable/specs/contracts/syntax.md";
-/// Checked syntax implementation mirror relative to the workspace root.
-pub const SYNTAX_CHECKLIST_FILE: &str = "portable/specs/contracts/syntax-checklist.md";
-/// Complete implementation evidence index relative to the workspace root.
-pub const TRACEABILITY_FILE: &str = "portable/specs/TRACEABILITY.md";
+/// Accepted v0.1.0 release requirements relative to the workspace root.
+pub const REQUIREMENTS_FILE: &str = "conformance/releases/v0.1.0/specs/REQUIREMENTS.md";
+/// Authoritative v0.1.0 syntax contract relative to the workspace root.
+pub const SYNTAX_CONTRACT_FILE: &str = "conformance/releases/v0.1.0/specs/contracts/syntax.md";
+/// Checked v0.1.0 syntax implementation mirror relative to the workspace root.
+pub const SYNTAX_CHECKLIST_FILE: &str =
+    "conformance/releases/v0.1.0/specs/contracts/syntax-checklist.md";
+/// Complete v0.1.0 implementation evidence index relative to the workspace root.
+pub const TRACEABILITY_FILE: &str = "conformance/releases/v0.1.0/specs/TRACEABILITY.md";
 /// Stage 9 quality-gate configuration relative to the workspace root.
 pub const QUALITY_GATES_FILE: &str = "config/quality-gates.toml";
 /// Stage 10 release-selection configuration relative to the workspace root.
@@ -102,14 +103,30 @@ pub const PORTABLE_DIRECTORY: &str = "portable";
 pub const PORTABLE_PLAN_FILE: &str = "portable/PLAN.md";
 /// Active portable lifecycle identity relative to the workspace root.
 pub const PORTABLE_LIFECYCLE_FILE: &str = "portable/lifecycle.toml";
-/// Approved contract-freeze manifest relative to the workspace root.
-pub const CONTRACT_FREEZE_FILE: &str = "portable/specs/contracts/freeze.toml";
-/// Normative fixture root relative to the workspace root.
-pub const FIXTURE_DIRECTORY: &str = "portable/specs/fixtures";
-/// Normative oracle root relative to the workspace root.
-pub const ORACLE_DIRECTORY: &str = "portable/conformance/oracles";
-/// Executable conformance manifest relative to the workspace root.
-pub const CONFORMANCE_MANIFEST_FILE: &str = "portable/conformance/manifest.toml";
+/// Active portable requirements relative to the workspace root.
+pub const PORTABLE_REQUIREMENTS_FILE: &str = "portable/specs/REQUIREMENTS.md";
+/// Active portable syntax contract relative to the workspace root.
+pub const PORTABLE_SYNTAX_CONTRACT_FILE: &str = "portable/specs/contracts/syntax.md";
+/// Active portable syntax checklist relative to the workspace root.
+pub const PORTABLE_SYNTAX_CHECKLIST_FILE: &str = "portable/specs/contracts/syntax-checklist.md";
+/// Active portable traceability matrix relative to the workspace root.
+pub const PORTABLE_TRACEABILITY_FILE: &str = "portable/specs/TRACEABILITY.md";
+/// Active portable contract-freeze manifest relative to the workspace root.
+pub const PORTABLE_CONTRACT_FREEZE_FILE: &str = "portable/specs/contracts/freeze.toml";
+/// Active portable fixture root relative to the workspace root.
+pub const PORTABLE_FIXTURE_DIRECTORY: &str = "portable/specs/fixtures";
+/// Active portable oracle root relative to the workspace root.
+pub const PORTABLE_ORACLE_DIRECTORY: &str = "portable/conformance/oracles";
+/// Active portable conformance manifest relative to the workspace root.
+pub const PORTABLE_CONFORMANCE_MANIFEST_FILE: &str = "portable/conformance/manifest.toml";
+/// Approved v0.1.0 contract-freeze manifest relative to the workspace root.
+pub const CONTRACT_FREEZE_FILE: &str = "conformance/releases/v0.1.0/specs/contracts/freeze.toml";
+/// Immutable v0.1.0 fixture root relative to the workspace root.
+pub const FIXTURE_DIRECTORY: &str = "conformance/releases/v0.1.0/specs/fixtures";
+/// Immutable v0.1.0 oracle root relative to the workspace root.
+pub const ORACLE_DIRECTORY: &str = "conformance/releases/v0.1.0/conformance/oracles";
+/// Executable v0.1.0 conformance manifest relative to the workspace root.
+pub const CONFORMANCE_MANIFEST_FILE: &str = "conformance/releases/v0.1.0/conformance/manifest.toml";
 /// Rust marker that identifies a test-only source declaration.
 pub const TEST_CONFIGURATION_MARKER: &str = "#[cfg(test)]";
 /// Rust marker proving a test module body is stored outside production source.

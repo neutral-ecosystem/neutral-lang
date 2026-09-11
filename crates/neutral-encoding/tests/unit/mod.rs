@@ -341,13 +341,13 @@ fn hostile_vocabulary_identity_mismatch_fails_closed() {
         .parent()
         .and_then(Path::parent)
         .expect("encoding crate must be inside the workspace");
-    let source = fs::read(
-        workspace.join("portable/specs/fixtures/positive/vocabulary/minimal-vocabulary.neu"),
-    )
+    let source = fs::read(workspace.join(
+        "conformance/releases/v0.1.0/specs/fixtures/positive/vocabulary/minimal-vocabulary.neu",
+    ))
     .expect("vocabulary source fixture must be readable");
-    let bundle = fs::read(
-        workspace.join("portable/specs/fixtures/vocabulary/bundles/positive/comprehensive.json"),
-    )
+    let bundle = fs::read(workspace.join(
+        "conformance/releases/v0.1.0/specs/fixtures/vocabulary/bundles/positive/comprehensive.json",
+    ))
     .expect("vocabulary bundle fixture must be readable");
     let document = validated_with_vocabulary(&source, &bundle);
     let encoded = encode(&document, &ProducerInfo::new("test", TEST_PRODUCER_VERSION))
@@ -447,13 +447,13 @@ fn every_positive_fixture_encodes_within_limits() {
         .parent()
         .and_then(Path::parent)
         .expect("encoding crate must be inside the workspace");
-    let positive = workspace.join("portable/specs/fixtures/positive");
+    let positive = workspace.join("conformance/releases/v0.1.0/specs/fixtures/positive");
     let mut fixtures = Vec::new();
     collect_neu_files(&positive, &mut fixtures);
     assert!(!fixtures.is_empty());
-    let vocabulary_bundle = fs::read(
-        workspace.join("portable/specs/fixtures/vocabulary/bundles/positive/comprehensive.json"),
-    )
+    let vocabulary_bundle = fs::read(workspace.join(
+        "conformance/releases/v0.1.0/specs/fixtures/vocabulary/bundles/positive/comprehensive.json",
+    ))
     .expect("vocabulary bundle fixture must be readable");
     for fixture in fixtures {
         let source = fs::read(&fixture).expect("positive fixture must be readable");

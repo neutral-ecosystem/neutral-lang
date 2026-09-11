@@ -1,4 +1,4 @@
-tral<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 
 # Coverage-guided fuzzing
 
@@ -23,6 +23,6 @@ or regression tests before they are considered resolved.
 
 Harnesses and seed documentation are tracked. Mutable state under
 `fuzz/corpus/` and failures under `fuzz/artifacts/` are ignored and remain
-separate from the immutable normative fixtures under `portable/`. A confirmed
+separate from the immutable released fixtures under `conformance/`. A confirmed
 finding is minimized first, then retained in the owning crate's deterministic
 regression suite when it represents a real defect.

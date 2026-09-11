@@ -45,8 +45,9 @@ const EXTENDED_SOAK_ITERATIONS: usize = 50_000;
 /// Worker count used for the isolation/concurrency profile.
 const CONCURRENCY_WORKERS: usize = 8;
 /// Representative immutable source corpus entry.
-const REPRESENTATIVE_SOURCE: &[u8] =
-    include_bytes!("../../../portable/specs/fixtures/positive/lists/record-list-default.neu");
+const REPRESENTATIVE_SOURCE: &[u8] = include_bytes!(
+    "../../../conformance/releases/v0.1.0/specs/fixtures/positive/lists/record-list-default.neu"
+);
 
 /// Runs the selected controlled benchmark profile.
 fn main() {

@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# Stage 9 is approved; Stage 10 is the active workflow and release gate.
-# Normal developer commands do not derive their names or test selection from
-# these tracking values.
+# v0 completed Stage 10 and its portable package is archived. These values
+# retain the last completed v0 milestone until the reviewed v1 portable package
+# establishes its own execution plan. Normal developer commands do not derive
+# their names or test selection from these tracking values.
 active_stage = 10
 active_step = 9
+portable_state = "awaiting-v1"

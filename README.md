@@ -58,7 +58,8 @@ release preparation:
 | Distribution assembly | `cargo xtask package` |
 | Local release preparation | `cargo xtask release prepare` |
 | Versioning | `cargo xtask version show\|check\|prepare <version>` |
-| Active portable lifecycle | `cargo xtask portable verify\|snapshot` |
+| Install active portable | `cargo xtask portable install <directory>` |
+| Verify/archive active portable | `cargo xtask portable verify\|snapshot` |
 | Generated-evidence cleanup | `cargo xtask clean` |
 
 `cargo xtask bootstrap` performs the lightweight supported-host and stable
@@ -96,7 +97,8 @@ second workflow.
 | Path | Owner and lifecycle |
 | --- | --- |
 | `crates/` | Versioned implementation, binaries, and crate-owned tests |
-| `portable/` | Active version plan/contracts/fixtures; snapshot to the roadmap before rollover |
+| `conformance/` | Immutable released contracts, fixtures, and oracles used by verification |
+| `portable/` | Optional active-version plan imported from the roadmap during development |
 | `quality/` | Tracked reviewed quality, security, dependency, and residual-risk conclusions |
 | `config/` | Tracked machine-readable repository policy |
 | `scripts/` | Thin Linux and Windows host adapters |
@@ -147,8 +149,8 @@ Cargo build and rustdoc output belongs under ignored `target/`. Generated test,
 quality, version-plan, package, and release evidence belongs under ignored
 `test-results/`. `cargo xtask clean` removes only the validated relative result
 root; it cannot target the repository, a parent path, or an absolute path.
-Normative fixtures, oracles, contracts, and the portable plan are never cleanup
-targets.
+Released fixtures, oracles, contracts, and an installed portable plan are never
+cleanup targets.
 
 ## Troubleshooting
 
@@ -160,8 +162,9 @@ targets.
 - Release preparation requires a clean checked-out `main` `HEAD`. It rejects a
   dirty tree, another branch, missing approval, or stale scope.
 
-For the language and implementation lifecycle, start with
-[the active v0 plan](portable/PLAN.md). Quality evidence and residual risks are
-indexed in [quality/README.md](quality/README.md). Platform adapter ownership is
-documented in [scripts/README.md](scripts/README.md), and automation internals in
+The completed v0 plan is archived in the Neutral roadmap. A future `portable/`
+directory is an optional active planning input and may be replaced without
+affecting released conformance. Quality evidence and residual risks are indexed in
+[quality/README.md](quality/README.md), platform adapter ownership in
+[scripts/README.md](scripts/README.md), and automation internals in
 [xtask/README.md](xtask/README.md).

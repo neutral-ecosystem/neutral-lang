@@ -6,7 +6,7 @@ Status: Stage 9 project alignment record; no conformity or certification claim.
 
 | Standard | Edition | Applicability and tailoring | Evidence | Owner | Next review |
 | --- | --- | --- | --- | --- | --- |
-| ISO/IEC/IEEE 29119-1 | 2022 | Test concepts and vocabulary; project-scale tailoring | `portable/development/04-TESTING.md` | maintainer | Stage 10 RC |
+| ISO/IEC/IEEE 29119-1 | 2022 | Test concepts and vocabulary; project-scale tailoring | v0 archive and `conformance/releases/v0.1.0/` | maintainer | v1 planning |
 | ISO/IEC/IEEE 29119-2 | 2021 | Stage-aware test process and gates | development stages, `cargo xtask ci pr` | maintainer | Stage 10 RC |
 | ISO/IEC/IEEE 29119-3 | 2021 | Plans, cases, evidence, and result metadata | testing plan, conformance manifest, `test-results/` | maintainer | Stage 10 RC |
 | ISO/IEC/IEEE 29119-4 | 2021 | Boundary, grammar, property, fault, and state techniques | crate-local and cross-package tests | maintainer | Stage 10 RC |

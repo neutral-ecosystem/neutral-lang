@@ -105,7 +105,7 @@ fn verify_environment() -> Result<(), String> {
         "config/repository-layout.toml",
         "config/test-levels.toml",
         "config/test-suites.toml",
-        "portable/conformance/manifest.toml",
+        "conformance/releases/v0.1.0/conformance/manifest.toml",
     ] {
         if !workspace_root.join(required_path).is_file() {
             return Err(format!("missing required workspace file: {required_path}"));
@@ -418,7 +418,7 @@ fn check() -> Result<(), String> {
     check_test_layout()?;
     check_traceability()?;
     check_versions()?;
-    verify_portable()?;
+    verify_optional_portable()?;
     check_generated_outputs()?;
     check_repository_structure()?;
     check_workflow_contract()
@@ -427,10 +427,7 @@ fn check() -> Result<(), String> {
 /// Verifies command documentation, platform adapters, and CI stay synchronized.
 fn check_workflow_contract() -> Result<(), String> {
     let root = workspace_root()?;
-    for relative in [
-        "README.md",
-        "portable/development/00-ENVIRONMENT-AUTOMATION.md",
-    ] {
+    for relative in ["README.md"] {
         let content = read_workspace_text(&root, relative)?;
         for command in interface::DOCUMENTED_COMMANDS {
             if !content.contains(command) {
@@ -1237,15 +1234,10 @@ fn ensure_no_unreviewed_contract_changes(root: &Path) -> Result<(), String> {
             "HEAD",
             "--",
             constants::CONTRACT_FREEZE_FILE,
-            "portable/ARCHITECTURE.md",
-            "portable/specs/REQUIREMENTS.md",
-            "portable/specs/contracts",
-            "portable/specs/decisions",
-            "portable/specs/fixtures",
+            "conformance/releases/v0.1.0/specs",
             constants::CONFORMANCE_MANIFEST_FILE,
-            "portable/conformance/oracles",
-            "portable/conformance/fixture-oracle-review.toml",
-            "portable/development/01-IDENTITY-AND-VOCABULARY.md",
+            "conformance/releases/v0.1.0/conformance/oracles",
+            "conformance/releases/v0.1.0/conformance/fixture-oracle-review.toml",
             "config/ir-encoding.toml",
         ])
         .output()
@@ -1599,9 +1591,120 @@ fn sha256_hex(bytes: &[u8]) -> String {
 /// Executes the active portable lifecycle command family.
 fn portable(action: PortableAction) -> Result<(), String> {
     match action {
+        PortableAction::Install(source) => install_portable(&source),
         PortableAction::Verify => verify_portable(),
         PortableAction::Snapshot => snapshot_portable(),
     }
+}
+
+/// Atomically installs and verifies one reviewed active portable package.
+fn install_portable(source: &Path) -> Result<(), String> {
+    let root = workspace_root()?;
+    let destination = root.join(constants::PORTABLE_DIRECTORY);
+    if destination.exists() {
+        return Err(format!(
+            "active portable destination already exists: {}",
+            destination.display()
+        ));
+    }
+    let source = fs::canonicalize(source).map_err(|error| {
+        format!(
+            "could not resolve portable source {}: {error}",
+            source.display()
+        )
+    })?;
+    if !source.is_dir() {
+        return Err(format!(
+            "portable source is not a directory: {}",
+            source.display()
+        ));
+    }
+    let staging = root.join(format!(".portable.install-{}", std::process::id()));
+    if staging.exists() {
+        return Err(format!(
+            "portable installation staging path already exists: {}",
+            staging.display()
+        ));
+    }
+    if let Err(error) = copy_portable_tree(&source, &staging) {
+        let _ = fs::remove_dir_all(&staging);
+        return Err(error);
+    }
+    fs::rename(&staging, &destination).map_err(|error| {
+        format!(
+            "could not publish portable package {} as {}: {error}",
+            staging.display(),
+            destination.display()
+        )
+    })?;
+    if let Err(error) = verify_portable() {
+        let rejected_root = result_root()?.join("portable/rejected");
+        let rejected_run = match unique_generated_directory(&rejected_root) {
+            Ok(directory) => directory,
+            Err(move_error) => {
+                fs::rename(&destination, &staging).map_err(|restore_error| {
+                    format!(
+                        "{error}; could not allocate rejected-package storage: {move_error}; could not retain the package at {}: {restore_error}",
+                        staging.display()
+                    )
+                })?;
+                return Err(format!(
+                    "{error}; could not allocate rejected-package storage: {move_error}; rejected package retained at {}",
+                    staging.display()
+                ));
+            }
+        };
+        let rejected = rejected_run.join(constants::PORTABLE_DIRECTORY);
+        fs::rename(&destination, &rejected).map_err(|move_error| {
+            format!(
+                "{error}; could not move rejected package {} to {}: {move_error}",
+                destination.display(),
+                rejected.display()
+            )
+        })?;
+        return Err(format!(
+            "{error}; rejected package retained at {}",
+            rejected.display()
+        ));
+    }
+    println!(
+        "{} active portable installed from {}",
+        constants::INFO,
+        source.display()
+    );
+    Ok(())
+}
+
+/// Copies a portable directory without following symbolic links or special files.
+fn copy_portable_tree(source: &Path, destination: &Path) -> Result<(), String> {
+    fs::create_dir(destination)
+        .map_err(|error| format!("could not create {}: {error}", destination.display()))?;
+    for entry in fs::read_dir(source)
+        .map_err(|error| format!("could not inspect {}: {error}", source.display()))?
+    {
+        let entry = entry.map_err(|error| format!("could not inspect portable entry: {error}"))?;
+        let file_type = entry
+            .file_type()
+            .map_err(|error| format!("could not inspect {}: {error}", entry.path().display()))?;
+        let target = destination.join(entry.file_name());
+        if file_type.is_dir() {
+            copy_portable_tree(&entry.path(), &target)?;
+        } else if file_type.is_file() {
+            fs::copy(entry.path(), &target).map_err(|error| {
+                format!(
+                    "could not copy {} to {}: {error}",
+                    entry.path().display(),
+                    target.display()
+                )
+            })?;
+        } else {
+            return Err(format!(
+                "portable source contains a symbolic link or special file: {}",
+                entry.path().display()
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Verifies the active portable package's required roots and traceability.
@@ -1610,38 +1713,56 @@ fn verify_portable() -> Result<(), String> {
     for relative in [
         constants::PORTABLE_PLAN_FILE,
         constants::PORTABLE_LIFECYCLE_FILE,
-        constants::CONTRACT_FREEZE_FILE,
-        constants::CONFORMANCE_MANIFEST_FILE,
+        constants::PORTABLE_CONTRACT_FREEZE_FILE,
+        constants::PORTABLE_CONFORMANCE_MANIFEST_FILE,
     ] {
         if !root.join(relative).is_file() {
             return Err(format!("active portable file is missing: {relative}"));
         }
     }
-    let package_version = workspace_package_version(&read_workspace_text(
-        &root,
-        constants::WORKSPACE_MANIFEST_FILE,
-    )?)?;
-    let major = package_version
-        .split('.')
-        .next()
-        .ok_or_else(|| "workspace version has no major component".to_owned())?;
     let lifecycle = read_workspace_text(&root, constants::PORTABLE_LIFECYCLE_FILE)?;
-    let expected_series = format!("v{major}");
-    if configuration_value(&lifecycle, "status").as_deref() != Some("active")
-        || configuration_value(&lifecycle, "active_series").as_deref()
-            != Some(expected_series.as_str())
-    {
+    let active_series = configuration_value(&lifecycle, "active_series")
+        .ok_or_else(|| "active portable lifecycle has no active_series".to_owned())?;
+    let status = configuration_value(&lifecycle, "status")
+        .ok_or_else(|| "active portable lifecycle has no status".to_owned())?;
+    if status != "active" {
         return Err(format!(
-            "active portable series must be {expected_series} for package {package_version}"
+            "installed portable status must be active; found {status:?}"
         ));
     }
-    check_traceability()?;
-    verify_fixture_freeze_digests(&root)?;
+    if !is_portable_series(&active_series) {
+        return Err(format!(
+            "active portable series must be a numeric v-prefixed identifier; found {active_series:?}"
+        ));
+    }
+    check_portable_traceability()?;
+    verify_fixture_freeze_digests(&root, constants::PORTABLE_CONTRACT_FREEZE_FILE)?;
     verify_portable_links(&root)?;
     ensure_no_archived_portable_dependencies(&root)?;
     verify_existing_portable_snapshots(&root)?;
     println!("{} active portable package: pass", constants::INFO);
     Ok(())
+}
+
+/// Returns whether a portable series is a nonempty numeric `v` identifier.
+fn is_portable_series(value: &str) -> bool {
+    value.strip_prefix('v').is_some_and(|digits| {
+        !digits.is_empty() && digits.chars().all(|character| character.is_ascii_digit())
+    })
+}
+
+/// Verifies an active portable package when one is installed for development.
+fn verify_optional_portable() -> Result<(), String> {
+    let root = workspace_root()?;
+    if root.join(constants::PORTABLE_DIRECTORY).exists() {
+        verify_portable()
+    } else {
+        println!(
+            "{} no active portable package installed; release conformance remains available",
+            constants::INFO
+        );
+        Ok(())
+    }
 }
 
 /// Verifies every locally retained digest-addressed portable snapshot.
@@ -1714,8 +1835,8 @@ fn verify_portable_snapshot_directory(root: &Path, directory: &Path) -> Result<(
 }
 
 /// Verifies immutable fixture-manifest identities recorded by the freeze.
-fn verify_fixture_freeze_digests(root: &Path) -> Result<(), String> {
-    let freeze = read_workspace_text(root, constants::CONTRACT_FREEZE_FILE)?;
+fn verify_fixture_freeze_digests(root: &Path, freeze_file: &str) -> Result<(), String> {
+    let freeze = read_workspace_text(root, freeze_file)?;
     for (path_key, digest_key) in [
         ("manifest_path", "manifest_sha256"),
         ("fixture_oracle_review_path", "fixture_oracle_review_sha256"),
@@ -1812,15 +1933,16 @@ fn ensure_no_archived_portable_dependencies(root: &Path) -> Result<(), String> {
         })
         .filter_map(|path| {
             let content = fs::read_to_string(path).ok()?;
-            forbidden
-                .iter()
-                .any(|value| content.contains(value))
-                .then(|| {
+            let uses_active_portable =
+                path.starts_with(root.join("crates")) && content.contains("portable/");
+            (uses_active_portable || forbidden.iter().any(|value| content.contains(value))).then(
+                || {
                     path.strip_prefix(root)
                         .unwrap_or(path)
                         .display()
                         .to_string()
-                })
+                },
+            )
         })
         .collect::<Vec<_>>();
     if violations.is_empty() {
@@ -1988,9 +2110,9 @@ fn check_repository_structure() -> Result<(), String> {
         ".devcontainer".to_owned(),
         ".github".to_owned(),
         "config".to_owned(),
+        "conformance".to_owned(),
         "crates".to_owned(),
         "fuzz".to_owned(),
-        "portable".to_owned(),
         "quality".to_owned(),
         "scripts".to_owned(),
         "xtask".to_owned(),
@@ -2076,8 +2198,8 @@ fn verify_ignore_policy(root: &Path) -> Result<(), String> {
         "Cargo.lock",
         "rust-toolchain.toml",
         "config/release.toml",
-        "portable/specs/contracts/freeze.toml",
-        "portable/conformance/manifest.toml",
+        "conformance/releases/v0.1.0/specs/contracts/freeze.toml",
+        "conformance/releases/v0.1.0/conformance/manifest.toml",
         "scripts/linux/bootstrap.sh",
     ] {
         let output = Command::new(constants::GIT_COMMAND)
@@ -2645,12 +2767,47 @@ fn verify_release_path_independence(root: &Path) -> Result<(), String> {
 
 /// Checks accepted IDs, completed syntax items, and fixture/oracle inventories.
 fn check_traceability() -> Result<(), String> {
+    check_traceability_bundle(
+        constants::REQUIREMENTS_FILE,
+        constants::SYNTAX_CONTRACT_FILE,
+        constants::SYNTAX_CHECKLIST_FILE,
+        constants::TRACEABILITY_FILE,
+        constants::CONFORMANCE_MANIFEST_FILE,
+        constants::FIXTURE_DIRECTORY,
+        constants::ORACLE_DIRECTORY,
+    )?;
+    verify_fixture_freeze_digests(&workspace_root()?, constants::CONTRACT_FREEZE_FILE)
+}
+
+/// Checks the contracts and conformance inventory of an installed portable package.
+fn check_portable_traceability() -> Result<(), String> {
+    check_traceability_bundle(
+        constants::PORTABLE_REQUIREMENTS_FILE,
+        constants::PORTABLE_SYNTAX_CONTRACT_FILE,
+        constants::PORTABLE_SYNTAX_CHECKLIST_FILE,
+        constants::PORTABLE_TRACEABILITY_FILE,
+        constants::PORTABLE_CONFORMANCE_MANIFEST_FILE,
+        constants::PORTABLE_FIXTURE_DIRECTORY,
+        constants::PORTABLE_ORACLE_DIRECTORY,
+    )
+}
+
+/// Checks one self-contained contract, fixture, and oracle bundle.
+fn check_traceability_bundle(
+    requirements_file: &str,
+    syntax_file: &str,
+    checklist_file: &str,
+    traceability_file: &str,
+    manifest_file: &str,
+    fixture_directory: &str,
+    oracle_directory: &str,
+) -> Result<(), String> {
     let root = workspace_root()?;
-    let requirements = read_workspace_text(&root, constants::REQUIREMENTS_FILE)?;
-    let syntax = read_workspace_text(&root, constants::SYNTAX_CONTRACT_FILE)?;
-    let checklist = read_workspace_text(&root, constants::SYNTAX_CHECKLIST_FILE)?;
-    let traceability = read_workspace_text(&root, constants::TRACEABILITY_FILE)?;
-    let manifest = read_workspace_text(&root, constants::CONFORMANCE_MANIFEST_FILE)?;
+    let requirements = read_workspace_text(&root, requirements_file)?;
+    let syntax = read_workspace_text(&root, syntax_file)?;
+    let checklist = read_workspace_text(&root, checklist_file)?;
+    let traceability = read_workspace_text(&root, traceability_file)?;
+    let manifest = read_workspace_text(&root, manifest_file)?;
 
     let requirement_ids = contract_ids(&requirements, "NL-");
     let syntax_ids = contract_ids(&syntax, "SYN-");
@@ -2660,10 +2817,10 @@ fn check_traceability() -> Result<(), String> {
     if syntax_ids != checklist_ids {
         return Err("master syntax and implementation checklist IDs differ".to_owned());
     }
-    ensure_syntax_complete(constants::SYNTAX_CONTRACT_FILE, &syntax)?;
-    ensure_syntax_complete(constants::SYNTAX_CHECKLIST_FILE, &checklist)?;
-    ensure_inventory_registered(&root, constants::FIXTURE_DIRECTORY, &manifest)?;
-    ensure_inventory_registered(&root, constants::ORACLE_DIRECTORY, &manifest)?;
+    ensure_syntax_complete(syntax_file, &syntax)?;
+    ensure_syntax_complete(checklist_file, &checklist)?;
+    ensure_inventory_registered(&root, fixture_directory, &manifest)?;
+    ensure_inventory_registered(&root, oracle_directory, &manifest)?;
     ensure_registered_paths_exist(&root, &manifest)?;
 
     println!("{} traceability coherence: pass", constants::INFO);
@@ -2826,7 +2983,9 @@ fn source_has_non_path_test_configuration(content: &str) -> bool {
 fn ensure_registered_paths_exist(root: &Path, manifest: &str) -> Result<(), String> {
     let missing = manifest
         .split('"')
-        .filter(|value| value.starts_with("portable/"))
+        .filter(|value| {
+            value.starts_with("conformance/releases/") || value.starts_with("portable/")
+        })
         .filter(|value| !root.join(value).is_file())
         .collect::<Vec<_>>();
     if missing.is_empty() {

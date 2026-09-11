@@ -30,156 +30,183 @@ use std::{
 type FailureOracle<'a> = (&'a [u8], ResultClass, &'a str, (u64, u64));
 
 /// Frozen positive minimal source fixture.
-const MINIMAL_SOURCE: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/syntax/minimal-core.neu");
+const MINIMAL_SOURCE: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/syntax/minimal-core.neu"
+);
 /// Frozen missing-module negative fixture.
-const MISSING_MODULE: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/negative/syntax/missing-module-header.neu");
+const MISSING_MODULE: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/syntax/missing-module-header.neu"
+);
 /// Frozen unsupported-version negative fixture.
 const UNSUPPORTED_VERSION: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/negative/syntax/unsupported-language-version.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/syntax/unsupported-language-version.neu"
 );
 /// Frozen comment-equivalent positive fixture.
-const COMMENTS_SOURCE: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/syntax/comments-equivalent.neu");
+const COMMENTS_SOURCE: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/syntax/comments-equivalent.neu"
+);
 /// Frozen identifier-boundary positive fixture.
-const IDENTIFIER_SOURCE: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/syntax/identifier-boundaries.neu");
+const IDENTIFIER_SOURCE: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/syntax/identifier-boundaries.neu"
+);
 /// Frozen invalid identifier fixture.
 const INVALID_IDENTIFIER: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/negative/identifiers/invalid-identifier.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/identifiers/invalid-identifier.neu"
 );
 /// Frozen protected-name fixture.
-const PROTECTED_NAME: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/negative/identifiers/protected-name.neu");
+const PROTECTED_NAME: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/identifiers/protected-name.neu"
+);
 /// Frozen unterminated block-comment fixture.
 const UNTERMINATED_COMMENT: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/negative/syntax/unterminated-block-comment.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/syntax/unterminated-block-comment.neu"
 );
 /// Frozen unsupported-symbol fixture.
-const UNSUPPORTED_SYMBOL: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/negative/syntax/unsupported-symbol.neu");
+const UNSUPPORTED_SYMBOL: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/syntax/unsupported-symbol.neu"
+);
 /// Frozen punctuation-rejection fixture.
-const PUNCTUATION_REJECTION: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/negative/syntax/punctuation-rejection.neu");
+const PUNCTUATION_REJECTION: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/syntax/punctuation-rejection.neu"
+);
 /// Frozen comment/newline ambiguity fixture.
 const COMMENT_NEWLINE: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/negative/syntax/comment-newline-ambiguity.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/syntax/comment-newline-ambiguity.neu"
 );
 /// Frozen adjacent string-token boundary fixture.
-const STRING_BOUNDARY: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/negative/syntax/string-token-boundary.neu");
+const STRING_BOUNDARY: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/syntax/string-token-boundary.neu"
+);
 /// Frozen escaped Unicode string fixture.
 const STRING_SOURCE: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/positive/strings/string-escapes-unicode.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/strings/string-escapes-unicode.neu"
 );
 /// Frozen true Boolean fixture.
-const BOOLEAN_TRUE: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/booleans/boolean-true.neu");
+const BOOLEAN_TRUE: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/booleans/boolean-true.neu"
+);
 /// Frozen false Boolean fixture.
-const BOOLEAN_FALSE: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/booleans/boolean-false.neu");
+const BOOLEAN_FALSE: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/booleans/boolean-false.neu"
+);
 /// Frozen fraction-number positive fixture.
-const NUMBER_FRACTION: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/numbers/number-fraction.neu");
+const NUMBER_FRACTION: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/numbers/number-fraction.neu"
+);
 /// Frozen exponent-number positive fixture.
-const NUMBER_EXPONENT: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/numbers/number-exponent.neu");
+const NUMBER_EXPONENT: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/numbers/number-exponent.neu"
+);
 /// Frozen separator-number positive fixture.
-const NUMBER_SEPARATORS: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/numbers/number-separators.neu");
+const NUMBER_SEPARATORS: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/numbers/number-separators.neu"
+);
 /// Frozen zero-number positive fixture.
-const NUMBER_ZERO: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/numbers/number-zero.neu");
+const NUMBER_ZERO: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/numbers/number-zero.neu"
+);
 /// Frozen nullable string-null positive fixture.
 const NULLABLE_STRING_NULL: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/positive/nullability/nullable-string-null.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/nullability/nullable-string-null.neu"
 );
 /// Frozen nullable number-null positive fixture.
 const NULLABLE_NUM_NULL: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/positive/nullability/nullable-num-null.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/nullability/nullable-num-null.neu"
 );
 /// Frozen nullable Boolean-null positive fixture.
 const NULLABLE_BOOL_NULL: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/positive/nullability/nullable-bool-null.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/nullability/nullable-bool-null.neu"
 );
 /// Frozen outer scalar-widening positive fixture.
 const NULLABLE_SCALAR_WIDENING: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/positive/nullability/nullable-scalar-widening.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/nullability/nullable-scalar-widening.neu"
 );
 /// Frozen basic nominal-record positive fixture.
-const NOMINAL_RECORD: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/records/nominal-record.neu");
+const NOMINAL_RECORD: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/records/nominal-record.neu"
+);
 /// Frozen forward record-collection positive fixture.
-const RECORD_FORWARD_ORDER: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/records/record-forward-order.neu");
+const RECORD_FORWARD_ORDER: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/records/record-forward-order.neu"
+);
 /// Frozen nested contextual-record positive fixture.
-const NESTED_RECORD: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/records/nested-record.neu");
+const NESTED_RECORD: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/records/nested-record.neu"
+);
 /// Frozen required/defaulted and nullable/non-nullable field-state fixture.
-const FIELD_STATE_DEFAULTS: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/defaults/field-state-matrix.neu");
+const FIELD_STATE_DEFAULTS: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/defaults/field-state-matrix.neu"
+);
 /// Frozen recursively closed contextual-record default fixture.
 const NESTED_RECORD_DEFAULT: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/positive/defaults/nested-record-default.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/defaults/nested-record-default.neu"
 );
 /// Frozen explicit override of a defaulted field fixture.
 const EXPLICIT_DEFAULT_OVERRIDE: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/positive/defaults/explicit-default-override.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/defaults/explicit-default-override.neu"
 );
 /// Frozen ordered string-list fixture.
-const ORDERED_STRINGS: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/lists/ordered-strings.neu");
+const ORDERED_STRINGS: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/lists/ordered-strings.neu"
+);
 /// Frozen empty contextual-list fixture.
-const EMPTY_LIST: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/lists/empty-list.neu");
+const EMPTY_LIST: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/lists/empty-list.neu"
+);
 /// Frozen nested list with nullable elements fixture.
-const NESTED_NULLABLE_LIST: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/lists/nested-nullable-list.neu");
+const NESTED_NULLABLE_LIST: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/lists/nested-nullable-list.neu"
+);
 /// Frozen record/list/default combined fixture.
-const RECORD_LIST_DEFAULT: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/lists/record-list-default.neu");
+const RECORD_LIST_DEFAULT: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/lists/record-list-default.neu"
+);
 /// Frozen forward and transitive immutable-value reuse fixture.
-const FORWARD_TRANSITIVE_REUSE: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/reuse/forward-transitive.neu");
+const FORWARD_TRANSITIVE_REUSE: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/reuse/forward-transitive.neu"
+);
 /// Frozen nested immutable-value reuse fixture.
-const NESTED_REUSE: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/reuse/nested-reuse.neu");
+const NESTED_REUSE: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/reuse/nested-reuse.neu"
+);
 /// Frozen outer-nullable immutable-value reuse fixture.
-const NULLABLE_REUSE: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/reuse/nullable-widening.neu");
+const NULLABLE_REUSE: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/reuse/nullable-widening.neu"
+);
 /// Frozen reuse with closed record/list defaults compatibility fixture.
 const REUSE_DEFAULTS: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/positive/values/defaults-compatibility.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/values/defaults-compatibility.neu"
 );
 /// Frozen forward typed identity-reference fixture.
-const FORWARD_REFERENCE: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/references/forward-target.neu");
+const FORWARD_REFERENCE: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/references/forward-target.neu"
+);
 /// Frozen recursive nominal identity-cycle fixture.
 const RECURSIVE_REFERENCE: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/positive/references/recursive-identity-cycle.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/references/recursive-identity-cycle.neu"
 );
 /// Frozen field-name-neutral identity-reference fixture.
 const FIELD_NAME_REFERENCE: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/positive/references/field-name-neutrality.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/references/field-name-neutrality.neu"
 );
 /// Planned core fixture now activated by complete reuse and reference slices.
-const COMBINED_REUSE_REFERENCE: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/values/immutable-value-reuse.neu");
+const COMBINED_REUSE_REFERENCE: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/values/immutable-value-reuse.neu"
+);
 /// Frozen minimal qualified vocabulary source fixture.
 const MINIMAL_VOCABULARY: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/positive/vocabulary/minimal-vocabulary.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/vocabulary/minimal-vocabulary.neu"
 );
 /// Exact accepted comprehensive vocabulary bundle bytes.
 const VOCABULARY_BUNDLE: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/vocabulary/bundles/positive/comprehensive.json"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/vocabulary/bundles/positive/comprehensive.json"
 );
 /// Published language showcase containing one complete executable example.
 const LANGUAGE_SHOWCASE: &str =
-    include_str!("../../../../portable/specs/examples/LANGUAGE-SHOWCASE.md");
+    include_str!("../../../../conformance/releases/v0.1.0/specs/examples/LANGUAGE-SHOWCASE.md");
 /// Logically equivalent vocabulary bundle with different member order and bytes.
 const REORDERED_VOCABULARY_BUNDLE: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/vocabulary/bundles/positive/reordered.json"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/vocabulary/bundles/positive/reordered.json"
 );
 /// Frozen fixture vocabulary logical identity.
 const FIXTURE_VOCABULARY_IDENTITY: &str = "Fixture";
@@ -199,37 +226,39 @@ const DECODER_MAX_CHANGES: usize = 8;
 const DECODER_MAX_ARBITRARY_BYTES: usize = 4_096;
 /// Captured bundle requiring an unsupported structural feature.
 const UNKNOWN_FEATURE_VOCABULARY_BUNDLE: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/vocabulary/bundles/negative/unknown-feature.json"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/vocabulary/bundles/negative/unknown-feature.json"
 );
 /// Frozen missing captured vocabulary source fixture.
-const MISSING_VOCABULARY_CAPTURE: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/negative/vocabulary/missing-capture.neu");
+const MISSING_VOCABULARY_CAPTURE: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/vocabulary/missing-capture.neu"
+);
 /// Frozen unknown qualified vocabulary type fixture.
-const UNKNOWN_VOCABULARY_TYPE: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/negative/vocabulary/unknown-type.neu");
+const UNKNOWN_VOCABULARY_TYPE: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/vocabulary/unknown-type.neu"
+);
 /// Frozen unknown vocabulary payload field fixture.
 const UNKNOWN_VOCABULARY_FIELD: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/negative/vocabulary/unknown-payload-field.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/vocabulary/unknown-payload-field.neu"
 );
 /// Frozen incompatible vocabulary payload field fixture.
 const WRONG_VOCABULARY_FIELD_TYPE: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/negative/vocabulary/wrong-payload-type.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/vocabulary/wrong-payload-type.neu"
 );
 /// Frozen missing vocabulary payload field fixture.
 const MISSING_VOCABULARY_FIELD: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/negative/vocabulary/missing-payload-field.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/vocabulary/missing-payload-field.neu"
 );
 /// Frozen duplicate vocabulary payload field fixture.
 const DUPLICATE_VOCABULARY_FIELD: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/negative/vocabulary/duplicate-payload-field.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/vocabulary/duplicate-payload-field.neu"
 );
 /// Frozen vocabulary namespace collision fixture.
 const VOCABULARY_NAME_COLLISION: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/negative/vocabulary/vocabulary-name-collision.neu"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/vocabulary/vocabulary-name-collision.neu"
 );
 /// Frozen executable-shape hostile vocabulary bundle.
 const EXECUTABLE_VOCABULARY_BUNDLE: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/vocabulary/bundles/negative/executable-member.json"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/vocabulary/bundles/negative/executable-member.json"
 );
 
 /// Returns deterministic bounds for active scalar source slices.
@@ -399,25 +428,25 @@ fn conformance_stage3_exact_number_negative_oracles() {
     let cases = [
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/numbers/number-invalid-separator.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/numbers/number-invalid-separator.neu"
             ) as &[u8],
             (96, 100),
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/numbers/number-missing-fraction.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/numbers/number-missing-fraction.neu"
             ),
             (95, 97),
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/numbers/number-invalid-exponent.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/numbers/number-invalid-exponent.neu"
             ),
             (95, 98),
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/numbers/number-base-prefix.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/numbers/number-base-prefix.neu"
             ),
             (90, 94),
         ),
@@ -445,14 +474,14 @@ fn security_exact_number_limits_fail_before_ir_allocation() {
     for (source, limits, span) in [
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/numbers/number-digit-limit.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/numbers/number-digit-limit.neu"
             ) as &[u8],
             digit_limits,
             (90, 95),
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/numbers/number-scale-limit.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/numbers/number-scale-limit.neu"
             ),
             scale_limits,
             (90, 93),
@@ -522,7 +551,7 @@ fn conformance_stage3_nullable_scalar_negative_oracles() {
     let cases: [FailureOracle<'_>; 2] = [
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/nullability/nonnullable-null.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/nullability/nonnullable-null.neu"
             ),
             ResultClass::Semantics,
             diagnostics::TYPE_MISMATCH,
@@ -530,7 +559,7 @@ fn conformance_stage3_nullable_scalar_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/nullability/double-nullable.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/nullability/double-nullable.neu"
             ),
             ResultClass::Syntax,
             diagnostics::MALFORMED_BOUNDARY,
@@ -645,7 +674,7 @@ fn conformance_stage4_nominal_record_negative_oracles() {
     let cases: [FailureOracle<'_>; 9] = [
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/records/duplicate-declaration.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/records/duplicate-declaration.neu"
             ),
             ResultClass::Semantics,
             diagnostics::DUPLICATE_DECLARATION,
@@ -653,7 +682,7 @@ fn conformance_stage4_nominal_record_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/records/duplicate-schema-field.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/records/duplicate-schema-field.neu"
             ),
             ResultClass::Semantics,
             diagnostics::DUPLICATE_RECORD_FIELD,
@@ -661,7 +690,7 @@ fn conformance_stage4_nominal_record_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/records/missing-value-field.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/records/missing-value-field.neu"
             ),
             ResultClass::Semantics,
             diagnostics::MISSING_RECORD_FIELD,
@@ -669,7 +698,7 @@ fn conformance_stage4_nominal_record_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/records/unknown-value-field.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/records/unknown-value-field.neu"
             ),
             ResultClass::Semantics,
             diagnostics::UNKNOWN_RECORD_FIELD,
@@ -677,7 +706,7 @@ fn conformance_stage4_nominal_record_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/records/duplicate-value-field.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/records/duplicate-value-field.neu"
             ),
             ResultClass::Semantics,
             diagnostics::DUPLICATE_VALUE_FIELD,
@@ -685,7 +714,7 @@ fn conformance_stage4_nominal_record_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/records/wrong-kind-type.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/records/wrong-kind-type.neu"
             ),
             ResultClass::Semantics,
             diagnostics::WRONG_DECLARATION_KIND,
@@ -693,7 +722,7 @@ fn conformance_stage4_nominal_record_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/records/embedded-recursion.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/records/embedded-recursion.neu"
             ),
             ResultClass::Semantics,
             diagnostics::EMBEDDED_RECORD_RECURSION,
@@ -701,7 +730,7 @@ fn conformance_stage4_nominal_record_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/records/field-shorthand.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/records/field-shorthand.neu"
             ),
             ResultClass::Syntax,
             diagnostics::MALFORMED_BOUNDARY,
@@ -709,7 +738,7 @@ fn conformance_stage4_nominal_record_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/records/wrong-field-type.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/records/wrong-field-type.neu"
             ),
             ResultClass::Semantics,
             diagnostics::TYPE_MISMATCH,
@@ -874,7 +903,7 @@ fn conformance_stage4_closed_defaults_negative_oracles() {
     let cases: [FailureOracle<'_>; 5] = [
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/defaults/nonconstant-default.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/defaults/nonconstant-default.neu"
             ),
             ResultClass::Semantics,
             diagnostics::NON_CONSTANT_DEFAULT,
@@ -882,7 +911,7 @@ fn conformance_stage4_closed_defaults_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/defaults/reference-default.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/defaults/reference-default.neu"
             ),
             ResultClass::Syntax,
             diagnostics::MALFORMED_BOUNDARY,
@@ -890,7 +919,7 @@ fn conformance_stage4_closed_defaults_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/defaults/expression-default.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/defaults/expression-default.neu"
             ),
             ResultClass::Syntax,
             diagnostics::UNSUPPORTED_SYMBOL,
@@ -898,7 +927,7 @@ fn conformance_stage4_closed_defaults_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/defaults/wrong-default-type.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/defaults/wrong-default-type.neu"
             ),
             ResultClass::Semantics,
             diagnostics::TYPE_MISMATCH,
@@ -906,7 +935,7 @@ fn conformance_stage4_closed_defaults_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/defaults/missing-nested-required.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/defaults/missing-nested-required.neu"
             ),
             ResultClass::Semantics,
             diagnostics::MISSING_RECORD_FIELD,
@@ -971,14 +1000,16 @@ fn conformance_stage4_ordered_lists_negative_oracles() {
     let cases: [FailureOracle<'_>; 2] = [
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/lists/wrong-item-type.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/lists/wrong-item-type.neu"
             ),
             ResultClass::Semantics,
             diagnostics::TYPE_MISMATCH,
             (105, 109),
         ),
         (
-            include_bytes!("../../../../portable/specs/fixtures/negative/lists/missing-comma.neu"),
+            include_bytes!(
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/lists/missing-comma.neu"
+            ),
             ResultClass::Syntax,
             diagnostics::MALFORMED_BOUNDARY,
             (107, 115),
@@ -1000,15 +1031,18 @@ fn conformance_stage4_ordered_lists_negative_oracles() {
 fn security_list_limits_fail_before_proportional_allocation() {
     let cases = [
         (
-            include_bytes!("../../../../portable/specs/fixtures/negative/lists/item-limit.neu")
-                as &[u8],
+            include_bytes!(
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/lists/item-limit.neu"
+            ) as &[u8],
             limits()
                 .with_list_items(2)
                 .expect("list item limit should be valid"),
             (100, 101),
         ),
         (
-            include_bytes!("../../../../portable/specs/fixtures/negative/lists/nesting-limit.neu"),
+            include_bytes!(
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/lists/nesting-limit.neu"
+            ),
             limits()
                 .with_nesting_depth(1)
                 .expect("list depth limit should be valid"),
@@ -1016,7 +1050,7 @@ fn security_list_limits_fail_before_proportional_allocation() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/lists/traversal-limit.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/lists/traversal-limit.neu"
             ),
             limits()
                 .with_traversal_nodes(2)
@@ -1150,28 +1184,28 @@ fn conformance_stage5_immutable_reuse_positive_oracles() {
 fn conformance_stage5_immutable_reuse_negative_oracles() {
     let cases = [
         (
-            include_bytes!("../../../../portable/specs/fixtures/negative/reuse/unknown-value.neu")
+            include_bytes!("../../../../conformance/releases/v0.1.0/specs/fixtures/negative/reuse/unknown-value.neu")
                 .as_slice(),
             diagnostics::UNKNOWN_VALUE,
         ),
         (
-            include_bytes!("../../../../portable/specs/fixtures/negative/reuse/wrong-kind.neu")
+            include_bytes!("../../../../conformance/releases/v0.1.0/specs/fixtures/negative/reuse/wrong-kind.neu")
                 .as_slice(),
             diagnostics::WRONG_DECLARATION_KIND,
         ),
         (
-            include_bytes!("../../../../portable/specs/fixtures/negative/reuse/direct-cycle.neu")
+            include_bytes!("../../../../conformance/releases/v0.1.0/specs/fixtures/negative/reuse/direct-cycle.neu")
                 .as_slice(),
             diagnostics::VALUE_CYCLE,
         ),
         (
-            include_bytes!("../../../../portable/specs/fixtures/negative/reuse/indirect-cycle.neu")
+            include_bytes!("../../../../conformance/releases/v0.1.0/specs/fixtures/negative/reuse/indirect-cycle.neu")
                 .as_slice(),
             diagnostics::VALUE_CYCLE,
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/reuse/generic-covariance.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/reuse/generic-covariance.neu"
             )
             .as_slice(),
             diagnostics::TYPE_MISMATCH,
@@ -1183,10 +1217,10 @@ fn conformance_stage5_immutable_reuse_negative_oracles() {
         assert_eq!(failure.diagnostics()[0].code().as_str(), expected_code);
     }
     let direct = compile_failure(include_bytes!(
-        "../../../../portable/specs/fixtures/negative/reuse/direct-cycle.neu"
+        "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/reuse/direct-cycle.neu"
     ));
     let indirect = compile_failure(include_bytes!(
-        "../../../../portable/specs/fixtures/negative/reuse/indirect-cycle.neu"
+        "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/reuse/indirect-cycle.neu"
     ));
     assert_eq!(direct.diagnostics()[0].related().len(), 1);
     assert_eq!(indirect.diagnostics()[0].related().len(), 3);
@@ -1223,8 +1257,9 @@ fn property_immutable_reuse_is_declaration_order_independent() {
 #[test]
 /// Verifies captured traversal bounds stop dependency-heavy source before IR.
 fn security_immutable_reuse_chains_are_bounded() {
-    let source =
-        include_bytes!("../../../../portable/specs/fixtures/negative/reuse/traversal-limit.neu");
+    let source = include_bytes!(
+        "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/reuse/traversal-limit.neu"
+    );
     let bounded = StructuralLimits::new(1_024, 16)
         .expect("reuse security limits must be valid")
         .with_traversal_nodes(3)
@@ -1314,7 +1349,7 @@ fn conformance_stage5_typed_references_negative_oracles() {
     let cases = [
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/references/unknown-target.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/references/unknown-target.neu"
             )
             .as_slice(),
             ResultClass::Reference,
@@ -1323,7 +1358,7 @@ fn conformance_stage5_typed_references_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/references/wrong-kind-target.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/references/wrong-kind-target.neu"
             )
             .as_slice(),
             ResultClass::Reference,
@@ -1332,7 +1367,7 @@ fn conformance_stage5_typed_references_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/references/wrong-target-type.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/references/wrong-target-type.neu"
             )
             .as_slice(),
             ResultClass::Reference,
@@ -1341,7 +1376,7 @@ fn conformance_stage5_typed_references_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/references/invariant-target-type.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/references/invariant-target-type.neu"
             )
             .as_slice(),
             ResultClass::Reference,
@@ -1350,7 +1385,7 @@ fn conformance_stage5_typed_references_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/references/missing-constructor.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/references/missing-constructor.neu"
             )
             .as_slice(),
             ResultClass::Semantics,
@@ -1789,7 +1824,7 @@ fn conformance_stage3_string_and_boolean_negative_oracles() {
     let cases: [FailureOracle<'_>; 9] = [
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/strings/string-unknown-escape.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/strings/string-unknown-escape.neu"
             ),
             ResultClass::Syntax,
             diagnostics::INVALID_STRING_LITERAL,
@@ -1797,7 +1832,7 @@ fn conformance_stage3_string_and_boolean_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/strings/string-invalid-surrogate.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/strings/string-invalid-surrogate.neu"
             ),
             ResultClass::Syntax,
             diagnostics::INVALID_STRING_LITERAL,
@@ -1805,7 +1840,7 @@ fn conformance_stage3_string_and_boolean_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/strings/string-out-of-range.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/strings/string-out-of-range.neu"
             ),
             ResultClass::Syntax,
             diagnostics::INVALID_STRING_LITERAL,
@@ -1813,7 +1848,7 @@ fn conformance_stage3_string_and_boolean_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/strings/string-raw-control.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/strings/string-raw-control.neu"
             ),
             ResultClass::Syntax,
             diagnostics::INVALID_STRING_LITERAL,
@@ -1821,7 +1856,7 @@ fn conformance_stage3_string_and_boolean_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/strings/string-unterminated.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/strings/string-unterminated.neu"
             ),
             ResultClass::Syntax,
             diagnostics::UNTERMINATED_STRING_LITERAL,
@@ -1829,7 +1864,7 @@ fn conformance_stage3_string_and_boolean_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/strings/string-type-mismatch.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/strings/string-type-mismatch.neu"
             ),
             ResultClass::Semantics,
             diagnostics::TYPE_MISMATCH,
@@ -1837,7 +1872,7 @@ fn conformance_stage3_string_and_boolean_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/booleans/invalid-boolean-literal.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/booleans/invalid-boolean-literal.neu"
             ),
             ResultClass::Semantics,
             diagnostics::UNKNOWN_VALUE,
@@ -1845,7 +1880,7 @@ fn conformance_stage3_string_and_boolean_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/syntax/version-escape.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/syntax/version-escape.neu"
             ),
             ResultClass::Syntax,
             diagnostics::UNSUPPORTED_LANGUAGE_VERSION,
@@ -1853,7 +1888,7 @@ fn conformance_stage3_string_and_boolean_negative_oracles() {
         ),
         (
             include_bytes!(
-                "../../../../portable/specs/fixtures/negative/syntax/version-leading-zero.neu"
+                "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/syntax/version-leading-zero.neu"
             ),
             ResultClass::Syntax,
             diagnostics::UNSUPPORTED_LANGUAGE_VERSION,
@@ -1926,8 +1961,9 @@ fn property_string_escapes_and_unicode_scalar_boundaries() {
 #[test]
 /// Verifies decoded string limits fail through the resource result boundary.
 fn security_decoded_string_limit_fails_before_ir_allocation() {
-    let source =
-        include_bytes!("../../../../portable/specs/fixtures/negative/strings/string-limit.neu");
+    let source = include_bytes!(
+        "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/strings/string-limit.neu"
+    );
     let limits = StructuralLimits::new(1_024, 16)
         .expect("base limits should be valid")
         .with_string_bytes(8)
@@ -2010,14 +2046,14 @@ fn security_misleading_comments_fail_safely_and_deterministically() {
 fn security_future_grammar_is_not_accepted_by_source_text_work() {
     let future: [&[u8]; 7] = [
         include_bytes!(
-            "../../../../portable/specs/fixtures/negative/vocabulary/visibility-modifier.neu"
+            "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/vocabulary/visibility-modifier.neu"
         ),
-        include_bytes!("../../../../portable/specs/fixtures/negative/values/reassignment.neu"),
+        include_bytes!("../../../../conformance/releases/v0.1.0/specs/fixtures/negative/values/reassignment.neu"),
         include_bytes!(
-            "../../../../portable/specs/fixtures/negative/vocabulary/namespace-declaration.neu"
+            "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/vocabulary/namespace-declaration.neu"
         ),
         include_bytes!(
-            "../../../../portable/specs/fixtures/negative/vocabulary/mut-modifier.neu"
+            "../../../../conformance/releases/v0.1.0/specs/fixtures/negative/vocabulary/mut-modifier.neu"
         ),
         b"neu \"0.1\"\nmodule future\nuse vocabulary core\n",
         b"neu \"0.1\"\nmodule future\n{ name: \"anonymous\", }\n",
@@ -2517,7 +2553,7 @@ fn conformance_stage7_every_positive_fixture_encodes() {
         .expect("test-suite crate should be inside the workspace");
     let mut fixtures = Vec::new();
     collect_positive_sources(
-        &workspace.join("portable/specs/fixtures/positive"),
+        &workspace.join("conformance/releases/v0.1.0/specs/fixtures/positive"),
         &mut fixtures,
     );
     assert!(!fixtures.is_empty());
@@ -2584,7 +2620,7 @@ fn property_stage8_formatter_is_idempotent_across_positive_corpus() {
         .expect("test-suite crate should be inside the workspace");
     let mut fixtures = Vec::new();
     collect_positive_sources(
-        &workspace.join("portable/specs/fixtures/positive"),
+        &workspace.join("conformance/releases/v0.1.0/specs/fixtures/positive"),
         &mut fixtures,
     );
     assert!(!fixtures.is_empty());
@@ -2608,7 +2644,7 @@ fn property_stage8_formatter_preserves_logic_and_provenance() {
         .expect("test-suite crate should be inside the workspace");
     let mut fixtures = Vec::new();
     collect_positive_sources(
-        &workspace.join("portable/specs/fixtures/positive"),
+        &workspace.join("conformance/releases/v0.1.0/specs/fixtures/positive"),
         &mut fixtures,
     );
     for fixture in fixtures {

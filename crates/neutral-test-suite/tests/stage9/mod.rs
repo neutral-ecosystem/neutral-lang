@@ -16,11 +16,12 @@ use neutral_vocabulary::{
 use std::{sync::Arc, thread};
 
 /// Frozen minimal source used as the seed for Stage 9 campaigns.
-const MINIMAL_SOURCE: &[u8] =
-    include_bytes!("../../../../portable/specs/fixtures/positive/syntax/minimal-core.neu");
+const MINIMAL_SOURCE: &[u8] = include_bytes!(
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/positive/syntax/minimal-core.neu"
+);
 /// Frozen valid vocabulary bytes used as the vocabulary mutation seed.
 const VOCABULARY_BUNDLE: &[u8] = include_bytes!(
-    "../../../../portable/specs/fixtures/vocabulary/bundles/positive/comprehensive.json"
+    "../../../../conformance/releases/v0.1.0/specs/fixtures/vocabulary/bundles/positive/comprehensive.json"
 );
 /// Reproducible seed shared by all stable Stage 9 mutation campaigns.
 const STAGE9_FUZZ_SEED: u64 = 0x4e45_5554_5241_4c39;

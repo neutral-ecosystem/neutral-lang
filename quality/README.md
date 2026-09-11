@@ -17,3 +17,5 @@ owners, and follow-up decisions needed to interpret those results.
   passes.
 - `stage9-dynamic-evidence.md` records measured coverage, mutation,
   coverage-guided readiness, and local performance outcomes.
+- `portable-v0-archive.md` records the v0 archive identity, the promoted
+  release-conformance boundary, and the removable-root validation.
