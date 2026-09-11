@@ -5,7 +5,7 @@
 schema_version = 1
 lockfile = "Cargo.lock"
 isolated_tool_lockfiles = ["fuzz/Cargo.lock"]
-review = "quality/dependency-review.md"
+review = "quality/reviews/dependency-review.md"
 allow_crates_io_registry = true
 allow_git_sources = false
 allow_external_paths = false

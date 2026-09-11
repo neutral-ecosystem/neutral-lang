@@ -3,7 +3,6 @@ name = "neutral-cli"
 description = "Host command-line adapter for Neutral capture, compilation, validation, and formatting"
 version.workspace = true
 edition.workspace = true
-rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 

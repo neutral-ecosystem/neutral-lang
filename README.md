@@ -99,7 +99,7 @@ second workflow.
 | `crates/` | Versioned implementation, binaries, and crate-owned tests |
 | `conformance/` | Immutable released contracts, fixtures, and oracles used by verification |
 | `portable/` | Optional active-version plan imported from the roadmap during development |
-| `quality/` | Tracked reviewed quality, security, dependency, and residual-risk conclusions |
+| `quality/` | Manifested policy, maintained reviews, and immutable per-release evidence |
 | `config/` | Tracked machine-readable repository policy |
 | `scripts/` | Thin Linux and Windows host adapters |
 | `fuzz/` | Tracked subsystem harnesses; mutable corpora/findings are ignored |

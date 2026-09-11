@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Stage 9 residual risks
+# Stage 9 residual-risk review
 
 Review date: 2026-09-08. Owner: maintainer. Approval state: approved by the
 sole maintainer for Stage 10 candidate preparation; final release approval

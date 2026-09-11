@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+
+[[document]]
+path = "quality/policy/standards-register.md"
+kind = "policy"
+owner = "maintainer"
+status = "approved"
+
+[[document]]
+path = "quality/reviews/threat-model.md"
+kind = "review"
+owner = "maintainer"
+status = "approved"
+
+[[document]]
+path = "quality/reviews/dependency-review.md"
+kind = "review"
+owner = "maintainer"
+status = "approved"
+
+[[document]]
+path = "quality/reviews/cache-isolation-review.md"
+kind = "review"
+owner = "maintainer"
+status = "approved"
+
+[[document]]
+path = "quality/reviews/static-work-product-review.md"
+kind = "review"
+owner = "maintainer"
+status = "approved-with-limitation"
+
+[[document]]
+path = "quality/reviews/quality-evaluation.md"
+kind = "review"
+owner = "maintainer"
+status = "approved"
+
+[[document]]
+path = "quality/reviews/residual-risks.md"
+kind = "review"
+owner = "maintainer"
+status = "approved-with-limitation"
+
+[[document]]
+path = "quality/evidence/v0.1.0/stage9-dynamic-evidence.md"
+kind = "release-evidence"
+owner = "maintainer"
+status = "accepted"
+
+[[document]]
+path = "quality/evidence/v0.1.0/portable-archive.md"
+kind = "release-evidence"
+owner = "maintainer"
+status = "accepted"

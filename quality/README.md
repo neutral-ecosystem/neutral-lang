@@ -1,21 +1,26 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Neutral quality evidence
+# Neutral quality system
 
-This directory owns reviewed static evidence for correctness, security,
-performance, maintainability, and residual risk. Dynamic generated output stays
-under ignored `test-results/`; this directory records the methods, conclusions,
-owners, and follow-up decisions needed to interpret those results.
+This directory contains durable quality governance and reviewed conclusions.
+It is deliberately separate from generated measurements: coverage reports,
+fuzz corpora, mutation output, benchmark samples, and profiler captures remain
+under ignored `test-results/`.
 
-- `standards-register.md` defines the project’s alignment boundary.
-- `threat-model.md` records assets, trust boundaries, threats, and controls.
-- `dependency-review.md` reviews dependencies and executable build surfaces.
-- `cache-isolation-review.md` reviews request/source-fact isolation.
-- `static-work-product-review.md` records review coverage and findings.
-- `quality-evaluation.md` evaluates the selected product characteristics.
-- `residual-risks.md` prevents incomplete external campaigns from being called
-  passes.
-- `stage9-dynamic-evidence.md` records measured coverage, mutation,
-  coverage-guided readiness, and local performance outcomes.
-- `portable-v0-archive.md` records the v0 archive identity, the promoted
-  release-conformance boundary, and the removable-root validation.
+## Structure
+
+| Path | Responsibility |
+| --- | --- |
+| `manifest.toml` | Machine-readable inventory and lifecycle state for every durable quality document |
+| `policy/` | Stable quality criteria and standards-tailoring decisions |
+| `reviews/` | Human-reviewed security, dependency, isolation, product, and residual-risk assessments |
+| `evidence/<release>/` | Immutable summaries that support one released version |
+
+Policy defines what must be demonstrated. Reviews interpret source and dynamic
+results. Versioned evidence records what was actually demonstrated for a
+release. A generated result is never promoted merely by copying raw output; its
+method, scope, outcome, owner, and limitations must be reviewed first.
+
+`cargo xtask check` validates that every non-README Markdown document is listed
+once in `manifest.toml`, remains in its declared category, exists, and carries
+the Apache-2.0 SPDX marker.

@@ -7,6 +7,10 @@ developer, CI, quality, documentation, package, and release-preparation flows.
 It is a non-published workspace package and must remain outside every production
 dependency graph.
 
+Repository checks also enforce `quality/manifest.toml`, keeping durable quality
+policy, maintained reviews, and versioned release evidence complete and
+separate from ignored raw tool output.
+
 ## Responsibility in the ecosystem
 
 This package owns stable command parsing, Cargo invocation, repository boundary

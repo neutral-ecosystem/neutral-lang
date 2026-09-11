@@ -2,8 +2,8 @@
 
 [toolchains]
 development = "stable"
-msrv = "1.97.1"
 release = "stable"
+update_policy = "rolling-latest-stable"
 
 [hosts]
 supported = ["x86_64-unknown-linux-gnu"]

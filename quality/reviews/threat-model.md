@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Neutral v0 threat model
+# Neutral v0 threat-model review
 
 Review date: 2026-09-06. Owner: maintainer.
 

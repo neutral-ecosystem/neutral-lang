@@ -63,10 +63,12 @@ pub const SYNTAX_CHECKLIST_FILE: &str =
 pub const TRACEABILITY_FILE: &str = "conformance/releases/v0.1.0/specs/TRACEABILITY.md";
 /// Stage 9 quality-gate configuration relative to the workspace root.
 pub const QUALITY_GATES_FILE: &str = "config/quality-gates.toml";
+/// Durable quality-document inventory relative to the workspace root.
+pub const QUALITY_MANIFEST_FILE: &str = "quality/manifest.toml";
 /// Stage 10 release-selection configuration relative to the workspace root.
 pub const RELEASE_CONFIG_FILE: &str = "config/release.toml";
 /// Approved Stage 9 residual-risk record relative to the workspace root.
-pub const RESIDUAL_RISKS_FILE: &str = "quality/residual-risks.md";
+pub const RESIDUAL_RISKS_FILE: &str = "quality/reviews/residual-risks.md";
 /// Root workspace manifest relative to the workspace root.
 pub const WORKSPACE_MANIFEST_FILE: &str = "Cargo.toml";
 /// Root dependency lock relative to the workspace root.

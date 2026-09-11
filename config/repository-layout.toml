@@ -48,7 +48,7 @@ lifecycle = "tracked immutable per-release verification bundles"
 path = "quality"
 readme = "quality/README.md"
 owner = "quality-evidence"
-lifecycle = "tracked reviewed conclusions"
+lifecycle = "tracked policy, maintained reviews, and versioned release evidence"
 
 [[directory]]
 path = "scripts"

@@ -106,6 +106,7 @@ fn verify_environment() -> Result<(), String> {
         "config/test-levels.toml",
         "config/test-suites.toml",
         "conformance/releases/v0.1.0/conformance/manifest.toml",
+        constants::QUALITY_MANIFEST_FILE,
     ] {
         if !workspace_root.join(required_path).is_file() {
             return Err(format!("missing required workspace file: {required_path}"));
@@ -420,6 +421,7 @@ fn check() -> Result<(), String> {
     check_versions()?;
     verify_optional_portable()?;
     check_generated_outputs()?;
+    check_quality_inventory()?;
     check_repository_structure()?;
     check_workflow_contract()
 }
@@ -1328,7 +1330,7 @@ fn verify_dependency_lock(root: &Path, package_version: &str) -> Result<(), Stri
     let policy = read_workspace_text(root, constants::DEPENDENCY_SOURCES_FILE)?;
     for requirement in [
         "lockfile = \"Cargo.lock\"",
-        "review = \"quality/dependency-review.md\"",
+        "review = \"quality/reviews/dependency-review.md\"",
         "allow_crates_io_registry = true",
         "allow_git_sources = false",
         "allow_external_paths = false",
@@ -1339,7 +1341,7 @@ fn verify_dependency_lock(root: &Path, package_version: &str) -> Result<(), Stri
             ));
         }
     }
-    let review = read_workspace_text(root, "quality/dependency-review.md")?;
+    let review = read_workspace_text(root, "quality/reviews/dependency-review.md")?;
     if !review.contains("Result: pass for the current lockfile") || !review.contains("cargo audit")
     {
         return Err("dependency and advisory review is absent or not passing".to_owned());
@@ -2098,6 +2100,64 @@ fn check_generated_outputs() -> Result<(), String> {
         return Err("target and test-results must remain ignored generated roots".to_owned());
     }
     println!("{} generated-output ownership: pass", constants::INFO);
+    Ok(())
+}
+
+/// Verifies the categorized inventory of durable quality documents.
+fn check_quality_inventory() -> Result<(), String> {
+    let root = workspace_root()?;
+    let manifest = read_workspace_text(&root, constants::QUALITY_MANIFEST_FILE)?;
+    let mut registered = BTreeSet::new();
+    for entry in manifest.split("[[document]]").skip(1) {
+        let path = configuration_value(entry, "path")
+            .ok_or_else(|| "quality document has no path".to_owned())?;
+        let kind = configuration_value(entry, "kind")
+            .ok_or_else(|| format!("quality document {path} has no kind"))?;
+        let owner = configuration_value(entry, "owner")
+            .ok_or_else(|| format!("quality document {path} has no owner"))?;
+        let status = configuration_value(entry, "status")
+            .ok_or_else(|| format!("quality document {path} has no status"))?;
+        let expected_prefix = match kind.as_str() {
+            "policy" => "quality/policy/",
+            "review" => "quality/reviews/",
+            "release-evidence" => "quality/evidence/",
+            _ => return Err(format!("quality document {path} has unknown kind {kind:?}")),
+        };
+        if owner.is_empty() || status.is_empty() || !path.starts_with(expected_prefix) {
+            return Err(format!(
+                "quality document {path} has incomplete or inconsistent metadata"
+            ));
+        }
+        if !registered.insert(path.clone()) {
+            return Err(format!("quality document is registered twice: {path}"));
+        }
+        let content = read_workspace_text(&root, &path)?;
+        if !content.starts_with("<!-- SPDX-License-Identifier: Apache-2.0 -->") {
+            return Err(format!("quality document lacks its license marker: {path}"));
+        }
+    }
+
+    let mut files = Vec::new();
+    collect_regular_files(&root.join("quality"), &mut files)?;
+    let actual = files
+        .iter()
+        .filter(|path| path.extension().and_then(|value| value.to_str()) == Some("md"))
+        .filter(|path| path.file_name().and_then(|value| value.to_str()) != Some("README.md"))
+        .map(|path| {
+            path.strip_prefix(&root)
+                .unwrap_or(path)
+                .to_string_lossy()
+                .replace('\\', "/")
+        })
+        .collect::<BTreeSet<_>>();
+    if actual != registered {
+        let unregistered = actual.difference(&registered).collect::<Vec<_>>();
+        let missing = registered.difference(&actual).collect::<Vec<_>>();
+        return Err(format!(
+            "quality inventory differs from durable documents; unregistered: {unregistered:?}; missing: {missing:?}"
+        ));
+    }
+    println!("{} quality document inventory: pass", constants::INFO);
     Ok(())
 }
 

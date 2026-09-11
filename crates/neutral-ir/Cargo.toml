@@ -3,7 +3,6 @@ name = "neutral-ir"
 description = "Public logical IR and source-accounting contracts for Neutral"
 version.workspace = true
 edition.workspace = true
-rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
