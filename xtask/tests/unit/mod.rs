@@ -42,6 +42,7 @@ fn automation_rejects_unknown_campaign_profiles() {
 /// Stable command shapes parse independently from external command execution.
 fn automation_parses_the_stable_command_surface() {
     let cases = [
+        (vec!["dev"], Task::Dev),
         (vec!["fmt"], Task::Format { write: false }),
         (vec!["fmt", "--write"], Task::Format { write: true }),
         (vec!["lint"], Task::Lint),
@@ -292,6 +293,33 @@ fn automation_derives_spdx_markers_from_the_workspace_license() {
 }
 
 #[test]
+/// Failed workflows retain the failed step and JSON-safe diagnostic automatically.
+fn automation_records_failed_workflow_steps() {
+    let error = super::run_recorded_workflow(
+        "unit-test",
+        "failure",
+        vec![(
+            "synthetic",
+            Box::new(|| Err("line one\n\"line two\"".to_owned())),
+        )],
+    )
+    .expect_err("synthetic workflow should fail");
+    let directory = error
+        .split_once("workflow log: ")
+        .map(|(_, directory)| std::path::PathBuf::from(directory))
+        .expect("failure should identify its workflow log");
+    let summary = std::fs::read_to_string(directory.join("summary.json"))
+        .expect("failed workflow summary should exist");
+    let events = std::fs::read_to_string(directory.join("events.jsonl"))
+        .expect("failed workflow events should exist");
+
+    assert!(summary.contains("\"status\":\"fail\""));
+    assert!(summary.contains("line one\\n\\\"line two\\\""));
+    assert!(events.contains("\"step\":\"synthetic\""));
+    assert!(events.contains("\"status\":\"fail\""));
+}
+
+#[test]
 /// Verifies that the environment manifest identifies the selected toolchain channel.
 fn environment_manifest_identifies_the_toolchain_channel() {
     let manifest = super::environment_manifest().expect("environment manifest should be available");
@@ -512,7 +540,7 @@ fn xtask_commands_and_helpers() {
 
     assert_eq!(
         super::json_string("hello\n\"world\""),
-        "hello\n\\\"world\\\""
+        "hello\\n\\\"world\\\""
     );
     assert!(super::quality_array("fuzz", "targets").is_ok());
     assert!(super::quality_array("fuzz", "nonexistent").is_err());
@@ -523,7 +551,8 @@ fn xtask_commands_and_helpers() {
     let res_root = super::result_root().expect("result root should exist");
     assert!(res_root.ends_with("test-results"));
 
-    let uniq_dir = super::unique_result_directory("unit_test_probe").expect("unique result dir");
+    let uniq_dir = super::unique_generated_directory(&res_root.join("unit-test-probe"))
+        .expect("unique result dir");
     assert!(uniq_dir.exists());
 
     let text = super::read_workspace_text(&root, "Cargo.toml").expect("read workspace text");

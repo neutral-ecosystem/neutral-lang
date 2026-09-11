@@ -27,6 +27,9 @@ use interface::{
     QualityProfile, Task, TestLevel, ValidationTarget, VersionAction,
 };
 
+/// One named fallible step in an aggregate automation workflow.
+type WorkflowStep<'a> = (&'static str, Box<dyn FnOnce() -> Result<(), String> + 'a>);
+
 /// Source template for the generated workspace rustdoc landing page.
 const RUSTDOC_INDEX_TEMPLATE: &str = include_str!("rustdoc-index.html");
 /// Shared HTML fragment injected into every generated rustdoc page.
@@ -475,9 +478,18 @@ fn check_workflow_contract() -> Result<(), String> {
     }
 
     let ci = read_workspace_text(&root, ".github/workflows/ci.yml")?;
-    for command in ["cargo xtask quality --profile pr", "cargo xtask docs"] {
-        if !ci.contains(command) {
-            return Err(format!("ci.yml does not delegate to `{command}`"));
+    if !ci.contains("cargo xtask ci pr") {
+        return Err("ci.yml does not delegate to `cargo xtask ci pr`".to_owned());
+    }
+    for retention_requirement in [
+        "if: always()",
+        "actions/upload-artifact@v7",
+        "path: test-results/workflows",
+    ] {
+        if !ci.contains(retention_requirement) {
+            return Err(format!(
+                "ci.yml does not retain workflow evidence with `{retention_requirement}`"
+            ));
         }
     }
     let release = read_workspace_text(&root, ".github/workflows/release.yml")?;
@@ -501,8 +513,8 @@ fn check_workflow_contract() -> Result<(), String> {
     if ci.contains("pull_request:") || ci.contains("contents: write") {
         return Err("push CI must not expose release credentials or write permission".to_owned());
     }
-    if ci.contains("cargo xtask ci ") || release.contains("cargo xtask ci ") {
-        return Err("workflow YAML must call stable commands, not internal CI aliases".to_owned());
+    if ci.contains("cargo xtask docs") || ci.contains("cargo xtask quality") {
+        return Err("ci.yml must use the single logged CI composition".to_owned());
     }
 
     for (relative, command) in [
@@ -770,9 +782,7 @@ fn quality(profile: QualityProfile) -> Result<(), String> {
         ("fuzz-regressions", Box::new(|| fuzz(FuzzMode::Smoke))),
         (
             "probe-build",
-            Box::new(|| {
-                run_cargo(&["build", "--locked", "--package", constants::NEUTRAL_PROBE])
-            }),
+            Box::new(|| run_cargo(&["build", "--locked", "--package", constants::NEUTRAL_PROBE])),
         ),
         ("docs", Box::new(documentation)),
     ];
@@ -1240,9 +1250,14 @@ fn release_plan() -> Result<release::ReleasePlan, String> {
     )?)?;
     let plan =
         release::ReleasePlan::read(&root.join(constants::RELEASE_CONFIG_FILE), &package_version)?;
-    let residual_risks = read_workspace_text(&root, constants::RESIDUAL_RISKS_FILE)?;
-    if !residual_risks.contains("Approval state: approved") {
-        return Err("Stage 9 residual-risk record is not approved".to_owned());
+    let residual_risk_status = quality_document_status(&root, constants::RESIDUAL_RISKS_FILE)?;
+    if !matches!(
+        residual_risk_status.as_str(),
+        "approved" | "approved-with-limitation"
+    ) {
+        return Err(format!(
+            "residual-risk review is not approved in the quality manifest; found {residual_risk_status}"
+        ));
     }
     if plan
         .channels
@@ -1260,6 +1275,20 @@ fn release_plan() -> Result<release::ReleasePlan, String> {
         }
     }
     Ok(plan)
+}
+
+/// Reads the lifecycle status of one durable document from the quality manifest.
+fn quality_document_status(root: &Path, document: &str) -> Result<String, String> {
+    let manifest = read_workspace_text(root, constants::QUALITY_MANIFEST_FILE)?;
+    for entry in manifest.split("[[document]]").skip(1) {
+        if configuration_value(entry, "path").as_deref() == Some(document) {
+            return configuration_value(entry, "status")
+                .ok_or_else(|| format!("quality document {document} has no status"));
+        }
+    }
+    Err(format!(
+        "quality document is not registered in the manifest: {document}"
+    ))
 }
 
 /// Requires a clean checked-out `main` and returns its exact current candidate commit.
@@ -1557,17 +1586,20 @@ fn stage_binary_package(
 
 /// Runs release checks and assembles artifacts without tagging or publishing.
 fn release_prepare() -> Result<(), String> {
-    let plan = release_plan()?;
-    require_main_head_checkout()?;
-    quality(QualityProfile::Release)?;
-    documentation()?;
-    package()?;
-    let result_directory = unique_generated_directory(
-        &result_root()?
-            .join(constants::RELEASE_RESULT_DIRECTORY)
-            .join("preparation"),
+    run_recorded_workflow(
+        "release",
+        "prepare",
+        vec![
+            ("release-plan", Box::new(|| release_plan().map(drop))),
+            (
+                "main-head",
+                Box::new(|| require_main_head_checkout().map(drop)),
+            ),
+            ("quality", Box::new(|| quality(QualityProfile::Release))),
+            ("package", Box::new(package)),
+        ],
     )?;
-    write_task_summary(&result_directory, "release-prepare", "main")?;
+    let plan = release_plan()?;
     println!(
         "{} release {} prepared; no publish action was performed",
         constants::INFO,
@@ -2533,9 +2565,11 @@ fn check_generated_outputs() -> Result<(), String> {
         "mutation",
         "benchmark",
         "package",
-        "sbom",
         "release",
+        "workflow-runs",
         "portable-snapshot",
+        "portable-rejected",
+        "quality-evaluation",
     ] {
         if !inventory.contains(&format!("name = \"{name}\"")) {
             return Err(format!("generated-output inventory is missing {name}"));
@@ -3037,20 +3071,20 @@ fn test_minimums(profile: &str) -> Result<BTreeMap<String, usize>, String> {
 fn ci(profile: CiProfile) -> Result<(), String> {
     match profile {
         CiProfile::Pr => run_ci_gate("pr", QualityProfile::Pr),
-        CiProfile::Release => run_ci_gate("release", QualityProfile::Release),
+        CiProfile::Release => release_prepare(),
     }
 }
 
 /// Runs a stable quality composition and writes its generated CI summary.
 fn run_ci_gate(profile: &str, quality_profile: QualityProfile) -> Result<(), String> {
-    verify_environment()?;
-    quality(quality_profile)?;
-    documentation()?;
-
-    let result_directory = unique_result_directory(profile)?;
-    write_task_summary(&result_directory, "ci", profile)?;
-    println!("{} CI {profile}: pass", constants::INFO);
-    Ok(())
+    run_recorded_workflow(
+        "ci",
+        profile,
+        vec![
+            ("environment", Box::new(verify_environment)),
+            ("quality", Box::new(move || quality(quality_profile))),
+        ],
+    )
 }
 
 /// Runs Cargo with inherited standard streams and converts failures to task errors.
@@ -3089,12 +3123,6 @@ fn command_output(command: &str, arguments: &[&str]) -> Result<String, String> {
         .map_err(|error| format!("{command} emitted non-UTF-8 output: {error}"))
 }
 
-/// Creates a unique generated-evidence directory beneath the relevant CI profile.
-fn unique_result_directory(profile: &str) -> Result<PathBuf, String> {
-    let profile_root = result_root()?.join("ci").join(profile);
-    unique_generated_directory(&profile_root)
-}
-
 /// Creates a process-unique directory below one approved generated-output root.
 fn unique_generated_directory(parent: &Path) -> Result<PathBuf, String> {
     fs::create_dir_all(parent).map_err(|error| {
@@ -3114,17 +3142,192 @@ fn unique_generated_directory(parent: &Path) -> Result<PathBuf, String> {
     Err("could not allocate a unique result directory".to_owned())
 }
 
-/// Writes one minimal machine-readable passing task summary.
-fn write_task_summary(directory: &Path, task: &str, profile: &str) -> Result<(), String> {
+/// Runs ordered workflow steps while retaining start, pass, and failure events.
+fn run_recorded_workflow(
+    workflow: &str,
+    profile: &str,
+    steps: Vec<WorkflowStep<'_>>,
+) -> Result<(), String> {
+    let directory = unique_generated_directory(
+        &result_root()?
+            .join(constants::WORKFLOW_RESULT_DIRECTORY)
+            .join(workflow)
+            .join(profile),
+    )?;
+    let events = directory.join(constants::WORKFLOW_EVENTS_FILE);
+    let summary = directory.join(constants::WORKFLOW_SUMMARY_FILE);
+    let total = steps.len();
+    let started_at = unix_time_millis()?;
+    let started = Instant::now();
+    write_workflow_summary(
+        &summary, workflow, profile, "running", 0, total, started_at, None,
+    )?;
+    println!(
+        "{} {workflow} {profile}: start; log {}",
+        constants::INFO,
+        directory.display()
+    );
+
+    for (index, (name, step)) in steps.into_iter().enumerate() {
+        let step_started_at = unix_time_millis()?;
+        let step_started = Instant::now();
+        append_workflow_event(
+            &events,
+            workflow,
+            profile,
+            name,
+            "start",
+            step_started_at,
+            0,
+            None,
+        )?;
+        println!("{} {workflow}/{name}: start", constants::INFO);
+        match step() {
+            Ok(()) => {
+                let elapsed = step_started.elapsed().as_millis();
+                append_workflow_event(
+                    &events,
+                    workflow,
+                    profile,
+                    name,
+                    "pass",
+                    unix_time_millis()?,
+                    elapsed,
+                    None,
+                )?;
+                write_workflow_summary(
+                    &summary,
+                    workflow,
+                    profile,
+                    "running",
+                    index + 1,
+                    total,
+                    started_at,
+                    None,
+                )?;
+                println!("{} {workflow}/{name}: pass ({elapsed} ms)", constants::INFO);
+            }
+            Err(error) => {
+                let elapsed = step_started.elapsed().as_millis();
+                append_workflow_event(
+                    &events,
+                    workflow,
+                    profile,
+                    name,
+                    "fail",
+                    unix_time_millis()?,
+                    elapsed,
+                    Some(&error),
+                )?;
+                write_workflow_summary(
+                    &summary,
+                    workflow,
+                    profile,
+                    "fail",
+                    index,
+                    total,
+                    started_at,
+                    Some(&error),
+                )?;
+                return Err(format!(
+                    "{workflow}/{name} failed: {error}; workflow log: {}",
+                    directory.display()
+                ));
+            }
+        }
+    }
+
+    let elapsed = started.elapsed().as_millis();
+    write_workflow_summary(
+        &summary, workflow, profile, "pass", total, total, started_at, None,
+    )?;
+    println!(
+        "{} {workflow} {profile}: pass ({elapsed} ms); log {}",
+        constants::INFO,
+        directory.display()
+    );
+    Ok(())
+}
+
+/// Appends one machine-readable workflow event without replacing earlier events.
+#[allow(clippy::too_many_arguments)]
+fn append_workflow_event(
+    path: &Path,
+    workflow: &str,
+    profile: &str,
+    step: &str,
+    status: &str,
+    timestamp_unix_ms: u128,
+    duration_ms: u128,
+    error: Option<&str>,
+) -> Result<(), String> {
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|error| format!("could not open workflow event log: {error}"))?;
+    writeln!(
+        file,
+        "{{\"workflow\":\"{}\",\"profile\":\"{}\",\"step\":\"{}\",\"status\":\"{}\",\"timestamp_unix_ms\":{timestamp_unix_ms},\"duration_ms\":{duration_ms},\"error\":{}}}",
+        json_string(workflow),
+        json_string(profile),
+        json_string(step),
+        json_string(status),
+        json_optional_string(error)
+    )
+    .map_err(|error| format!("could not write workflow event log: {error}"))
+}
+
+/// Writes the current machine-readable summary for an aggregate workflow.
+#[allow(clippy::too_many_arguments)]
+fn write_workflow_summary(
+    path: &Path,
+    workflow: &str,
+    profile: &str,
+    status: &str,
+    completed_steps: usize,
+    total_steps: usize,
+    started_at_unix_ms: u128,
+    error: Option<&str>,
+) -> Result<(), String> {
+    let root = workspace_root()?;
+    let manifest = read_workspace_text(&root, constants::WORKSPACE_MANIFEST_FILE)?;
+    let version = workspace_package_version(&manifest)?;
+    let license = workspace_package_license(&manifest)?;
+    let commit = command_output(constants::GIT_COMMAND, &["rev-parse", "HEAD"])?;
+    let rustc = command_output(constants::RUSTC_COMMAND, &["--version"])?;
     fs::write(
-        directory.join("task-summary.json"),
+        path,
         format!(
-            "{{\"task\":\"{}\",\"profile\":\"{}\",\"status\":\"pass\"}}\n",
-            json_string(task),
-            json_string(profile)
+            "{{\"schema_version\":1,\"workflow\":\"{}\",\"profile\":\"{}\",\"status\":\"{}\",\"completed_steps\":{completed_steps},\"total_steps\":{total_steps},\"started_at_unix_ms\":{started_at_unix_ms},\"updated_at_unix_ms\":{},\"source_commit\":\"{}\",\"package_version\":\"{}\",\"license\":\"{}\",\"rustc\":\"{}\",\"error\":{}}}\n",
+            json_string(workflow),
+            json_string(profile),
+            json_string(status),
+            unix_time_millis()?,
+            json_string(&commit),
+            json_string(&version),
+            json_string(&license),
+            json_string(&rustc),
+            json_optional_string(error)
         ),
     )
-    .map_err(|error| format!("could not write task summary: {error}"))
+    .map_err(|error| format!("could not write workflow summary: {error}"))
+}
+
+/// Encodes an optional string as one JSON value.
+fn json_optional_string(value: Option<&str>) -> String {
+    value.map_or_else(
+        || "null".to_owned(),
+        |value| format!("\"{}\"", json_string(value)),
+    )
+}
+
+/// Returns milliseconds elapsed since the Unix epoch for generated evidence.
+fn unix_time_millis() -> Result<u128, String> {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .map_err(|error| format!("system clock precedes Unix epoch: {error}"))
 }
 
 /// Returns the configured result root after rejecting unsafe paths.

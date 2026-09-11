@@ -16,6 +16,13 @@ release approvals to evaluated evidence digests, then generates the
 human-readable status page. Approval remains an explicit maintainer action;
 bookkeeping and consistency checks are automatic.
 
+`cargo xtask dev`, `cargo xtask ci pr`, and `cargo xtask release prepare` are
+ordered aggregate workflows. Every step emits start/pass/fail events plus a
+final summary beneath `test-results/workflows/`, including duration, source
+commit, package version, selected compiler, and project license. A failing run
+retains the exact failed step instead of losing all context behind a final exit
+code.
+
 ## Responsibility in the ecosystem
 
 This package owns stable command parsing, Cargo invocation, repository boundary

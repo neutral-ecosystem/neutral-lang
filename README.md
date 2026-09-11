@@ -20,16 +20,14 @@ repository, and run the one adapter for your host:
 
 ```sh
 ./scripts/linux/bootstrap.sh
-cargo xtask --help
-cargo xtask quality
+cargo xtask dev
 ```
 
 On Windows PowerShell:
 
 ```powershell
 .\scripts\win\bootstrap.ps1
-cargo xtask --help
-cargo xtask quality
+cargo xtask dev
 ```
 
 Bootstrap verifies prerequisites and writes only ignored environment evidence.
@@ -43,6 +41,8 @@ release preparation:
 
 | Purpose | Command |
 | --- | --- |
+| Daily development: format → check → lint → tests → docs | `cargo xtask dev` |
+| Exact local/hosted CI gate | `cargo xtask ci pr` |
 | Format | `cargo xtask fmt [--write]` |
 | Lint | `cargo xtask lint` |
 | Compile and repository checks | `cargo xtask check` |
@@ -91,9 +91,21 @@ The stable interface replaces milestone-specific and duplicate wrappers:
 | Handwritten release command sequences | `cargo xtask release prepare` | replaced |
 | Platform scripts containing project policy | thin `scripts/linux` and `scripts/win` adapters | replaced |
 
-The internal `cargo xtask ci pr|release` aliases remain available for CI
-compatibility, but they call the same stable compositions and do not define a
-second workflow.
+## Recommended development flow
+
+Use three aggregate commands in order; each prints and retains a machine-readable
+run directory containing `events.jsonl` and `summary.json`:
+
+1. `cargo xtask bootstrap` — once per environment or after tool changes.
+2. `cargo xtask dev` — during development; applies formatting and runs the full
+   ordinary test/documentation loop.
+3. `cargo xtask ci pr` — before pushing; runs the exact non-mutating command used
+   by GitHub Actions.
+
+For a release, run `cargo xtask quality evaluate --profile release`, explicitly
+approve it, then run `cargo xtask release prepare`. Generated status Markdown,
+workflow records, documentation, package manifests, checksums, and environment
+evidence are automation-owned and must not be maintained by hand.
 
 ## Repository map
 

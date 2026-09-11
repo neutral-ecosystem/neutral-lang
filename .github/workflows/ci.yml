@@ -18,5 +18,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - run: cargo xtask quality --profile pr
-      - run: cargo xtask docs
+      - run: cargo xtask ci pr
+      - name: Retain workflow evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: workflow-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/workflows
+          if-no-files-found: warn
+          retention-days: 14

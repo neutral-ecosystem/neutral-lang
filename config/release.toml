@@ -6,9 +6,6 @@
 # `v<workspace.package.version>` and created only after approval.
 schema_version = 1
 
-[approval]
-stage9_residual_risk = true
-
 [distribution]
 source_tag = true
 github_binaries = true

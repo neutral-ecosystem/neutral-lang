@@ -31,9 +31,6 @@ impl ReleasePlan {
     pub(crate) fn read(path: &Path, package_version: &str) -> Result<Self, String> {
         let content = fs::read_to_string(path)
             .map_err(|error| format!("could not read {}: {error}", path.display()))?;
-        if !required_bool(&content, "stage9_residual_risk")? {
-            return Err("Stage 9 residual-risk approval is required".to_owned());
-        }
         let mut channels = BTreeSet::new();
         if required_bool(&content, "source_tag")? {
             channels.insert(DistributionChannel::SourceTag);

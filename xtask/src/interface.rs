@@ -267,7 +267,7 @@ pub(crate) enum PortableAction {
 pub(crate) enum CiProfile {
     /// Normal push/pull-request composition.
     Pr,
-    /// Full release composition.
+    /// Clean-main release preparation composition.
     Release,
 }
 

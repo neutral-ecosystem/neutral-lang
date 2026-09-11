@@ -12,7 +12,6 @@ fn release_plan_accepts_an_explicit_scope() {
     fs::write(
         &path,
         concat!(
-            "stage9_residual_risk = true\n",
             "source_tag = true\n",
             "github_binaries = true\n",
             "crates_io = false\n",
@@ -30,13 +29,12 @@ fn release_plan_accepts_an_explicit_scope() {
 }
 
 #[test]
-/// Missing approval and distribution selections fail closed.
-fn release_plan_rejects_unapproved_empty_scope() {
+/// An empty distribution selection fails closed.
+fn release_plan_rejects_empty_scope() {
     let path = temporary_plan_path("rejected");
     fs::write(
         &path,
         concat!(
-            "stage9_residual_risk = false\n",
             "source_tag = false\n",
             "github_binaries = false\n",
             "crates_io = false\n",

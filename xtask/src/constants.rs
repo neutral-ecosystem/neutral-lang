@@ -171,8 +171,12 @@ pub const XTASK: &str = "xtask";
 pub const STAGE9_BENCHMARK: &str = "stage9";
 /// Relative root for generated release preparation and packages.
 pub const RELEASE_RESULT_DIRECTORY: &str = "release";
-/// Generated quality-report directory relative to the result root.
-pub const QUALITY_REPORT_DIRECTORY: &str = "analysis/quality-report";
+/// Generated aggregate workflow-log directory relative to the result root.
+pub const WORKFLOW_RESULT_DIRECTORY: &str = "workflows";
+/// Append-only event-log filename within one workflow run.
+pub const WORKFLOW_EVENTS_FILE: &str = "events.jsonl";
+/// Current workflow-summary filename within one workflow run.
+pub const WORKFLOW_SUMMARY_FILE: &str = "summary.json";
 /// Generated version-plan directory relative to the result root.
 pub const VERSION_RESULT_DIRECTORY: &str = "version";
 /// Generated portable snapshot root relative to the result root.

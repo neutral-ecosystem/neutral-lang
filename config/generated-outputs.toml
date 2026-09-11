@@ -52,19 +52,19 @@ validate = "cargo xtask validate binaries"
 tracking = "ignored"
 
 [[output]]
-name = "sbom"
-path = "test-results/release/sbom"
-owner = "xtask"
-generate = "cargo xtask package"
-validate = "cargo xtask package"
-tracking = "ignored"
-
-[[output]]
 name = "release"
 path = "test-results/release/preparation"
 owner = "xtask"
 generate = "cargo xtask release prepare"
 validate = "cargo xtask quality --profile release"
+tracking = "ignored"
+
+[[output]]
+name = "workflow-runs"
+path = "test-results/workflows"
+owner = "xtask"
+generate = "cargo xtask dev or cargo xtask ci pr or cargo xtask release prepare"
+validate = "inspect summary.json and events.jsonl in the printed run directory"
 tracking = "ignored"
 
 [[output]]

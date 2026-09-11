@@ -23,7 +23,7 @@ method, scope, outcome, owner, and limitations must be reviewed first.
 
 `cargo xtask check` validates that every authored non-README Markdown document
 is listed once in `manifest.toml`, remains in its declared category, exists, and
-carries the Apache-2.0 SPDX marker. The generated `STATUS.md` is verified
+carries the SPDX marker derived from the root workspace license. The generated `STATUS.md` is verified
 separately against immutable approval records.
 
 ## Managed workflow
