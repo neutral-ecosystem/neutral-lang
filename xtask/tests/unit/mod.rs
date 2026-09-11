@@ -3,8 +3,8 @@
 //! Tests for dependency-boundary policy failures.
 
 use super::interface::{
-    BuildProfile, CiProfile, FuzzMode, PerformanceProfile, PortableAction, QualityProfile, Task,
-    TestLevel, ValidationTarget, VersionAction,
+    BuildProfile, CiProfile, FuzzMode, PerformanceProfile, PortableAction, QualityAction,
+    QualityProfile, Task, TestLevel, ValidationTarget, VersionAction,
 };
 use super::{
     constants, contract_ids, ensure_ids_covered, ensure_syntax_complete, quality_value_from,
@@ -61,7 +61,27 @@ fn automation_parses_the_stable_command_surface() {
         (vec!["fuzz", "campaign"], Task::Fuzz(FuzzMode::Campaign)),
         (
             vec!["quality", "--profile", "release"],
-            Task::Quality(QualityProfile::Release),
+            Task::Quality(QualityAction::Run(QualityProfile::Release)),
+        ),
+        (
+            vec!["quality", "evaluate", "--profile", "release"],
+            Task::Quality(QualityAction::Evaluate(QualityProfile::Release)),
+        ),
+        (
+            vec!["quality", "status"],
+            Task::Quality(QualityAction::Status),
+        ),
+        (
+            vec!["quality", "approve", "--release", "v0.1.0"],
+            Task::Quality(QualityAction::Approve("v0.1.0".to_owned())),
+        ),
+        (
+            vec!["quality", "render"],
+            Task::Quality(QualityAction::Render),
+        ),
+        (
+            vec!["quality", "verify"],
+            Task::Quality(QualityAction::Verify),
         ),
         (
             vec!["validate", "artifact.nir"],
@@ -184,6 +204,27 @@ fn automation_hashes_snapshot_bytes_deterministically() {
 }
 
 #[test]
+/// Quality status rendering is deterministic and escapes table delimiters.
+fn automation_renders_quality_approval_status() {
+    let approval = super::QualityApproval {
+        release: "v1.0.0".to_owned(),
+        commit: "0123456789012345678901234567890123456789".to_owned(),
+        status: "approved".to_owned(),
+        approved_by: "One | Maintainer".to_owned(),
+        approved_at: "123".to_owned(),
+        evaluation: "quality/evaluations/example/release.toml".to_owned(),
+        evidence_sha256: "a".repeat(64),
+        quality_gates_sha256: "b".repeat(64),
+    };
+    let rendered = super::quality_status_markdown(&[approval], "LicenseRef-Neutral-Test");
+    assert!(rendered.starts_with("<!-- SPDX-License-Identifier: LicenseRef-Neutral-Test -->"));
+    assert!(rendered.contains("`v1.0.0`"));
+    assert!(rendered.contains("One \\| Maintainer"));
+    assert!(super::is_sha256(&"a".repeat(64)));
+    assert!(!super::is_sha256(&"A".repeat(64)));
+}
+
+#[test]
 /// Portable series identifiers accept future numeric versions without package coupling.
 fn automation_accepts_numeric_portable_series() {
     assert!(super::is_portable_series("v0"));
@@ -212,16 +253,42 @@ fn automation_revalidates_portable_snapshot_bytes() {
     let copied = snapshot.join("content/portable/test.txt");
     std::fs::create_dir_all(copied.parent().expect("copied file should have a parent"))
         .expect("snapshot content should be creatable");
+    std::fs::write(
+        root.join("Cargo.toml"),
+        "[workspace.package]\nlicense = \"LicenseRef-Neutral-Test\"\n",
+    )
+    .expect("test workspace manifest should be writable");
     std::fs::write(&copied, bytes).expect("snapshot content should be writable");
     std::fs::write(
         snapshot.join("manifest.sha256"),
-        format!("# SPDX-License-Identifier: Apache-2.0\n{record}"),
+        format!(
+            "{}\n{record}",
+            super::line_spdx_marker("LicenseRef-Neutral-Test")
+        ),
     )
     .expect("snapshot manifest should be writable");
     assert!(super::verify_portable_snapshot_directory(&root, &snapshot).is_ok());
     std::fs::write(&copied, b"corrupt").expect("snapshot corruption should be writable");
     assert!(super::verify_portable_snapshot_directory(&root, &snapshot).is_err());
     std::fs::remove_dir_all(root).expect("temporary snapshot should be removable");
+}
+
+#[test]
+/// Project license parsing and SPDX rendering use the workspace manifest value.
+fn automation_derives_spdx_markers_from_the_workspace_license() {
+    let manifest = "[workspace.package]\nversion = \"1.2.3\"\nlicense = \"MIT OR Apache-2.0\"\n";
+    let license =
+        super::workspace_package_license(manifest).expect("workspace license should parse");
+
+    assert_eq!(license, "MIT OR Apache-2.0");
+    assert_eq!(
+        super::line_spdx_marker(&license),
+        "# SPDX-License-Identifier: MIT OR Apache-2.0"
+    );
+    assert_eq!(
+        super::html_spdx_marker(&license),
+        "<!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->"
+    );
 }
 
 #[test]

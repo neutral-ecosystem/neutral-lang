@@ -50,6 +50,9 @@ release preparation:
 | Performance | `cargo xtask test performance --profile pr\|release\|soak` |
 | Normal quality composition | `cargo xtask quality` |
 | Release quality composition | `cargo xtask quality --profile release` |
+| Quality ledger | `cargo xtask quality status\|render\|verify` |
+| Retain evaluation | `cargo xtask quality evaluate --profile pr\|release` |
+| Approve release quality | `cargo xtask quality approve --release <version>` |
 | Developer/release build | `cargo xtask build --profile dev\|release` |
 | Documentation | `cargo xtask docs` or `cargo docs` |
 | Coverage | `RUSTUP_TOOLCHAIN=nightly cargo xtask coverage` |

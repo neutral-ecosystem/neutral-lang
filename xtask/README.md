@@ -11,6 +11,11 @@ Repository checks also enforce `quality/manifest.toml`, keeping durable quality
 policy, maintained reviews, and versioned release evidence complete and
 separate from ignored raw tool output.
 
+The managed `quality status|evaluate|approve|render|verify` workflow binds
+release approvals to evaluated evidence digests, then generates the
+human-readable status page. Approval remains an explicit maintainer action;
+bookkeeping and consistency checks are automatic.
+
 ## Responsibility in the ecosystem
 
 This package owns stable command parsing, Cargo invocation, repository boundary

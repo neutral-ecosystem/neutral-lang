@@ -14,6 +14,7 @@ use std::{
     fs,
     path::{Component, Path, PathBuf},
     process::Command,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 pub mod constants;
@@ -21,8 +22,8 @@ mod interface;
 mod release;
 
 use interface::{
-    BuildProfile, CiProfile, FuzzMode, PerformanceProfile, PortableAction, QualityProfile, Task,
-    TestLevel, ValidationTarget, VersionAction,
+    BuildProfile, CiProfile, FuzzMode, PerformanceProfile, PortableAction, QualityAction,
+    QualityProfile, Task, TestLevel, ValidationTarget, VersionAction,
 };
 
 /// Source template for the generated workspace rustdoc landing page.
@@ -63,7 +64,7 @@ fn execute(task: Task) -> Result<(), String> {
         Task::Fuzz(mode) => fuzz(mode),
         Task::Coverage => coverage(),
         Task::Mutate => mutate(),
-        Task::Quality(profile) => quality(profile),
+        Task::Quality(action) => quality_action(action),
         Task::Validate(target) => validate(target),
         Task::Package => package(),
         Task::ReleasePrepare => release_prepare(),
@@ -421,7 +422,7 @@ fn check() -> Result<(), String> {
     check_versions()?;
     verify_optional_portable()?;
     check_generated_outputs()?;
-    check_quality_inventory()?;
+    verify_quality_ledger()?;
     check_repository_structure()?;
     check_workflow_contract()
 }
@@ -710,6 +711,18 @@ fn mutate() -> Result<(), String> {
     run_cargo(&["mutants", "--file", &target])
 }
 
+/// Dispatches one managed quality workflow action.
+fn quality_action(action: QualityAction) -> Result<(), String> {
+    match action {
+        QualityAction::Run(profile) => quality(profile),
+        QualityAction::Status => quality_status(),
+        QualityAction::Evaluate(profile) => evaluate_quality(profile),
+        QualityAction::Approve(release) => approve_quality_release(&release),
+        QualityAction::Render => render_quality_status(),
+        QualityAction::Verify => verify_quality_ledger(),
+    }
+}
+
 /// Runs the documented aggregate quality composition for one durable profile.
 fn quality(profile: QualityProfile) -> Result<(), String> {
     format_workspace(false)?;
@@ -736,6 +749,363 @@ fn quality(profile: QualityProfile) -> Result<(), String> {
     write_task_summary(&result_directory, "quality", profile)?;
     println!("{} quality {profile}: pass", constants::INFO);
     Ok(())
+}
+
+/// One immutable approved-release quality record.
+#[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct QualityApproval {
+    /// Release identifier without a `v` prefix.
+    release: String,
+    /// Exact approved Git commit.
+    commit: String,
+    /// Approval state.
+    status: String,
+    /// Human who explicitly approved the evaluation.
+    approved_by: String,
+    /// UTC-independent Unix timestamp or retained historical date.
+    approved_at: String,
+    /// Evaluation identifier that supported the approval.
+    evaluation: String,
+    /// SHA-256 of the release evidence inventory.
+    evidence_sha256: String,
+    /// SHA-256 of the quality-gate configuration used for evaluation.
+    quality_gates_sha256: String,
+}
+
+/// Runs a quality profile and writes a deterministic commit-bound evaluation.
+fn evaluate_quality(profile: QualityProfile) -> Result<(), String> {
+    let commit = require_clean_checkout()?;
+    quality(profile)?;
+    let root = workspace_root()?;
+    let profile_name = quality_profile_name(profile);
+    let output = result_root()?
+        .join(constants::QUALITY_EVALUATION_DIRECTORY)
+        .join(&commit)
+        .join(format!("{profile_name}.toml"));
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|error| format!("could not create {}: {error}", parent.display()))?;
+    }
+    let manifest_sha256 = sha256_file(&root.join(constants::QUALITY_MANIFEST_FILE))?;
+    let quality_gates_sha256 = sha256_file(&root.join(constants::QUALITY_GATES_FILE))?;
+    let toolchain = command_output(constants::RUSTC_COMMAND, &["--version"])?;
+    let license_marker = line_spdx_marker(&project_license(&root)?);
+    fs::write(
+        &output,
+        format!(
+            "{license_marker}\n\nschema_version = 1\ncommit = \"{}\"\nprofile = \"{profile_name}\"\nstatus = \"pass\"\ntoolchain = \"{}\"\nquality_manifest_sha256 = \"{manifest_sha256}\"\nquality_gates_sha256 = \"{quality_gates_sha256}\"\n",
+            json_string(&commit),
+            json_string(&toolchain)
+        ),
+    )
+    .map_err(|error| format!("could not write {}: {error}", output.display()))?;
+    println!(
+        "{} quality evaluation: {}",
+        constants::INFO,
+        output.display()
+    );
+    Ok(())
+}
+
+/// Approves a passing release evaluation for the clean checked-out `main` HEAD.
+fn approve_quality_release(release: &str) -> Result<(), String> {
+    let version = release.strip_prefix('v').unwrap_or(release);
+    validate_semver(version)?;
+    let root = workspace_root()?;
+    let workspace_version = workspace_package_version(&read_workspace_text(
+        &root,
+        constants::WORKSPACE_MANIFEST_FILE,
+    )?)?;
+    if version != workspace_version {
+        return Err(format!(
+            "quality approval release {version} does not match workspace version {workspace_version}"
+        ));
+    }
+    let commit = require_main_head_checkout()?;
+    let evaluation_relative = PathBuf::from(constants::QUALITY_EVALUATION_DIRECTORY)
+        .join(&commit)
+        .join("release.toml");
+    let evaluation = result_root()?.join(&evaluation_relative);
+    let evaluation_content = fs::read_to_string(&evaluation).map_err(|error| {
+        format!(
+            "passing release evaluation is missing at {}: {error}; run `cargo xtask quality evaluate --profile release`",
+            evaluation.display()
+        )
+    })?;
+    if configuration_value(&evaluation_content, "commit").as_deref() != Some(commit.as_str())
+        || configuration_value(&evaluation_content, "profile").as_deref() != Some("release")
+        || configuration_value(&evaluation_content, "status").as_deref() != Some("pass")
+    {
+        return Err("release evaluation does not identify a passing current HEAD".to_owned());
+    }
+    let evaluated_manifest = configuration_value(&evaluation_content, "quality_manifest_sha256")
+        .ok_or_else(|| "release evaluation has no quality-manifest digest".to_owned())?;
+    let evaluated_gates = configuration_value(&evaluation_content, "quality_gates_sha256")
+        .ok_or_else(|| "release evaluation has no quality-gate digest".to_owned())?;
+    if evaluated_manifest != sha256_file(&root.join(constants::QUALITY_MANIFEST_FILE))?
+        || evaluated_gates != sha256_file(&root.join(constants::QUALITY_GATES_FILE))?
+    {
+        return Err(
+            "quality policy changed after evaluation; rerun the release evaluation".to_owned(),
+        );
+    }
+    let evidence_directory = root
+        .join(constants::QUALITY_EVIDENCE_DIRECTORY)
+        .join(format!("v{version}"));
+    if !evidence_directory.join("README.md").is_file() {
+        return Err(format!(
+            "release evidence directory is not prepared: {}",
+            evidence_directory.display()
+        ));
+    }
+    let approved_by = command_output(constants::GIT_COMMAND, &["config", "user.name"])?;
+    if approved_by.is_empty() {
+        return Err("Git user.name is required to record quality approval".to_owned());
+    }
+    let approved_at = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| format!("system clock precedes Unix epoch: {error}"))?
+        .as_secs();
+    let record = evidence_directory.join("record.toml");
+    if record.exists() {
+        return Err(format!(
+            "quality approval already exists and is immutable: {}",
+            record.display()
+        ));
+    }
+    let evidence_sha256 = release_evidence_digest(&evidence_directory)?;
+    let quality_gates_sha256 = evaluated_gates;
+    let license_marker = line_spdx_marker(&project_license(&root)?);
+    fs::write(
+        &record,
+        format!(
+            "{license_marker}\n\nschema_version = 1\nrelease = \"v{version}\"\ncommit = \"{commit}\"\nstatus = \"approved\"\napproved_by = \"{}\"\napproved_at = \"{approved_at}\"\nevaluation = \"{}\"\nevidence_sha256 = \"{evidence_sha256}\"\nquality_gates_sha256 = \"{quality_gates_sha256}\"\n",
+            json_string(&approved_by),
+            json_string(&evaluation_relative.to_string_lossy())
+        ),
+    )
+    .map_err(|error| format!("could not write {}: {error}", record.display()))?;
+    render_quality_status()?;
+    println!("{} quality release v{version}: approved", constants::INFO);
+    Ok(())
+}
+
+/// Prints the current approved-release quality ledger.
+fn quality_status() -> Result<(), String> {
+    let approvals = read_quality_approvals()?;
+    if approvals.is_empty() {
+        println!("{} no approved quality releases", constants::INFO);
+    }
+    for approval in approvals {
+        println!(
+            "{} {} {} {}",
+            constants::INFO,
+            approval.release,
+            approval.status,
+            approval.approved_by
+        );
+    }
+    Ok(())
+}
+
+/// Regenerates the checked-in human-readable quality status document.
+fn render_quality_status() -> Result<(), String> {
+    let approvals = read_quality_approvals()?;
+    let root = workspace_root()?;
+    let rendered = quality_status_markdown(&approvals, &project_license(&root)?);
+    let path = root.join(constants::QUALITY_STATUS_FILE);
+    fs::write(&path, rendered)
+        .map_err(|error| format!("could not write {}: {error}", path.display()))?;
+    println!(
+        "{} quality status rendered: {}",
+        constants::INFO,
+        path.display()
+    );
+    Ok(())
+}
+
+/// Verifies approval records, evidence digests, and generated status documentation.
+fn verify_quality_ledger() -> Result<(), String> {
+    check_quality_inventory()?;
+    let root = workspace_root()?;
+    let approvals = read_quality_approvals()?;
+    for approval in &approvals {
+        if approval.status != "approved"
+            || approval.approved_by.is_empty()
+            || approval.approved_at.is_empty()
+            || approval.evaluation.is_empty()
+            || !is_sha256(&approval.evidence_sha256)
+            || !is_sha256(&approval.quality_gates_sha256)
+            || approval.commit.len() != 40
+            || !approval
+                .commit
+                .chars()
+                .all(|character| character.is_ascii_hexdigit())
+        {
+            return Err(format!(
+                "quality approval v{} is incomplete or invalid",
+                approval.release
+            ));
+        }
+        let version = approval.release.strip_prefix('v').ok_or_else(|| {
+            format!(
+                "quality approval release must start with v: {}",
+                approval.release
+            )
+        })?;
+        validate_semver(version)?;
+        let evidence_directory = root
+            .join(constants::QUALITY_EVIDENCE_DIRECTORY)
+            .join(&approval.release);
+        let actual = release_evidence_digest(&evidence_directory)?;
+        if actual != approval.evidence_sha256 {
+            return Err(format!(
+                "quality evidence v{} has digest {actual}, expected {}",
+                approval.release, approval.evidence_sha256
+            ));
+        }
+    }
+    let expected = quality_status_markdown(&approvals, &project_license(&root)?);
+    let status = read_workspace_text(&root, constants::QUALITY_STATUS_FILE)?;
+    if status != expected {
+        return Err(
+            "quality status documentation is stale; run `cargo xtask quality render`".to_owned(),
+        );
+    }
+    println!("{} quality approval ledger: pass", constants::INFO);
+    Ok(())
+}
+
+/// Returns the stable command spelling for one quality profile.
+fn quality_profile_name(profile: QualityProfile) -> &'static str {
+    match profile {
+        QualityProfile::Pr => "pr",
+        QualityProfile::Release => "release",
+    }
+}
+
+/// Requires a clean checkout and returns its exact current Git commit.
+fn require_clean_checkout() -> Result<String, String> {
+    let commit = command_output(constants::GIT_COMMAND, &["rev-parse", "HEAD"])?;
+    let status = command_output(constants::GIT_COMMAND, &["status", "--porcelain"])?;
+    if !status.is_empty() {
+        return Err("quality evaluation requires a clean worktree".to_owned());
+    }
+    Ok(commit)
+}
+
+/// Returns the SHA-256 digest of one exact file.
+fn sha256_file(path: &Path) -> Result<String, String> {
+    fs::read(path)
+        .map(|bytes| sha256_hex(&bytes))
+        .map_err(|error| format!("could not read {}: {error}", path.display()))
+}
+
+/// Returns whether text is one lowercase SHA-256 hexadecimal digest.
+fn is_sha256(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .chars()
+            .all(|character| character.is_ascii_hexdigit() && !character.is_ascii_uppercase())
+}
+
+/// Hashes the sorted durable evidence files for one release.
+fn release_evidence_digest(directory: &Path) -> Result<String, String> {
+    let mut files = Vec::new();
+    collect_regular_files(directory, &mut files)?;
+    files.retain(|path| {
+        !matches!(
+            path.file_name().and_then(|value| value.to_str()),
+            Some("README.md" | "record.toml")
+        )
+    });
+    files.sort();
+    let mut inventory = String::new();
+    for path in files {
+        let relative = path
+            .strip_prefix(directory)
+            .map_err(|error| format!("quality evidence path escaped its release: {error}"))?
+            .to_string_lossy()
+            .replace('\\', "/");
+        writeln!(&mut inventory, "{}  {relative}", sha256_file(&path)?)
+            .expect("writing to a String cannot fail");
+    }
+    Ok(sha256_hex(inventory.as_bytes()))
+}
+
+/// Reads every immutable quality approval record in release order.
+fn read_quality_approvals() -> Result<Vec<QualityApproval>, String> {
+    let root = workspace_root()?;
+    let mut records = Vec::new();
+    collect_named_files(
+        &root.join(constants::QUALITY_EVIDENCE_DIRECTORY),
+        "record.toml",
+        &mut records,
+    )?;
+    let mut approvals = Vec::new();
+    for path in records {
+        let content = fs::read_to_string(&path)
+            .map_err(|error| format!("could not read {}: {error}", path.display()))?;
+        let field = |name: &str| {
+            configuration_value(&content, name)
+                .ok_or_else(|| format!("quality approval {} has no {name}", path.display()))
+        };
+        let approval = QualityApproval {
+            release: field("release")?,
+            commit: field("commit")?,
+            status: field("status")?,
+            approved_by: field("approved_by")?,
+            approved_at: field("approved_at")?,
+            evaluation: field("evaluation")?,
+            evidence_sha256: field("evidence_sha256")?,
+            quality_gates_sha256: field("quality_gates_sha256")?,
+        };
+        let directory_release = path
+            .parent()
+            .and_then(Path::file_name)
+            .and_then(std::ffi::OsStr::to_str)
+            .ok_or_else(|| {
+                format!(
+                    "quality approval has no release directory: {}",
+                    path.display()
+                )
+            })?;
+        if approval.release != directory_release {
+            return Err(format!(
+                "quality approval release {} does not match directory {directory_release}",
+                approval.release
+            ));
+        }
+        approvals.push(approval);
+    }
+    approvals.sort();
+    Ok(approvals)
+}
+
+/// Renders the deterministic human-readable approval table.
+fn quality_status_markdown(approvals: &[QualityApproval], license: &str) -> String {
+    let mut output = format!(
+        "{}\n<!-- Generated by `cargo xtask quality render`; do not edit. -->\n\n# Quality approval status\n\n| Release | Status | Approved by | Approved at |\n| --- | --- | --- | --- |\n",
+        html_spdx_marker(license)
+    );
+    for approval in approvals {
+        writeln!(
+            &mut output,
+            "| `v{}` | {} | {} | `{}` |",
+            approval
+                .release
+                .strip_prefix('v')
+                .unwrap_or(&approval.release),
+            approval.status,
+            approval.approved_by.replace('|', "\\|"),
+            approval.approved_at
+        )
+        .expect("writing to a String cannot fail");
+    }
+    output.push_str(
+        "\nApproval records and evidence digests are verified by `cargo xtask quality verify`.\n",
+    );
+    output
 }
 
 /// Verifies that every configured expensive quality gate has retained pass evidence.
@@ -875,6 +1245,16 @@ struct DistributionAsset {
     bytes: Vec<u8>,
 }
 
+/// Shared provenance fields applied to every release-manifest artifact entry.
+struct ReleaseEntryContext<'a> {
+    /// Workspace package version that produced the artifact.
+    version: &'a str,
+    /// Exact source commit from which the artifact was produced.
+    candidate_commit: &'a str,
+    /// Project license expression inherited from the workspace manifest.
+    license: &'a str,
+}
+
 /// Assembles the selected binary distribution into the ignored release root.
 fn package() -> Result<(), String> {
     let plan = release_plan()?;
@@ -938,6 +1318,13 @@ fn release_distribution_assets(
     package_summary: &str,
 ) -> Result<Vec<DistributionAsset>, String> {
     let version = plan.release_tag.trim_start_matches('v');
+    let license = project_license(root)?;
+    let license_marker = html_spdx_marker(&license);
+    let entry_context = ReleaseEntryContext {
+        version,
+        candidate_commit,
+        license: &license,
+    };
     let source_name = format!("neutral-lang-{}-source.tar", plan.release_tag);
     let lock_bytes = fs::read(root.join(constants::CARGO_LOCK_FILE))
         .map_err(|error| format!("could not read release dependency lock: {error}"))?;
@@ -952,7 +1339,7 @@ fn release_distribution_assets(
         },
         DistributionAsset {
             filename: constants::RELEASE_INSTALL_FILE.to_owned(),
-            bytes: format!("<!-- SPDX-License-Identifier: Apache-2.0 -->\n\n# Install Neutral {version}\n\nSupported target: `{host}`. Verify the downloaded files with `sha256sum --check SHA256SUMS`, install `neutral-cli` and `neutral-probe` into a directory on `PATH`, then run `neutral-cli --version` and `neutral-probe --help`.\n").into_bytes(),
+            bytes: format!("{license_marker}\n\n# Install Neutral {version}\n\nSupported target: `{host}`. Verify the downloaded files with `sha256sum --check SHA256SUMS`, install `neutral-cli` and `neutral-probe` into a directory on `PATH`, then run `neutral-cli --version` and `neutral-probe --help`.\n").into_bytes(),
         },
         DistributionAsset {
             filename: constants::RELEASE_PROVENANCE_FILE.to_owned(),
@@ -973,8 +1360,7 @@ fn release_distribution_assets(
             &filename,
             &bytes,
             "github-binaries",
-            version,
-            candidate_commit,
+            &entry_context,
         );
     }
     for asset in &assets {
@@ -989,8 +1375,7 @@ fn release_distribution_assets(
             &asset.filename,
             &asset.bytes,
             channel,
-            version,
-            candidate_commit,
+            &entry_context,
         );
     }
     for (filename, bytes) in [
@@ -1012,11 +1397,10 @@ fn release_distribution_assets(
             filename,
             &bytes,
             "github-release-metadata",
-            version,
-            candidate_commit,
+            &entry_context,
         );
     }
-    let manifest = format!("{{\"schema_version\":1,\"release_tag\":\"{}\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"license\":\"Apache-2.0\",\"supported_targets\":[\"{}\"],\"crates_io_selected\":false,\"known_limitations\":[\"single supported Linux x86_64 target\",\"no runtime or application semantics\"],\"deferred\":[\"additional host targets\",\"crates.io publication\"],\"artifacts\":[{}]}}\n", json_string(&plan.release_tag), json_string(candidate_commit), json_string(host), entries.join(",")).into_bytes();
+    let manifest = format!("{{\"schema_version\":1,\"release_tag\":\"{}\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"license\":\"{}\",\"supported_targets\":[\"{}\"],\"crates_io_selected\":false,\"known_limitations\":[\"single supported Linux x86_64 target\",\"no runtime or application semantics\"],\"deferred\":[\"additional host targets\",\"crates.io publication\"],\"artifacts\":[{}]}}\n", json_string(&plan.release_tag), json_string(candidate_commit), json_string(&license), json_string(host), entries.join(",")).into_bytes();
     checksums.push(format!(
         "{}  {}\n",
         sha256_hex(&manifest),
@@ -1063,12 +1447,11 @@ fn append_release_entry(
     filename: &str,
     bytes: &[u8],
     channel: &str,
-    version: &str,
-    candidate_commit: &str,
+    context: &ReleaseEntryContext<'_>,
 ) {
     let digest = sha256_hex(bytes);
     checksums.push(format!("{digest}  {filename}\n"));
-    entries.push(format!("{{\"filename\":\"{}\",\"sha256\":\"{}\",\"license\":\"Apache-2.0\",\"producer_version\":\"{}\",\"source_commit\":\"{}\",\"channel\":\"{}\"}}", json_string(filename), digest, json_string(version), json_string(candidate_commit), json_string(channel)));
+    entries.push(format!("{{\"filename\":\"{}\",\"sha256\":\"{}\",\"license\":\"{}\",\"producer_version\":\"{}\",\"source_commit\":\"{}\",\"channel\":\"{}\"}}", json_string(filename), digest, json_string(context.license), json_string(context.version), json_string(context.candidate_commit), json_string(channel)));
 }
 
 /// Atomically stages selected binaries, license material, and package metadata.
@@ -1432,7 +1815,24 @@ fn verify_manifest_dependency_paths(root: &Path, manifest: &Path) -> Result<(), 
 
 /// Reads the root workspace package version from its exact TOML section.
 fn workspace_package_version(manifest: &str) -> Result<String, String> {
+    let version = workspace_package_value(manifest, "version")?;
+    validate_semver(&version)?;
+    Ok(version)
+}
+
+/// Reads the root workspace package license identifier.
+fn workspace_package_license(manifest: &str) -> Result<String, String> {
+    let license = workspace_package_value(manifest, "license")?;
+    if license.is_empty() {
+        return Err("root Cargo.toml has an empty [workspace.package] license".to_owned());
+    }
+    Ok(license)
+}
+
+/// Reads one quoted value from the root workspace package section.
+fn workspace_package_value(manifest: &str, key: &str) -> Result<String, String> {
     let mut selected = false;
+    let prefix = format!("{key} = \"");
     for line in manifest.lines().map(str::trim) {
         if line.starts_with('[') {
             selected = line == "[workspace.package]";
@@ -1440,14 +1840,31 @@ fn workspace_package_version(manifest: &str) -> Result<String, String> {
         }
         if selected
             && let Some(value) = line
-                .strip_prefix("version = \"")
+                .strip_prefix(&prefix)
                 .and_then(|line| line.strip_suffix('"'))
         {
-            validate_semver(value)?;
             return Ok(value.to_owned());
         }
     }
-    Err("root Cargo.toml has no [workspace.package] version".to_owned())
+    Err(format!("root Cargo.toml has no [workspace.package] {key}"))
+}
+
+/// Reads the project license identifier from the root workspace manifest.
+fn project_license(root: &Path) -> Result<String, String> {
+    workspace_package_license(&read_workspace_text(
+        root,
+        constants::WORKSPACE_MANIFEST_FILE,
+    )?)
+}
+
+/// Returns the line-comment SPDX marker for one license identifier.
+fn line_spdx_marker(license: &str) -> String {
+    format!("# SPDX-License-Identifier: {license}")
+}
+
+/// Returns the HTML-comment SPDX marker for one license identifier.
+fn html_spdx_marker(license: &str) -> String {
+    format!("<!-- SPDX-License-Identifier: {license} -->")
 }
 
 /// Returns every non-root workspace package manifest.
@@ -1794,6 +2211,10 @@ fn verify_existing_portable_snapshots(root: &Path) -> Result<(), String> {
 fn verify_portable_snapshot_directory(root: &Path, directory: &Path) -> Result<(), String> {
     let manifest = fs::read_to_string(directory.join("manifest.sha256"))
         .map_err(|error| format!("could not read snapshot manifest: {error}"))?;
+    let expected_license_marker = line_spdx_marker(&project_license(root)?);
+    if !manifest.starts_with(&expected_license_marker) {
+        return Err("portable snapshot manifest has the wrong license marker".to_owned());
+    }
     let mut records = String::new();
     for line in manifest
         .lines()
@@ -1969,9 +2390,9 @@ fn snapshot_portable() -> Result<(), String> {
     let tree_digest = sha256_hex(records.as_bytes());
     let parent = result_root()?.join(constants::PORTABLE_SNAPSHOT_DIRECTORY);
     let output = parent.join(&tree_digest);
-    let manifest = format!(
-        "# SPDX-License-Identifier: Apache-2.0\n# sha256  bytes  repository-relative-path\n{records}"
-    );
+    let license_marker = line_spdx_marker(&project_license(&root)?);
+    let manifest =
+        format!("{license_marker}\n# sha256  bytes  repository-relative-path\n{records}");
     if output.exists() {
         let existing = fs::read_to_string(output.join("manifest.sha256"))
             .map_err(|error| format!("could not read existing snapshot manifest: {error}"))?;
@@ -2106,6 +2527,7 @@ fn check_generated_outputs() -> Result<(), String> {
 /// Verifies the categorized inventory of durable quality documents.
 fn check_quality_inventory() -> Result<(), String> {
     let root = workspace_root()?;
+    let expected_license_marker = html_spdx_marker(&project_license(&root)?);
     let manifest = read_workspace_text(&root, constants::QUALITY_MANIFEST_FILE)?;
     let mut registered = BTreeSet::new();
     for entry in manifest.split("[[document]]").skip(1) {
@@ -2132,7 +2554,7 @@ fn check_quality_inventory() -> Result<(), String> {
             return Err(format!("quality document is registered twice: {path}"));
         }
         let content = read_workspace_text(&root, &path)?;
-        if !content.starts_with("<!-- SPDX-License-Identifier: Apache-2.0 -->") {
+        if !content.starts_with(&expected_license_marker) {
             return Err(format!("quality document lacks its license marker: {path}"));
         }
     }
@@ -2143,6 +2565,7 @@ fn check_quality_inventory() -> Result<(), String> {
         .iter()
         .filter(|path| path.extension().and_then(|value| value.to_str()) == Some("md"))
         .filter(|path| path.file_name().and_then(|value| value.to_str()) != Some("README.md"))
+        .filter(|path| path.as_path() != root.join(constants::QUALITY_STATUS_FILE))
         .map(|path| {
             path.strip_prefix(&root)
                 .unwrap_or(path)
@@ -2164,6 +2587,7 @@ fn check_quality_inventory() -> Result<(), String> {
 /// Verifies directory ownership, durable test levels, fuzz ownership, and hygiene.
 fn check_repository_structure() -> Result<(), String> {
     let root = workspace_root()?;
+    let expected_license_marker = html_spdx_marker(&project_license(&root)?);
     let layout = read_workspace_text(&root, constants::REPOSITORY_LAYOUT_FILE)?;
     let expected = BTreeSet::from([
         ".cargo".to_owned(),
@@ -2193,7 +2617,7 @@ fn check_repository_structure() -> Result<(), String> {
             ));
         }
         let readme_content = read_workspace_text(&root, &readme)?;
-        if !readme_content.starts_with("<!-- SPDX-License-Identifier: Apache-2.0 -->") {
+        if !readme_content.starts_with(&expected_license_marker) {
             return Err(format!(
                 "repository README lacks its license marker: {readme}"
             ));

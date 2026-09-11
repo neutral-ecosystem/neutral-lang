@@ -65,6 +65,12 @@ pub const TRACEABILITY_FILE: &str = "conformance/releases/v0.1.0/specs/TRACEABIL
 pub const QUALITY_GATES_FILE: &str = "config/quality-gates.toml";
 /// Durable quality-document inventory relative to the workspace root.
 pub const QUALITY_MANIFEST_FILE: &str = "quality/manifest.toml";
+/// Generated human-readable quality status relative to the workspace root.
+pub const QUALITY_STATUS_FILE: &str = "quality/STATUS.md";
+/// Versioned durable quality evidence root relative to the workspace root.
+pub const QUALITY_EVIDENCE_DIRECTORY: &str = "quality/evidence";
+/// Ignored commit-bound quality evaluations relative to the result root.
+pub const QUALITY_EVALUATION_DIRECTORY: &str = "quality/evaluations";
 /// Stage 10 release-selection configuration relative to the workspace root.
 pub const RELEASE_CONFIG_FILE: &str = "config/release.toml";
 /// Approved Stage 9 residual-risk record relative to the workspace root.

@@ -63,6 +63,9 @@ Stable commands:\n\
   coverage                                       enforce configured LLVM coverage\n\
   fuzz smoke|campaign                            run bounded or full fuzzing\n\
   quality [--profile pr|release]                 run the documented quality composition\n\
+  quality status|render|verify                   inspect or synchronize the quality ledger\n\
+  quality evaluate --profile pr|release          run and retain a commit-bound evaluation\n\
+  quality approve --release <version>            approve a passing release evaluation\n\
   build --profile dev|release                    build the workspace\n\
   docs                                           generate workspace API documentation\n\
   validate <artifact>|binaries                   validate a release artifact or binaries\n\
@@ -127,8 +130,8 @@ pub(crate) enum Task {
     Coverage,
     /// Run configured mutation analysis.
     Mutate,
-    /// Run the aggregate quality profile.
-    Quality(QualityProfile),
+    /// Operate the managed quality ledger or run an aggregate profile.
+    Quality(QualityAction),
     /// Validate released binaries or one encoded artifact.
     Validate(ValidationTarget),
     /// Assemble the selected release distribution.
@@ -204,6 +207,23 @@ pub(crate) enum QualityProfile {
     Release,
 }
 
+/// Managed quality workflow actions.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum QualityAction {
+    /// Run an aggregate quality profile without creating an evaluation record.
+    Run(QualityProfile),
+    /// Print the approved-release ledger.
+    Status,
+    /// Run a profile and retain a commit-bound evaluation.
+    Evaluate(QualityProfile),
+    /// Approve the matching release evaluation through an explicit human action.
+    Approve(String),
+    /// Regenerate the human-readable status document.
+    Render,
+    /// Verify the manifest, approvals, evidence hashes, and rendered status.
+    Verify,
+}
+
 /// Artifact target selected for validation.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum ValidationTarget {
@@ -266,9 +286,18 @@ pub(crate) fn parse(arguments: &[String]) -> Result<Task, String> {
         [FUZZ_COMMAND, mode] => parse_fuzz_mode(mode).map(Task::Fuzz),
         [COVERAGE_COMMAND] => Ok(Task::Coverage),
         [MUTATE_COMMAND] => Ok(Task::Mutate),
-        [QUALITY_COMMAND] => Ok(Task::Quality(QualityProfile::Pr)),
-        [QUALITY_COMMAND, PROFILE_OPTION, profile] => {
-            parse_quality_profile(profile).map(Task::Quality)
+        [QUALITY_COMMAND] => Ok(Task::Quality(QualityAction::Run(QualityProfile::Pr))),
+        [QUALITY_COMMAND, PROFILE_OPTION, profile] => parse_quality_profile(profile)
+            .map(QualityAction::Run)
+            .map(Task::Quality),
+        [QUALITY_COMMAND, "status"] => Ok(Task::Quality(QualityAction::Status)),
+        [QUALITY_COMMAND, "render"] => Ok(Task::Quality(QualityAction::Render)),
+        [QUALITY_COMMAND, "verify"] => Ok(Task::Quality(QualityAction::Verify)),
+        [QUALITY_COMMAND, "evaluate", PROFILE_OPTION, profile] => parse_quality_profile(profile)
+            .map(QualityAction::Evaluate)
+            .map(Task::Quality),
+        [QUALITY_COMMAND, "approve", "--release", release] => {
+            Ok(Task::Quality(QualityAction::Approve((*release).to_owned())))
         }
         [VALIDATE_COMMAND, "binaries"] => Ok(Task::Validate(ValidationTarget::Binaries)),
         [VALIDATE_COMMAND, artifact] => Ok(Task::Validate(ValidationTarget::Artifact(

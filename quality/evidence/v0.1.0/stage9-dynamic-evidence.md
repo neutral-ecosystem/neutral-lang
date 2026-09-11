@@ -2,13 +2,13 @@
 
 # Stage 9 dynamic quality evidence
 
-Evaluation date: 2026-09-08. Owner: maintainer. Candidate state: commit
-`994dc5c`, not a release candidate.
+Evaluation date: 2026-09-08. Owner: maintainer. Candidate state: development
+quality evaluation, not a release candidate.
 
 ## Toolchain
 
 - Repository compiler: stable Rust selected by `rust-toolchain.toml`.
-- Coverage compiler: `rustc 1.100.0-nightly (cea272fa3 2026-09-07)` with
+- Coverage compiler: `rustc 1.100.0-nightly` from 2026-09-07 with
   `llvm-tools-preview`.
 - `cargo-llvm-cov 0.9.1`.
 - `cargo-mutants 27.1.0`.

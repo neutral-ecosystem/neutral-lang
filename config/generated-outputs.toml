@@ -82,3 +82,11 @@ owner = "xtask"
 generate = "cargo xtask portable install <directory>"
 validate = "manual review before retrying installation"
 tracking = "ignored"
+
+[[output]]
+name = "quality-evaluation"
+path = "test-results/quality/evaluations"
+owner = "xtask"
+generate = "cargo xtask quality evaluate --profile pr|release"
+validate = "cargo xtask quality approve --release <version>"
+tracking = "ignored"
