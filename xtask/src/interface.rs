@@ -40,6 +40,8 @@ const BOOTSTRAP_COMMAND: &str = "bootstrap";
 const ENVIRONMENT_COMMAND: &str = "environment";
 /// Workspace documentation command name.
 const DOCS_COMMAND: &str = "docs";
+/// Ordered local-development workflow command name.
+const DEV_COMMAND: &str = "dev";
 /// Mutation-analysis command name.
 const MUTATE_COMMAND: &str = "mutate";
 /// Help option accepted at the root command boundary.
@@ -54,6 +56,7 @@ pub(crate) const HELP: &str = "Neutral repository automation\n\n\
 Usage: cargo xtask <command> [options]\n\n\
 Stable commands:\n\
   bootstrap                                      verify the host workspace\n\
+  dev                                            format, check, lint, test, and document\n\
   environment verify|manifest                    inspect the selected tools\n\
   fmt [--write]                                  check or apply Rust formatting\n\
   lint                                           run warning-free workspace linting\n\
@@ -75,11 +78,12 @@ Stable commands:\n\
   portable install <directory>                   atomically install a reviewed portable\n\
   portable verify|snapshot                       verify or snapshot the active portable\n\
   clean                                          remove ignored generated evidence\n\n\
-CI-only commands:\n\
-  ci pr|release                                  run a stable local/CI profile";
+Automation workflows:\n\
+  ci pr|release                                  run the same logged gates locally and in CI";
 
 /// Command fragments that every contributor-facing command map must expose.
 pub(crate) const DOCUMENTED_COMMANDS: &[&str] = &[
+    "cargo xtask dev",
     "cargo xtask fmt",
     "cargo xtask lint",
     "cargo xtask check",
@@ -94,6 +98,7 @@ pub(crate) const DOCUMENTED_COMMANDS: &[&str] = &[
     "cargo xtask version",
     "cargo xtask portable",
     "cargo xtask clean",
+    "cargo xtask ci",
 ];
 
 /// One parsed repository-automation request.
@@ -103,6 +108,8 @@ pub(crate) enum Task {
     Help,
     /// Verify the contributor environment and initialize ignored output roots.
     Bootstrap,
+    /// Run the ordered, auto-formatting local-development workflow.
+    Dev,
     /// Verify the selected environment.
     EnvironmentVerify,
     /// Print a machine-readable environment manifest.
@@ -270,6 +277,7 @@ pub(crate) fn parse(arguments: &[String]) -> Result<Task, String> {
     match values.as_slice() {
         [] | [HELP_OPTION | SHORT_HELP_OPTION] => Ok(Task::Help),
         [BOOTSTRAP_COMMAND] => Ok(Task::Bootstrap),
+        [DEV_COMMAND] => Ok(Task::Dev),
         [ENVIRONMENT_COMMAND, "verify"] => Ok(Task::EnvironmentVerify),
         [ENVIRONMENT_COMMAND, "manifest"] => Ok(Task::EnvironmentManifest),
         [FORMAT_COMMAND] => Ok(Task::Format { write: false }),

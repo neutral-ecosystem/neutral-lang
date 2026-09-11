@@ -11,10 +11,11 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     env,
     fmt::Write as _,
-    fs,
+    fs::{self, OpenOptions},
+    io::Write as _,
     path::{Component, Path, PathBuf},
     process::Command,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
 pub mod constants;
@@ -52,6 +53,7 @@ fn execute(task: Task) -> Result<(), String> {
             Ok(())
         }
         Task::Bootstrap => bootstrap(),
+        Task::Dev => develop(),
         Task::EnvironmentVerify => verify_complete_environment(),
         Task::EnvironmentManifest => print_environment_manifest(),
         Task::Format { write } => format_workspace(write),
@@ -388,7 +390,40 @@ fn active_stage() -> Result<u8, String> {
 
 /// Escapes a string for the limited JSON values emitted by automation evidence.
 fn json_string(value: &str) -> String {
-    value.replace('\\', "\\\\").replace('"', "\\\"")
+    let mut escaped = String::with_capacity(value.len());
+    for character in value.chars() {
+        match character {
+            '"' => escaped.push_str("\\\""),
+            '\\' => escaped.push_str("\\\\"),
+            '\n' => escaped.push_str("\\n"),
+            '\r' => escaped.push_str("\\r"),
+            '\t' => escaped.push_str("\\t"),
+            character if character.is_control() => {
+                write!(&mut escaped, "\\u{:04x}", u32::from(character))
+                    .expect("writing to a String cannot fail");
+            }
+            character => escaped.push(character),
+        }
+    }
+    escaped
+}
+
+/// Runs the complete auto-formatting workflow intended before ordinary commits.
+fn develop() -> Result<(), String> {
+    run_recorded_workflow(
+        "dev",
+        "default",
+        vec![
+            ("environment", Box::new(verify_environment)),
+            ("format", Box::new(|| format_workspace(true))),
+            ("check", Box::new(check)),
+            ("lint", Box::new(lint)),
+            ("tests", Box::new(|| test_suite(TestLevel::All))),
+            ("smoke", Box::new(|| test_suite(TestLevel::Smoke))),
+            ("fuzz-regressions", Box::new(|| fuzz(FuzzMode::Smoke))),
+            ("docs", Box::new(documentation)),
+        ],
+    )
 }
 
 /// Checks or applies Rust formatting across the complete workspace.
@@ -725,30 +760,36 @@ fn quality_action(action: QualityAction) -> Result<(), String> {
 
 /// Runs the documented aggregate quality composition for one durable profile.
 fn quality(profile: QualityProfile) -> Result<(), String> {
-    format_workspace(false)?;
-    lint()?;
-    check()?;
-    test_suite(TestLevel::All)?;
-    test_suite(TestLevel::Smoke)?;
-    fuzz(FuzzMode::Smoke)?;
-    run_cargo(&["build", "--locked", "--package", constants::NEUTRAL_PROBE])?;
+    let profile_name = quality_profile_name(profile);
+    let mut steps: Vec<WorkflowStep<'_>> = vec![
+        ("format", Box::new(|| format_workspace(false))),
+        ("check", Box::new(check)),
+        ("lint", Box::new(lint)),
+        ("tests", Box::new(|| test_suite(TestLevel::All))),
+        ("smoke", Box::new(|| test_suite(TestLevel::Smoke))),
+        ("fuzz-regressions", Box::new(|| fuzz(FuzzMode::Smoke))),
+        (
+            "probe-build",
+            Box::new(|| {
+                run_cargo(&["build", "--locked", "--package", constants::NEUTRAL_PROBE])
+            }),
+        ),
+        ("docs", Box::new(documentation)),
+    ];
     if profile == QualityProfile::Release {
-        verify_recorded_quality_gates()?;
-        build(BuildProfile::Release)?;
-        validate(ValidationTarget::Binaries)?;
+        steps.extend([
+            (
+                "recorded-quality-gates",
+                Box::new(verify_recorded_quality_gates) as Box<dyn FnOnce() -> Result<(), String>>,
+            ),
+            ("release-build", Box::new(|| build(BuildProfile::Release))),
+            (
+                "binary-validation",
+                Box::new(|| validate(ValidationTarget::Binaries)),
+            ),
+        ]);
     }
-    let profile = match profile {
-        QualityProfile::Pr => "pr",
-        QualityProfile::Release => "release",
-    };
-    let result_directory = unique_generated_directory(
-        &result_root()?
-            .join(constants::QUALITY_REPORT_DIRECTORY)
-            .join(profile),
-    )?;
-    write_task_summary(&result_directory, "quality", profile)?;
-    println!("{} quality {profile}: pass", constants::INFO);
-    Ok(())
+    run_recorded_workflow("quality", profile_name, steps)
 }
 
 /// One immutable approved-release quality record.
