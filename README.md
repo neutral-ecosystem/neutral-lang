@@ -77,20 +77,6 @@ the root `Cargo.toml`, but it is created only after qualification and approvals.
 Release commands fail closed when `main`, Stage 9 approval, or distribution
 scope is wrong. They never push, upload, publish, or create tags.
 
-## Workflow migration
-
-The stable interface replaces milestone-specific and duplicate wrappers:
-
-| Previous entry point | Stable replacement | Status |
-| --- | --- | --- |
-| `cargo xtask format [--write]` | `cargo xtask fmt [--write]` | removed |
-| Direct long `cargo clippy` flags | `cargo xtask lint` | replaced |
-| Separate boundary/test-layout/traceability commands | `cargo xtask check` | composed |
-| `cargo xtask clean-results` | `cargo xtask clean` | removed |
-| `cargo xtask ci stage1` / `ci nightly` | stable commands selected by CI | removed |
-| Handwritten release command sequences | `cargo xtask release prepare` | replaced |
-| Platform scripts containing project policy | thin `scripts/linux` and `scripts/win` adapters | replaced |
-
 ## Recommended development flow
 
 Use three aggregate commands in order; each prints and retains a machine-readable
