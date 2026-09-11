@@ -1,171 +1,588 @@
+````md
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
 # Neutral
 
-Neutral is a portable declarative language. This repository contains the frozen
-v0 specification, its Rust implementation, conformance corpus, standalone
-reader/probe, formatter, command-line tools, and the automation used to verify
-and package them. Stage 9 hardening is approved; Stage 10 is replacing the old
-stage-dependent workflow before final v0 qualification.
+Neutral is a portable declarative language for describing structured,
+platform-independent data and behavior.
 
-The compiler supports scalar values, nominal records and defaults, invariant
-lists, immutable-value reuse, typed identity references, captured closed
-vocabularies, validated logical IR, and the versioned NIR-CBOR external format.
-`neutral-probe` inspects encoded artifacts without linking the compiler.
+This repository contains the frozen **v0 language specification**, its Rust
+implementation, conformance corpus, standalone reader and probe, formatter,
+command-line tooling, quality infrastructure, and release automation.
 
-## Start here
+The compiler currently supports:
+
+- scalar values
+- nominal records and defaults
+- invariant lists
+- immutable-value reuse
+- typed identity references
+- captured closed vocabularies
+- validated logical IR
+- versioned NIR-CBOR serialization
+
+`neutral-probe` can inspect encoded Neutral artifacts independently, without
+linking against the compiler implementation.
+
+---
+
+## Quick start
+
+### Linux
 
 Install the latest stable Rust toolchain with Rustfmt and Clippy, clone the
-repository, and run the one adapter for your host:
+repository, then run:
 
 ```sh
 ./scripts/linux/bootstrap.sh
 cargo xtask dev
-```
+````
 
-On Windows PowerShell:
+### Windows
+
+From PowerShell:
 
 ```powershell
 .\scripts\win\bootstrap.ps1
 cargo xtask dev
 ```
 
-Bootstrap verifies prerequisites and writes only ignored environment evidence.
-It does not install software, elevate privileges, change shell configuration,
-or define compiler/test/release policy.
+The host bootstrap scripts only verify prerequisites and record ignored
+environment evidence.
 
-## Stable project commands
+They do **not**:
 
-`cargo xtask` is the platform-neutral interface used by contributors, CI, and
-release preparation:
+* install software
+* elevate privileges
+* modify shell configuration
+* define compiler policy
+* define test policy
+* define release policy
 
-| Purpose | Command |
-| --- | --- |
-| Daily development: format → check → lint → tests → docs | `cargo xtask dev` |
-| Exact local/hosted CI gate | `cargo xtask ci pr` |
-| Format | `cargo xtask fmt [--write]` |
-| Lint | `cargo xtask lint` |
-| Compile and repository checks | `cargo xtask check` |
-| Tests | `cargo xtask test unit\|smoke\|integration\|system\|conformance\|property\|security\|all` |
-| Performance | `cargo xtask test performance --profile pr\|release\|soak` |
-| Normal quality composition | `cargo xtask quality` |
-| Release quality composition | `cargo xtask quality --profile release` |
-| Quality ledger | `cargo xtask quality status\|render\|verify` |
-| Retain evaluation | `cargo xtask quality evaluate --profile pr\|release` |
-| Approve release quality | `cargo xtask quality approve --release <version>` |
-| Developer/release build | `cargo xtask build --profile dev\|release` |
-| Documentation | `cargo xtask docs` or `cargo docs` |
-| Coverage | `RUSTUP_TOOLCHAIN=nightly cargo xtask coverage` |
-| Fuzzing | `RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz smoke\|campaign` |
-| Artifact validation | `cargo xtask validate <artifact>` or `cargo xtask validate binaries` |
-| Distribution assembly | `cargo xtask package` |
-| Local release preparation | `cargo xtask release prepare` |
-| Versioning | `cargo xtask version show\|check\|prepare <version>` |
-| Install active portable | `cargo xtask portable install <directory>` |
-| Verify/archive active portable | `cargo xtask portable verify\|snapshot` |
-| Generated-evidence cleanup | `cargo xtask clean` |
+Repository policy remains implemented through `cargo xtask` and tracked
+configuration.
 
-`cargo xtask bootstrap` performs the lightweight supported-host and stable
-toolchain check needed for ordinary development and CI. `cargo xtask environment
-verify` additionally audits the complete release workstation and reports an
-installation command for every missing analysis or packaging tool. `cargo xtask
-environment manifest` prints the path-independent host and tool identity record.
+---
 
-Release qualification always uses the clean checked-out `main` `HEAD`. The
-eventual annotated publication tag `v<workspace package version>` derives from
-the root `Cargo.toml`, but it is created only after qualification and approvals.
-Release commands fail closed when `main`, Stage 9 approval, or distribution
-scope is wrong. They never push, upload, publish, or create tags.
+## Project commands
 
-## Recommended development flow
+`cargo xtask` is the stable, platform-neutral interface used by contributors,
+CI, quality checks, and release preparation.
 
-Use three aggregate commands in order; each prints and retains a machine-readable
-run directory containing `events.jsonl` and `summary.json`:
+| Purpose                        | Command                                                    |
+| ------------------------------ | ---------------------------------------------------------- |
+| Daily development              | `cargo xtask dev`                                          |
+| Exact pull-request CI gate     | `cargo xtask ci pr`                                        |
+| Format check                   | `cargo xtask fmt`                                          |
+| Apply formatting               | `cargo xtask fmt --write`                                  |
+| Lint                           | `cargo xtask lint`                                         |
+| Compile and repository checks  | `cargo xtask check`                                        |
+| Unit tests                     | `cargo xtask test unit`                                    |
+| Smoke tests                    | `cargo xtask test smoke`                                   |
+| Integration tests              | `cargo xtask test integration`                             |
+| System tests                   | `cargo xtask test system`                                  |
+| Conformance tests              | `cargo xtask test conformance`                             |
+| Property tests                 | `cargo xtask test property`                                |
+| Security tests                 | `cargo xtask test security`                                |
+| Complete test suite            | `cargo xtask test all`                                     |
+| Performance tests              | `cargo xtask test performance --profile pr\|release\|soak` |
+| Normal quality gate            | `cargo xtask quality`                                      |
+| Release quality gate           | `cargo xtask quality --profile release`                    |
+| Quality status                 | `cargo xtask quality status`                               |
+| Render quality evidence        | `cargo xtask quality render`                               |
+| Verify quality evidence        | `cargo xtask quality verify`                               |
+| Evaluate retained quality      | `cargo xtask quality evaluate --profile pr\|release`       |
+| Approve release quality        | `cargo xtask quality approve --release <version>`          |
+| Development build              | `cargo xtask build --profile dev`                          |
+| Release build                  | `cargo xtask build --profile release`                      |
+| Documentation                  | `cargo xtask docs`                                         |
+| Coverage                       | `RUSTUP_TOOLCHAIN=nightly cargo xtask coverage`            |
+| Fuzz smoke run                 | `RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz smoke`          |
+| Full fuzz campaign             | `RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign`       |
+| Validate an artifact           | `cargo xtask validate <artifact>`                          |
+| Validate repository binaries   | `cargo xtask validate binaries`                            |
+| Assemble distribution          | `cargo xtask package`                                      |
+| Prepare a release candidate    | `cargo xtask release prepare`                              |
+| Show current version           | `cargo xtask version show`                                 |
+| Check version consistency      | `cargo xtask version check`                                |
+| Prepare a new version          | `cargo xtask version prepare <version>`                    |
+| Install active portable plan   | `cargo xtask portable install <directory>`                 |
+| Verify active portable plan    | `cargo xtask portable verify`                              |
+| Archive portable plan          | `cargo xtask portable snapshot`                            |
+| Verify development environment | `cargo xtask environment verify`                           |
+| Print environment manifest     | `cargo xtask environment manifest`                         |
+| Remove generated evidence      | `cargo xtask clean`                                        |
 
-1. `cargo xtask bootstrap` — once per environment or after tool changes.
-2. `cargo xtask dev` — during development; applies formatting and runs the full
-   ordinary test/documentation loop.
-3. `cargo xtask ci pr` — before pushing; runs the exact non-mutating command used
-   by GitHub Actions.
+Use `cargo docs` directly when standard Cargo-generated API documentation is
+preferred.
 
-For a release, run `cargo xtask quality evaluate --profile release`, explicitly
-approve it, then run `cargo xtask release prepare`. Generated status Markdown,
-workflow records, documentation, package manifests, checksums, and environment
-evidence are automation-owned and must not be maintained by hand.
+---
 
-## Repository map
+## Development workflow
 
-| Path | Owner and lifecycle |
-| --- | --- |
-| `crates/` | Versioned implementation, binaries, and crate-owned tests |
-| `conformance/` | Immutable released contracts, fixtures, and oracles used by verification |
-| `portable/` | Optional active-version plan imported from the roadmap during development |
-| `quality/` | Manifested policy, maintained reviews, and immutable per-release evidence |
-| `config/` | Tracked machine-readable repository policy |
-| `scripts/` | Thin Linux and Windows host adapters |
-| `fuzz/` | Tracked subsystem harnesses; mutable corpora/findings are ignored |
-| `xtask/` | Stable project commands and reusable policy implementation |
-| `target/` | Ignored Cargo builds and Rustdoc |
-| `test-results/` | Ignored generated quality, version, snapshot, and release evidence |
-| `test-results/release/` | Ignored candidate packages, SBOMs, and preparation summaries |
+The normal development workflow is intentionally small.
 
-Every tracked top-level directory has a README describing its responsibility.
-`config/repository-layout.toml` is the executable ownership inventory.
+### 1. Verify the environment
 
-## Supported hosts and specialized tools
+Run once after cloning, or whenever the toolchain changes:
 
-The supported and primary system-test host is `x86_64-unknown-linux-gnu`.
-`x86_64-pc-windows-msvc` is experimental. Normal work uses the selected stable
-toolchain. Coverage and coverage-guided fuzzing additionally require nightly:
+```sh
+cargo xtask bootstrap
+```
+
+### 2. Develop
+
+Run the complete local development loop:
+
+```sh
+cargo xtask dev
+```
+
+This performs the normal formatting, compile checks, linting, tests, and
+documentation checks.
+
+### 3. Verify before pushing
+
+Run:
+
+```sh
+cargo xtask ci pr
+```
+
+This executes the same non-mutating gate used by hosted pull-request CI.
+
+The repository does not maintain a separate CI-only implementation of the test
+or quality logic.
+
+---
+
+## Quality and evidence
+
+Quality checks produce machine-readable evidence under `test-results/`.
+
+Aggregate runs retain a run directory containing at least:
+
+```text
+events.jsonl
+summary.json
+```
+
+Generated evidence is automation-owned and should not be edited manually.
+
+This includes:
+
+* quality summaries
+* generated Markdown status
+* test results
+* environment manifests
+* workflow records
+* version plans
+* package manifests
+* checksums
+* release preparation summaries
+
+Repository quality policy is tracked under:
+
+```text
+config/
+quality/
+```
+
+---
+
+## Release model
+
+Release qualification is performed from a clean checked-out `main` `HEAD`.
+
+The release version is derived from the authoritative workspace version in the
+root `Cargo.toml`.
+
+The corresponding publication tag is:
+
+```text
+v<workspace-version>
+```
+
+For example:
+
+```text
+v0.1.0
+```
+
+Release preparation validates repository state and fails closed when required
+conditions are not satisfied, including:
+
+* the wrong branch is checked out
+* the working tree is dirty
+* the version is inconsistent
+* required quality evaluation is missing
+* release approval is missing
+* generated evidence is stale
+* distribution scope is invalid
+
+Release tooling prepares and validates artifacts locally.
+
+It does **not** automatically:
+
+* push commits
+* create remote tags
+* upload artifacts
+* publish packages
+* create releases
+
+Publication remains an explicit operation outside release preparation.
+
+### Release workflow
+
+A normal release qualification sequence is:
+
+```sh
+cargo xtask quality evaluate --profile release
+cargo xtask quality approve --release <version>
+cargo xtask release prepare
+```
+
+Release preparation produces candidate artifacts and retained evidence under:
+
+```text
+test-results/release/
+```
+
+---
+
+## Versioning
+
+The root workspace version is the authoritative release version.
+
+Inspect it with:
+
+```sh
+cargo xtask version show
+```
+
+Validate repository-wide consistency with:
+
+```sh
+cargo xtask version check
+```
+
+Prepare a new version with:
+
+```sh
+cargo xtask version prepare <version>
+```
+
+For example:
+
+```sh
+cargo xtask version prepare 0.1.1
+```
+
+Version propagation is automated so release metadata does not need to be
+updated manually across the repository.
+
+---
+
+## Repository layout
+
+| Path                    | Responsibility                                                               |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| `crates/`               | Versioned Rust implementation, binaries, and crate-owned tests               |
+| `conformance/`          | Released contracts, fixtures, reference data, and verification oracles       |
+| `portable/`             | Optional active portable-development plan                                    |
+| `quality/`              | Quality policy, maintained reviews, approvals, and retained release evidence |
+| `config/`               | Machine-readable repository policy                                           |
+| `scripts/`              | Thin host-specific adapters                                                  |
+| `fuzz/`                 | Fuzz harnesses and subsystem definitions                                     |
+| `xtask/`                | Stable project commands and shared automation policy                         |
+| `target/`               | Ignored Cargo build and Rustdoc output                                       |
+| `test-results/`         | Ignored generated test, quality, analysis, and release evidence              |
+| `test-results/release/` | Candidate packages, SBOMs, checksums, and release summaries                  |
+
+Each tracked top-level project directory documents its own responsibility and
+lifecycle.
+
+The executable repository ownership inventory is defined in:
+
+```text
+config/repository-layout.toml
+```
+
+---
+
+## Supported platforms
+
+The primary supported system-test target is:
+
+```text
+x86_64-unknown-linux-gnu
+```
+
+The Windows target:
+
+```text
+x86_64-pc-windows-msvc
+```
+
+is currently experimental.
+
+Normal development uses the repository-selected **stable Rust toolchain**.
+
+Nightly is required only for specialized analysis such as coverage and
+coverage-guided fuzzing.
+
+---
+
+## Optional analysis toolchain
+
+Install the nightly toolchain without replacing stable as the repository
+default:
 
 ```sh
 rustup toolchain install nightly --profile minimal
 rustup component add --toolchain nightly llvm-tools-preview
 cargo install cargo-llvm-cov cargo-fuzz
+```
+
+Run coverage with:
+
+```sh
 RUSTUP_TOOLCHAIN=nightly cargo xtask coverage
+```
+
+Run the fuzz smoke suite with:
+
+```sh
 RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz smoke
 ```
 
-Full fuzz campaigns use the configured 900-second budget per subsystem. Their
-mutable corpora and crashes are never normative fixtures.
+Run complete fuzz campaigns with:
 
-Keep stable as the repository-selected default. Nightly remains installed as a
-named Rustup toolchain and is selected only for coverage or fuzzing through the
-command-local `RUSTUP_TOOLCHAIN=nightly` prefix. Confirm the complete setup with
-`cargo xtask environment verify`; it must report the stable compiler and the
-separate nightly compiler rather than changing the repository default.
+```sh
+RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign
+```
 
-Coverage is a nightly-only analysis command. It preserves a browsable report at
-`test-results/analysis/coverage/html/index.html` and a machine-readable summary
-at `test-results/analysis/coverage/coverage.json`, while enforcing the configured
-85% line, 90% function, and 80% region gates. Production coverage excludes only
-the repository-automation `xtask`, whose command and policy paths are tested
-separately. That reviewed scope is declared in `config/quality-gates.toml`; any
-future exclusion requires another explicit policy review, never a one-off
-command-line filter.
+Full campaigns use the configured **900-second budget per subsystem**.
 
-## Outputs and safety
+Mutable fuzz corpora, generated findings, and crash artifacts are not normative
+conformance fixtures.
 
-Cargo build and rustdoc output belongs under ignored `target/`. Generated test,
-quality, version-plan, package, and release evidence belongs under ignored
-`test-results/`. `cargo xtask clean` removes only the validated relative result
-root; it cannot target the repository, a parent path, or an absolute path.
-Released fixtures, oracles, contracts, and an installed portable plan are never
-cleanup targets.
+---
+
+## Coverage
+
+Coverage is a specialized nightly-only analysis command.
+
+Run:
+
+```sh
+RUSTUP_TOOLCHAIN=nightly cargo xtask coverage
+```
+
+The generated report is written to:
+
+```text
+test-results/analysis/coverage/html/index.html
+```
+
+The machine-readable summary is written to:
+
+```text
+test-results/analysis/coverage/coverage.json
+```
+
+Current production coverage gates are:
+
+| Metric            | Minimum |
+| ----------------- | ------: |
+| Line coverage     |     85% |
+| Function coverage |     90% |
+| Region coverage   |     80% |
+
+Production coverage excludes only the repository automation implementation in
+`xtask/`.
+
+`xtask` command and policy behavior is verified separately.
+
+The reviewed scope and thresholds are defined in:
+
+```text
+config/quality-gates.toml
+```
+
+Coverage exclusions are repository policy. They must not be introduced through
+one-off local command-line filters.
+
+---
+
+## Environment verification
+
+For normal development:
+
+```sh
+cargo xtask bootstrap
+```
+
+For a complete workstation audit:
+
+```sh
+cargo xtask environment verify
+```
+
+The environment verifier checks the supported host, Rust toolchains, analysis
+tools, and packaging prerequisites.
+
+When an optional or required tool is missing, it reports the appropriate
+installation command instead of modifying the system automatically.
+
+Generate a path-independent environment identity record with:
+
+```sh
+cargo xtask environment manifest
+```
+
+When both Rust toolchains are installed, environment verification should report
+stable and nightly independently rather than changing the repository default.
+
+---
+
+## Generated outputs
+
+Cargo build and Rustdoc output belongs under: `target/`
+
+Generated repository evidence belongs under: `test-results/`
+
+This includes:
+
+```text
+test-results/
+├── analysis/
+├── quality/
+├── release/
+└── ...
+```
+
+Both roots are ignored where appropriate and are treated as generated output,
+not source-of-truth project state.
+
+Released contracts, fixtures, conformance oracles, and maintained quality policy
+remain tracked.
+
+---
+
+## Cleanup safety
+
+Use:
+
+```sh
+cargo xtask clean
+```
+
+to remove generated repository evidence.
+
+Cleanup is intentionally restricted to the validated relative result root.
+
+It cannot target:
+
+* the repository root
+* a parent directory
+* an absolute path
+* released conformance data
+* tracked quality policy
+* installed portable plans
+
+This prevents cleanup automation from becoming a destructive general-purpose
+filesystem command.
+
+---
+
+## Portable development plans
+
+`portable/` may contain an active development plan imported from the Neutral
+roadmap.
+
+It is a planning input, not part of released language conformance.
+
+Replacing or removing the active portable plan does not modify already released
+contracts, fixtures, or conformance behavior.
+
+Archived development plans remain outside the normative language definition.
+
+---
 
 ## Troubleshooting
 
-- Run `cargo xtask environment verify` when a toolchain or host check fails.
-- Run `cargo xtask fmt --write`, then rerun the command after formatting errors.
-- Run the failing stable subcommand locally; CI contains no separate test logic.
-- Inspect `test-results/` for generated summaries. Run `cargo xtask clean` only
-  when those ignored results should be discarded.
-- Release preparation requires a clean checked-out `main` `HEAD`. It rejects a
-  dirty tree, another branch, missing approval, or stale scope.
+### Toolchain or host verification fails
 
-The completed v0 plan is archived in the Neutral roadmap. A future `portable/`
-directory is an optional active planning input and may be replaced without
-affecting released conformance. Quality evidence and residual risks are indexed in
-[quality/README.md](quality/README.md), platform adapter ownership in
-[scripts/README.md](scripts/README.md), and automation internals in
-[xtask/README.md](xtask/README.md).
+Run:
+
+```sh
+cargo xtask environment verify
+```
+
+It reports the missing or incompatible dependency and the expected installation
+command.
+
+### Formatting fails
+
+Run:
+
+```sh
+cargo xtask fmt --write
+```
+
+Then rerun the original command.
+
+### CI fails locally
+
+Run the failing stable `cargo xtask` subcommand directly.
+
+CI delegates to the same repository commands used during local development.
+
+### Generated results appear stale
+
+Inspect:
+
+```text
+test-results/
+```
+
+Remove them when appropriate with:
+
+```sh
+cargo xtask clean
+```
+
+### Release preparation fails
+
+Check that:
+
+* `main` is checked out
+* `HEAD` is the intended release commit
+* the working tree is clean
+* the workspace version is correct
+* release quality evaluation is current
+* release approval exists
+* distribution scope is valid
+
+Then rerun:
+
+```sh
+cargo xtask release prepare
+```
+
+---
+
+## Documentation
+
+Additional repository documentation:
+
+* [Quality system](quality/README.md)
+* [Platform adapters](scripts/README.md)
+* [Automation internals](xtask/README.md)
+
+The completed v0 development plan is archived in the Neutral roadmap.
+
+Released conformance is defined by the versioned specification, contracts,
+fixtures, oracles, and validated external formats stored in this repository.
+
