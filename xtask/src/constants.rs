@@ -40,6 +40,22 @@ pub const MANIFEST: &str = "[manifest]";
 pub const RUSTDOC_OUTPUT_DIRECTORY: &str = "target/doc";
 /// Generated workspace rustdoc landing-page filename.
 pub const RUSTDOC_INDEX_FILE: &str = "index.html";
+/// Repository-owned source directory for shared visual assets.
+pub const ASSET_DIRECTORY: &str = "assets";
+/// Documentation-site directory containing copied visual assets.
+pub const DOCUMENTATION_ASSET_DIRECTORY: &str = "assets";
+/// Official square Neutral logo filename.
+pub const NEUTRAL_LOGO_FILE: &str = "neutral-logo.png";
+/// Official rounded Neutral favicon filename.
+pub const NEUTRAL_ROUNDED_LOGO_FILE: &str = "neutral-logo-rounded.png";
+/// Official transparent Neutral brand-mark filename.
+pub const NEUTRAL_TRANSPARENT_LOGO_FILE: &str = "neutral-logo-transparent.png";
+/// Official Neutral assets copied into generated documentation.
+pub const DOCUMENTATION_ASSET_FILES: &[&str] = &[
+    NEUTRAL_LOGO_FILE,
+    NEUTRAL_ROUNDED_LOGO_FILE,
+    NEUTRAL_TRANSPARENT_LOGO_FILE,
+];
 /// Rustdoc HTML header fragment relative to the workspace root.
 pub const RUSTDOC_HEADER_FILE: &str = "xtask/src/rustdoc-header.html";
 /// Rustdoc option that injects shared markup into every generated page.

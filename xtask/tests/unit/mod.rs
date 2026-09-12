@@ -366,6 +366,8 @@ fn automation_generates_a_safe_rustdoc_index() {
         .expect("the rustdoc template should contain its metadata placeholder");
     assert!(!generated.contains(constants::CARGO_METADATA_PLACEHOLDER));
     assert!(generated.contains(r#"{"description":"\u003c/script>"}"#));
+    assert!(generated.contains("Language capabilities"));
+    assert!(generated.contains("cargo xtask docs"));
 }
 
 #[test]
@@ -374,6 +376,8 @@ fn automation_tracks_the_rustdoc_header_content() {
     let configuration = rustdoc_header_configuration();
     assert!(configuration.starts_with(constants::RUSTDOC_HEADER_CFG_PREFIX));
     assert_eq!(configuration, rustdoc_header_configuration());
+    assert!(super::RUSTDOC_HEADER_TEMPLATE.contains("neutral-docs-nav"));
+    assert!(super::RUSTDOC_HEADER_TEMPLATE.contains("assets/neutral-logo.png"));
 }
 
 #[test]

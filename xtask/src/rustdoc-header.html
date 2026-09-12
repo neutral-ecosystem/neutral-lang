@@ -1,28 +1,272 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <style>
-  :root {
-    --neutral-code-border: color-mix(in srgb, var(--main-color) 28%, transparent);
-    --neutral-inline-code-background: color-mix(
-      in srgb,
-      var(--code-block-background-color) 84%,
-      var(--link-color) 16%
-    );
-    --neutral-signature-background: color-mix(
-      in srgb,
-      var(--code-block-background-color) 92%,
-      var(--link-color) 8%
-    );
+  :root,
+  :root:not([data-theme]),
+  :root[data-theme="light"] {
+    --neutral-nav-background: rgb(246 247 248 / 94%);
+    --neutral-nav-border: #d9dee4;
+    --neutral-surface: #ffffff;
+    --neutral-surface-raised: #f2f4f6;
+    --neutral-code-surface: #edf1f3;
+    --neutral-code-border: #cdd5dc;
+    --neutral-muted: #59636e;
+    --neutral-accent: #147d74;
+    --neutral-accent-soft: #d9efeb;
+    --neutral-focus: #a66500;
+    --main-background-color: #f7f8f9;
+    --main-color: #22272d;
+    --sidebar-background-color: #eef1f3;
+    --sidebar-background-color-hover: #e3e8eb;
+    --sidebar-border-color: #d1d8dd;
+    --sidebar-link-color: #344a52;
+    --sidebar-current-link-background-color: #dce6e7;
+    --code-block-background-color: #edf1f3;
+    --headings-border-bottom-color: #d9dee4;
+    --border-color: #cdd5dc;
+    --link-color: #0b766e;
+    --type-link-color: #087d78;
+    --trait-link-color: #7550a3;
+    --assoc-item-link-color: #946100;
+    --function-link-color: #187447;
+    --right-side-color: #59636e;
+  }
+
+  :root[data-theme="dark"],
+  :root[data-theme="ayu"] {
+    --neutral-nav-background: rgb(18 22 27 / 94%);
+    --neutral-nav-border: #303943;
+    --neutral-surface: #1d2329;
+    --neutral-surface-raised: #242b32;
+    --neutral-code-surface: #20272e;
+    --neutral-code-border: #394550;
+    --neutral-muted: #aeb8c2;
+    --neutral-accent: #62d2c2;
+    --neutral-accent-soft: #1d3b39;
+    --neutral-focus: #f0b64a;
+    --main-background-color: #171b20;
+    --main-color: #e8edf2;
+    --sidebar-background-color: #12171c;
+    --sidebar-background-color-hover: #222a31;
+    --sidebar-border-color: #303943;
+    --sidebar-link-color: #c3cdd6;
+    --sidebar-current-link-background-color: #253238;
+    --code-block-background-color: #20272e;
+    --headings-border-bottom-color: #303943;
+    --border-color: #394550;
+    --link-color: #73d8ca;
+    --type-link-color: #51c9c1;
+    --trait-link-color: #c099f4;
+    --assoc-item-link-color: #e8bc62;
+    --function-link-color: #62c98c;
+    --right-side-color: #aeb8c2;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+      --neutral-nav-background: rgb(18 22 27 / 94%);
+      --neutral-nav-border: #303943;
+      --neutral-surface: #1d2329;
+      --neutral-surface-raised: #242b32;
+      --neutral-code-surface: #20272e;
+      --neutral-code-border: #394550;
+      --neutral-muted: #aeb8c2;
+      --neutral-accent: #62d2c2;
+      --neutral-accent-soft: #1d3b39;
+      --neutral-focus: #f0b64a;
+      --main-background-color: #171b20;
+      --main-color: #e8edf2;
+      --sidebar-background-color: #12171c;
+      --sidebar-background-color-hover: #222a31;
+      --sidebar-border-color: #303943;
+      --sidebar-link-color: #c3cdd6;
+      --sidebar-current-link-background-color: #253238;
+      --code-block-background-color: #20272e;
+      --headings-border-bottom-color: #303943;
+      --border-color: #394550;
+      --link-color: #73d8ca;
+      --type-link-color: #51c9c1;
+      --trait-link-color: #c099f4;
+      --assoc-item-link-color: #e8bc62;
+      --function-link-color: #62c98c;
+      --right-side-color: #aeb8c2;
+    }
+  }
+
+  body.rustdoc {
+    padding-top: 3.65rem;
+  }
+
+  #neutral-docs-nav {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 10000;
+    display: flex;
+    min-height: 3.65rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 1rem;
+    color: var(--main-color);
+    background: var(--neutral-nav-background);
+    border-bottom: 1px solid var(--neutral-nav-border);
+    backdrop-filter: blur(14px);
+  }
+
+  .neutral-docs-brand,
+  .neutral-docs-actions,
+  .neutral-docs-context {
+    display: flex;
+    align-items: center;
+  }
+
+  .neutral-docs-brand {
+    min-width: 0;
+    gap: 0.7rem;
+    color: var(--main-color);
+    font: 650 0.9rem/1.2 var(--font-family);
+    text-decoration: none;
+  }
+
+  .neutral-docs-brand img {
+    width: 2.15rem;
+    height: 2.15rem;
+    border-radius: 0.65rem;
+    box-shadow: 0 0.3rem 0.9rem rgb(0 0 0 / 22%);
+  }
+
+  .neutral-docs-context {
+    min-width: 0;
+    gap: 0.55rem;
+    color: var(--neutral-muted);
+    font: 500 0.8rem/1.2 var(--font-family-code);
+  }
+
+  .neutral-docs-context::before {
+    width: 1px;
+    height: 1.1rem;
+    margin-right: 0.1rem;
+    background: var(--neutral-nav-border);
+    content: "";
+  }
+
+  .neutral-docs-actions {
+    flex: 0 0 auto;
+    gap: 0.4rem;
+  }
+
+  .neutral-docs-actions a {
+    min-height: 2.15rem;
+    padding: 0.46rem 0.78rem;
+    color: var(--main-color);
+    background: var(--neutral-surface-raised);
+    border: 1px solid var(--neutral-nav-border);
+    border-radius: 0.5rem;
+    font: 600 0.8rem/1.2 var(--font-family);
+    text-decoration: none;
+  }
+
+  .neutral-docs-actions a:hover {
+    color: var(--neutral-accent);
+    border-color: var(--neutral-accent);
+  }
+
+  .sidebar {
+    top: 3.65rem;
+    height: calc(100vh - 3.65rem);
+    border-right-color: var(--neutral-nav-border);
+  }
+
+  .sidebar-resizer {
+    top: 3.65rem;
+    height: calc(100% - 3.65rem);
+    color: var(--neutral-nav-border);
+  }
+
+  .sidebar-crate {
+    margin-top: 1.15rem;
+    margin-bottom: 1.4rem;
+  }
+
+  .sidebar-crate h2 a {
+    color: var(--main-color);
+    font-weight: 650;
+  }
+
+  .sidebar .version {
+    display: inline-block;
+    margin-top: 0.2rem;
+    color: var(--neutral-muted);
+    font-size: 0.75rem;
+  }
+
+  .sidebar h3 {
+    margin: 1.2rem 0 0.35rem;
+    color: var(--neutral-muted);
+    font-size: 0.78rem;
+    font-weight: 650;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .sidebar-elems a,
+  .sidebar > h2 a {
+    margin-block: 0.08rem;
+    border-radius: 0.34rem;
+  }
+
+  .sidebar-elems .block {
+    margin-bottom: 1.4rem;
+  }
+
+  body.rustdoc > main {
+    padding: 2.2rem clamp(1.4rem, 4vw, 4rem) 5rem;
+  }
+
+  .width-limiter {
+    max-width: 72rem;
+  }
+
+  .main-heading {
+    margin-bottom: 1.7rem;
+    padding-bottom: 1.15rem;
+    border-bottom: 1px solid var(--neutral-nav-border);
+  }
+
+  .main-heading h1 {
+    font-size: clamp(1.75rem, 3vw, 2.45rem);
+    font-weight: 650;
+    letter-spacing: -0.025em;
+  }
+
+  .rustdoc-breadcrumbs,
+  .rustdoc-breadcrumbs a {
+    color: var(--neutral-muted);
+  }
+
+  .docblock {
+    color: var(--main-color);
+    font-size: 1rem;
+    line-height: 1.72;
+  }
+
+  .content h2,
+  .top-doc .docblock > h3,
+  .top-doc .docblock > h4 {
+    margin-top: 2.5rem;
+    border-bottom-color: var(--neutral-nav-border);
+    font-weight: 650;
+    letter-spacing: -0.015em;
   }
 
   .docblock :not(pre) > code,
   .item-table dd code,
   .item-info code {
-    padding: 0.08em 0.32em;
+    padding: 0.1em 0.34em;
     color: var(--main-color);
-    background: var(--neutral-inline-code-background);
-    border: 1px solid color-mix(in srgb, var(--link-color) 52%, transparent);
+    background: var(--neutral-code-surface);
+    border: 1px solid var(--neutral-code-border);
     border-radius: 0.28rem;
-    font-weight: 600;
+    font-weight: 550;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
   }
@@ -32,102 +276,190 @@
   .trait-impl > .code-header,
   pre.item-decl,
   .docblock pre {
-    background: var(--neutral-signature-background);
+    background: var(--neutral-code-surface);
     border: 1px solid var(--neutral-code-border);
-    border-left: 3px solid var(--link-color);
-    border-radius: 0.4rem;
+    border-left: 3px solid var(--neutral-accent);
+    border-radius: 0.45rem;
+    box-shadow: none;
   }
 
   .impl > .code-header,
   .method > .code-header,
   .trait-impl > .code-header {
-    padding: 0.55rem 0.75rem;
+    padding: 0.62rem 0.78rem;
+  }
+
+  .impl-items > details.toggle,
+  .methods > details.toggle,
+  .implementors-toggle {
+    margin-bottom: 0.7rem;
+  }
+
+  details.toggle > summary {
+    border-radius: 0.45rem;
   }
 
   a.src,
   .impl a.src.rightside,
   .impl .rightside a.src {
     display: inline-block;
-    padding: 0.18rem 0.45rem;
-    color: var(--link-color) !important;
-    background: color-mix(in srgb, var(--link-color) 13%, var(--main-background-color));
-    border: 1px solid color-mix(in srgb, var(--link-color) 58%, transparent);
-    border-radius: 0.3rem;
-    font-weight: 600;
+    padding: 0.2rem 0.48rem;
+    color: var(--neutral-accent) !important;
+    background: var(--neutral-accent-soft);
+    border: 1px solid color-mix(in srgb, var(--neutral-accent) 48%, transparent);
+    border-radius: 0.32rem;
+    font-weight: 650;
   }
 
   a.src:hover,
   a.src:focus-visible {
-    background: color-mix(in srgb, var(--link-color) 24%, var(--main-background-color));
-    border-color: var(--link-color);
+    color: var(--main-color) !important;
+    border-color: var(--neutral-accent);
   }
 
   .stab {
     padding: 0.2rem 0.45rem;
-    color: var(--main-color);
-    background: color-mix(in srgb, var(--stab-background-color) 78%, var(--link-color) 22%);
-    border: 1px solid color-mix(in srgb, var(--link-color) 52%, transparent);
-    border-radius: 0.3rem;
+    color: var(--neutral-muted);
+    background: var(--neutral-surface-raised);
+    border: 1px solid var(--neutral-code-border);
+    border-radius: 0.32rem;
   }
 
   .stab code,
   .since a {
-    color: var(--link-color) !important;
-    font-weight: 600;
+    color: var(--neutral-muted) !important;
+    font-weight: 650;
   }
 
-  .since a {
-    padding: 0.08rem 0.28rem;
-    background: color-mix(in srgb, var(--link-color) 12%, var(--main-background-color));
-    border-radius: 0.25rem;
-  }
-
-  #neutral-workspace-home {
-    position: fixed;
-    top: 0.7rem;
-    right: 0.8rem;
-    z-index: 10000;
-    padding: 0.45rem 0.7rem;
-    color: var(--link-color);
-    background: var(--main-background-color);
-    border: 1px solid var(--border-color);
+  #copy-path {
+    color: var(--neutral-muted);
     border-radius: 0.35rem;
-    font: 600 0.82rem/1.2 var(--code-font);
-    text-decoration: none;
-    box-shadow: 0 0.1rem 0.4rem rgb(0 0 0 / 20%);
   }
 
-  #neutral-workspace-home:hover,
-  #neutral-workspace-home:focus-visible {
-    color: var(--main-color);
-    border-color: var(--link-color);
-    outline: 2px solid transparent;
+  .item-table > dt,
+  .item-table > dd {
+    padding-block: 0.65rem;
+    border-bottom: 1px solid var(--neutral-nav-border);
+  }
+
+  a:focus-visible,
+  button:focus-visible,
+  summary:focus-visible,
+  input:focus-visible {
+    outline: 2px solid var(--neutral-focus) !important;
+    outline-offset: 3px;
+  }
+
+  :target {
+    scroll-margin-top: 5rem;
   }
 
   @media (max-width: 700px) {
-    #neutral-workspace-home {
-      top: auto;
-      right: 0.7rem;
-      bottom: 0.7rem;
+    body.rustdoc {
+      padding-top: 3.35rem;
+    }
+
+    #neutral-docs-nav {
+      min-height: 3.35rem;
+      padding: 0.42rem 0.65rem;
+    }
+
+    .neutral-docs-brand img {
+      width: 1.95rem;
+      height: 1.95rem;
+    }
+
+    .neutral-docs-brand span,
+    .neutral-docs-context {
+      display: none;
+    }
+
+    .neutral-docs-actions a {
+      min-height: 2rem;
+      padding: 0.4rem 0.62rem;
+    }
+
+    rustdoc-topbar {
+      top: 3.35rem;
+    }
+
+    .sidebar {
+      top: calc(3.35rem + var(--topbar-height));
+      height: calc(100vh - 3.35rem - var(--topbar-height));
+    }
+
+    body.rustdoc > main {
+      padding: 1.3rem 1rem 4rem;
+    }
+
+    .main-heading h1 {
+      font-size: 1.65rem;
+    }
+  }
+
+  @media print {
+    body.rustdoc {
+      padding-top: 0;
+    }
+
+    #neutral-docs-nav {
+      display: none;
     }
   }
 </style>
 <script>
   "use strict";
 
-  /** Adds a workspace-index link using rustdoc's page-relative root path. */
-  function addNeutralWorkspaceHomeLink() {
+  /** Builds the shared Neutral navigation and favicon for one Rustdoc page. */
+  function configureNeutralDocumentation() {
     const rustdocVariables = document.querySelector('meta[name="rustdoc-vars"]');
-    if (!rustdocVariables || document.getElementById("neutral-workspace-home")) {
+    if (!rustdocVariables || document.getElementById("neutral-docs-nav")) {
       return;
     }
-    const link = document.createElement("a");
-    link.id = "neutral-workspace-home";
-    link.href = `${rustdocVariables.dataset.rootPath || "./"}index.html`;
-    link.textContent = "← Workspace index";
-    link.setAttribute("aria-label", "Back to the Neutral workspace documentation index");
-    document.body.append(link);
+    const rootPath = rustdocVariables.dataset.rootPath || "./";
+    const favicon = document.createElement("link");
+    favicon.rel = "icon";
+    favicon.type = "image/png";
+    favicon.href = `${rootPath}assets/neutral-logo-rounded.png`;
+    document.head.append(favicon);
+
+    const navigation = document.createElement("nav");
+    navigation.id = "neutral-docs-nav";
+    navigation.setAttribute("aria-label", "Documentation navigation");
+
+    const brand = document.createElement("a");
+    brand.className = "neutral-docs-brand";
+    brand.href = `${rootPath}index.html`;
+    brand.setAttribute("aria-label", "Neutral documentation home");
+
+    const logo = document.createElement("img");
+    logo.src = `${rootPath}assets/neutral-logo.png`;
+    logo.alt = "";
+    logo.width = 34;
+    logo.height = 34;
+    brand.append(logo);
+
+    const brandName = document.createElement("span");
+    brandName.textContent = "Neutral documentation";
+    brand.append(brandName);
+
+    const context = document.createElement("span");
+    context.className = "neutral-docs-context";
+    context.textContent = rustdocVariables.dataset.currentCrate
+      ? rustdocVariables.dataset.currentCrate.replaceAll("_", "-")
+      : "Rust API";
+    brand.append(context);
+
+    const actions = document.createElement("div");
+    actions.className = "neutral-docs-actions";
+    const workspace = document.createElement("a");
+    workspace.href = `${rootPath}index.html`;
+    workspace.textContent = "Workspace";
+    actions.append(workspace);
+
+    navigation.append(brand, actions);
+    document.body.prepend(navigation);
   }
 
-  document.addEventListener("DOMContentLoaded", addNeutralWorkspaceHomeLink);
+  document.addEventListener("DOMContentLoaded", configureNeutralDocumentation);
 </script>

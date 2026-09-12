@@ -594,7 +594,7 @@ fn build(profile: BuildProfile) -> Result<(), String> {
     }
 }
 
-/// Builds every workspace crate's API documentation and its metadata-driven index.
+/// Builds every workspace crate's local API documentation.
 fn documentation() -> Result<(), String> {
     run_rustdoc()?;
     let metadata = command_output(
@@ -612,11 +612,46 @@ fn documentation() -> Result<(), String> {
     let output_path = output_directory.join(constants::RUSTDOC_INDEX_FILE);
     fs::write(&output_path, index)
         .map_err(|error| format!("could not write {}: {error}", output_path.display()))?;
+    copy_documentation_assets(&workspace_root()?, &output_directory)?;
     println!(
         "{} workspace documentation: {}",
         constants::INFO,
         output_path.display()
     );
+    Ok(())
+}
+
+/// Copies repository-owned brand assets into generated documentation output.
+///
+/// # Errors
+///
+/// Returns an error when a required source asset is missing or cannot be copied.
+fn copy_documentation_assets(root: &Path, output_directory: &Path) -> Result<(), String> {
+    let source_directory = root.join(constants::ASSET_DIRECTORY);
+    let destination_directory = output_directory.join(constants::DOCUMENTATION_ASSET_DIRECTORY);
+    fs::create_dir_all(&destination_directory).map_err(|error| {
+        format!(
+            "could not create documentation asset directory {}: {error}",
+            destination_directory.display()
+        )
+    })?;
+    for filename in constants::DOCUMENTATION_ASSET_FILES {
+        let source = source_directory.join(filename);
+        let destination = destination_directory.join(filename);
+        if !source.is_file() {
+            return Err(format!(
+                "required documentation asset is missing: {}",
+                source.display()
+            ));
+        }
+        fs::copy(&source, &destination).map_err(|error| {
+            format!(
+                "could not copy documentation asset {} to {}: {error}",
+                source.display(),
+                destination.display()
+            )
+        })?;
+    }
     Ok(())
 }
 
@@ -2631,8 +2666,10 @@ fn check_generated_outputs() -> Result<(), String> {
     for entry in inventory.split("[[output]]").skip(1) {
         let path = configuration_value(entry, "path")
             .ok_or_else(|| "generated output has no path".to_owned())?;
-        if !(path.starts_with("target/") || path.starts_with("test-results/"))
-            || configuration_value(entry, "tracking").as_deref() != Some("ignored")
+        let tracking = configuration_value(entry, "tracking");
+        let ephemeral_output = (path.starts_with("target/") || path.starts_with("test-results/"))
+            && tracking.as_deref() == Some("ignored");
+        if !ephemeral_output
             || configuration_value(entry, "owner").is_none()
             || configuration_value(entry, "generate").is_none()
             || configuration_value(entry, "validate").is_none()
@@ -2724,6 +2761,8 @@ fn check_repository_structure() -> Result<(), String> {
         "config".to_owned(),
         "conformance".to_owned(),
         "crates".to_owned(),
+        "docs".to_owned(),
+        "assets".to_owned(),
         "fuzz".to_owned(),
         "quality".to_owned(),
         "scripts".to_owned(),

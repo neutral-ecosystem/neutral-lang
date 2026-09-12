@@ -3,6 +3,12 @@
 schema_version = 1
 
 [[directory]]
+path = "assets"
+readme = "assets/README.md"
+owner = "visual-identity"
+lifecycle = "tracked shared project and documentation assets"
+
+[[directory]]
 path = ".cargo"
 readme = ".cargo/README.md"
 owner = "repository-automation"
@@ -31,6 +37,12 @@ path = "crates"
 readme = "crates/README.md"
 owner = "implementation"
 lifecycle = "tracked production and verification packages"
+
+[[directory]]
+path = "docs"
+readme = "docs/README.md"
+owner = "documentation"
+lifecycle = "tracked task-oriented project guides"
 
 [[directory]]
 path = "fuzz"

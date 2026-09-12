@@ -62,7 +62,9 @@ Full coverage-guided fuzzing, LLVM coverage, and mutation analysis require their
 documented external Cargo tools. Missing tools fail their command; bounded fuzz
 regression tests are never reported as a full fuzz campaign.
 
-`cargo xtask docs` builds workspace rustdoc and generates a searchable landing
-page from Cargo metadata. Package additions, removals, descriptions, ownership,
-versions, and dependency relationships therefore require no hand-maintained HTML
-package list.
+`cargo xtask docs` builds the searchable workspace Rustdoc site under ignored
+`target/doc/` from Cargo metadata. The published copy is the [Neutral API
+documentation website](https://neutral-lang-doc.younesrabeh.workers.dev/). The
+`docs/` directory owns hand-written, task-oriented guides. Package additions,
+removals, descriptions, ownership, versions, and dependency relationships
+therefore require no hand-maintained HTML package list.

@@ -5,6 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Generated workspace documentation for the Neutral language implementation.">
+  <link rel="icon" type="image/png" href="assets/neutral-logo-rounded.png">
   <title>Neutral language API documentation</title>
   <style>
     :root {
@@ -277,10 +278,21 @@
     <header>
       <div class="eyebrow">Neutral ecosystem · Rust API</div>
       <h1>Workspace documentation</h1>
-      <p class="intro">Browse the contracts, compilation pipeline, readers, host adapters, and verification tools that make up Neutral v0. This page is generated from Cargo metadata.</p>
+      <p class="intro">Browse the contracts, compilation pipeline, readers, host adapters, and verification tools that make up Neutral. This site is generated from Cargo metadata and Rustdoc.</p>
     </header>
 
     <main>
+      <section class="package-section">
+        <div class="section-heading">
+          <h2>Language capabilities</h2>
+          <p>Implemented by the documented workspace crates</p>
+        </div>
+        <ul class="packages">
+          <li class="package-card"><strong>Structured source</strong><p class="package-description">Scalars, exact numbers, strings, booleans, typed nulls, nominal records, defaults, lists, immutable reuse, and typed references.</p></li>
+          <li class="package-card"><strong>Captured vocabulary</strong><p class="package-description">Closed, host-captured vocabulary bundles with exact identity locks and no registry, filesystem, or network lookup during compilation.</p></li>
+          <li class="package-card"><strong>Validated artifacts</strong><p class="package-description">Public logical IR, hostile-input bounded decoding, framed external encoding, and standalone reader-only inspection.</p></li>
+        </ul>
+      </section>
       <div class="toolbar">
         <label>
           <span class="eyebrow">Filter packages</span>
@@ -309,7 +321,7 @@
     </main>
 
     <footer>
-      Regenerate this site with <code>cargo docs</code>. Package names,
+      Regenerate this site with <code>cargo xtask docs</code>. Package names,
       descriptions, versions, ownership, visibility, and dependency links come
       directly from Cargo metadata.
     </footer>
