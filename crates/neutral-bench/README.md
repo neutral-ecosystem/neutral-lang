@@ -10,6 +10,17 @@ conformance dependencies. It measures approved behavior and resource limits;
 it does not define language semantics, make acceptance decisions, or alter
 compiler output.
 
-`cargo bench --package neutral-bench --bench stage9 -- pr|release|soak` runs
-the controlled Stage 9 profile. PR measurements are informational; release
-thresholds require a recorded dedicated runner and reviewed baseline.
+`cargo xtask test performance --profile pr|release|soak` runs the controlled
+performance profiles. PR measurements are informational; release thresholds
+require a recorded dedicated runner and reviewed baseline.
+
+## Command
+
+Run the controlled local performance profile with:
+
+```sh
+cargo xtask test performance --profile pr
+```
+
+Use the `release` or `soak` profile only when performing the corresponding
+reviewed quality activity.

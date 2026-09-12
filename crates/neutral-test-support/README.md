@@ -9,3 +9,11 @@ It is non-published infrastructure and never belongs in a production dependency
 graph. Unit tests remain with the package under test, while cross-package tests
 belong to `neutral-test-suite`; this package only removes duplication between
 those test locations.
+
+## Command
+
+This is test-only support infrastructure. Verify its shared helpers with:
+
+```sh
+cargo test --package neutral-test-support
+```

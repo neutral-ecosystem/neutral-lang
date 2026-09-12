@@ -18,3 +18,11 @@ an immutable reader view. It performs no vocabulary lookup or host I/O.
 The crate owns encoding mechanics, stable decode failure classes, and
 bounds-before-allocation enforcement. It does not own language meaning, mutate
 validated documents, or make emitted byte ordering part of logical identity.
+
+## Command
+
+This is a library crate. Verify its encoder and hostile-input decoder with:
+
+```sh
+cargo test --package neutral-encoding
+```

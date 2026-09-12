@@ -5,7 +5,7 @@
 Neutral is a portable declarative language for describing structured,
 platform-independent data and behavior.
 
-This repository contains the frozen **v0 language specification**, its Rust
+This repository contains the versioned **v0.1.0 language specification**, its Rust
 implementation, conformance corpus, standalone reader and probe, formatter,
 command-line tooling, quality infrastructure, and release automation.
 
@@ -35,7 +35,7 @@ repository, then run:
 ```sh
 ./scripts/linux/bootstrap.sh
 cargo xtask dev
-````
+```
 
 ### Windows
 
@@ -288,7 +288,7 @@ updated manually across the repository.
 | ----------------------- | ---------------------------------------------------------------------------- |
 | `crates/`               | Versioned Rust implementation, binaries, and crate-owned tests               |
 | `conformance/`          | Released contracts, fixtures, reference data, and verification oracles       |
-| `portable/`             | Optional active portable-development plan                                    |
+| `portable/`             | Optional imported development plan; absent when no plan is active            |
 | `quality/`              | Quality policy, maintained reviews, approvals, and retained release evidence |
 | `config/`               | Machine-readable repository policy                                           |
 | `scripts/`              | Thin host-specific adapters                                                  |
@@ -497,8 +497,8 @@ filesystem command.
 
 ## Portable development plans
 
-`portable/` may contain an active development plan imported from the Neutral
-roadmap.
+`portable/` is deliberately absent after the v0 archive. It may be installed
+again when a reviewed future-version plan is imported from the Neutral roadmap.
 
 It is a planning input, not part of released language conformance.
 
@@ -580,8 +580,5 @@ Additional repository documentation:
 * [Platform adapters](scripts/README.md)
 * [Automation internals](xtask/README.md)
 
-The completed v0 development plan is archived in the Neutral roadmap.
-
 Released conformance is defined by the versioned specification, contracts,
 fixtures, oracles, and validated external formats stored in this repository.
-

@@ -9,12 +9,21 @@ It is non-published and has no production role. It combines public package
 boundaries with the normative fixture/oracle corpus to verify complete vertical
 slices, while package-local unit tests remain next to their implementation.
 
-Its active tests cover the completed Stage 2–8 vertical paths and current
-Stage 9 hardening:
-source/scalar/record/list/reuse/reference/vocabulary compilation, typed reader
-and probe traversal, external encoding and hostile decoding, frozen oracles,
-determinism, structural limits, deterministic fuzz-style cases, the reference
-formatter, host CLI, standalone probe, documentation, and traceability.
+Its active tests cover source/scalar/record/list/reuse/reference/vocabulary
+compilation paths, typed reader and probe traversal, external
+encoding and hostile decoding, frozen oracles, determinism, structural limits,
+deterministic fuzz-style cases, the reference formatter, host CLI, standalone
+probe, documentation, and traceability.
 Formatter evidence spans the complete positive source corpus and checks exact
 canonical layout, idempotence, logical/provenance preservation, deterministic
 nonsemantic comment placement, and separation from source/artifact identity.
+
+## Command
+
+Run the cross-package suite with:
+
+```sh
+cargo test --package neutral-test-suite
+```
+
+Use `cargo xtask test all` when validating the complete repository test graph.

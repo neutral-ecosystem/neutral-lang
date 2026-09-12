@@ -12,6 +12,12 @@ host effects part of the captured compiler contract.
 
 ## Commands
 
+Run the locally built command and display its interface with:
+
+```sh
+cargo run --package neutral-cli -- --help
+```
+
 - `neutral-cli compile --output <artifact|-> [options] <source|->` validates a
   captured source and writes a framed Neutral IR artifact.
 - `neutral-cli validate [options] <source|->` validates without producing an

@@ -18,3 +18,11 @@ contextual record values; display is deterministic and escapes hostile controls.
 It also carries exact captured vocabulary identity/version/schema/encoding/
 digest/feature facts, qualified type contracts and values, and distinct
 vocabulary-default provenance without introducing an executable value kind.
+
+## Command
+
+This is a library crate. Verify its public logical-model contracts with:
+
+```sh
+cargo test --package neutral-ir
+```

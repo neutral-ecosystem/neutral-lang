@@ -15,3 +15,11 @@ implements the frozen exact-byte SHA-256 digest contract; it otherwise must not
 depend on compiler, reader, CLI, host, automation, or test packages, and it
 must not perform host I/O. Higher layers use these stable value contracts to
 communicate without coupling to a particular source parser or artifact encoding.
+
+## Command
+
+This is a library crate. Verify its foundational contracts with:
+
+```sh
+cargo test --package neutral-core
+```

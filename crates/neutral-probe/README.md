@@ -24,3 +24,9 @@ library, or one bounded `[error]`.
 ```console
 cargo run --package neutral-probe -- path/to/artifact.nir
 ```
+
+Verify the reader-only library and binary boundary with:
+
+```sh
+cargo test --package neutral-probe
+```

@@ -9,18 +9,18 @@ It depends on core, IR, and vocabulary contracts only. The CLI supplies any
 host-facing capture work before this crate runs; `neutral-compiler` must remain
 deterministic and free of filesystem, environment, network, command, locale,
 and clock access. Its parser and semantic internals are intentionally private.
-The public boundary captures exact bytes immutably. Its private frontend now
-recognizes the frozen minimal document plus all Stage 3 source-text, identifier,
-comment, exact-number, bounded-string, Boolean, nullable-scalar, null, nominal
-record, and contextual-record behavior. It collects the complete root scope
-before nominal type resolution and rejects embedded record cycles. Stage 6 also
-accepts one exact host-captured vocabulary bundle and lock, validates it before
-source payloads, and resolves optional `use` plus qualified nominal types without
-performing acquisition. Exact trivia stays private for the reference formatter
-and is never lowered into authoritative logical IR.
+The public boundary captures exact bytes immutably. Its private frontend
+recognizes the supported source, identifier, comment, exact-number, bounded-string,
+Boolean, nullable-scalar, null, nominal-record, and contextual-record behavior.
+It collects the complete root scope before nominal type resolution and rejects
+embedded record cycles. It accepts one exact host-captured vocabulary bundle and
+lock, validates it before source payloads, and resolves optional `use` plus
+qualified nominal types without performing acquisition. Exact trivia stays
+private for the reference formatter and is never lowered into authoritative
+logical IR.
 
-The Stage 8.1 reference formatter accepts only captured source that completes
-the compiler validation path. It emits canonical header order, LF newlines,
+The reference formatter accepts only captured source that completes the compiler
+validation path. It emits canonical header order, LF newlines,
 four-space record/list indentation, one field or item per line with a trailing
 comma, normalized delimiter spacing, and no semicolons. Comments retain their
 text and source order with LF-normalized line endings, and are deterministically
@@ -29,3 +29,11 @@ contained or followed them; comments
 after the final construct remain at end of file. Formatter output is ordinary
 source bytes with a new source digest when recaptured—not logical IR, canonical
 artifact encoding, or signing material.
+
+## Command
+
+This is a library crate. Verify its compilation pipeline with:
+
+```sh
+cargo test --package neutral-compiler
+```

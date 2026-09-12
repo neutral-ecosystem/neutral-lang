@@ -15,3 +15,11 @@ immutable scalar, nominal-record, and qualified vocabulary traversal; recursive
 type/value/default-provenance validation; exact vocabulary-contract validation;
 and indexed source lookup. `neutral-encoding` owns hostile framed-byte decoding
 and exposes a reader view only after the complete external artifact validates.
+
+## Command
+
+This is a library crate. Verify its public artifact-reading contracts with:
+
+```sh
+cargo test --package neutral-reader
+```
