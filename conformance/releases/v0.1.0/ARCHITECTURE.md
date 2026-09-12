@@ -485,8 +485,8 @@ v0 is complete only after:
 - [proposed-syntax-guide.md](specs/contracts/proposed-syntax-guide.md) is the author-facing
   proposal.
 - [decisions/README.md](specs/decisions/README.md) indexes normative decisions.
-- [the v0 roadmap](ROADMAP.md) orders specification, implementation, and
-  release work without expanding the v0 feature set.
+- Planning and release history are archived outside this immutable v0 bundle;
+  they do not expand the released v0 feature set.
 - [the language showcase](specs/examples/LANGUAGE-SHOWCASE.md) demonstrates the complete v0
   surface.
 - [conformance fixtures](specs/fixtures/README.md) indexes conformance fixtures.

@@ -457,12 +457,65 @@ fn check() -> Result<(), String> {
     check_boundaries()?;
     check_test_layout()?;
     check_traceability()?;
+    verify_repository_markdown_links()?;
     check_versions()?;
     verify_optional_portable()?;
     check_generated_outputs()?;
     verify_quality_ledger()?;
     check_repository_structure()?;
     check_workflow_contract()
+}
+
+/// Verifies every tracked repository-local Markdown link stays within the workspace.
+fn verify_repository_markdown_links() -> Result<(), String> {
+    let root = workspace_root()?;
+    let canonical_root = fs::canonicalize(&root)
+        .map_err(|error| format!("could not canonicalize workspace root: {error}"))?;
+    let mut files = vec![root.join(constants::ROOT_README_FILE)];
+    for directory in [
+        ".cargo",
+        ".devcontainer",
+        ".github",
+        "config",
+        "conformance",
+        "crates",
+        "fuzz",
+        "quality",
+        "scripts",
+        "xtask",
+    ] {
+        collect_regular_files(&root.join(directory), &mut files)?;
+    }
+    let mut failures = Vec::new();
+    for file in files
+        .iter()
+        .filter(|path| path.extension().and_then(|value| value.to_str()) == Some("md"))
+    {
+        let content = fs::read_to_string(file)
+            .map_err(|error| format!("could not read {}: {error}", file.display()))?;
+        for target in markdown_link_targets(&content) {
+            let candidate = file.parent().unwrap_or(&root).join(&target);
+            let valid = fs::canonicalize(&candidate)
+                .is_ok_and(|resolved| resolved.starts_with(&canonical_root));
+            if !valid {
+                failures.push(format!(
+                    "{} -> {target}",
+                    file.strip_prefix(&root).unwrap_or(file).display()
+                ));
+            }
+        }
+    }
+    if failures.is_empty() {
+        println!("{} repository Markdown links: pass", constants::INFO);
+        Ok(())
+    } else {
+        failures.sort();
+        failures.dedup();
+        Err(format!(
+            "repository Markdown links are missing or escape the workspace: {}",
+            failures.join(", ")
+        ))
+    }
 }
 
 /// Verifies command documentation, platform adapters, and CI stay synchronized.
@@ -1677,7 +1730,6 @@ fn check_versions() -> Result<(), String> {
     {
         return Err("contract freeze must remain approved and version-complete".to_owned());
     }
-    ensure_no_unreviewed_contract_changes(&root)?;
     println!("{} centralized package versions: pass", constants::INFO);
     Ok(())
 }
@@ -1727,6 +1779,7 @@ fn prepare_version(requested: &str) -> Result<(), String> {
         constants::WORKSPACE_MANIFEST_FILE,
     )?)?;
     validate_version_transition(&current, requested)?;
+    ensure_no_unreviewed_contract_changes(&root)?;
     check_versions()?;
     let freeze_bytes = fs::read(root.join(constants::CONTRACT_FREEZE_FILE))
         .map_err(|error| format!("could not read contract freeze: {error}"))?;

@@ -2,9 +2,9 @@
 
 # Neutral language v0 specifications
 
-This directory owns the normative v0 material that accompanies the portable
-[architecture](../ARCHITECTURE.md), [execution plan](../PLAN.md), and
-[roadmap](../ROADMAP.md).
+This directory owns the normative v0 material that accompanies the released
+[architecture](../ARCHITECTURE.md). Planning history is archived outside this
+immutable conformance bundle.
 
 - [`REQUIREMENTS.md`](REQUIREMENTS.md) states what v0 must provide.
 - [`contracts/`](contracts/README.md) defines public project-specific behavior.

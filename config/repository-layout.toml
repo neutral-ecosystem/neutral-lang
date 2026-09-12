@@ -16,7 +16,7 @@ lifecycle = "tracked reproducible environment"
 
 [[directory]]
 path = ".github"
-readme = ".github/README.md"
+readme = ".github/WORKFLOWS.md"
 owner = "repository-automation"
 lifecycle = "tracked thin CI adapters"
 

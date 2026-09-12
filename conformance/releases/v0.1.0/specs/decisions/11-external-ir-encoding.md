@@ -389,7 +389,7 @@ exact byte identity are excluded from logical payload equality.
 ## SYN-ENC-006 — Limits and validation order
 
 The immutable hard ceilings are centralized in
-[`config/ir-encoding.toml`](../../../config/ir-encoding.toml):
+[`config/ir-encoding.toml`](../../../../../config/ir-encoding.toml):
 
 - 64 MiB complete artifact and per-section encoded size;
 - exactly five sections;

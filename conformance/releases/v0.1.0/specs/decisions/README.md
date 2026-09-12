@@ -6,8 +6,8 @@ Status: accepted v0 decision baseline
 
 These decisions specify only the minimum v0 language described by
 [architecture](../../ARCHITECTURE.md). They do not plan later versions.
-Implementation order and release gates are defined in
-[the v0 roadmap](../../ROADMAP.md).
+Implementation order and release history are archived outside this immutable
+bundle.
 
 ## Decision files
 
