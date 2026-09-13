@@ -59,3 +59,7 @@ then regenerate the local output.
 
 The task-oriented Markdown guides in `docs/` are maintained source documents;
 they are not overwritten by the generator.
+
+For the complete path from an active portable plan through staged
+implementation, conformance promotion, release qualification, and archival, see
+the [development lifecycle](development-lifecycle.md).

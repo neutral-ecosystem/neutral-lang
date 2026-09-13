@@ -11,6 +11,7 @@ API documentation locally with `cargo xtask docs`, or browse the live
 | Task | Guide |
 | --- | --- |
 | Set up a workstation and use the development loop | [Development workflow](development.md) |
+| Advance from one version to the next | [Development lifecycle](development-lifecycle.md) |
 | Run quality, coverage, fuzzing, or performance checks | [Quality and analysis](quality-and-analysis.md) |
 | Prepare a version, package, or release | [Release and versioning](release-and-versioning.md) |
 | Understand repository directories and generated outputs | [Repository structure](repository-structure.md) |

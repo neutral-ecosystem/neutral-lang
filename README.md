@@ -187,6 +187,7 @@ Choose a guide by task, or browse the complete [documentation hub](docs/README.m
 | I want to… | Start here |
 | --- | --- |
 | Set up the repository and run checks | [Development workflow](docs/development.md) |
+| Advance from one version to the next | [Development lifecycle](docs/development-lifecycle.md) |
 | Understand quality gates and analysis | [Quality and analysis](docs/quality-and-analysis.md) |
 | Prepare a version or release | [Release and versioning](docs/release-and-versioning.md) |
 | Understand directory and output ownership | [Repository structure](docs/repository-structure.md) |
