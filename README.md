@@ -110,6 +110,9 @@ CI, quality checks, documentation, packaging, and release preparation.
 
 ### Everyday workflow
 
+<details>
+<summary><strong>Everyday workflow commands</strong></summary>
+
 | Need | Command |
 | --- | --- |
 | Verify the environment | `cargo xtask bootstrap` |
@@ -123,7 +126,12 @@ CI, quality checks, documentation, packaging, and release preparation.
 | Generate the API website | `cargo xtask docs` |
 | Remove generated evidence | `cargo xtask clean` |
 
+</details>
+
 ### Test suites
+
+<details>
+<summary><strong>Test suite commands</strong></summary>
 
 | Test scope | Command |
 | --- | --- |
@@ -137,7 +145,12 @@ CI, quality checks, documentation, packaging, and release preparation.
 | Run every test suite | `cargo xtask test all` |
 | Run performance tests | `cargo xtask test performance --profile pr\|release\|soak` |
 
+</details>
+
 ### Quality and analysis
+
+<details>
+<summary><strong>Quality and analysis commands</strong></summary>
 
 | Quality task | Command |
 | --- | --- |
@@ -152,7 +165,12 @@ CI, quality checks, documentation, packaging, and release preparation.
 | Run a fuzz smoke test | `RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz smoke` |
 | Run full fuzz campaigns | `RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign` |
 
+</details>
+
 ### Artifacts, versions, and releases
+
+<details>
+<summary><strong>Artifact and release commands</strong></summary>
 
 | Release task | Command |
 | --- | --- |
@@ -165,7 +183,12 @@ CI, quality checks, documentation, packaging, and release preparation.
 | Check version consistency | `cargo xtask version check` |
 | Prepare a new version | `cargo xtask version prepare <version>` |
 
+</details>
+
 ### Portable plans and environment evidence
+
+<details>
+<summary><strong>Portable and environment commands</strong></summary>
 
 | Repository task | Command |
 | --- | --- |
@@ -174,6 +197,8 @@ CI, quality checks, documentation, packaging, and release preparation.
 | Archive the portable plan | `cargo xtask portable snapshot` |
 | Audit the workstation | `cargo xtask environment verify` |
 | Print the environment manifest | `cargo xtask environment manifest` |
+
+</details>
 
 Generated API documentation remains local under `target/doc/` and is published
 at the [Neutral API documentation website](https://neutral-lang-doc.younesrabeh.workers.dev/).
