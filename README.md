@@ -110,8 +110,10 @@ CI, quality checks, documentation, packaging, and release preparation.
 
 ### Everyday workflow
 
+Use these commands for the normal local development loop.
+
 <details>
-<summary><strong>Everyday workflow commands</strong></summary>
+<summary><strong>Commands</strong></summary>
 
 | Need | Command |
 | --- | --- |
@@ -130,8 +132,10 @@ CI, quality checks, documentation, packaging, and release preparation.
 
 ### Test suites
 
+Use these commands to run focused or complete test suites.
+
 <details>
-<summary><strong>Test suite commands</strong></summary>
+<summary><strong>Commands</strong></summary>
 
 | Test scope | Command |
 | --- | --- |
@@ -149,8 +153,10 @@ CI, quality checks, documentation, packaging, and release preparation.
 
 ### Quality and analysis
 
+Use these commands for quality gates, coverage, fuzzing, and analysis.
+
 <details>
-<summary><strong>Quality and analysis commands</strong></summary>
+<summary><strong>Commands</strong></summary>
 
 | Quality task | Command |
 | --- | --- |
@@ -169,8 +175,10 @@ CI, quality checks, documentation, packaging, and release preparation.
 
 ### Artifacts, versions, and releases
 
+Use these commands to validate artifacts and prepare releases.
+
 <details>
-<summary><strong>Artifact and release commands</strong></summary>
+<summary><strong>Commands</strong></summary>
 
 | Release task | Command |
 | --- | --- |
@@ -187,8 +195,10 @@ CI, quality checks, documentation, packaging, and release preparation.
 
 ### Portable plans and environment evidence
 
+Use these commands to manage portable plans and inspect the environment.
+
 <details>
-<summary><strong>Portable and environment commands</strong></summary>
+<summary><strong>Commands</strong></summary>
 
 | Repository task | Command |
 | --- | --- |
