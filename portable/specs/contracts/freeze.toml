@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# This manifest freezes the v1 portable-plan inputs. It remains a planning
+# baseline until each stage activates its exact fixtures, oracles, and vectors.
+schema_version = 1
+freeze_id = "neutral-v1-portable-plan-2026-09-20"
+status = "approved-plan"
+created_on = "2026-09-20"
+approval_date = "2026-09-20"
+supersedes = "neutral-v0-portable-archive"
+
+[review]
+question_ledger_path = "portable/development/06-VALIDATION-LEDGER.md"
+approvers = ["repository owner"]
+blocking_issues = []
+
+[contract_versions]
+language_behavior = "1.0.0-plan"
+project_contract = "1.0.0-plan"
+source_contract = "1.0.0-plan"
+vocabulary_contract = "1.0.0-plan"
+authoring_contract = "1.0.0-plan"
+external_ir_encoding = "NIR-CBOR/1.0-plan"
+
+[fixture_corpus]
+manifest_path = "portable/conformance/manifest.toml"
+manifest_sha256 = "34afe29c14a6f6c2583738c34c69cfb37db462dc21425fb42f55ee78df5f5c85"
+fixture_oracle_review_path = "portable/conformance/fixture-oracle-review.toml"
+fixture_oracle_review_sha256 = "e81fcb2047123c15929eb7f24dbd6b7e4120e9a29ad8112fd77d404f77ccb533"
+status = "planned; stage-owned fixture and oracle additions are required"

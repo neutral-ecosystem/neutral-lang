@@ -129,10 +129,10 @@ pub const PORTABLE_PLAN_FILE: &str = "portable/PLAN.md";
 pub const PORTABLE_LIFECYCLE_FILE: &str = "portable/lifecycle.toml";
 /// Active portable requirements relative to the workspace root.
 pub const PORTABLE_REQUIREMENTS_FILE: &str = "portable/specs/REQUIREMENTS.md";
-/// Active portable syntax contract relative to the workspace root.
-pub const PORTABLE_SYNTAX_CONTRACT_FILE: &str = "portable/specs/contracts/syntax.md";
-/// Active portable syntax checklist relative to the workspace root.
-pub const PORTABLE_SYNTAX_CHECKLIST_FILE: &str = "portable/specs/contracts/syntax-checklist.md";
+/// Active portable source/module contract relative to the workspace root.
+pub const PORTABLE_SYNTAX_CONTRACT_FILE: &str = "portable/specs/contracts/SOURCE.md";
+/// Active portable implementation checklist relative to the workspace root.
+pub const PORTABLE_SYNTAX_CHECKLIST_FILE: &str = "portable/specs/contracts/v1-checklist.md";
 /// Active portable traceability matrix relative to the workspace root.
 pub const PORTABLE_TRACEABILITY_FILE: &str = "portable/specs/TRACEABILITY.md";
 /// Active portable contract-freeze manifest relative to the workspace root.

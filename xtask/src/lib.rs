@@ -3601,15 +3601,30 @@ fn check_traceability() -> Result<(), String> {
 
 /// Checks the contracts and conformance inventory of an installed portable package.
 fn check_portable_traceability() -> Result<(), String> {
-    check_traceability_bundle(
-        constants::PORTABLE_REQUIREMENTS_FILE,
-        constants::PORTABLE_SYNTAX_CONTRACT_FILE,
-        constants::PORTABLE_SYNTAX_CHECKLIST_FILE,
-        constants::PORTABLE_TRACEABILITY_FILE,
-        constants::PORTABLE_CONFORMANCE_MANIFEST_FILE,
-        constants::PORTABLE_FIXTURE_DIRECTORY,
-        constants::PORTABLE_ORACLE_DIRECTORY,
-    )
+    let root = workspace_root()?;
+    let requirements = read_workspace_text(&root, constants::PORTABLE_REQUIREMENTS_FILE)?;
+    let contract = read_workspace_text(&root, constants::PORTABLE_SYNTAX_CONTRACT_FILE)?;
+    let checklist = read_workspace_text(&root, constants::PORTABLE_SYNTAX_CHECKLIST_FILE)?;
+    let traceability = read_workspace_text(&root, constants::PORTABLE_TRACEABILITY_FILE)?;
+    let manifest = read_workspace_text(&root, constants::PORTABLE_CONFORMANCE_MANIFEST_FILE)?;
+
+    if requirements.trim().is_empty()
+        || contract.trim().is_empty()
+        || traceability.trim().is_empty()
+        || manifest.trim().is_empty()
+    {
+        return Err("portable traceability bundle contains an empty governing document".to_owned());
+    }
+    let checklist_ids = contract_ids(&checklist, "V1-");
+    if checklist_ids.is_empty() {
+        return Err("portable implementation checklist contains no V1 identifiers".to_owned());
+    }
+    ensure_syntax_complete(constants::PORTABLE_SYNTAX_CHECKLIST_FILE, &checklist)?;
+    ensure_inventory_registered(&root, constants::PORTABLE_FIXTURE_DIRECTORY, &manifest)?;
+    ensure_inventory_registered(&root, constants::PORTABLE_ORACLE_DIRECTORY, &manifest)?;
+    ensure_registered_paths_exist(&root, &manifest)?;
+    println!("{} traceability coherence: pass", constants::INFO);
+    Ok(())
 }
 
 /// Checks one self-contained contract, fixture, and oracle bundle.

@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+status = "v1-release-train"
+baseline_profile = "0.1"
+target_profile = "1.0"
+
+# Each case added during a stage names exact fixture and oracle paths and the
+# release stage that activates it. No path is active until its bytes and oracle
+# are reviewed. The v0.1 corpus remains a required inherited suite.
+
+[[suite]]
+id = "inherited-v0"
+profile = "0.1"
+active_from_stage = 1
+status = "required"
+
+[[suite]]
+id = "capture-and-modules"
+profile = "1.0"
+active_from_stage = 2
+status = "planned"
+
+[[suite]]
+id = "visibility-and-vocabularies"
+profile = "1.0"
+active_from_stage = 4
+status = "planned"
+
+[[suite]]
+id = "project-ir-and-identities"
+profile = "1.0"
+active_from_stage = 6
+status = "planned"
+
+[[suite]]
+id = "authoring-and-public-probes"
+profile = "1.0"
+active_from_stage = 8
+status = "planned"

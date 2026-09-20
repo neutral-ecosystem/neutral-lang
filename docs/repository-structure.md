@@ -35,7 +35,8 @@ tracked quality policy, or an installed portable plan.
 
 ## Portable development plans
 
-`portable/` is optional and absent when no reviewed future-version plan is
-active. Install, verify, or archive a plan through `cargo xtask portable`; the
-plan is a development input and never changes an already released conformance
-bundle.
+`portable/` contains the reviewed future-version plan currently active for
+development. The v1 plan is sourced from the
+[Neutral roadmap v1 portable plan](https://github.com/neutral-ecosystem/neutral-roadmap/tree/main/neutral-lang/v1/portable).
+Install, verify, or archive plans through `cargo xtask portable`; a plan is a
+development input and never changes an already released conformance bundle.

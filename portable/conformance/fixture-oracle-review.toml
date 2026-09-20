@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+status = "planned"
+profile = "1.0"
+
+# v1 fixture bytes and expected outcomes are added by their owning stage.
+# Empty inventories are intentional until the corresponding contract gate is
+# accepted; the inherited v0 corpus remains the compatibility baseline.
+
+[[suite]]
+id = "inherited-v0"
+status = "inherited"
+
