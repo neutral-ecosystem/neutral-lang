@@ -237,6 +237,74 @@ fn automation_accepts_numeric_portable_series() {
 }
 
 #[test]
+/// Portable layout validation accepts package-owned contract and checklist filenames.
+fn automation_accepts_version_independent_portable_layouts() {
+    let root = std::env::temp_dir().join(format!(
+        "neutral-generic-portable-layout-{}",
+        std::process::id()
+    ));
+    if root.exists() {
+        std::fs::remove_dir_all(&root).expect("stale portable test root should be removable");
+    }
+    for directory in [
+        constants::PORTABLE_CONTRACT_DIRECTORY,
+        constants::PORTABLE_FIXTURE_DIRECTORY,
+        constants::PORTABLE_ORACLE_DIRECTORY,
+    ] {
+        std::fs::create_dir_all(root.join(directory))
+            .expect("required portable directory should be creatable");
+    }
+    for file in [
+        constants::PORTABLE_PLAN_FILE,
+        constants::PORTABLE_LIFECYCLE_FILE,
+        constants::PORTABLE_REQUIREMENTS_FILE,
+        constants::PORTABLE_TRACEABILITY_FILE,
+        constants::PORTABLE_CONTRACT_FREEZE_FILE,
+        constants::PORTABLE_CONFORMANCE_MANIFEST_FILE,
+    ] {
+        std::fs::write(root.join(file), "required = true\n")
+            .expect("required portable file should be writable");
+    }
+    std::fs::write(
+        root.join(constants::PORTABLE_CONTRACT_DIRECTORY)
+            .join("future-contract-name.md"),
+        "# Future contract\n",
+    )
+    .expect("package-owned contract should be writable");
+
+    assert!(super::verify_portable_layout(&root).is_ok());
+    std::fs::remove_dir_all(root).expect("portable test root should be removable");
+}
+
+#[test]
+/// Freeze validation discovers arbitrary frozen-input names from path/digest pairs.
+fn automation_accepts_version_independent_frozen_inputs() {
+    let root = std::env::temp_dir().join(format!(
+        "neutral-generic-portable-freeze-{}",
+        std::process::id()
+    ));
+    if root.exists() {
+        std::fs::remove_dir_all(&root).expect("stale freeze test root should be removable");
+    }
+    std::fs::create_dir_all(root.join("portable/custom"))
+        .expect("frozen input directory should be creatable");
+    let bytes = b"future portable input\n";
+    std::fs::write(root.join("portable/custom/input.data"), bytes)
+        .expect("frozen input should be writable");
+    std::fs::write(
+        root.join("freeze.toml"),
+        format!(
+            "[fixture_corpus]\nfuture_input_path = \"portable/custom/input.data\"\nfuture_input_sha256 = \"{}\"\n",
+            super::sha256_hex(bytes)
+        ),
+    )
+    .expect("freeze manifest should be writable");
+
+    assert!(super::verify_frozen_input_digests(&root, "freeze.toml").is_ok());
+    std::fs::remove_dir_all(root).expect("freeze test root should be removable");
+}
+
+#[test]
 /// Portable snapshot verification detects copied-byte corruption.
 fn automation_revalidates_portable_snapshot_bytes() {
     let root = std::env::temp_dir().join(format!(

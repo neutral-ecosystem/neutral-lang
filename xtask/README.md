@@ -36,8 +36,9 @@ The root `[workspace.package].version` is the sole package-release version.
 commands derive tag `v<version>` instead of reading a duplicated version.
 `portable install <directory>` atomically copies and verifies a reviewed package
 without overwriting an existing one. `portable verify` enforces the
-active-package boundary, and `portable snapshot` creates an ignored,
-SHA-256-addressed archive candidate without network access.
+version-independent active-package boundary without prescribing contract or
+checklist filenames. `portable snapshot` creates an ignored, SHA-256-addressed
+archive candidate without network access.
 
 Inputs are tracked repository configuration and explicit command arguments.
 Outputs are terminal messages prefixed with a category and ignored generated

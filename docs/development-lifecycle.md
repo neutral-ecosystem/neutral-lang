@@ -79,9 +79,7 @@ portable/
 │   ├── REQUIREMENTS.md
 │   ├── TRACEABILITY.md
 │   ├── contracts/
-│   │   ├── freeze.toml
-│   │   ├── syntax.md
-│   │   └── syntax-checklist.md
+│   │   └── freeze.toml
 │   └── fixtures/
 └── conformance/
     ├── manifest.toml
@@ -92,6 +90,10 @@ The package must identify an active numeric version series, contain no symbolic
 links or special files, keep local links valid, and pass its recorded freeze
 digests. A rejected installation is retained beneath `test-results/portable/`
 for review rather than becoming the active plan.
+
+Contract and checklist filenames beyond `freeze.toml` belong to the portable
+package itself. Verification deliberately does not assume a language version,
+contract name, checklist name, or identifier prefix.
 
 ## 3. Freeze contracts before implementation
 

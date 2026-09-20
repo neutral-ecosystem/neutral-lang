@@ -2290,16 +2290,7 @@ fn copy_portable_tree(source: &Path, destination: &Path) -> Result<(), String> {
 /// Verifies the active portable package's required roots and traceability.
 fn verify_portable() -> Result<(), String> {
     let root = workspace_root()?;
-    for relative in [
-        constants::PORTABLE_PLAN_FILE,
-        constants::PORTABLE_LIFECYCLE_FILE,
-        constants::PORTABLE_CONTRACT_FREEZE_FILE,
-        constants::PORTABLE_CONFORMANCE_MANIFEST_FILE,
-    ] {
-        if !root.join(relative).is_file() {
-            return Err(format!("active portable file is missing: {relative}"));
-        }
-    }
+    verify_portable_layout(&root)?;
     let lifecycle = read_workspace_text(&root, constants::PORTABLE_LIFECYCLE_FILE)?;
     let active_series = configuration_value(&lifecycle, "active_series")
         .ok_or_else(|| "active portable lifecycle has no active_series".to_owned())?;
@@ -2315,12 +2306,41 @@ fn verify_portable() -> Result<(), String> {
             "active portable series must be a numeric v-prefixed identifier; found {active_series:?}"
         ));
     }
-    check_portable_traceability()?;
-    verify_fixture_freeze_digests(&root, constants::PORTABLE_CONTRACT_FREEZE_FILE)?;
+    check_portable_traceability_at(&root)?;
+    verify_frozen_input_digests(&root, constants::PORTABLE_CONTRACT_FREEZE_FILE)?;
     verify_portable_links(&root)?;
     ensure_no_archived_portable_dependencies(&root)?;
     verify_existing_portable_snapshots(&root)?;
     println!("{} active portable package: pass", constants::INFO);
+    Ok(())
+}
+
+/// Verifies the version-independent files and directories required from every portable package.
+fn verify_portable_layout(root: &Path) -> Result<(), String> {
+    for relative in [
+        constants::PORTABLE_PLAN_FILE,
+        constants::PORTABLE_LIFECYCLE_FILE,
+        constants::PORTABLE_REQUIREMENTS_FILE,
+        constants::PORTABLE_TRACEABILITY_FILE,
+        constants::PORTABLE_CONTRACT_FREEZE_FILE,
+        constants::PORTABLE_CONFORMANCE_MANIFEST_FILE,
+    ] {
+        if !root.join(relative).is_file() {
+            return Err(format!("active portable file is missing: {relative}"));
+        }
+        if read_workspace_text(root, relative)?.trim().is_empty() {
+            return Err(format!("active portable file is empty: {relative}"));
+        }
+    }
+    for relative in [
+        constants::PORTABLE_CONTRACT_DIRECTORY,
+        constants::PORTABLE_FIXTURE_DIRECTORY,
+        constants::PORTABLE_ORACLE_DIRECTORY,
+    ] {
+        if !root.join(relative).is_dir() {
+            return Err(format!("active portable directory is missing: {relative}"));
+        }
+    }
     Ok(())
 }
 
@@ -2418,21 +2438,44 @@ fn verify_portable_snapshot_directory(root: &Path, directory: &Path) -> Result<(
     Ok(())
 }
 
-/// Verifies immutable fixture-manifest identities recorded by the freeze.
-fn verify_fixture_freeze_digests(root: &Path, freeze_file: &str) -> Result<(), String> {
+/// Verifies every generic `*_path` and `*_sha256` pair recorded by a freeze.
+fn verify_frozen_input_digests(root: &Path, freeze_file: &str) -> Result<(), String> {
     let freeze = read_workspace_text(root, freeze_file)?;
-    for (path_key, digest_key) in [
-        ("manifest_path", "manifest_sha256"),
-        ("fixture_oracle_review_path", "fixture_oracle_review_sha256"),
-    ] {
-        let path = configuration_value(&freeze, path_key)
-            .ok_or_else(|| format!("contract freeze has no {path_key}"))?;
-        let expected = configuration_value(&freeze, digest_key)
+    let values = configuration_section(&freeze, "fixture_corpus")?
+        .into_iter()
+        .collect::<BTreeMap<_, _>>();
+    let frozen_paths = values
+        .iter()
+        .filter_map(|(key, path)| {
+            key.strip_suffix("_path")
+                .map(|name| (name.to_owned(), path.to_owned()))
+        })
+        .collect::<Vec<_>>();
+    if frozen_paths.is_empty() {
+        return Err("contract freeze has no frozen input paths".to_owned());
+    }
+    for (name, path) in frozen_paths {
+        let digest_key = format!("{name}_sha256");
+        let expected = values
+            .get(&digest_key)
             .ok_or_else(|| format!("contract freeze has no {digest_key}"))?;
-        let bytes = fs::read(root.join(&path))
+        if !is_sha256(expected) {
+            return Err(format!("contract freeze has an invalid {digest_key}"));
+        }
+        let relative = Path::new(&path);
+        if relative.as_os_str().is_empty()
+            || !relative
+                .components()
+                .all(|component| matches!(component, Component::Normal(_)))
+        {
+            return Err(format!(
+                "frozen input path must be a safe workspace-relative path: {path}"
+            ));
+        }
+        let bytes = fs::read(root.join(relative))
             .map_err(|error| format!("could not read frozen input {path}: {error}"))?;
         let actual = sha256_hex(&bytes);
-        if actual != expected {
+        if actual != expected.as_str() {
             return Err(format!(
                 "frozen input {path} has SHA-256 {actual}, expected {expected}; contract review is required"
             ));
@@ -3596,33 +3639,15 @@ fn check_traceability() -> Result<(), String> {
         constants::FIXTURE_DIRECTORY,
         constants::ORACLE_DIRECTORY,
     )?;
-    verify_fixture_freeze_digests(&workspace_root()?, constants::CONTRACT_FREEZE_FILE)
+    verify_frozen_input_digests(&workspace_root()?, constants::CONTRACT_FREEZE_FILE)
 }
 
-/// Checks the contracts and conformance inventory of an installed portable package.
-fn check_portable_traceability() -> Result<(), String> {
-    let root = workspace_root()?;
-    let requirements = read_workspace_text(&root, constants::PORTABLE_REQUIREMENTS_FILE)?;
-    let contract = read_workspace_text(&root, constants::PORTABLE_SYNTAX_CONTRACT_FILE)?;
-    let checklist = read_workspace_text(&root, constants::PORTABLE_SYNTAX_CHECKLIST_FILE)?;
-    let traceability = read_workspace_text(&root, constants::PORTABLE_TRACEABILITY_FILE)?;
-    let manifest = read_workspace_text(&root, constants::PORTABLE_CONFORMANCE_MANIFEST_FILE)?;
-
-    if requirements.trim().is_empty()
-        || contract.trim().is_empty()
-        || traceability.trim().is_empty()
-        || manifest.trim().is_empty()
-    {
-        return Err("portable traceability bundle contains an empty governing document".to_owned());
-    }
-    let checklist_ids = contract_ids(&checklist, "V1-");
-    if checklist_ids.is_empty() {
-        return Err("portable implementation checklist contains no V1 identifiers".to_owned());
-    }
-    ensure_syntax_complete(constants::PORTABLE_SYNTAX_CHECKLIST_FILE, &checklist)?;
-    ensure_inventory_registered(&root, constants::PORTABLE_FIXTURE_DIRECTORY, &manifest)?;
-    ensure_inventory_registered(&root, constants::PORTABLE_ORACLE_DIRECTORY, &manifest)?;
-    ensure_registered_paths_exist(&root, &manifest)?;
+/// Checks the version-independent conformance inventory of an installed portable package.
+fn check_portable_traceability_at(root: &Path) -> Result<(), String> {
+    let manifest = read_workspace_text(root, constants::PORTABLE_CONFORMANCE_MANIFEST_FILE)?;
+    ensure_inventory_registered(root, constants::PORTABLE_FIXTURE_DIRECTORY, &manifest)?;
+    ensure_inventory_registered(root, constants::PORTABLE_ORACLE_DIRECTORY, &manifest)?;
+    ensure_registered_paths_exist(root, &manifest)?;
     println!("{} traceability coherence: pass", constants::INFO);
     Ok(())
 }
