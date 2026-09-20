@@ -3,6 +3,12 @@
 [alias]
 xtask = "run --package xtask --"
 docs = "run --package xtask -- docs"
+dev = "run --package xtask -- dev"
+bootstrap = "run --package xtask -- bootstrap"
+check-repo = "run --package xtask -- check"
+quality = "run --package xtask -- quality"
+sync-fixtures = "run --package xtask -- fixtures sync"
+check-fixtures = "run --package xtask -- fixtures check"
 
 [build]
 incremental = true

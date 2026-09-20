@@ -19,6 +19,7 @@ use std::{
 };
 
 pub mod constants;
+mod fixtures;
 mod interface;
 mod release;
 
@@ -77,6 +78,7 @@ fn execute(task: Task) -> Result<(), String> {
         Task::Portable(action) => portable(action),
         Task::Clean => clean_results(),
         Task::Ci(profile) => ci(profile),
+        Task::Fixtures { check } => fixtures::sync_fixtures(&workspace_root()?, check),
     }
 }
 

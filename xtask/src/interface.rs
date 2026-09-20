@@ -44,6 +44,8 @@ const DOCS_COMMAND: &str = "docs";
 const DEV_COMMAND: &str = "dev";
 /// Mutation-analysis command name.
 const MUTATE_COMMAND: &str = "mutate";
+/// Stable command name for fixture synchronization.
+const FIXTURES_COMMAND: &str = "fixtures";
 /// Help option accepted at the root command boundary.
 const HELP_OPTION: &str = "--help";
 /// Short help option accepted at the root command boundary.
@@ -57,6 +59,7 @@ Usage: cargo xtask <command> [options]\n\n\
 Stable commands:\n\
   bootstrap                                      verify the host workspace\n\
   dev                                            format, check, lint, test, and document\n\
+  fixtures [sync|check]                          synchronize or verify fixture SHA-256 digests\n\
   environment verify|manifest                    inspect the selected tools\n\
   fmt [--write]                                  check or apply Rust formatting\n\
   lint                                           run warning-free workspace linting\n\
@@ -153,6 +156,11 @@ pub(crate) enum Task {
     Clean,
     /// Run one internal CI composition.
     Ci(CiProfile),
+    /// Synchronize or verify fixture, oracle, and contract freeze hashes.
+    Fixtures {
+        /// Whether to verify without writing (check mode).
+        check: bool,
+    },
 }
 
 /// Supported workspace build profiles.
@@ -326,6 +334,10 @@ pub(crate) fn parse(arguments: &[String]) -> Result<Task, String> {
         [CLEAN_COMMAND] => Ok(Task::Clean),
         [CI_COMMAND, "pr"] => Ok(Task::Ci(CiProfile::Pr)),
         [CI_COMMAND, "release"] => Ok(Task::Ci(CiProfile::Release)),
+        [FIXTURES_COMMAND | "sync-fixtures"] | [FIXTURES_COMMAND, "sync"] => {
+            Ok(Task::Fixtures { check: false })
+        }
+        [FIXTURES_COMMAND, "check" | "--check"] => Ok(Task::Fixtures { check: true }),
         _ => Err(format!(
             "unsupported command: {}; run `cargo xtask --help`",
             values.join(" ")
