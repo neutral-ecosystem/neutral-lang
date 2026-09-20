@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # The v1 portable plan is active and its inherited v0.1 entry baseline has
-# passed. Stage 1 implementation is validated; release promotion is pending.
-# Stage 2.1 contracts and fixtures are frozen without claiming implementation.
+# passed. Stage 1 is released (v0.2.0). Stage 2.1 contracts and fixtures are
+# frozen without claiming implementation.
 # Normal developer commands do not derive their names or test selection from
 # these tracking values.
 active_stage = 2

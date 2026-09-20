@@ -60,8 +60,8 @@ Evidence: [Stage 1 profile-foundation validation](evidence/stage1.md).
 
 ### Promote to `v0.2.0`
 
-- [ ] Confirm `v0.1.4` evidence is complete and immutable.
-- [ ] Release `v0.2.0`; update the ledger to `released`.
+- [*] Confirm `v0.1.4` evidence is complete and immutable.
+- [*] Release `v0.2.0`; update the ledger to `released`.
 
 ## Stage 2 — complete no-I/O project capture
 

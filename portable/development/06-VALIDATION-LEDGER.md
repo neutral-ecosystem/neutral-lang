@@ -14,7 +14,7 @@ only when its `.4 -> next .0` promotion evidence is retained.
 
 | Stage | Transition | Current status | Validation required to advance |
 | --- | --- | --- | --- |
-| 1 | `v0.1.0 -> v0.2.0` | validated | [profile matrix, inherited v0 corpus, v1 exclusion/audit evidence](evidence/stage1.md); release promotion pending |
+| 1 | `v0.1.0 -> v0.2.0` | released | [profile matrix, inherited v0 corpus, v1 exclusion/audit evidence](evidence/stage1.md); release promotion complete |
 | 2 | `v0.2.0 -> v0.3.0` | in progress | [Stage 2.1 request/closure/limits fixture gate accepted](evidence/stage2-1-contract-gate.md); implementation and no-I/O proof pending |
 | 3 | `v0.3.0 -> v0.4.0` | not started | module/import/SCC/determinism fixtures |
 | 4 | `v0.4.0 -> v0.5.0` | not started | visibility/public closure/cross-module semantic fixtures |
