@@ -64,7 +64,7 @@ checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
 name = "neutral-bench"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "neutral-compiler",
  "neutral-core",
@@ -76,7 +76,7 @@ dependencies = [
 
 [[package]]
 name = "neutral-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "neutral-compiler",
  "neutral-core",
@@ -87,7 +87,7 @@ dependencies = [
 
 [[package]]
 name = "neutral-compiler"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "neutral-core",
  "neutral-ir",
@@ -96,14 +96,14 @@ dependencies = [
 
 [[package]]
 name = "neutral-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "sha2",
 ]
 
 [[package]]
 name = "neutral-encoding"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "neutral-compiler",
  "neutral-core",
@@ -114,14 +114,14 @@ dependencies = [
 
 [[package]]
 name = "neutral-ir"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "neutral-core",
 ]
 
 [[package]]
 name = "neutral-probe"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "neutral-core",
  "neutral-encoding",
@@ -131,7 +131,7 @@ dependencies = [
 
 [[package]]
 name = "neutral-reader"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "neutral-core",
  "neutral-ir",
@@ -140,7 +140,7 @@ dependencies = [
 
 [[package]]
 name = "neutral-test-suite"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "neutral-compiler",
  "neutral-core",
@@ -153,11 +153,11 @@ dependencies = [
 
 [[package]]
 name = "neutral-test-support"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "neutral-vocabulary"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "neutral-core",
  "neutral-ir",
@@ -188,7 +188,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "xtask"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "sha2",
 ]
