@@ -24,6 +24,12 @@ only when its `.4 -> next .0` promotion evidence is retained.
 | 8 | `v0.8.0 -> v0.9.0` | not started | dynamic catalogue and generic Editor no-op probe |
 | 9 | `v0.9.0 -> v1.0.0` | not started | full manifest, all probes, hardening, and release review |
 
+## Entry baseline
+
+| Baseline | Status | Evidence |
+| --- | --- | --- |
+| Released `v0.1.0` implementation and environment | validated | [baseline validation](evidence/v0-baseline.md) |
+
 ## Per-release validation stack
 
 For every `v0.n.1`, `.2`, `.3`, `.4`, record:

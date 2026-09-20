@@ -14,14 +14,16 @@ conformance-manifest revision, CI evidence location, and reviewer in the
 
 ## Baseline — `v0.1.0`
 
-- [ ] Confirm the implementation reports exactly `v0.1.0`.
-- [ ] Run and retain the complete v0.1 conformance result.
-- [ ] Confirm `neu "0.1"` remains explicit and no v1 syntax is accepted.
-- [ ] Freeze the starting public API, dependency, diagnostic, and performance
+- [*] Confirm the implementation reports exactly `v0.1.0`.
+- [*] Run and retain the complete v0.1 conformance result.
+- [*] Confirm `neu "0.1"` remains explicit and no v1 syntax is accepted.
+- [*] Freeze the starting public API, dependency, diagnostic, and performance
   snapshots used for regression comparison.
-- [ ] Verify the reproducible development environment and clean CI baseline.
+- [*] Verify the reproducible development environment and clean CI baseline.
 
 Baseline exit: all five items pass before Stage 1 implementation starts.
+
+Evidence: [v0.1.0 baseline validation](evidence/v0-baseline.md).
 
 ## Stage 1 — profile dispatch and v1 contract freeze
 

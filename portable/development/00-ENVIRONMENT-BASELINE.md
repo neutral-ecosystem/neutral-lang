@@ -4,6 +4,9 @@
 
 Status: accepted operational plan
 
+Entry baseline: validated; see the
+[v0.1.0 baseline evidence](evidence/v0-baseline.md).
+
 ## Purpose
 
 Prepare the existing Rust implementation for the v1 release train without

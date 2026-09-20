@@ -162,6 +162,16 @@ fn parser_matches_the_unsupported_version_frozen_oracle() {
 }
 
 #[test]
+/// Verifies the unavailable v1 profile cannot fall through to v0 parsing.
+fn parser_rejects_the_unavailable_v1_profile() {
+    let source = b"neu \"1.0\"\nmodule future\n\nnum answer = 42\n";
+    let error = parse_source(source).expect_err("the unavailable v1 profile must fail");
+
+    assert_eq!(error.kind, FrontendErrorKind::UnsupportedLanguageVersion);
+    assert_eq!((error.span.start(), error.span.end()), (4, 9));
+}
+
+#[test]
 /// Verifies newline spellings and optional final termination are logically equal.
 fn parser_treats_supported_newline_forms_as_logically_equal() {
     let variants: [&[u8]; 6] = [
