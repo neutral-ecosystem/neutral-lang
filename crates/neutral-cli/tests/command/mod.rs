@@ -113,6 +113,11 @@ fn unit_cli_classifies_nonexecuting_and_output_policy_paths() {
         Ok(ParseOutcome::Version)
     );
     assert_eq!(
+        parse([constants::PROFILES.to_owned()]),
+        Ok(ParseOutcome::Profiles)
+    );
+    assert!(parse([constants::PROFILES.to_owned(), "extra".to_owned()]).is_err());
+    assert_eq!(
         parse([constants::FORMAT.to_owned(), constants::HELP.to_owned()]),
         Ok(ParseOutcome::Help(constants::FORMAT_USAGE))
     );

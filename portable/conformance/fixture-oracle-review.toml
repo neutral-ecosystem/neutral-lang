@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "planned"
+status = "stage1-reviewed"
 profile = "1.0"
 
 # v1 fixture bytes and expected outcomes are added by their owning stage.
@@ -12,3 +12,17 @@ profile = "1.0"
 id = "inherited-v0"
 status = "inherited"
 
+[[suite]]
+id = "stage1-profile-foundation"
+status = "reviewed-active"
+requirements = [
+  "V1-BASE-001",
+  "V1-BASE-002",
+  "V1-BASE-003",
+  "V1-BASE-004",
+  "V1-BASE-005",
+]
+fixture_families = ["positive", "negative", "boundary", "lookalike"]
+oracle_directory = "portable/conformance/oracles/stage1"
+reviewer = "repository owner"
+review_date = "2026-09-20"

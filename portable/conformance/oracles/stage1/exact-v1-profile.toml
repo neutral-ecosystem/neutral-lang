@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+case_id = "V1-BASE-001-BOUNDARY"
+fixture = "portable/specs/fixtures/stage1/boundary/exact-v1-profile.neu"
+expected_outcome = "reject"
+requirements = ["V1-BASE-001", "V1-BASE-003"]
+profile = "1.0"
+
+[failure]
+class = "syntax"
+detail = "frontend-unavailable"
+diagnostic_code = "NEU-PRO-001"
+primary_span = [4, 9]
+authoritative_ir = "absent"

@@ -1,0 +1,4 @@
+neu "0.1"
+module stage1_positive
+
+num answer = 42

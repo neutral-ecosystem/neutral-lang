@@ -109,7 +109,34 @@ pub fn execute(arguments: impl IntoIterator<Item = String>) -> Result<(), CliFai
             );
             Ok(())
         }
+        ParseOutcome::Profiles => {
+            report_profiles();
+            Ok(())
+        }
         ParseOutcome::Execute(options) => execute_command(&options),
+    }
+}
+
+/// Reports the reader-visible profile catalogue in deterministic text form.
+fn report_profiles() {
+    for descriptor in neutral_reader::language_profiles() {
+        let capabilities = descriptor
+            .capabilities()
+            .iter()
+            .map(|capability| capability.as_str())
+            .collect::<Vec<_>>()
+            .join(",");
+        eprintln!(
+            "{} profile={} status={} capabilities={}",
+            constants::INFO,
+            descriptor.profile().source_version(),
+            descriptor.availability().as_str(),
+            if capabilities.is_empty() {
+                "none"
+            } else {
+                capabilities.as_str()
+            }
+        );
     }
 }
 

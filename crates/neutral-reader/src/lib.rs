@@ -17,7 +17,16 @@ use std::{
     sync::Arc,
 };
 
+pub use neutral_core::profile::{
+    LanguageCapability, LanguageProfile, LanguageProfileDescriptor, ProfileAvailability,
+};
 pub use neutral_ir::ElementId;
+
+/// Returns the shared deterministic language-profile capability catalogue.
+#[must_use]
+pub const fn language_profiles() -> &'static [LanguageProfileDescriptor] {
+    neutral_core::profile::language_profiles()
+}
 
 /// Immutable typed traversal over already-validated in-process artifacts.
 #[derive(Clone, Debug)]

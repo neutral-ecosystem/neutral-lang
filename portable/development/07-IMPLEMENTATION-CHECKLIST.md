@@ -31,30 +31,32 @@ Target transition: `v0.1.0 -> v0.2.0`.
 
 ### `v0.1.1` — contract and fixture gate
 
-- [ ] Freeze v0.1/v1.0 profile selection and unsupported-profile behavior.
-- [ ] Freeze v1 exclusions, shared limits, diagnostic families, and migration
+- [*] Freeze v0.1/v1.0 profile selection and unsupported-profile behavior.
+- [*] Freeze v1 exclusions, shared limits, diagnostic families, and migration
   policy.
-- [ ] Register Stage 1 positive, negative, boundary, and lookalike fixtures.
-- [ ] Map Stage 1 requirements to fixture/oracle identifiers.
+- [*] Register Stage 1 positive, negative, boundary, and lookalike fixtures.
+- [*] Map Stage 1 requirements to fixture/oracle identifiers.
 
 ### `v0.1.2` — core implementation gate
 
-- [ ] Implement explicit profile dispatch without reinterpreting v0.1.
-- [ ] Implement deterministic rejection for unavailable v1 capabilities.
-- [ ] Implement shared limits and stable diagnostic envelopes.
+- [*] Implement explicit profile dispatch without reinterpreting v0.1.
+- [*] Implement deterministic rejection for unavailable v1 capabilities.
+- [*] Implement shared limits and stable diagnostic envelopes.
 
 ### `v0.1.3` — public integration gate
 
-- [ ] Expose profile/capability discovery through public APIs.
-- [ ] Prove reader and CLI profile reporting agree.
-- [ ] Prove no public API leaks compiler-private syntax or semantic types.
+- [*] Expose profile/capability discovery through public APIs.
+- [*] Prove reader and CLI profile reporting agree.
+- [*] Prove no public API leaks compiler-private syntax or semantic types.
 
 ### `v0.1.4` — validation gate
 
-- [ ] Run inherited v0.1 corpus, Stage 1 corpus, dependency audit, limits, and
+- [*] Run inherited v0.1 corpus, Stage 1 corpus, dependency audit, limits, and
   deterministic repeated/concurrent tests.
-- [ ] Review release notes and retained evidence with no skipped required test.
-- [ ] Mark every Stage 1 item in the v1 contract checklist complete.
+- [*] Review release notes and retained evidence with no skipped required test.
+- [*] Mark every Stage 1 item in the v1 contract checklist complete.
+
+Evidence: [Stage 1 profile-foundation validation](evidence/stage1.md).
 
 ### Promote to `v0.2.0`
 

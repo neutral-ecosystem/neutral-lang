@@ -16,6 +16,68 @@ active_from_stage = 1
 status = "required"
 
 [[suite]]
+id = "stage1-profile-foundation"
+profile = "0.1,1.0"
+active_from_stage = 1
+status = "required"
+
+[[case]]
+id = "V1-BASE-001-POSITIVE"
+fixture = "portable/specs/fixtures/stage1/positive/v0-profile.neu"
+fixture_sha256 = "7d90bc262d30b717ee3e0c72e0fad423b650dd62237359afb51067c42012648a"
+oracle = "portable/conformance/oracles/stage1/v0-profile.toml"
+oracle_sha256 = "6d96ed4e59da76e2cef0b0facf6c1de8424690ba898afe682c140d6103cfdb25"
+
+[[case]]
+id = "V1-BASE-001-NEGATIVE"
+fixture = "portable/specs/fixtures/stage1/negative/v1-unavailable.neu"
+fixture_sha256 = "a6e52a5a3b1787ba2d1363298465de492f31513eb98df48be5c888fbfd7b2e08"
+oracle = "portable/conformance/oracles/stage1/v1-unavailable.toml"
+oracle_sha256 = "6984f359725bf06fffe6cf543ac6443b49aa95403449c23b942ee4f6882ae350"
+
+[[case]]
+id = "V1-BASE-001-BOUNDARY"
+fixture = "portable/specs/fixtures/stage1/boundary/exact-v1-profile.neu"
+fixture_sha256 = "2c4ce8205dba4c48257db510b2cbf2017dd07f0fcec583264f06e19446682029"
+oracle = "portable/conformance/oracles/stage1/exact-v1-profile.toml"
+oracle_sha256 = "ea472a445434a9a7309c4823db0a8a15b9a9afb6e3fdb56cb2e829d07236a828"
+
+[[case]]
+id = "V1-BASE-001-LOOKALIKE"
+fixture = "portable/specs/fixtures/stage1/lookalike/v1-leading-zero.neu"
+fixture_sha256 = "f5a171fdba08e73888cbff79a244a8ec00ce31107e658dc04271f7342b7d10b5"
+oracle = "portable/conformance/oracles/stage1/v1-leading-zero.toml"
+oracle_sha256 = "8b03dd5e68774dc87d9b541f961d3409e1ac8a3774eb2080cba5bfd61fd6931c"
+
+[[case]]
+id = "V1-BASE-005-FUNCTIONS"
+fixture = "portable/specs/fixtures/stage1/negative/excluded-functions.neu"
+fixture_sha256 = "61d3b60e3db1a2fade84451ef01a17ca27b7a9fc3c8b4586d187789aee4e8708"
+oracle = "portable/conformance/oracles/stage1/exclusions.toml"
+oracle_sha256 = "57dc1d61528ee6cbeb5c12715a1833d72a1c36333e3d960de7c2324274ee7884"
+
+[[case]]
+id = "V1-BASE-005-EFFECTS"
+fixture = "portable/specs/fixtures/stage1/negative/excluded-effects.neu"
+fixture_sha256 = "f6718a237d252beddc8dad684a4a906b5e702550f157cc73a446940df5b93e72"
+oracle = "portable/conformance/oracles/stage1/exclusions.toml"
+oracle_sha256 = "57dc1d61528ee6cbeb5c12715a1833d72a1c36333e3d960de7c2324274ee7884"
+
+[[case]]
+id = "V1-BASE-005-ACQUISITION"
+fixture = "portable/specs/fixtures/stage1/negative/excluded-acquisition.neu"
+fixture_sha256 = "6501a20b2311a11131bf290e332e94401ebcb0f67a4c330d3e58c7bd551c9998"
+oracle = "portable/conformance/oracles/stage1/exclusions.toml"
+oracle_sha256 = "57dc1d61528ee6cbeb5c12715a1833d72a1c36333e3d960de7c2324274ee7884"
+
+[[case]]
+id = "V1-BASE-005-PRODUCT"
+fixture = "portable/specs/fixtures/stage1/negative/excluded-product-semantics.neu"
+fixture_sha256 = "8c9d232ba37d4061586de0c2d336a4d2a4c08b0aebdd09b400a13937be8932e7"
+oracle = "portable/conformance/oracles/stage1/exclusions.toml"
+oracle_sha256 = "57dc1d61528ee6cbeb5c12715a1833d72a1c36333e3d960de7c2324274ee7884"
+
+[[suite]]
 id = "capture-and-modules"
 profile = "1.0"
 active_from_stage = 2

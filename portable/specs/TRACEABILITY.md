@@ -11,7 +11,10 @@ are added to the manifest when their stage activates.
 
 | Requirement group | Governing contract | Stage owner | Required evidence |
 | --- | --- | --- | --- |
-| Profile compatibility | [SOURCE](contracts/SOURCE.md) | 00/01 | v0.1 regression and explicit-profile matrix |
+| V1-BASE-001, V1-BASE-002 — profile compatibility | [SOURCE](contracts/SOURCE.md) | 00/01 | Stage 1 positive/negative/boundary/lookalike matrix and inherited v0.1 regression |
+| V1-BASE-003 — diagnostic and limit foundation | [SOURCE](contracts/SOURCE.md), [PROJECT](contracts/PROJECT.md) | 01 | public profile family, shared limit constants, reader/CLI catalogue agreement |
+| V1-BASE-004 — no-I/O dependency boundary | [PROJECT](contracts/PROJECT.md) | 01 | workspace dependency audit and captured-input compiler tests |
+| V1-BASE-005 — v1 exclusions | [SOURCE](contracts/SOURCE.md), [accepted decisions](decisions/README.md) | 01 | function/effect/acquisition/product negative fixtures |
 | Capture and modules | [PROJECT](contracts/PROJECT.md), [SOURCE](contracts/SOURCE.md) | 01 | complete request, no-I/O, graph/SCC, limits, negative diagnostics |
 | Public semantics | [SOURCE](contracts/SOURCE.md) | 02 | visibility, closure, cross-module reuse/ref, semantic-cycle corpus |
 | Vocabulary/location values | [VOCABULARY](contracts/VOCABULARY.md) | 02 | exact-lock and inert-value corpus |

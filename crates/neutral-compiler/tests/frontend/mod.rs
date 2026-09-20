@@ -167,7 +167,7 @@ fn parser_rejects_the_unavailable_v1_profile() {
     let source = b"neu \"1.0\"\nmodule future\n\nnum answer = 42\n";
     let error = parse_source(source).expect_err("the unavailable v1 profile must fail");
 
-    assert_eq!(error.kind, FrontendErrorKind::UnsupportedLanguageVersion);
+    assert_eq!(error.kind, FrontendErrorKind::UnavailableLanguageProfile);
     assert_eq!((error.span.start(), error.span.end()), (4, 9));
 }
 

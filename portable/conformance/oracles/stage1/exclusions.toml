@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+case_id = "V1-BASE-005-EXCLUSIONS"
+fixtures = [
+  "portable/specs/fixtures/stage1/negative/excluded-functions.neu",
+  "portable/specs/fixtures/stage1/negative/excluded-effects.neu",
+  "portable/specs/fixtures/stage1/negative/excluded-acquisition.neu",
+  "portable/specs/fixtures/stage1/negative/excluded-product-semantics.neu",
+]
+expected_outcome = "reject-before-v1-interpretation"
+requirements = ["V1-BASE-005"]
+diagnostic_code = "NEU-PRO-001"
+authoritative_ir = "absent"

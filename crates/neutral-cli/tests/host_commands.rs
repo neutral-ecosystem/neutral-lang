@@ -106,6 +106,25 @@ fn system_cli_usage_and_command_help_are_stable() {
 }
 
 #[test]
+/// Verifies CLI profile discovery exactly renders the reader-owned catalogue.
+fn system_cli_profile_report_agrees_with_reader_contract() {
+    let output = run(&[constants::PROFILES]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let rendered = stderr(&output);
+    for descriptor in neutral_reader::language_profiles() {
+        assert!(rendered.contains(&format!(
+            "profile={} status={}",
+            descriptor.profile().source_version(),
+            descriptor.availability().as_str()
+        )));
+        for capability in descriptor.capabilities() {
+            assert!(rendered.contains(capability.as_str()));
+        }
+    }
+    assert!(rendered.contains("profile=1.0 status=unavailable capabilities=none"));
+}
+
+#[test]
 /// Exercises compile, validate, format, overwrite, and decoded artifact output.
 fn system_cli_file_commands_have_stable_output_policy() {
     let root = TestRoot::new("files");

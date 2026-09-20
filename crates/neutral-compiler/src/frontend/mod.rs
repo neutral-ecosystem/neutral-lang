@@ -361,6 +361,8 @@ enum FrontendErrorKind {
     MissingModuleHeader,
     /// The quoted language version was not exactly `0.1`.
     UnsupportedLanguageVersion,
+    /// The source selected a recognized profile that is not implemented yet.
+    UnavailableLanguageProfile,
     /// A malformed token or raw-newline boundary.
     MalformedBoundary,
     /// A symbol excluded by the frozen v0 grammar.
@@ -392,6 +394,14 @@ impl FrontendError {
     fn unsupported_language_version(span: ByteSpan) -> Self {
         Self {
             kind: FrontendErrorKind::UnsupportedLanguageVersion,
+            span,
+        }
+    }
+
+    /// Creates a recognized-but-unavailable profile failure.
+    fn unavailable_language_profile(span: ByteSpan) -> Self {
+        Self {
+            kind: FrontendErrorKind::UnavailableLanguageProfile,
             span,
         }
     }
@@ -485,7 +495,9 @@ impl FrontendError {
             FrontendErrorKind::RecordLimitExceeded | FrontendErrorKind::ListLimitExceeded => {
                 crate::CompilationFailureDetail::ResourceLimitExceeded
             }
-            FrontendErrorKind::Other => crate::CompilationFailureDetail::FrontendUnavailable,
+            FrontendErrorKind::UnavailableLanguageProfile | FrontendErrorKind::Other => {
+                crate::CompilationFailureDetail::FrontendUnavailable
+            }
         }
     }
 
@@ -495,6 +507,9 @@ impl FrontendError {
             FrontendErrorKind::MissingModuleHeader => diagnostics::MISSING_MODULE_HEADER,
             FrontendErrorKind::UnsupportedLanguageVersion => {
                 diagnostics::UNSUPPORTED_LANGUAGE_VERSION
+            }
+            FrontendErrorKind::UnavailableLanguageProfile => {
+                diagnostics::PROFILE_UNAVAILABLE_DIAGNOSTIC
             }
             FrontendErrorKind::MalformedBoundary => diagnostics::MALFORMED_BOUNDARY,
             FrontendErrorKind::UnsupportedSymbol => diagnostics::UNSUPPORTED_SYMBOL,

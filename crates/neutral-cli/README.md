@@ -24,6 +24,8 @@ cargo run --package neutral-cli -- --help
   authoritative output.
 - `neutral-cli format --output <source|-> [options] <source|->` validates and
   writes canonical, ordinary Neutral source.
+- `neutral-cli profiles` reports every recognized source profile, its current
+  availability, and stable implemented capabilities without reading a source.
 
 Use `-` for one selected standard stream. Source and vocabulary data cannot
 both read standard input. Status messages and safe diagnostics always use

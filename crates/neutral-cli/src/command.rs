@@ -92,6 +92,8 @@ pub enum ParseOutcome {
     Help(&'static str),
     /// Render the package version.
     Version,
+    /// Render the public language-profile and capability catalogue.
+    Profiles,
     /// Execute one fully parsed command.
     Execute(Box<CommandOptions>),
 }
@@ -168,6 +170,16 @@ pub fn parse(arguments: impl IntoIterator<Item = String>) -> Result<ParseOutcome
     }
     if first == constants::VERSION {
         return Ok(ParseOutcome::Version);
+    }
+    if first == constants::PROFILES {
+        return if arguments.len() == 1 {
+            Ok(ParseOutcome::Profiles)
+        } else {
+            Err(format!(
+                "profiles accepts no options; usage: {}",
+                constants::USAGE
+            ))
+        };
     }
     let (kind, usage) = command_kind(first)?;
     if arguments

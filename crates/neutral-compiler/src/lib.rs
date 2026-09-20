@@ -50,6 +50,8 @@ pub mod diagnostics {
     pub const MISSING_MODULE_HEADER: &str = "NEU-SYN-001";
     /// Unsupported language version diagnostic.
     pub const UNSUPPORTED_LANGUAGE_VERSION: &str = "NEU-SYN-002";
+    /// Recognized but unavailable language profile diagnostic.
+    pub use neutral_core::profile::PROFILE_UNAVAILABLE_DIAGNOSTIC;
     /// Malformed lexical or layout boundary diagnostic.
     pub const MALFORMED_BOUNDARY: &str = "NEU-SYN-003";
     /// Unsupported source symbol diagnostic.

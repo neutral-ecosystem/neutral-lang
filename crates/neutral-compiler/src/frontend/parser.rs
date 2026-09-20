@@ -8,7 +8,10 @@ use super::{
     ParsedVocabularyUse, Token, TokenKind, span,
 };
 use crate::language::names;
-use neutral_core::{ByteSpan, StructuralLimits};
+use neutral_core::{
+    ByteSpan, StructuralLimits,
+    profile::{LanguageProfile, ProfileAvailability, language_profile},
+};
 
 #[cfg(test)]
 #[path = "../../tests/parser/mod.rs"]
@@ -49,8 +52,16 @@ impl Parser<'_> {
         let version = self.next().ok_or_else(|| self.other_here())?;
         let version_span = version.span;
         match &version.kind {
-            TokenKind::StringLiteral(value)
-                if value.value == names::SOURCE_LANGUAGE_VERSION && !value.had_escape => {}
+            TokenKind::StringLiteral(value) if !value.had_escape => {
+                let Some(profile) = LanguageProfile::from_source_version(&value.value) else {
+                    return Err(FrontendError::unsupported_language_version(version_span));
+                };
+                if language_profile(profile).availability() == ProfileAvailability::Unavailable {
+                    return Err(FrontendError::unavailable_language_profile(version_span));
+                }
+                debug_assert_eq!(profile, LanguageProfile::V0_1);
+                debug_assert_eq!(value.value, names::SOURCE_LANGUAGE_VERSION);
+            }
             TokenKind::StringLiteral(_) => {
                 return Err(FrontendError::unsupported_language_version(version_span));
             }

@@ -6,6 +6,8 @@
 //! cancellation, and result classification. It must remain independent of the
 //! compiler, reader, command-line hosts, and ambient host services.
 
+pub mod profile;
+
 use sha2::{Digest, Sha256};
 use std::{
     cmp::Ordering as CompareOrdering,

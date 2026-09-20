@@ -1,0 +1,4 @@
+neu "1.0"
+module excluded_product_semantics
+
+command deploy = "production"

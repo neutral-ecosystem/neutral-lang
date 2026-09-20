@@ -8,6 +8,8 @@ pub const COMPILE: &str = "compile";
 pub const VALIDATE: &str = "validate";
 /// Format command spelling.
 pub const FORMAT: &str = "format";
+/// Profile and capability discovery command spelling.
+pub const PROFILES: &str = "profiles";
 /// Help option spelling.
 pub const HELP: &str = "--help";
 /// Version option spelling.
@@ -59,7 +61,7 @@ pub const ERROR: &str = "[error]";
 /// Informational output category prefix.
 pub const INFO: &str = "[info]";
 /// Stable generic CLI usage.
-pub const USAGE: &str = "neutral-cli <compile|validate|format> [options] <source>";
+pub const USAGE: &str = "neutral-cli <compile|validate|format|profiles> [options] <source>";
 /// Stable compile command usage.
 pub const COMPILE_USAGE: &str = "neutral-cli compile --output <artifact|-> [options] <source|->";
 /// Stable validate command usage.
@@ -67,25 +69,25 @@ pub const VALIDATE_USAGE: &str = "neutral-cli validate [options] <source|->";
 /// Stable format command usage.
 pub const FORMAT_USAGE: &str = "neutral-cli format --output <source|-> [options] <source|->";
 /// Default captured source byte ceiling.
-pub const DEFAULT_SOURCE_BYTES: u64 = 16_777_216;
+pub const DEFAULT_SOURCE_BYTES: u64 = neutral_core::profile::DEFAULT_SOURCE_BYTES;
 /// Default retained diagnostic ceiling.
-pub const DEFAULT_DIAGNOSTICS: u32 = 64;
+pub const DEFAULT_DIAGNOSTICS: u32 = neutral_core::profile::DEFAULT_DIAGNOSTICS;
 /// Default decoded string byte ceiling.
-pub const DEFAULT_STRING_BYTES: u64 = 1_048_576;
+pub const DEFAULT_STRING_BYTES: u64 = neutral_core::profile::DEFAULT_STRING_BYTES;
 /// Default exact-number significant digit ceiling.
-pub const DEFAULT_NUMERIC_DIGITS: u64 = 1_000_000;
+pub const DEFAULT_NUMERIC_DIGITS: u64 = neutral_core::profile::DEFAULT_NUMERIC_DIGITS;
 /// Default exact-number absolute scale ceiling.
-pub const DEFAULT_NUMERIC_SCALE: u64 = 1_000_000;
+pub const DEFAULT_NUMERIC_SCALE: u64 = neutral_core::profile::DEFAULT_NUMERIC_SCALE;
 /// Default root declaration ceiling.
-pub const DEFAULT_DECLARATIONS: u64 = 100_000;
+pub const DEFAULT_DECLARATIONS: u64 = neutral_core::profile::DEFAULT_DECLARATIONS;
 /// Default record field ceiling.
-pub const DEFAULT_RECORD_FIELDS: u64 = 100_000;
+pub const DEFAULT_RECORD_FIELDS: u64 = neutral_core::profile::DEFAULT_RECORD_FIELDS;
 /// Default recursive value nesting ceiling.
-pub const DEFAULT_NESTING_DEPTH: u64 = 128;
+pub const DEFAULT_NESTING_DEPTH: u64 = neutral_core::profile::DEFAULT_NESTING_DEPTH;
 /// Default list item ceiling.
-pub const DEFAULT_LIST_ITEMS: u64 = 1_000_000;
+pub const DEFAULT_LIST_ITEMS: u64 = neutral_core::profile::DEFAULT_LIST_ITEMS;
 /// Default recursive value traversal ceiling.
-pub const DEFAULT_TRAVERSAL_NODES: u64 = 1_000_000;
+pub const DEFAULT_TRAVERSAL_NODES: u64 = neutral_core::profile::DEFAULT_TRAVERSAL_NODES;
 /// Maximum attempts to reserve a same-directory atomic temporary name.
 pub const MAXIMUM_TEMPORARY_ATTEMPTS: u64 = 128;
 /// Temporary output filename marker.

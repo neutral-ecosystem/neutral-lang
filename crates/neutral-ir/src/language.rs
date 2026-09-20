@@ -3,7 +3,7 @@
 //! Frozen source and logical-name spellings shared by Neutral producers and readers.
 
 /// Canonical source-level language version spelling.
-pub const SOURCE_LANGUAGE_VERSION: &str = "0.1";
+pub use neutral_core::profile::V0_SOURCE_PROFILE as SOURCE_LANGUAGE_VERSION;
 /// Canonical document-header keyword.
 pub const NEU: &str = "neu";
 /// Canonical module-header keyword.

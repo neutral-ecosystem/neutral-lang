@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+case_id = "V1-BASE-001-POSITIVE"
+fixture = "portable/specs/fixtures/stage1/positive/v0-profile.neu"
+expected_outcome = "accept"
+requirements = ["V1-BASE-001", "V1-BASE-002"]
+profile = "0.1"

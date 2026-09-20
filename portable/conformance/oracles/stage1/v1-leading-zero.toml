@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+case_id = "V1-BASE-001-LOOKALIKE"
+fixture = "portable/specs/fixtures/stage1/lookalike/v1-leading-zero.neu"
+expected_outcome = "reject"
+requirements = ["V1-BASE-001"]
+
+[failure]
+class = "syntax"
+detail = "syntax-rejected"
+diagnostic_code = "NEU-SYN-002"
+primary_span = [4, 10]
+authoritative_ir = "absent"

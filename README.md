@@ -89,6 +89,8 @@ Bootstrap the repository with the adapter for your host:
 
 Compile the canonical minimal fixture and inspect its encoded artifact:
 
+Check profile availability first with `cargo run --package neutral-cli -- profiles`.
+
 <details>
 <summary><strong>View the compile and inspect commands</strong></summary>
 

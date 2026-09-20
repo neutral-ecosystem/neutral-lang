@@ -4,6 +4,26 @@
 
 Status: accepted portable baseline
 
+## Profile selection and Stage 1 availability
+
+The source header selects one exact profile without normalization. `neu "0.1"`
+selects the frozen, available v0.1 behavior. `neu "1.0"` is a recognized v1
+profile but remains unavailable until its active stages implement the required
+project behavior; Stage 1 rejects it with `NEU-PRO-001` before parsing any v1
+body. Unknown or escaped lookalikes retain `NEU-SYN-002` and cannot fall back to
+another profile.
+
+The public profile catalogue is the compatibility authority. An unavailable
+profile reports no implemented capabilities. Shared structural limits apply to
+both selection and subsequent processing; exceeding a limit fails closed and
+never selects a different profile. Existing `neu "0.1"` source and artifacts
+require no migration and are never reinterpreted as v1.
+
+No v1 profile grants functions, control flow, mutation, effects, acquisition,
+secrets, packages, product commands, executable vocabularies, or runtime
+meaning. Until later stages explicitly activate source shapes, all such v1
+inputs fail at the unavailable-profile gate.
+
 Every v1 source unit starts with `neu "1.0"` and exactly one qualified logical
 `module` header. A module name is a non-empty `snake_case` sequence separated
 by `::`; it is not a path and is not derived from a file name.

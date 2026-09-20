@@ -2,11 +2,51 @@
 
 //! Unit tests for foundational value contracts.
 
+use super::profile::{
+    LanguageCapability, LanguageProfile, PROFILE_DIAGNOSTIC_FAMILY, PROFILE_UNAVAILABLE_DIAGNOSTIC,
+    ProfileAvailability, language_profile, language_profiles,
+};
 use super::{
     ByteSpan, CancellationToken, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity,
     DigestTextError, EncodedSectionDigest, SemanticDigest, SourceContentDigest, SourceLocation,
     StructuralLimits, VocabularyContentDigest, line_column_at, nht_frame,
 };
+
+#[test]
+/// Verifies exact profile selection, availability, and stable capabilities.
+fn profile_catalogue_is_explicit_complete_and_deterministic() {
+    assert_eq!(
+        LanguageProfile::from_source_version("0.1"),
+        Some(LanguageProfile::V0_1)
+    );
+    assert_eq!(
+        LanguageProfile::from_source_version("1.0"),
+        Some(LanguageProfile::V1_0)
+    );
+    for lookalike in ["01.0", "1.00", "1", "v1.0", "1.0 "] {
+        assert_eq!(LanguageProfile::from_source_version(lookalike), None);
+    }
+    assert_eq!(language_profiles().len(), 2);
+    assert_eq!(
+        language_profile(LanguageProfile::V0_1).availability(),
+        ProfileAvailability::Available
+    );
+    assert!(
+        language_profile(LanguageProfile::V0_1)
+            .capabilities()
+            .contains(&LanguageCapability::ImmutableData)
+    );
+    assert_eq!(
+        language_profile(LanguageProfile::V1_0).availability(),
+        ProfileAvailability::Unavailable
+    );
+    assert!(
+        language_profile(LanguageProfile::V1_0)
+            .capabilities()
+            .is_empty()
+    );
+    assert!(PROFILE_UNAVAILABLE_DIAGNOSTIC.starts_with(PROFILE_DIAGNOSTIC_FAMILY));
+}
 
 #[test]
 /// Verifies that exact source bytes affect the typed digest.
