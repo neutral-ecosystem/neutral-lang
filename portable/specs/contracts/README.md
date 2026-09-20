@@ -11,6 +11,8 @@ rules for values, records, lists, source literals, or v0 vocabulary encoding.
   resolution.
 - [PROJECT.md](PROJECT.md): host-neutral capture, IR, identities, reader, and
   views.
+- [CAPTURE-REQUEST.md](CAPTURE-REQUEST.md): exact Stage 2 request envelope,
+  controls, limits, identities, host boundary, and fail-closed outcomes.
 - [VOCABULARY.md](VOCABULARY.md): exact data-only vocabulary locks and authoring
   metadata boundary.
 - [AUTHORING.md](AUTHORING.md): the separately versioned Editor bridge.

@@ -15,7 +15,13 @@ are added to the manifest when their stage activates.
 | V1-BASE-003 — diagnostic and limit foundation | [SOURCE](contracts/SOURCE.md), [PROJECT](contracts/PROJECT.md) | 01 | public profile family, shared limit constants, reader/CLI catalogue agreement |
 | V1-BASE-004 — no-I/O dependency boundary | [PROJECT](contracts/PROJECT.md) | 01 | workspace dependency audit and captured-input compiler tests |
 | V1-BASE-005 — v1 exclusions | [SOURCE](contracts/SOURCE.md), [accepted decisions](decisions/README.md) | 01 | function/effect/acquisition/product negative fixtures |
-| Capture and modules | [PROJECT](contracts/PROJECT.md), [SOURCE](contracts/SOURCE.md) | 01 | complete request, no-I/O, graph/SCC, limits, negative diagnostics |
+| V1-CAP-001 — request and controls | [CAPTURE-REQUEST](contracts/CAPTURE-REQUEST.md) | 01 | closed request fixture schema and version/profile failures |
+| V1-CAP-002 — source/module agreement | [CAPTURE-REQUEST](contracts/CAPTURE-REQUEST.md), [SOURCE](contracts/SOURCE.md) | 01 | duplicate identity and profile/module mismatch oracles |
+| V1-CAP-003 — complete supplied set | [CAPTURE-REQUEST](contracts/CAPTURE-REQUEST.md), [PROJECT](contracts/PROJECT.md) | 01 | complete and disconnected-unit capture oracles |
+| V1-CAP-004 — locks and host mappings | [CAPTURE-REQUEST](contracts/CAPTURE-REQUEST.md), [VOCABULARY](contracts/VOCABULARY.md) | 01 | exact/missing/extra/conflicting lock and host mapping oracles |
+| V1-CAP-005 — independent limits | [CAPTURE-REQUEST](contracts/CAPTURE-REQUEST.md) | 01 | exact/one-over capture limit evidence |
+| V1-CAP-006 — immutable no-I/O capture | [CAPTURE-REQUEST](contracts/CAPTURE-REQUEST.md), [PROJECT](contracts/PROJECT.md) | 01 | dependency audit and no-resolver public-boundary evidence |
+| Module graph and SCCs | [PROJECT](contracts/PROJECT.md), [SOURCE](contracts/SOURCE.md) | 01 | Stage 3 graph/SCC limits and negative diagnostics |
 | Public semantics | [SOURCE](contracts/SOURCE.md) | 02 | visibility, closure, cross-module reuse/ref, semantic-cycle corpus |
 | Vocabulary/location values | [VOCABULARY](contracts/VOCABULARY.md) | 02 | exact-lock and inert-value corpus |
 | Project IR and reader | [PROJECT](contracts/PROJECT.md) | 02 | validated IR, public view, independent reader probe |

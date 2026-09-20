@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+requirements = ["V1-CAP-001", "V1-CAP-003"]
+
+[[case]]
+id = "V1-CAP-003-COMPLETE"
+fixture = "portable/specs/fixtures/stage2/positive/complete-closure.toml"
+expected_outcome = "accept-capture"
+ordered_modules = ["app::main", "app::shared"]
+authoritative_ir = "not-produced-by-capture"
+
+[[case]]
+id = "V1-CAP-003-DISCONNECTED"
+fixture = "portable/specs/fixtures/stage2/positive/disconnected-unit.toml"
+expected_outcome = "accept-capture"
+ordered_modules = ["project::main", "project::orphan", "project::shared"]
+retained_disconnected_modules = ["project::orphan"]
+authoritative_ir = "not-produced-by-capture"

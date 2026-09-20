@@ -2,8 +2,9 @@
 
 # The v1 portable plan is active and its inherited v0.1 entry baseline has
 # passed. Stage 1 implementation is validated; release promotion is pending.
+# Stage 2.1 contracts and fixtures are frozen without claiming implementation.
 # Normal developer commands do not derive their names or test selection from
 # these tracking values.
-active_stage = 1
-active_step = 4
-portable_state = "v1-stage1-validated"
+active_stage = 2
+active_step = 1
+portable_state = "v1-stage2-contract-gate"

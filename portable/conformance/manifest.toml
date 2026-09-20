@@ -81,7 +81,105 @@ oracle_sha256 = "57dc1d61528ee6cbeb5c12715a1833d72a1c36333e3d960de7c2324274ee788
 id = "capture-and-modules"
 profile = "1.0"
 active_from_stage = 2
-status = "planned"
+status = "fixture-frozen"
+
+[[case]]
+id = "V1-CAP-003-COMPLETE"
+fixture = "portable/specs/fixtures/stage2/positive/complete-closure.toml"
+fixture_sha256 = "637fbb8b9f8e4cf4e5f8ee34c7e3a4d1ea06d8552e35f0fb98cc79c6322a69e1"
+oracle = "portable/conformance/oracles/stage2/closure.toml"
+oracle_sha256 = "6275489b41e495c3c9611132650344633570c56970f40cb99eebac8470716529"
+
+[[case]]
+id = "V1-CAP-003-DISCONNECTED"
+fixture = "portable/specs/fixtures/stage2/positive/disconnected-unit.toml"
+fixture_sha256 = "4b17c49706705346a5b9e87bc2bfc315638c69464aa36548844833b8d629337a"
+oracle = "portable/conformance/oracles/stage2/closure.toml"
+oracle_sha256 = "6275489b41e495c3c9611132650344633570c56970f40cb99eebac8470716529"
+
+[[case]]
+id = "V1-CAP-002-DUPLICATE-SOURCE"
+fixture = "portable/specs/fixtures/stage2/negative/duplicate-source-id.toml"
+fixture_sha256 = "af7337072ab0b40f263c9ecceffa5b674fc1470067a5f6c3bdfc1929bbfe8021"
+oracle = "portable/conformance/oracles/stage2/duplicates.toml"
+oracle_sha256 = "8cea97050e3214da276216fc417b6a149e1ec9f16b2040e35861020f0d04f9e8"
+
+[[case]]
+id = "V1-CAP-002-DUPLICATE-MODULE"
+fixture = "portable/specs/fixtures/stage2/negative/duplicate-module-id.toml"
+fixture_sha256 = "754198ea2be875213be6228125a21a80df8885f4775e77cdc3f45565fd79cd1a"
+oracle = "portable/conformance/oracles/stage2/duplicates.toml"
+oracle_sha256 = "8cea97050e3214da276216fc417b6a149e1ec9f16b2040e35861020f0d04f9e8"
+
+[[case]]
+id = "V1-CAP-002-PROFILE-MISMATCH"
+fixture = "portable/specs/fixtures/stage2/negative/profile-header-mismatch.toml"
+fixture_sha256 = "6f537056727008e92a8c1cb1cc0bbaf8ee26044a67736eb2d1849677db6598da"
+oracle = "portable/conformance/oracles/stage2/header-mismatch.toml"
+oracle_sha256 = "8b3d0289d3ad0b8a287eca555a9d501e2c2c962096aa72dcdac931373d73f738"
+
+[[case]]
+id = "V1-CAP-002-MODULE-MISMATCH"
+fixture = "portable/specs/fixtures/stage2/negative/module-header-mismatch.toml"
+fixture_sha256 = "446270a973a781b20ba1e86029b4bb3ab4f9978cec88ffddf9d1459abf9c5d9c"
+oracle = "portable/conformance/oracles/stage2/header-mismatch.toml"
+oracle_sha256 = "8b3d0289d3ad0b8a287eca555a9d501e2c2c962096aa72dcdac931373d73f738"
+
+[[case]]
+id = "V1-CAP-004-EXACT-LOCK"
+fixture = "portable/specs/fixtures/stage2/positive/exact-vocabulary-lock.toml"
+fixture_sha256 = "818350b5af40b471548fb0104afe9ba62c34be39d43cdcfa44e56307d31e99a0"
+oracle = "portable/conformance/oracles/stage2/vocabulary-locks.toml"
+oracle_sha256 = "913372367a73f0d5c1a11c7f1df80985e91fe05b54f4a692b7431f11f1cb6ab0"
+
+[[case]]
+id = "V1-CAP-004-MISSING-LOCK"
+fixture = "portable/specs/fixtures/stage2/negative/missing-vocabulary-lock.toml"
+fixture_sha256 = "4dba7060496b3d01c72de024998c9f4a14e2051ab5e982286de41994ad8f68c1"
+oracle = "portable/conformance/oracles/stage2/vocabulary-locks.toml"
+oracle_sha256 = "913372367a73f0d5c1a11c7f1df80985e91fe05b54f4a692b7431f11f1cb6ab0"
+
+[[case]]
+id = "V1-CAP-004-EXTRA-LOCK"
+fixture = "portable/specs/fixtures/stage2/negative/extra-vocabulary-lock.toml"
+fixture_sha256 = "ee242947ce97c19c4cd2bc6619bde05f71385b892839dceee3201f1ec5fbab49"
+oracle = "portable/conformance/oracles/stage2/vocabulary-locks.toml"
+oracle_sha256 = "913372367a73f0d5c1a11c7f1df80985e91fe05b54f4a692b7431f11f1cb6ab0"
+
+[[case]]
+id = "V1-CAP-004-CONFLICTING-LOCK"
+fixture = "portable/specs/fixtures/stage2/negative/conflicting-vocabulary-lock.toml"
+fixture_sha256 = "33f9300c2012b8b7a286c8e4b3b26f7a731aecc11a5ec8d1c519f32eebec88bd"
+oracle = "portable/conformance/oracles/stage2/vocabulary-locks.toml"
+oracle_sha256 = "913372367a73f0d5c1a11c7f1df80985e91fe05b54f4a692b7431f11f1cb6ab0"
+
+[[case]]
+id = "V1-CAP-004-HOST-EQUIVALENT"
+fixture = "portable/specs/fixtures/stage2/host-mapping/equivalent-host-mappings.toml"
+fixture_sha256 = "98692ff3e4451687b23dbc26f2a89a897a540abee4f1306cba453ea44c49be35"
+oracle = "portable/conformance/oracles/stage2/host-mapping.toml"
+oracle_sha256 = "98c0d642e6f7a435a52a031af5fb1e5bb557ce72db104310c95cbb5518c70bf5"
+
+[[case]]
+id = "V1-CAP-004-HOST-CONFLICT"
+fixture = "portable/specs/fixtures/stage2/host-mapping/conflicting-host-mapping.toml"
+fixture_sha256 = "52141fd959cca5df09031be47da95957e1e0650fd8551776aad0e64ff0afb60b"
+oracle = "portable/conformance/oracles/stage2/host-mapping.toml"
+oracle_sha256 = "98c0d642e6f7a435a52a031af5fb1e5bb557ce72db104310c95cbb5518c70bf5"
+
+[[case]]
+id = "V1-CAP-005-SOURCE-UNITS-EXACT"
+fixture = "portable/specs/fixtures/stage2/boundary/source-unit-limit-exact.toml"
+fixture_sha256 = "0d783e1f0b9e42eda70c97e71b18bdef160fd598c53ac32f3dc47a60bbf182d5"
+oracle = "portable/conformance/oracles/stage2/limits.toml"
+oracle_sha256 = "e143bab8aa2f9aa0076c1bbf50e1ed7e481fe2d41ce2b188ec9fb101eaff7d04"
+
+[[case]]
+id = "V1-CAP-005-SOURCE-UNITS-OVER"
+fixture = "portable/specs/fixtures/stage2/boundary/source-unit-limit-over.toml"
+fixture_sha256 = "8b646e7e860fa6ee57712fbe58de57ef4e07f399754478bd2bde375e17f8e780"
+oracle = "portable/conformance/oracles/stage2/limits.toml"
+oracle_sha256 = "e143bab8aa2f9aa0076c1bbf50e1ed7e481fe2d41ce2b188ec9fb101eaff7d04"
 
 [[suite]]
 id = "visibility-and-vocabularies"

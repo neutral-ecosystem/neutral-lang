@@ -6,6 +6,10 @@ Status: accepted portable baseline
 
 ## Capture
 
+The exact public request envelope, processing controls, independent limits,
+identity rules, and capture failure catalogue are frozen in the
+[captured project request contract](CAPTURE-REQUEST.md).
+
 The host acquires/resolves all inputs before calling Neutral and submits a
 versioned `CapturedProjectRequest` containing an optional non-semantic project
 key, one exact core profile, source units with logical module/source identities
@@ -18,6 +22,12 @@ exact vocabulary-lock coverage, and resource limits, then freezes an immutable
 captured project. Every supplied source is a project member, even disconnected
 ones. Capture and semantic compilation perform no external I/O and accept no
 resolver/acquisition callback.
+
+For stage ordering, Stage 2 retains the complete supplied source set—including
+disconnected units—and validates request/header and exact-lock agreement.
+Import grammar, graph-closure validation, and SCC construction activate in
+Stage 3; capture never treats their absence in Stage 2 as permission to prune a
+supplied unit.
 
 ## IR and reader
 

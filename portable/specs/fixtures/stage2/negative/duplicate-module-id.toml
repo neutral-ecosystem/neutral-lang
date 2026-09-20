@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.capture-fixture/1"
+case_id = "V1-CAP-002-DUPLICATE-MODULE"
+request_version = "neutral.capture/v1"
+profile = "1.0"
+
+[controls]
+cancelled = false
+total_source_bytes = 4096
+source_bytes_per_unit = 1024
+source_units = 4
+source_id_bytes = 64
+module_id_bytes = 64
+vocabulary_units = 2
+vocabulary_bytes_per_unit = 1024
+total_vocabulary_bytes = 2048
+imports_per_module = 8
+import_edges = 16
+scc_units = 4
+declarations = 64
+diagnostics = 16
+output_bytes = 16384
+
+[[sources]]
+source_id = "source:first"
+module_id = "duplicate::module"
+source_utf8 = "neu \"1.0\"\nmodule duplicate::module\n"
+
+[[sources]]
+source_id = "source:second"
+module_id = "duplicate::module"
+source_utf8 = "neu \"1.0\"\nmodule duplicate::module\n"

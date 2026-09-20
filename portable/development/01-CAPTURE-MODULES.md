@@ -22,6 +22,12 @@ bytes, logical module/source identities, exact vocabulary locks, request/header
 matching, bounded closure validation, and immutable captured-project output.
 Every supplied source is a project member, including disconnected modules.
 
+The Stage 2.1 request envelope, controls, limits, identities, host boundary,
+and failure catalogue are frozen in the
+[captured project request contract](../specs/contracts/CAPTURE-REQUEST.md).
+Its reviewed fixture/oracle inventory is recorded in the
+[Stage 2.1 gate evidence](evidence/stage2-1-contract-gate.md).
+
 ### Stage 3 — `v0.3.0 -> v0.4.0`
 
 Implement one source unit per logical module; `module` headers; mandatory,

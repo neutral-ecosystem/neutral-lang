@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+requirements = ["V1-CAP-001", "V1-CAP-002"]
+
+[[case]]
+id = "V1-CAP-002-PROFILE-MISMATCH"
+fixture = "portable/specs/fixtures/stage2/negative/profile-header-mismatch.toml"
+expected_outcome = "reject-capture"
+diagnostic_code = "NEU-CAP-002"
+partial_capture = "absent"
+
+[[case]]
+id = "V1-CAP-002-MODULE-MISMATCH"
+fixture = "portable/specs/fixtures/stage2/negative/module-header-mismatch.toml"
+expected_outcome = "reject-capture"
+diagnostic_code = "NEU-CAP-006"
+partial_capture = "absent"

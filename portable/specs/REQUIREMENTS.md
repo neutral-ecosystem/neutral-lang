@@ -44,3 +44,20 @@ secret, authorization, acquisition, or runtime-effect meaning.
 The full stable identifier list, every diagnostic code, and exact fixture bytes
 are release assets. They must be added before the stage that activates them and
 all must be present before `v1.0.0`; see [the release plan](../PLAN.md).
+
+## Stage 2 frozen capture identifiers
+
+- `V1-CAP-001`: closed, versioned `CapturedProjectRequest` and processing
+  controls.
+- `V1-CAP-002`: exact profile/module header agreement and unique logical source
+  and module identities.
+- `V1-CAP-003`: complete supplied source-set capture, including disconnected
+  units.
+- `V1-CAP-004`: exact vocabulary-lock coverage and host-mapping separation.
+- `V1-CAP-005`: independent non-zero structural limits with exact/one-over
+  behavior.
+- `V1-CAP-006`: immutable capture with no resolver, callback, or external I/O.
+
+Their normative envelope and failure catalogue are in the
+[captured project request contract](contracts/CAPTURE-REQUEST.md). Stage 2.1
+freezes these requirements and fixtures without claiming their implementation.

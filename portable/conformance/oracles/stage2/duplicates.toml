@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+requirements = ["V1-CAP-002"]
+
+[[case]]
+id = "V1-CAP-002-DUPLICATE-SOURCE"
+fixture = "portable/specs/fixtures/stage2/negative/duplicate-source-id.toml"
+expected_outcome = "reject-capture"
+diagnostic_code = "NEU-CAP-004"
+partial_capture = "absent"
+
+[[case]]
+id = "V1-CAP-002-DUPLICATE-MODULE"
+fixture = "portable/specs/fixtures/stage2/negative/duplicate-module-id.toml"
+expected_outcome = "reject-capture"
+diagnostic_code = "NEU-CAP-005"
+partial_capture = "absent"

@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+requirements = ["V1-CAP-004", "V1-CAP-006"]
+
+[[case]]
+id = "V1-CAP-004-HOST-EQUIVALENT"
+fixture = "portable/specs/fixtures/stage2/host-mapping/equivalent-host-mappings.toml"
+expected_outcome = "equivalent-request"
+host_location_in_request = false
+
+[[case]]
+id = "V1-CAP-004-HOST-CONFLICT"
+fixture = "portable/specs/fixtures/stage2/host-mapping/conflicting-host-mapping.toml"
+expected_outcome = "reject-before-capture"
+diagnostic_code = "NEU-HOST-001"
+capture_invoked = false

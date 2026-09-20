@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+requirements = ["V1-CAP-004"]
+
+[[case]]
+id = "V1-CAP-004-EXACT-LOCK"
+fixture = "portable/specs/fixtures/stage2/positive/exact-vocabulary-lock.toml"
+expected_outcome = "accept-capture"
+ordered_vocabulary_identities = ["ExampleDomain"]
+
+[[case]]
+id = "V1-CAP-004-MISSING-LOCK"
+fixture = "portable/specs/fixtures/stage2/negative/missing-vocabulary-lock.toml"
+expected_outcome = "reject-capture"
+diagnostic_code = "NEU-CAP-008"
+partial_capture = "absent"
+
+[[case]]
+id = "V1-CAP-004-EXTRA-LOCK"
+fixture = "portable/specs/fixtures/stage2/negative/extra-vocabulary-lock.toml"
+expected_outcome = "reject-capture"
+diagnostic_code = "NEU-CAP-009"
+partial_capture = "absent"
+
+[[case]]
+id = "V1-CAP-004-CONFLICTING-LOCK"
+fixture = "portable/specs/fixtures/stage2/negative/conflicting-vocabulary-lock.toml"
+expected_outcome = "reject-capture"
+diagnostic_code = "NEU-CAP-010"
+partial_capture = "absent"

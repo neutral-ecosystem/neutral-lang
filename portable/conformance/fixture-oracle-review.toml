@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "stage1-reviewed"
+status = "stage2-contract-fixtures-reviewed"
 profile = "1.0"
 
 # v1 fixture bytes and expected outcomes are added by their owning stage.
@@ -24,5 +24,28 @@ requirements = [
 ]
 fixture_families = ["positive", "negative", "boundary", "lookalike"]
 oracle_directory = "portable/conformance/oracles/stage1"
+reviewer = "repository owner"
+review_date = "2026-09-20"
+
+[[suite]]
+id = "stage2-captured-project"
+status = "reviewed-pending-implementation"
+requirements = [
+  "V1-CAP-001",
+  "V1-CAP-002",
+  "V1-CAP-003",
+  "V1-CAP-004",
+  "V1-CAP-005",
+  "V1-CAP-006",
+]
+fixture_families = [
+  "complete-closure",
+  "disconnected-unit",
+  "duplicate-and-mismatch",
+  "exact-lock",
+  "host-mapping",
+  "structural-limit",
+]
+oracle_directory = "portable/conformance/oracles/stage2"
 reviewer = "repository owner"
 review_date = "2026-09-20"

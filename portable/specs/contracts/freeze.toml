@@ -24,7 +24,12 @@ external_ir_encoding = "NIR-CBOR/1.0-plan"
 
 [fixture_corpus]
 manifest_path = "portable/conformance/manifest.toml"
-manifest_sha256 = "bf72cc9e59fe35a6b0f4a1ae2dbfc49d7df759ffc00d5030bd975d5b0bdfdc9b"
+manifest_sha256 = "eeadc3055a17e85227ded3c5cd2216c3b920e8029da7c866171af74caa5108c9"
 fixture_oracle_review_path = "portable/conformance/fixture-oracle-review.toml"
-fixture_oracle_review_sha256 = "f2d6178dd4bbd4d73a289ddf1c7302ef988e875c95f48e6001c1a08be7b19ac4"
-status = "stage1 fixture and oracle inventory reviewed; later stages remain planned"
+fixture_oracle_review_sha256 = "5ccfe4d6a3f2c459066d589e850d28d9209f89af9d013d0fc1ff108557eee100"
+status = "stage1 active; stage2 contract fixtures reviewed pending implementation"
+
+[stage2_contract_gate]
+capture_request_path = "portable/specs/contracts/CAPTURE-REQUEST.md"
+capture_request_sha256 = "84243dc77f414f6079d582a614d783ad6a28cbfdcd105a79dfb2d65b2c6b1c7c"
+status = "accepted"

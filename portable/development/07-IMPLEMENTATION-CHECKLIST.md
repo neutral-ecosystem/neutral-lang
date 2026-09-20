@@ -69,11 +69,13 @@ Target transition: `v0.2.0 -> v0.3.0`.
 
 ### `v0.2.1` — contract and fixture gate
 
-- [ ] Freeze `CapturedProjectRequest`, processing controls, limits, and failure
+- [*] Freeze `CapturedProjectRequest`, processing controls, limits, and failure
   outcomes.
-- [ ] Register closure, disconnected-unit, duplicate/mismatch, exact-lock, and
+- [*] Register closure, disconnected-unit, duplicate/mismatch, exact-lock, and
   host-mapping fixtures.
-- [ ] Freeze request/header and logical source/module identity rules.
+- [*] Freeze request/header and logical source/module identity rules.
+
+Evidence: [Stage 2.1 captured-project contract gate](evidence/stage2-1-contract-gate.md).
 
 ### `v0.2.2` — core implementation gate
 

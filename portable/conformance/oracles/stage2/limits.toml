@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+requirements = ["V1-CAP-005"]
+
+[[case]]
+id = "V1-CAP-005-SOURCE-UNITS-EXACT"
+fixture = "portable/specs/fixtures/stage2/boundary/source-unit-limit-exact.toml"
+expected_outcome = "accept-capture"
+limit = "source_units"
+configured = 2
+observed = 2
+
+[[case]]
+id = "V1-CAP-005-SOURCE-UNITS-OVER"
+fixture = "portable/specs/fixtures/stage2/boundary/source-unit-limit-over.toml"
+expected_outcome = "reject-capture"
+diagnostic_code = "NEU-CAP-012"
+limit = "source_units"
+configured = 1
+observed = 2
+partial_capture = "absent"
