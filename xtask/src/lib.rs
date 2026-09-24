@@ -2311,7 +2311,7 @@ fn verify_portable() -> Result<(), String> {
     check_portable_traceability_at(&root)?;
     verify_frozen_input_digests(&root, constants::PORTABLE_CONTRACT_FREEZE_FILE)?;
     verify_portable_links(&root)?;
-    ensure_no_archived_portable_dependencies(&root)?;
+    ensure_no_portable_archive_dependencies(&root)?;
     verify_existing_portable_snapshots(&root)?;
     println!("{} active portable package: pass", constants::INFO);
     Ok(())
@@ -2542,13 +2542,12 @@ fn markdown_link_targets(content: &str) -> Vec<String> {
         .collect()
 }
 
-/// Rejects production or executable-test references to archived roadmap inputs.
-fn ensure_no_archived_portable_dependencies(root: &Path) -> Result<(), String> {
+/// Rejects production or executable-test references to archived portable inputs.
+fn ensure_no_portable_archive_dependencies(root: &Path) -> Result<(), String> {
     let mut files = Vec::new();
     collect_regular_files(&root.join("crates"), &mut files)?;
     collect_regular_files(&root.join("xtask"), &mut files)?;
     let forbidden = [
-        concat!("neutral-roadmap", "/neutral-lang/"),
         concat!("portable", "/archive/"),
         concat!("portable", "/archived/"),
     ];
@@ -2642,10 +2641,8 @@ fn snapshot_portable() -> Result<(), String> {
         .map_err(|error| format!("could not write portable snapshot manifest: {error}"))?;
     let lifecycle = read_workspace_text(&root, constants::PORTABLE_LIFECYCLE_FILE)?;
     let report = format!(
-        "{{\"schema_version\":1,\"tree_sha256\":\"{tree_digest}\",\"file_count\":{},\"archive_repository\":\"{}\",\"archive_path\":\"{}\",\"next_series\":\"{}\",\"status\":\"review-required\"}}\n",
+        "{{\"schema_version\":1,\"tree_sha256\":\"{tree_digest}\",\"file_count\":{},\"next_series\":\"{}\",\"status\":\"review-required\"}}\n",
         files.len(),
-        json_string(&configuration_value(&lifecycle, "archive_repository").unwrap_or_default()),
-        json_string(&configuration_value(&lifecycle, "archive_path").unwrap_or_default()),
         json_string(&configuration_value(&lifecycle, "next_series").unwrap_or_default())
     );
     fs::write(partial.join("migration-report.json"), report)

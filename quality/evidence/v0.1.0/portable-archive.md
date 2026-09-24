@@ -4,10 +4,10 @@
 
 ## Outcome
 
-The completed Neutral v0 portable package is archived immutably in
-`neutral-roadmap`. The implementation repository no longer requires a root
-`portable/` directory for builds, tests, documentation, packaging, or quality
-checks. Released executable inputs live under
+The completed Neutral v0 portable package is archived immutably. The
+implementation repository no longer requires a root `portable/` directory for
+builds, tests, documentation, packaging, or quality checks. Released
+executable inputs live under
 `conformance/releases/v0.1.0/`; future planning packages may independently use
 the root `portable/` path.
 
