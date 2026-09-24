@@ -892,7 +892,7 @@ fn quality(profile: QualityProfile) -> Result<(), String> {
     run_recorded_workflow("quality", profile_name, steps)
 }
 
-/// One immutable approved-release quality record.
+/// One immutable release-quality record.
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct QualityApproval {
     /// Release identifier without a `v` prefix.
@@ -901,14 +901,10 @@ struct QualityApproval {
     commit: String,
     /// Approval state.
     status: String,
-    /// Human who explicitly approved the evaluation.
-    approved_by: String,
     /// UTC-independent Unix timestamp or retained historical date.
     approved_at: String,
     /// Evaluation identifier that supported the approval.
     evaluation: String,
-    /// SHA-256 of the release evidence inventory.
-    evidence_sha256: String,
     /// SHA-256 of the quality-gate configuration used for evaluation.
     quality_gates_sha256: String,
 }
@@ -999,10 +995,6 @@ fn approve_quality_release(release: &str) -> Result<(), String> {
             evidence_directory.display()
         ));
     }
-    let approved_by = command_output(constants::GIT_COMMAND, &["config", "user.name"])?;
-    if approved_by.is_empty() {
-        return Err("Git user.name is required to record quality approval".to_owned());
-    }
     let approved_at = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|error| format!("system clock precedes Unix epoch: {error}"))?
@@ -1014,14 +1006,12 @@ fn approve_quality_release(release: &str) -> Result<(), String> {
             record.display()
         ));
     }
-    let evidence_sha256 = release_evidence_digest(&evidence_directory)?;
     let quality_gates_sha256 = evaluated_gates;
     let license_marker = line_spdx_marker(&project_license(&root)?);
     fs::write(
         &record,
         format!(
-            "{license_marker}\n\nschema_version = 1\nrelease = \"v{version}\"\ncommit = \"{commit}\"\nstatus = \"approved\"\napproved_by = \"{}\"\napproved_at = \"{approved_at}\"\nevaluation = \"{}\"\nevidence_sha256 = \"{evidence_sha256}\"\nquality_gates_sha256 = \"{quality_gates_sha256}\"\n",
-            json_string(&approved_by),
+            "{license_marker}\n\nschema_version = 1\nrelease = \"v{version}\"\ncommit = \"{commit}\"\nstatus = \"approved\"\napproved_at = \"{approved_at}\"\nevaluation = \"{}\"\nquality_gates_sha256 = \"{quality_gates_sha256}\"\n",
             json_string(&evaluation_relative.to_string_lossy())
         ),
     )
@@ -1039,11 +1029,10 @@ fn quality_status() -> Result<(), String> {
     }
     for approval in approvals {
         println!(
-            "{} {} {} {}",
+            "{} {} {}",
             constants::INFO,
             approval.release,
-            approval.status,
-            approval.approved_by
+            approval.status
         );
     }
     Ok(())
@@ -1065,17 +1054,15 @@ fn render_quality_status() -> Result<(), String> {
     Ok(())
 }
 
-/// Verifies approval records, evidence digests, and generated status documentation.
+/// Verifies release records and generated status documentation.
 fn verify_quality_ledger() -> Result<(), String> {
     check_quality_inventory()?;
     let root = workspace_root()?;
     let approvals = read_quality_approvals()?;
     for approval in &approvals {
         if approval.status != "approved"
-            || approval.approved_by.is_empty()
             || approval.approved_at.is_empty()
             || approval.evaluation.is_empty()
-            || !is_sha256(&approval.evidence_sha256)
             || !is_sha256(&approval.quality_gates_sha256)
             || approval.commit.len() != 40
             || !approval
@@ -1095,16 +1082,6 @@ fn verify_quality_ledger() -> Result<(), String> {
             )
         })?;
         validate_semver(version)?;
-        let evidence_directory = root
-            .join(constants::QUALITY_EVIDENCE_DIRECTORY)
-            .join(&approval.release);
-        let actual = release_evidence_digest(&evidence_directory)?;
-        if actual != approval.evidence_sha256 {
-            return Err(format!(
-                "quality evidence v{} has digest {actual}, expected {}",
-                approval.release, approval.evidence_sha256
-            ));
-        }
     }
     let expected = quality_status_markdown(&approvals, &project_license(&root)?);
     let status = read_workspace_text(&root, constants::QUALITY_STATUS_FILE)?;
@@ -1150,31 +1127,7 @@ fn is_sha256(value: &str) -> bool {
             .all(|character| character.is_ascii_hexdigit() && !character.is_ascii_uppercase())
 }
 
-/// Hashes the sorted durable evidence files for one release.
-fn release_evidence_digest(directory: &Path) -> Result<String, String> {
-    let mut files = Vec::new();
-    collect_regular_files(directory, &mut files)?;
-    files.retain(|path| {
-        !matches!(
-            path.file_name().and_then(|value| value.to_str()),
-            Some("README.md" | "record.toml")
-        )
-    });
-    files.sort();
-    let mut inventory = String::new();
-    for path in files {
-        let relative = path
-            .strip_prefix(directory)
-            .map_err(|error| format!("quality evidence path escaped its release: {error}"))?
-            .to_string_lossy()
-            .replace('\\', "/");
-        writeln!(&mut inventory, "{}  {relative}", sha256_file(&path)?)
-            .expect("writing to a String cannot fail");
-    }
-    Ok(sha256_hex(inventory.as_bytes()))
-}
-
-/// Reads every immutable quality approval record in release order.
+/// Reads every immutable release-quality record in release order.
 fn read_quality_approvals() -> Result<Vec<QualityApproval>, String> {
     let root = workspace_root()?;
     let mut records = Vec::new();
@@ -1195,10 +1148,8 @@ fn read_quality_approvals() -> Result<Vec<QualityApproval>, String> {
             release: field("release")?,
             commit: field("commit")?,
             status: field("status")?,
-            approved_by: field("approved_by")?,
             approved_at: field("approved_at")?,
             evaluation: field("evaluation")?,
-            evidence_sha256: field("evidence_sha256")?,
             quality_gates_sha256: field("quality_gates_sha256")?,
         };
         let directory_release = path
@@ -1223,29 +1174,26 @@ fn read_quality_approvals() -> Result<Vec<QualityApproval>, String> {
     Ok(approvals)
 }
 
-/// Renders the deterministic human-readable approval table.
+/// Renders the deterministic human-readable release-quality table.
 fn quality_status_markdown(approvals: &[QualityApproval], license: &str) -> String {
     let mut output = format!(
-        "{}\n<!-- Generated by `cargo xtask quality render`; do not edit. -->\n\n# Quality approval status\n\n| Release | Status | Approved by | Approved at |\n| --- | --- | --- | --- |\n",
+        "{}\n<!-- Generated by `cargo xtask quality render`; do not edit. -->\n\n# Release quality status\n\n| Release | Status | Recorded at |\n| --- | --- | --- |\n",
         html_spdx_marker(license)
     );
     for approval in approvals {
         writeln!(
             &mut output,
-            "| `v{}` | {} | {} | `{}` |",
+            "| `v{}` | {} | `{}` |",
             approval
                 .release
                 .strip_prefix('v')
                 .unwrap_or(&approval.release),
             approval.status,
-            approval.approved_by.replace('|', "\\|"),
             approval.approved_at
         )
         .expect("writing to a String cannot fail");
     }
-    output.push_str(
-        "\nApproval records and evidence digests are verified by `cargo xtask quality verify`.\n",
-    );
+    output.push_str("\nRelease records are verified by `cargo xtask quality verify`.\n");
     output
 }
 

@@ -12,7 +12,7 @@
 | `crates/` | Rust implementation, binaries, and crate-owned tests |
 | `docs/` | Maintained task-oriented documentation hub and guides |
 | `fuzz/` | Fuzz harnesses and subsystem definitions |
-| `quality/` | Quality policy, reviews, approvals, and release evidence |
+| `quality/` | Quality policy, reviews, release records, and evidence |
 | `scripts/` | Thin Linux and Windows host adapters |
 | `xtask/` | Stable commands and shared automation policy |
 | `target/` | Ignored Cargo and local Rustdoc output |

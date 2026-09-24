@@ -11,10 +11,10 @@ Repository checks also enforce `quality/manifest.toml`, keeping durable quality
 policy, maintained reviews, and versioned release evidence complete and
 separate from ignored raw tool output.
 
-The managed `quality status|evaluate|approve|render|verify` workflow binds
-release approvals to evaluated evidence digests, then generates the
-human-readable status page. Approval remains an explicit maintainer action;
-bookkeeping and consistency checks are automatic.
+The managed `quality status|evaluate|approve|render|verify` workflow binds a
+release record to its evaluated commit and gate configuration, then generates
+the human-readable status page. Evidence can evolve without per-edit digest
+bookkeeping.
 
 `cargo xtask dev`, `cargo xtask ci pr`, and `cargo xtask release prepare` are
 ordered aggregate workflows. Every step emits start/pass/fail events plus a

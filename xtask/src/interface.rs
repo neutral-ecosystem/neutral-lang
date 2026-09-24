@@ -227,15 +227,15 @@ pub(crate) enum QualityProfile {
 pub(crate) enum QualityAction {
     /// Run an aggregate quality profile without creating an evaluation record.
     Run(QualityProfile),
-    /// Print the approved-release ledger.
+    /// Print the release-quality ledger.
     Status,
     /// Run a profile and retain a commit-bound evaluation.
     Evaluate(QualityProfile),
-    /// Approve the matching release evaluation through an explicit human action.
+    /// Record the matching passing release evaluation.
     Approve(String),
     /// Regenerate the human-readable status document.
     Render,
-    /// Verify the manifest, approvals, evidence hashes, and rendered status.
+    /// Verify the manifest, release records, and rendered status.
     Verify,
 }
 

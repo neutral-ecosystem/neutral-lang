@@ -205,22 +205,20 @@ fn automation_hashes_snapshot_bytes_deterministically() {
 }
 
 #[test]
-/// Quality status rendering is deterministic and escapes table delimiters.
+/// Quality status rendering is deterministic and contains release state.
 fn automation_renders_quality_approval_status() {
     let approval = super::QualityApproval {
         release: "v1.0.0".to_owned(),
         commit: "0123456789012345678901234567890123456789".to_owned(),
         status: "approved".to_owned(),
-        approved_by: "One | Maintainer".to_owned(),
         approved_at: "123".to_owned(),
         evaluation: "quality/evaluations/example/release.toml".to_owned(),
-        evidence_sha256: "a".repeat(64),
         quality_gates_sha256: "b".repeat(64),
     };
     let rendered = super::quality_status_markdown(&[approval], "LicenseRef-Neutral-Test");
     assert!(rendered.starts_with("<!-- SPDX-License-Identifier: LicenseRef-Neutral-Test -->"));
     assert!(rendered.contains("`v1.0.0`"));
-    assert!(rendered.contains("One \\| Maintainer"));
+    assert!(rendered.contains("| approved | `123` |"));
     assert!(super::is_sha256(&"a".repeat(64)));
     assert!(!super::is_sha256(&"A".repeat(64)));
 }
