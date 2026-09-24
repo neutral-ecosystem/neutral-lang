@@ -97,12 +97,48 @@ fn system_cli_usage_and_command_help_are_stable() {
         (constants::COMPILE, constants::COMPILE_USAGE),
         (constants::VALIDATE, constants::VALIDATE_USAGE),
         (constants::FORMAT, constants::FORMAT_USAGE),
+        (constants::CAPTURE_PROJECT, constants::CAPTURE_PROJECT_USAGE),
     ] {
         let help = run(&[command, constants::HELP]);
         assert_eq!(help.status.code(), Some(0), "{}", stderr(&help));
         assert!(stderr(&help).contains(usage));
         assert!(help.stdout.is_empty());
     }
+}
+
+#[test]
+/// Captures a v1 source through the shared public project request schema.
+fn system_cli_captures_an_explicit_v1_project_request() {
+    let root = TestRoot::new("project-capture");
+    let source = root.join("project.neu");
+    fs::write(&source, b"neu \"1.0\"\nmodule cli::project\n")
+        .expect("project source must be writable");
+    let output = run(&[
+        constants::CAPTURE_PROJECT,
+        constants::SOURCE_ID,
+        "source:cli-project",
+        constants::MODULE_ID,
+        "cli::project",
+        source.to_str().expect("test path must be UTF-8"),
+    ]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(stderr(&output).contains("capture succeeded source-units=1"));
+    assert!(stderr(&output).contains("vocabulary-units=0"));
+
+    let cancelled = run(&[
+        constants::CAPTURE_PROJECT,
+        constants::CANCEL_BEFORE_START,
+        constants::SOURCE_ID,
+        "source:cli-project",
+        constants::MODULE_ID,
+        "cli::project",
+        source.to_str().expect("test path must be UTF-8"),
+    ]);
+    assert_eq!(
+        cancelled.status.code(),
+        Some(i32::from(constants::EXIT_CANCELLED))
+    );
+    assert!(stderr(&cancelled).contains("NEU-CAP-013"));
 }
 
 #[test]

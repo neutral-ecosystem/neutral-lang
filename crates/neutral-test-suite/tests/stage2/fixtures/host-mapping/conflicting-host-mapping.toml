@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.host-mapping-fixture/1"
+case_id = "V1-CAP-004-HOST-CONFLICT"
+
+[[mappings]]
+host_location = "/checkout/first.neu"
+source_id = "source:conflict"
+module_id = "mapping::first"
+source_utf8 = "neu \"1.0\"\nmodule mapping::first\n"
+
+[[mappings]]
+host_location = "/checkout/second.neu"
+source_id = "source:conflict"
+module_id = "mapping::second"
+source_utf8 = "neu \"1.0\"\nmodule mapping::second\n"

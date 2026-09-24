@@ -13,8 +13,13 @@ The public boundary captures exact bytes immutably. The v1 project-capture
 boundary accepts only a closed, versioned, data-only request with explicit
 independent limits. It retains the complete supplied source set, validates
 request/header agreement and exact vocabulary-lock coverage, and exposes no
-resolver, callback, path, URL, root, or ambient acquisition hook. Its private
-frontend recognizes the supported source, identifier, comment, exact-number,
+resolver, callback, path, URL, root, or ambient acquisition hook.
+The public `CapturedProjectRequestBuilder` is the shared host adapter boundary:
+CLI, Editor-style hosts, and test harnesses supply the same logical source and
+vocabulary facts while retaining locations outside core. Successful capture
+exposes exact immutable sources, vocabularies, aggregate resource facts,
+meaning equivalence, and replay through a newly supplied cancellation token.
+Its private frontend recognizes the supported source, identifier, comment, exact-number,
 bounded-string, Boolean, nullable-scalar, null, nominal-record, and
 contextual-record behavior.
 It collects the complete root scope before nominal type resolution and rejects

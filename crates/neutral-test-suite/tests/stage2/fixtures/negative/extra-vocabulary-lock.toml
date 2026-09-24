@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.capture-fixture/1"
+case_id = "V1-CAP-004-EXTRA-LOCK"
+request_version = "neutral.capture/v1"
+profile = "1.0"
+
+[controls]
+cancelled = false
+total_source_bytes = 4096
+source_bytes_per_unit = 1024
+source_units = 4
+source_id_bytes = 64
+module_id_bytes = 64
+vocabulary_units = 2
+vocabulary_bytes_per_unit = 1024
+total_vocabulary_bytes = 2048
+imports_per_module = 8
+import_edges = 16
+scc_units = 4
+declarations = 64
+diagnostics = 16
+output_bytes = 16384
+
+[[sources]]
+source_id = "source:no-vocabulary"
+module_id = "vocabulary::extra"
+source_utf8 = "neu \"1.0\"\nmodule vocabulary::extra\n"
+
+[[vocabularies]]
+canonical_identity = "ExampleDomain"
+semantic_version = "1.0.0"
+encoding_version = "1.0"
+schema_version = "1.0"
+content_sha256 = "sha256:ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+required_features = []
+bundle_hex = "7b7d0a"

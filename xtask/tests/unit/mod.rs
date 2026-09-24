@@ -275,7 +275,7 @@ fn automation_accepts_version_independent_portable_layouts() {
 }
 
 #[test]
-/// Freeze validation discovers arbitrary frozen-input names from path/digest pairs.
+/// Active freeze validation accepts path-only inputs without recurring digests.
 fn automation_accepts_version_independent_frozen_inputs() {
     let root = std::env::temp_dir().join(format!(
         "neutral-generic-portable-freeze-{}",
@@ -291,10 +291,7 @@ fn automation_accepts_version_independent_frozen_inputs() {
         .expect("frozen input should be writable");
     std::fs::write(
         root.join("freeze.toml"),
-        format!(
-            "[fixture_corpus]\nfuture_input_path = \"portable/custom/input.data\"\nfuture_input_sha256 = \"{}\"\n",
-            super::sha256_hex(bytes)
-        ),
+        "[fixture_corpus]\nfuture_input_path = \"portable/custom/input.data\"\n",
     )
     .expect("freeze manifest should be writable");
 

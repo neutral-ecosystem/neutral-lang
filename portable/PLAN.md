@@ -86,9 +86,9 @@ behavior has been implemented and gated.
 ## Critical-path tracker
 
 - [*] `v0.1.0` baseline and environment validated.
-- [ ] Stage 1 — profile dispatch and v1 contract freeze. Implementation is
-  validated; the owner-approved `v0.2.0` promotion remains pending.
-- [ ] Stage 2 — complete no-I/O project capture.
+- [*] Stage 1 — profile dispatch and v1 contract freeze; released as `v0.2.0`.
+- [*] Stage 2 — complete no-I/O project capture; validation is complete and
+  `v0.3.0` promotion remains pending.
 - [ ] Stage 3 — modules, imports, SCCs, and diagnostics.
 - [ ] Stage 4 — public APIs and cross-module semantics.
 - [ ] Stage 5 — multiple vocabularies and inert location values.

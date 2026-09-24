@@ -8,6 +8,8 @@ pub const COMPILE: &str = "compile";
 pub const VALIDATE: &str = "validate";
 /// Format command spelling.
 pub const FORMAT: &str = "format";
+/// Complete v1 project-capture command spelling.
+pub const CAPTURE_PROJECT: &str = "capture-project";
 /// Profile and capability discovery command spelling.
 pub const PROFILES: &str = "profiles";
 /// Help option spelling.
@@ -20,6 +22,12 @@ pub const OUTPUT: &str = "--output";
 pub const OVERWRITE: &str = "--overwrite";
 /// Explicit pre-work cancellation option spelling.
 pub const CANCEL_BEFORE_START: &str = "--cancel-before-start";
+/// Logical source ID option for project capture.
+pub const SOURCE_ID: &str = "--source-id";
+/// Qualified logical module ID option for project capture.
+pub const MODULE_ID: &str = "--module-id";
+/// Optional non-semantic project correlation key.
+pub const PROJECT_KEY: &str = "--project-key";
 /// Standard stream path sentinel.
 pub const STANDARD_STREAM: &str = "-";
 /// Captured vocabulary bundle path option spelling.
@@ -61,13 +69,17 @@ pub const ERROR: &str = "[error]";
 /// Informational output category prefix.
 pub const INFO: &str = "[info]";
 /// Stable generic CLI usage.
-pub const USAGE: &str = "neutral-cli <compile|validate|format|profiles> [options] <source>";
+pub const USAGE: &str =
+    "neutral-cli <compile|validate|format|capture-project|profiles> [options] <source>";
 /// Stable compile command usage.
 pub const COMPILE_USAGE: &str = "neutral-cli compile --output <artifact|-> [options] <source|->";
 /// Stable validate command usage.
 pub const VALIDATE_USAGE: &str = "neutral-cli validate [options] <source|->";
 /// Stable format command usage.
 pub const FORMAT_USAGE: &str = "neutral-cli format --output <source|-> [options] <source|->";
+/// Stable project-capture command usage.
+pub const CAPTURE_PROJECT_USAGE: &str =
+    "neutral-cli capture-project --source-id <id> --module-id <id> [options] <source|->";
 /// Default captured source byte ceiling.
 pub const DEFAULT_SOURCE_BYTES: u64 = neutral_core::profile::DEFAULT_SOURCE_BYTES;
 /// Default retained diagnostic ceiling.

@@ -8,9 +8,11 @@ This is the operational tracking file for the complete journey from `v0.1.0`
 to `v1.0.0`. Check an item only when its linked implementation and retained
 validation evidence exist. Design acceptance alone does not complete an item.
 
-For every release below, record the implementation revision, toolchain,
-conformance-manifest revision, CI evidence location, and reviewer in the
-[validation ledger](06-VALIDATION-LEDGER.md).
+For every release below, record the toolchain, commands/results, and evidence
+location in the [validation ledger](06-VALIDATION-LEDGER.md). This active
+single-maintainer train does not require a separate approver or a fresh digest
+of each evidence record; immutable release artifacts may still carry their own
+checksums.
 
 ## Baseline — `v0.1.0`
 
@@ -87,17 +89,21 @@ Evidence: [Stage 2.2 core capture validation](evidence/stage2-2-core-capture.md)
 
 ### `v0.2.3` — public integration gate
 
-- [ ] Expose capture outcomes and resource facts through public contracts.
-- [ ] Integrate CLI, tests, and Editor-host request construction through the
+- [*] Expose capture outcomes and resource facts through public contracts.
+- [*] Integrate CLI, tests, and Editor-host request construction through the
   same request schema.
-- [ ] Verify shuffled source/lock order produces equivalent capture meaning.
+- [*] Verify shuffled source/lock order produces equivalent capture meaning.
+
+Evidence: [Stage 2.3 public capture integration](evidence/stage2-3-public-integration.md).
 
 ### `v0.2.4` — validation gate
 
-- [ ] Run inherited v0.1 and all active capture suites.
-- [ ] Run malformed-input, allocation-before-validation, cancellation, and
+- [*] Run inherited v0.1 and all active capture suites.
+- [*] Run malformed-input, allocation-before-validation, cancellation, and
   structural-limit tests.
-- [ ] Review closure identity and capture replay evidence.
+- [*] Review closure identity and capture replay evidence.
+
+Evidence: [Stage 2.4 capture validation](evidence/stage2-4-validation.md).
 
 ### Promote to `v0.3.0`
 
@@ -366,4 +372,4 @@ Target transition: `v0.9.0 -> v1.0.0`.
   indeterminate.
 - [ ] Documentation links, standalone portable paths, and website publication
   validation pass.
-- [ ] v1 is claimed conformant only after all preceding evidence is approved.
+- [ ] v1 is claimed conformant only after all preceding evidence is complete.

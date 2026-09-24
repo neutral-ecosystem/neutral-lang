@@ -108,7 +108,7 @@ impl ProjectCaptureControls {
 }
 
 /// One exact host-supplied source unit, before validation and freezing.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CapturedSourceInput {
     /// Request-scoped inert logical source ID.
     source_id: String,
@@ -141,7 +141,7 @@ impl CapturedSourceInput {
 }
 
 /// One exact host-supplied vocabulary bundle and immutable semantic lock.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CapturedVocabularyInput {
     /// Exact already-acquired bundle bytes.
     bytes: Vec<u8>,
@@ -154,6 +154,103 @@ impl CapturedVocabularyInput {
     #[must_use]
     pub const fn new(bytes: Vec<u8>, lock: VocabularyLock) -> Self {
         Self { bytes, lock }
+    }
+}
+
+/// Stable failure from host-side logical source mapping.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProjectHostError {
+    /// One source ID was mapped to different module IDs, bytes, or digest facts.
+    ConflictingSourceMapping,
+}
+
+impl ProjectHostError {
+    /// Returns the stable host-adapter diagnostic code.
+    #[must_use]
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::ConflictingSourceMapping => "NEU-HOST-001",
+        }
+    }
+}
+
+/// Host-neutral constructor for the closed captured-project request schema.
+///
+/// CLI, Editor, test, and other hosts acquire bytes independently and submit
+/// only logical IDs and exact captured data through this builder. Host paths
+/// and locations are never accepted or retained.
+#[derive(Clone, Debug)]
+pub struct CapturedProjectRequestBuilder {
+    /// Exact requested language profile.
+    profile: LanguageProfile,
+    /// Optional bounded non-semantic project key.
+    project_key: Option<String>,
+    /// Coalesced source mappings in host submission order.
+    sources: Vec<CapturedSourceInput>,
+    /// Complete exact vocabulary sequence.
+    vocabularies: Vec<CapturedVocabularyInput>,
+    /// Complete deterministic controls.
+    controls: ProjectCaptureControls,
+}
+
+impl CapturedProjectRequestBuilder {
+    /// Starts one request using the current exact request schema version.
+    #[must_use]
+    pub const fn new(profile: LanguageProfile, controls: ProjectCaptureControls) -> Self {
+        Self {
+            profile,
+            project_key: None,
+            sources: Vec::new(),
+            vocabularies: Vec::new(),
+            controls,
+        }
+    }
+
+    /// Attaches bounded opaque host correlation text.
+    #[must_use]
+    pub fn with_project_key(mut self, project_key: impl Into<String>) -> Self {
+        self.project_key = Some(project_key.into());
+        self
+    }
+
+    /// Adds or coalesces one host mapping before core capture.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ProjectHostError::ConflictingSourceMapping`] when an existing
+    /// source ID has different logical or exact-byte facts.
+    pub fn add_source(&mut self, source: CapturedSourceInput) -> Result<(), ProjectHostError> {
+        if let Some(existing) = self
+            .sources
+            .iter()
+            .find(|existing| existing.source_id == source.source_id)
+        {
+            return if existing == &source {
+                Ok(())
+            } else {
+                Err(ProjectHostError::ConflictingSourceMapping)
+            };
+        }
+        self.sources.push(source);
+        Ok(())
+    }
+
+    /// Adds one exact already-acquired vocabulary input.
+    pub fn add_vocabulary(&mut self, vocabulary: CapturedVocabularyInput) {
+        self.vocabularies.push(vocabulary);
+    }
+
+    /// Produces the single closed request type consumed by core capture.
+    #[must_use]
+    pub fn build(self) -> CapturedProjectRequest {
+        CapturedProjectRequest {
+            request_version: CAPTURE_REQUEST_VERSION.to_owned(),
+            profile: self.profile,
+            project_key: self.project_key,
+            sources: self.sources,
+            vocabularies: self.vocabularies,
+            controls: self.controls,
+        }
     }
 }
 
@@ -258,6 +355,45 @@ pub struct CapturedProjectVocabulary {
     lock: VocabularyLock,
 }
 
+/// Exact resource facts observed while accepting one complete capture.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ProjectCaptureResourceFacts {
+    /// Number of retained source units.
+    source_units: u64,
+    /// Sum of retained exact source bytes.
+    total_source_bytes: u64,
+    /// Number of retained vocabulary inputs.
+    vocabulary_units: u64,
+    /// Sum of retained exact vocabulary bytes.
+    total_vocabulary_bytes: u64,
+}
+
+impl ProjectCaptureResourceFacts {
+    /// Returns the retained source-unit count.
+    #[must_use]
+    pub const fn source_units(self) -> u64 {
+        self.source_units
+    }
+
+    /// Returns the retained exact source-byte sum.
+    #[must_use]
+    pub const fn total_source_bytes(self) -> u64 {
+        self.total_source_bytes
+    }
+
+    /// Returns the retained vocabulary-input count.
+    #[must_use]
+    pub const fn vocabulary_units(self) -> u64 {
+        self.vocabulary_units
+    }
+
+    /// Returns the retained exact vocabulary-byte sum.
+    #[must_use]
+    pub const fn total_vocabulary_bytes(self) -> u64 {
+        self.total_vocabulary_bytes
+    }
+}
+
 impl CapturedProjectVocabulary {
     /// Returns the exact canonical vocabulary identity.
     #[must_use]
@@ -289,6 +425,8 @@ pub struct CapturedProject {
     vocabularies: Arc<[CapturedProjectVocabulary]>,
     /// Complete deterministic limits, excluding mutable cancellation state.
     limits: ProjectCaptureLimits,
+    /// Exact accepted resource facts.
+    resource_facts: ProjectCaptureResourceFacts,
 }
 
 impl CapturedProject {
@@ -314,6 +452,51 @@ impl CapturedProject {
     #[must_use]
     pub const fn limits(&self) -> ProjectCaptureLimits {
         self.limits
+    }
+
+    /// Returns exact resource facts observed during capture.
+    #[must_use]
+    pub const fn resource_facts(&self) -> ProjectCaptureResourceFacts {
+        self.resource_facts
+    }
+
+    /// Compares captured closure meaning while excluding acceptance limits.
+    #[must_use]
+    pub fn meaning_equivalent(&self, other: &Self) -> bool {
+        self.profile == other.profile
+            && self.sources == other.sources
+            && self.vocabularies == other.vocabularies
+    }
+
+    /// Reconstructs a closed request for deterministic capture replay.
+    #[must_use]
+    pub fn replay_request(&self, cancellation: CancellationToken) -> CapturedProjectRequest {
+        let sources = self
+            .sources
+            .iter()
+            .map(|source| {
+                CapturedSourceInput::new(
+                    source.source_id.to_string(),
+                    source.module_id.to_string(),
+                    source.bytes.to_vec(),
+                )
+                .requiring_digest(source.digest)
+            })
+            .collect();
+        let vocabularies = self
+            .vocabularies
+            .iter()
+            .map(|vocabulary| {
+                CapturedVocabularyInput::new(vocabulary.bytes.to_vec(), vocabulary.lock.clone())
+            })
+            .collect();
+        CapturedProjectRequest::new(
+            CAPTURE_REQUEST_VERSION,
+            self.profile,
+            sources,
+            vocabularies,
+            ProjectCaptureControls::new(self.limits, cancellation),
+        )
     }
 }
 
@@ -574,6 +757,18 @@ fn freeze_project(
     sources: &mut Vec<(CapturedSourceInput, SourceContentDigest)>,
     mut vocabularies: Vec<CapturedVocabularyInput>,
 ) -> Result<CapturedProject, ProjectCaptureError> {
+    let resource_facts = ProjectCaptureResourceFacts {
+        source_units: length(sources.len()),
+        total_source_bytes: sources
+            .iter()
+            .map(|(source, _)| length(source.bytes.len()))
+            .sum(),
+        vocabulary_units: length(vocabularies.len()),
+        total_vocabulary_bytes: vocabularies
+            .iter()
+            .map(|vocabulary| length(vocabulary.bytes.len()))
+            .sum(),
+    };
     sources.sort_by(|(left, _), (right, _)| {
         (&left.module_id, &left.source_id).cmp(&(&right.module_id, &right.source_id))
     });
@@ -602,6 +797,7 @@ fn freeze_project(
         sources: Arc::from(sources),
         vocabularies: Arc::from(vocabularies),
         limits,
+        resource_facts,
     })
 }
 

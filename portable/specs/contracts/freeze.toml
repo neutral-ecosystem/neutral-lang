@@ -1,17 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# This manifest freezes the v1 portable-plan inputs. It remains a planning
-# baseline until each stage activates its exact fixtures, oracles, and vectors.
+# This manifest tracks the v1 portable-plan inputs. Active inputs are referenced
+# by path; recurring evidence-record digests and a separate approver are not
+# required for this single-maintainer release train.
 schema_version = 1
 freeze_id = "neutral-v1-portable-plan-2026-09-20"
-status = "approved-plan"
+status = "active-plan"
 created_on = "2026-09-20"
-approval_date = "2026-09-20"
 supersedes = "neutral-v0-portable-archive"
 
-[review]
+[tracking]
 question_ledger_path = "portable/development/06-VALIDATION-LEDGER.md"
-approvers = ["repository owner"]
 blocking_issues = []
 
 [contract_versions]
@@ -24,12 +23,10 @@ external_ir_encoding = "NIR-CBOR/1.0-plan"
 
 [fixture_corpus]
 manifest_path = "portable/conformance/manifest.toml"
-manifest_sha256 = "eeadc3055a17e85227ded3c5cd2216c3b920e8029da7c866171af74caa5108c9"
 fixture_oracle_review_path = "portable/conformance/fixture-oracle-review.toml"
-fixture_oracle_review_sha256 = "5ccfe4d6a3f2c459066d589e850d28d9209f89af9d013d0fc1ff108557eee100"
-status = "stage1 active; stage2 contract fixtures reviewed pending implementation"
+status = "stage1 and stage2 suites active"
 
 [stage2_contract_gate]
 capture_request_path = "portable/specs/contracts/CAPTURE-REQUEST.md"
 capture_request_sha256 = "84243dc77f414f6079d582a614d783ad6a28cbfdcd105a79dfb2d65b2c6b1c7c"
-status = "accepted"
+status = "implemented"

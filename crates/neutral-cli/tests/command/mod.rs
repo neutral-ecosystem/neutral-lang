@@ -121,6 +121,13 @@ fn unit_cli_classifies_nonexecuting_and_output_policy_paths() {
         parse([constants::FORMAT.to_owned(), constants::HELP.to_owned()]),
         Ok(ParseOutcome::Help(constants::FORMAT_USAGE))
     );
+    assert_eq!(
+        parse([
+            constants::CAPTURE_PROJECT.to_owned(),
+            constants::HELP.to_owned()
+        ]),
+        Ok(ParseOutcome::Help(constants::CAPTURE_PROJECT_USAGE))
+    );
     assert!(parse([constants::COMPILE.to_owned(), "source.neu".to_owned()]).is_err());
     assert!(
         parse([
@@ -138,6 +145,45 @@ fn unit_cli_classifies_nonexecuting_and_output_policy_paths() {
             constants::OUTPUT.to_owned(),
             constants::STANDARD_STREAM.to_owned(),
             constants::OVERWRITE.to_owned(),
+        ])
+        .is_err()
+    );
+}
+
+#[test]
+/// Verifies project capture retains its logical host mapping policy.
+fn unit_cli_parses_project_capture_policy() {
+    let ParseOutcome::Execute(options) = parse([
+        constants::CAPTURE_PROJECT.to_owned(),
+        constants::SOURCE_ID.to_owned(),
+        "source:cli".to_owned(),
+        constants::MODULE_ID.to_owned(),
+        "cli::project".to_owned(),
+        constants::PROJECT_KEY.to_owned(),
+        "editor-session".to_owned(),
+        "source.neu".to_owned(),
+    ])
+    .expect("complete project capture command must parse") else {
+        panic!("project capture command must execute");
+    };
+    assert_eq!(options.kind, CommandKind::CaptureProject);
+    assert_eq!(options.source_id.as_deref(), Some("source:cli"));
+    assert_eq!(options.module_id.as_deref(), Some("cli::project"));
+    assert_eq!(options.project_key.as_deref(), Some("editor-session"));
+
+    assert!(
+        parse([
+            constants::CAPTURE_PROJECT.to_owned(),
+            "source.neu".to_owned(),
+        ])
+        .is_err()
+    );
+    assert!(
+        parse([
+            constants::VALIDATE.to_owned(),
+            constants::SOURCE_ID.to_owned(),
+            "source:wrong-command".to_owned(),
+            "source.neu".to_owned(),
         ])
         .is_err()
     );

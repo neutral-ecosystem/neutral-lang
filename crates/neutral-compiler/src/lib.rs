@@ -24,9 +24,10 @@ mod project_capture;
 mod semantics;
 
 pub use project_capture::{
-    CAPTURE_REQUEST_VERSION, CapturedProject, CapturedProjectRequest, CapturedProjectSource,
-    CapturedProjectVocabulary, CapturedSourceInput, CapturedVocabularyInput,
-    ProjectCaptureControls, ProjectCaptureError, ProjectCaptureLimitValues, ProjectCaptureLimits,
+    CAPTURE_REQUEST_VERSION, CapturedProject, CapturedProjectRequest,
+    CapturedProjectRequestBuilder, CapturedProjectSource, CapturedProjectVocabulary,
+    CapturedSourceInput, CapturedVocabularyInput, ProjectCaptureControls, ProjectCaptureError,
+    ProjectCaptureLimitValues, ProjectCaptureLimits, ProjectCaptureResourceFacts, ProjectHostError,
     capture_project,
 };
 

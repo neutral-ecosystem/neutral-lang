@@ -23,13 +23,13 @@ here.
 
 ## Stage 2 — captured project (`v0.2.0 -> v0.3.0`)
 
-- [ ] V1-CAP-001 — Versioned complete `CapturedProjectRequest`.
-- [ ] V1-CAP-002 — Unique logical module/source identities and header matching.
-- [ ] V1-CAP-003 — Complete supplied closure, including disconnected modules.
-- [ ] V1-CAP-004 — Exact lock coverage and conflicting host-mapping rejection.
-- [ ] V1-CAP-005 — Independent bounds for bytes, modules, imports, SCCs,
+- [*] V1-CAP-001 — Versioned complete `CapturedProjectRequest`.
+- [*] V1-CAP-002 — Unique logical module/source identities and header matching.
+- [*] V1-CAP-003 — Complete supplied closure, including disconnected modules.
+- [*] V1-CAP-004 — Exact lock coverage and conflicting host-mapping rejection.
+- [*] V1-CAP-005 — Independent bounds for bytes, modules, imports, SCCs,
   declarations, diagnostics, and output.
-- [ ] V1-CAP-006 — Capture freezes immutable inputs without resolver/I/O.
+- [*] V1-CAP-006 — Capture freezes immutable inputs without resolver/I/O.
 
 ## Stage 3 — modules (`v0.3.0 -> v0.4.0`)
 

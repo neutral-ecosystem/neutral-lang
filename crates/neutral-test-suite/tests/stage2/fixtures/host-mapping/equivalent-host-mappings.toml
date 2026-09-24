@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.host-mapping-fixture/1"
+case_id = "V1-CAP-004-HOST-EQUIVALENT"
+
+[left]
+host_location = "/checkout-a/source.neu"
+source_id = "source:portable"
+module_id = "mapping::portable"
+source_utf8 = "neu \"1.0\"\nmodule mapping::portable\n"
+
+[right]
+host_location = "D:\\checkout-b\\renamed.neu"
+source_id = "source:portable"
+module_id = "mapping::portable"
+source_utf8 = "neu \"1.0\"\nmodule mapping::portable\n"

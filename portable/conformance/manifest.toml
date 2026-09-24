@@ -81,7 +81,7 @@ oracle_sha256 = "57dc1d61528ee6cbeb5c12715a1833d72a1c36333e3d960de7c2324274ee788
 id = "capture-and-modules"
 profile = "1.0"
 active_from_stage = 2
-status = "fixture-frozen"
+status = "required"
 
 [[case]]
 id = "V1-CAP-003-COMPLETE"

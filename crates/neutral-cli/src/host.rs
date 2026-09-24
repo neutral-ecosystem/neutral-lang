@@ -7,10 +7,14 @@ use crate::{
     constants,
 };
 use neutral_compiler::{
-    CaptureError, CompilationFailure, CompilationRequest, CompilationResult, FormatError, compile,
-    format as format_source,
+    CaptureError, CapturedProjectRequestBuilder, CapturedSourceInput, CapturedVocabularyInput,
+    CompilationFailure, CompilationRequest, CompilationResult, FormatError, ProjectCaptureControls,
+    ProjectCaptureError, ProjectCaptureLimitValues, ProjectCaptureLimits, ProjectHostError,
+    capture_project, compile, format as format_source,
 };
-use neutral_core::{CancellationToken, ResultClass, VocabularyContentDigest};
+use neutral_core::{
+    CancellationToken, ResultClass, VocabularyContentDigest, profile::LanguageProfile,
+};
 use neutral_encoding::{ProducerInfo, encode};
 use neutral_reader::ValidatedDocument;
 use neutral_vocabulary::VocabularyLock;
@@ -142,12 +146,74 @@ fn report_profiles() {
 
 /// Executes one validated command policy.
 fn execute_command(options: &CommandOptions) -> Result<(), CliFailure> {
+    if options.kind == CommandKind::CaptureProject {
+        return capture_project_command(options);
+    }
     let request = request_from_options(options)?;
     match options.kind {
         CommandKind::Compile => compile_command(request, options),
         CommandKind::Validate => validate_command(request),
         CommandKind::Format => format_command(request, options),
+        CommandKind::CaptureProject => unreachable!("project capture returned before compilation"),
     }
+}
+
+/// Acquires explicit inputs, constructs the shared request schema, and captures it.
+fn capture_project_command(options: &CommandOptions) -> Result<(), CliFailure> {
+    let source = read_selected_input(&options.input, options.limits.source_bytes())?;
+    let cancellation = CancellationToken::new();
+    if options.cancel_before_start {
+        cancellation.cancel();
+    }
+    let controls = ProjectCaptureControls::new(project_limits(options), cancellation);
+    let mut builder = CapturedProjectRequestBuilder::new(LanguageProfile::V1_0, controls);
+    if let Some(project_key) = &options.project_key {
+        builder = builder.with_project_key(project_key.clone());
+    }
+    builder
+        .add_source(CapturedSourceInput::new(
+            required_option(options.source_id.as_ref())?,
+            required_option(options.module_id.as_ref())?,
+            source,
+        ))
+        .map_err(project_host_failure)?;
+    if let Some(vocabulary) =
+        project_vocabulary(&options.vocabulary, options.limits.source_bytes())?
+    {
+        builder.add_vocabulary(vocabulary);
+    }
+    let captured = capture_project(builder.build()).map_err(project_capture_failure)?;
+    let facts = captured.resource_facts();
+    eprintln!(
+        "{} capture succeeded source-units={} source-bytes={} vocabulary-units={} vocabulary-bytes={}",
+        constants::INFO,
+        facts.source_units(),
+        facts.total_source_bytes(),
+        facts.vocabulary_units(),
+        facts.total_vocabulary_bytes()
+    );
+    Ok(())
+}
+
+/// Converts the existing explicit CLI limits into the complete project schema.
+fn project_limits(options: &CommandOptions) -> ProjectCaptureLimits {
+    let limits = options.limits;
+    ProjectCaptureLimits::new(ProjectCaptureLimitValues {
+        total_source_bytes: limits.source_bytes(),
+        source_bytes_per_unit: limits.source_bytes(),
+        source_units: 1,
+        source_id_bytes: limits.source_bytes(),
+        module_id_bytes: limits.source_bytes(),
+        vocabulary_units: 1,
+        vocabulary_bytes_per_unit: limits.source_bytes(),
+        total_vocabulary_bytes: limits.source_bytes(),
+        imports_per_module: limits.declarations(),
+        import_edges: limits.declarations(),
+        scc_units: 1,
+        declarations: limits.declarations(),
+        diagnostics: u64::from(limits.diagnostics()),
+        output_bytes: limits.source_bytes(),
+    })
 }
 
 /// Compiles source and atomically publishes one encoded artifact.
@@ -215,6 +281,47 @@ fn captured_vocabulary(
     )
     .map_err(|_| CliFailure::one(ExitClass::Usage, "invalid-vocabulary-lock"))?;
     Ok(request.with_captured_vocabulary(bytes, lock))
+}
+
+/// Constructs one optional vocabulary input for the shared project schema.
+fn project_vocabulary(
+    options: &VocabularyOptions,
+    byte_limit: u64,
+) -> Result<Option<CapturedVocabularyInput>, CliFailure> {
+    if options.is_empty() {
+        return Ok(None);
+    }
+    let bundle_path = required_option(options.bundle.as_ref())?;
+    let bytes = read_selected_input(bundle_path, byte_limit)?;
+    let digest = VocabularyContentDigest::parse_text(required_option(options.digest.as_ref())?)
+        .map_err(|_| CliFailure::one(ExitClass::Usage, "invalid-vocabulary-digest"))?;
+    let lock = VocabularyLock::new(
+        required_option(options.identity.as_ref())?,
+        required_option(options.version.as_ref())?,
+        required_option(options.encoding_version.as_ref())?,
+        required_option(options.schema_version.as_ref())?,
+        digest,
+        options.features.clone(),
+    )
+    .map_err(|_| CliFailure::one(ExitClass::Usage, "invalid-vocabulary-lock"))?;
+    Ok(Some(CapturedVocabularyInput::new(bytes, lock)))
+}
+
+/// Maps one host mapping failure without exposing host location data.
+fn project_host_failure(error: ProjectHostError) -> CliFailure {
+    CliFailure::one(ExitClass::Validation, error.code())
+}
+
+/// Maps one project-capture failure to stable CLI output.
+fn project_capture_failure(error: ProjectCaptureError) -> CliFailure {
+    CliFailure::one(
+        if error == ProjectCaptureError::Cancelled {
+            ExitClass::Cancelled
+        } else {
+            ExitClass::Validation
+        },
+        error.code(),
+    )
 }
 
 /// Borrows one parser-validated required option or reports an internal defect.

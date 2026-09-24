@@ -14,6 +14,8 @@ pub enum CommandKind {
     Validate,
     /// Format valid source into canonical source bytes.
     Format,
+    /// Capture one complete explicitly identified v1 project source set.
+    CaptureProject,
 }
 
 /// Exact optional vocabulary bundle and immutable lock arguments.
@@ -79,6 +81,12 @@ pub struct CommandOptions {
     pub overwrite: bool,
     /// Whether cancellation is requested before capture starts.
     pub cancel_before_start: bool,
+    /// Logical source ID required by project capture.
+    pub source_id: Option<String>,
+    /// Qualified logical module ID required by project capture.
+    pub module_id: Option<String>,
+    /// Optional non-semantic project correlation key.
+    pub project_key: Option<String>,
     /// Effective deterministic structural limits.
     pub limits: StructuralLimits,
     /// Optional exact captured vocabulary policy.
@@ -192,6 +200,10 @@ pub fn parse(arguments: impl IntoIterator<Item = String>) -> Result<ParseOutcome
 }
 
 /// Parses options and positional input for one already selected command.
+#[allow(
+    clippy::too_many_lines,
+    reason = "the closed CLI option table is kept in one auditable match"
+)]
 fn parse_command_arguments(
     arguments: &[String],
     kind: CommandKind,
@@ -201,6 +213,9 @@ fn parse_command_arguments(
     let mut output = None;
     let mut overwrite = false;
     let mut cancel_before_start = false;
+    let mut source_id = None;
+    let mut module_id = None;
+    let mut project_key = None;
     let mut limits = LimitValues::default();
     let mut vocabulary = VocabularyOptions::default();
     let mut index = 1;
@@ -209,6 +224,21 @@ fn parse_command_arguments(
         match argument.as_str() {
             constants::OVERWRITE => overwrite = true,
             constants::CANCEL_BEFORE_START => cancel_before_start = true,
+            constants::SOURCE_ID => set_once(
+                &mut source_id,
+                next_value(arguments, &mut index, argument)?,
+                argument,
+            )?,
+            constants::MODULE_ID => set_once(
+                &mut module_id,
+                next_value(arguments, &mut index, argument)?,
+                argument,
+            )?,
+            constants::PROJECT_KEY => set_once(
+                &mut project_key,
+                next_value(arguments, &mut index, argument)?,
+                argument,
+            )?,
             constants::OUTPUT => set_once(
                 &mut output,
                 next_value(arguments, &mut index, argument)?,
@@ -286,6 +316,13 @@ fn parse_command_arguments(
     }
     vocabulary.validate()?;
     validate_output_policy(kind, output.as_deref(), overwrite, usage)?;
+    validate_project_policy(
+        kind,
+        source_id.as_deref(),
+        module_id.as_deref(),
+        project_key.as_deref(),
+        usage,
+    )?;
     let input = input.ok_or_else(|| format!("source is required; usage: {usage}"))?;
     validate_standard_inputs(&input, &vocabulary)?;
     Ok(ParseOutcome::Execute(Box::new(CommandOptions {
@@ -294,6 +331,9 @@ fn parse_command_arguments(
         output,
         overwrite,
         cancel_before_start,
+        source_id,
+        module_id,
+        project_key,
         limits: limits.build()?,
         vocabulary,
     })))
@@ -316,6 +356,10 @@ fn command_kind(value: &str) -> Result<(CommandKind, &'static str), String> {
         constants::COMPILE => Ok((CommandKind::Compile, constants::COMPILE_USAGE)),
         constants::VALIDATE => Ok((CommandKind::Validate, constants::VALIDATE_USAGE)),
         constants::FORMAT => Ok((CommandKind::Format, constants::FORMAT_USAGE)),
+        constants::CAPTURE_PROJECT => Ok((
+            CommandKind::CaptureProject,
+            constants::CAPTURE_PROJECT_USAGE,
+        )),
         _ => Err(format!(
             "unknown command: {value}; usage: {}",
             constants::USAGE
@@ -334,8 +378,8 @@ fn validate_output_policy(
         CommandKind::Compile | CommandKind::Format if output.is_none() => {
             Err(format!("output is required; usage: {usage}"))
         }
-        CommandKind::Validate if output.is_some() || overwrite => {
-            Err(format!("validate produces no output; usage: {usage}"))
+        CommandKind::Validate | CommandKind::CaptureProject if output.is_some() || overwrite => {
+            Err(format!("command produces no output; usage: {usage}"))
         }
         CommandKind::Compile | CommandKind::Format
             if output == Some(constants::STANDARD_STREAM) && overwrite =>
@@ -346,6 +390,28 @@ fn validate_output_policy(
         }
         _ => Ok(()),
     }
+}
+
+/// Requires logical project IDs only for the project-capture command.
+fn validate_project_policy(
+    kind: CommandKind,
+    source_id: Option<&str>,
+    module_id: Option<&str>,
+    project_key: Option<&str>,
+    usage: &str,
+) -> Result<(), String> {
+    if kind == CommandKind::CaptureProject {
+        if source_id.is_none() || module_id.is_none() {
+            return Err(format!(
+                "capture-project requires source-id and module-id; usage: {usage}"
+            ));
+        }
+    } else if source_id.is_some() || module_id.is_some() || project_key.is_some() {
+        return Err(format!(
+            "project identity options require capture-project; usage: {usage}"
+        ));
+    }
+    Ok(())
 }
 
 /// Returns one required option value and advances the parser cursor.

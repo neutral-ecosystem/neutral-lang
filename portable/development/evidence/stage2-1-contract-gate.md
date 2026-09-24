@@ -59,7 +59,7 @@ The final repository-wide CI composition passed at
 
 ## Deliberately open work
 
-- Stage 1 release promotion remains owner-controlled.
+- Stage 1 release promotion was completed separately.
 - `CapturedProjectRequest` and immutable project capture are not implemented.
 - No resolver/no-I/O proof, shuffled-order equivalence, malformed-input,
   cancellation, or full limit suite is claimed yet.

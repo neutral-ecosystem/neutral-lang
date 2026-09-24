@@ -449,6 +449,37 @@ fn cancellation_at_every_capture_checkpoint_prevents_publication() {
 }
 
 #[test]
+fn security_envelope_limits_fail_before_capture_allocation_or_publication() {
+    let mut values = limits().values();
+    values.source_units = 1;
+    let request = CapturedProjectRequest::new(
+        CAPTURE_REQUEST_VERSION,
+        LanguageProfile::V1_0,
+        vec![
+            CapturedSourceInput::new(
+                "source:first",
+                "capture::first",
+                b"neu \"1.0\"\nmodule capture::first\n".to_vec(),
+            ),
+            CapturedSourceInput::new(
+                "source:second",
+                "capture::second",
+                b"neu \"1.0\"\nmodule capture::second\n".to_vec(),
+            ),
+        ],
+        Vec::new(),
+        ProjectCaptureControls::new(ProjectCaptureLimits::new(values), CancellationToken::new()),
+    );
+    let mut checkpoints = Vec::new();
+
+    assert_eq!(
+        capture_project_with_checkpoints(request, |checkpoint| checkpoints.push(checkpoint)),
+        Err(ProjectCaptureError::LimitExceeded)
+    );
+    assert_eq!(checkpoints, vec![ProjectCaptureCheckpoint::Start]);
+}
+
+#[test]
 fn every_active_collection_and_byte_bound_rejects_one_over() {
     let source = || {
         CapturedSourceInput::new(

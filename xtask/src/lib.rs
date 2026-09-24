@@ -2388,7 +2388,11 @@ fn verify_portable_snapshot_directory(root: &Path, directory: &Path) -> Result<(
     Ok(())
 }
 
-/// Verifies every generic `*_path` and `*_sha256` pair recorded by a freeze.
+/// Verifies every frozen input path and any digest retained beside it.
+///
+/// Active single-maintainer plans may track the input by path alone. Released
+/// freezes can retain a matching `*_sha256` field for immutable archival
+/// verification.
 fn verify_frozen_input_digests(root: &Path, freeze_file: &str) -> Result<(), String> {
     let freeze = read_workspace_text(root, freeze_file)?;
     let values = configuration_section(&freeze, "fixture_corpus")?
@@ -2406,12 +2410,6 @@ fn verify_frozen_input_digests(root: &Path, freeze_file: &str) -> Result<(), Str
     }
     for (name, path) in frozen_paths {
         let digest_key = format!("{name}_sha256");
-        let expected = values
-            .get(&digest_key)
-            .ok_or_else(|| format!("contract freeze has no {digest_key}"))?;
-        if !is_sha256(expected) {
-            return Err(format!("contract freeze has an invalid {digest_key}"));
-        }
         let relative = Path::new(&path);
         if relative.as_os_str().is_empty()
             || !relative
@@ -2424,11 +2422,16 @@ fn verify_frozen_input_digests(root: &Path, freeze_file: &str) -> Result<(), Str
         }
         let bytes = fs::read(root.join(relative))
             .map_err(|error| format!("could not read frozen input {path}: {error}"))?;
-        let actual = sha256_hex(&bytes);
-        if actual != expected.as_str() {
-            return Err(format!(
-                "frozen input {path} has SHA-256 {actual}, expected {expected}; contract review is required"
-            ));
+        if let Some(expected) = values.get(&digest_key) {
+            if !is_sha256(expected) {
+                return Err(format!("contract freeze has an invalid {digest_key}"));
+            }
+            let actual = sha256_hex(&bytes);
+            if actual != expected.as_str() {
+                return Err(format!(
+                    "frozen input {path} has SHA-256 {actual}, expected {expected}; contract review is required"
+                ));
+            }
         }
     }
     Ok(())

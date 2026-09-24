@@ -2,7 +2,7 @@
 
 # Stage 1 profile-foundation validation
 
-Status: validated; `v0.2.0` promotion not performed
+Status: validated; subsequently released as `v0.2.0`
 
 Date: 2026-09-20  
 Toolchain: `rustc 1.98.1 (48a229cea 2026-09-01)`  
@@ -60,6 +60,4 @@ fuzz regressions, repeated execution, and concurrent dispatch.
 
 ## Promotion decision
 
-Stage 1 implementation is validated. Package version changes, release
-qualification, and publication of `v0.2.0` are deliberately deferred; they
-require a separate owner-approved release action.
+Stage 1 implementation was validated and subsequently released as `v0.2.0`.

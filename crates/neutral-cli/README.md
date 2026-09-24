@@ -24,6 +24,9 @@ cargo run --package neutral-cli -- --help
   authoritative output.
 - `neutral-cli format --output <source|-> [options] <source|->` validates and
   writes canonical, ordinary Neutral source.
+- `neutral-cli capture-project --source-id <id> --module-id <id> [options]
+  <source|->` constructs the public v1 project request, captures it without
+  core I/O, and reports bounded source/vocabulary resource facts.
 - `neutral-cli profiles` reports every recognized source profile, its current
   availability, and stable implemented capabilities without reading a source.
 
@@ -47,6 +50,9 @@ reviewed defaults. Run `neutral-cli <command> --help` for stable command usage.
 - `--output <path|->`: Output destination (for `compile` and `format`).
 - `--overwrite`: Overwrite existing output file if present.
 - `--cancel-before-start`: Cooperative pre-work cancellation flag.
+- `--source-id <id>`: Logical source identity for `capture-project`.
+- `--module-id <id>`: Qualified logical module identity for `capture-project`.
+- `--project-key <key>`: Optional non-semantic host correlation key.
 - `--vocabulary-bundle <path|->`: Path to host-captured vocabulary bundle JSON.
 - `--vocabulary-identity <string>`: Exact vocabulary lock identity.
 - `--vocabulary-version <string>`: Exact vocabulary lock release version.
