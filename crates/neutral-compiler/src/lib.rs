@@ -20,7 +20,15 @@ use std::sync::Arc;
 
 mod frontend;
 mod language;
+mod project_capture;
 mod semantics;
+
+pub use project_capture::{
+    CAPTURE_REQUEST_VERSION, CapturedProject, CapturedProjectRequest, CapturedProjectSource,
+    CapturedProjectVocabulary, CapturedSourceInput, CapturedVocabularyInput,
+    ProjectCaptureControls, ProjectCaptureError, ProjectCaptureLimitValues, ProjectCaptureLimits,
+    capture_project,
+};
 
 /// Stable diagnostic identifiers emitted by compiler validation.
 pub mod diagnostics {
@@ -125,7 +133,7 @@ pub struct CompilationRequest {
     /// Cooperative cancellation signal supplied by the caller.
     cancellation: CancellationToken,
     /// Optional exact bundle bytes and lock supplied by the host.
-    vocabulary: Option<CapturedVocabularyInput>,
+    vocabulary: Option<SingleVocabularyInput>,
 }
 
 impl CompilationRequest {
@@ -151,7 +159,7 @@ impl CompilationRequest {
     /// Supplies one exact already-captured vocabulary bundle and lock.
     #[must_use]
     pub fn with_captured_vocabulary(mut self, bytes: Vec<u8>, lock: VocabularyLock) -> Self {
-        self.vocabulary = Some(CapturedVocabularyInput {
+        self.vocabulary = Some(SingleVocabularyInput {
             bytes: Arc::from(bytes),
             lock,
         });
@@ -161,7 +169,7 @@ impl CompilationRequest {
 
 /// Exact host-supplied vocabulary input with no acquisition authority.
 #[derive(Clone, Debug)]
-struct CapturedVocabularyInput {
+struct SingleVocabularyInput {
     /// Exact captured bundle bytes.
     bytes: Arc<[u8]>,
     /// Exact immutable lock facts.
@@ -180,7 +188,7 @@ pub struct CapturedCompilation {
     /// Cooperative cancellation signal preserved from the request.
     cancellation: CancellationToken,
     /// Optional exact captured vocabulary bytes and lock.
-    vocabulary: Option<CapturedVocabularyInput>,
+    vocabulary: Option<SingleVocabularyInput>,
 }
 
 impl CapturedCompilation {

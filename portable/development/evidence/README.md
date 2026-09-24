@@ -10,3 +10,6 @@ needed to understand why a checklist item is complete.
 Evidence here describes future-version development gates. Released language
 contracts and release evidence remain under `conformance/releases/` and
 `quality/evidence/` respectively.
+
+- [Stage 2.1 captured-project contract gate](stage2-1-contract-gate.md)
+- [Stage 2.2 core capture validation](stage2-2-core-capture.md)

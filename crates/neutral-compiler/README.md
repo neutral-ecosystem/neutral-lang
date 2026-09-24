@@ -9,9 +9,14 @@ It depends on core, IR, and vocabulary contracts only. The CLI supplies any
 host-facing capture work before this crate runs; `neutral-compiler` must remain
 deterministic and free of filesystem, environment, network, command, locale,
 and clock access. Its parser and semantic internals are intentionally private.
-The public boundary captures exact bytes immutably. Its private frontend
-recognizes the supported source, identifier, comment, exact-number, bounded-string,
-Boolean, nullable-scalar, null, nominal-record, and contextual-record behavior.
+The public boundary captures exact bytes immutably. The v1 project-capture
+boundary accepts only a closed, versioned, data-only request with explicit
+independent limits. It retains the complete supplied source set, validates
+request/header agreement and exact vocabulary-lock coverage, and exposes no
+resolver, callback, path, URL, root, or ambient acquisition hook. Its private
+frontend recognizes the supported source, identifier, comment, exact-number,
+bounded-string, Boolean, nullable-scalar, null, nominal-record, and
+contextual-record behavior.
 It collects the complete root scope before nominal type resolution and rejects
 embedded record cycles. It accepts one exact host-captured vocabulary bundle and
 lock, validates it before source payloads, and resolves optional `use` plus

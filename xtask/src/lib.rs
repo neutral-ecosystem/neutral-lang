@@ -3586,7 +3586,10 @@ fn verify_pure_source_effects(root: &Path) -> Result<(), String> {
                 "std::env",
                 "std::net",
                 "std::process",
+                "std::time",
                 "Command::new",
+                "SystemTime",
+                "Instant::now",
             ] {
                 if content.contains(forbidden) {
                     return Err(format!(

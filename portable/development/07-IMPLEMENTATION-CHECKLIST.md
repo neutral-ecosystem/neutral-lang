@@ -79,9 +79,11 @@ Evidence: [Stage 2.1 captured-project contract gate](evidence/stage2-1-contract-
 
 ### `v0.2.2` — core implementation gate
 
-- [ ] Implement bounded request validation and immutable capture.
-- [ ] Implement complete supplied closure and exact vocabulary-lock coverage.
-- [ ] Reject resolver callbacks and prove capture performs no external I/O.
+- [*] Implement bounded request validation and immutable capture.
+- [*] Implement complete supplied closure and exact vocabulary-lock coverage.
+- [*] Reject resolver callbacks and prove capture performs no external I/O.
+
+Evidence: [Stage 2.2 core capture validation](evidence/stage2-2-core-capture.md).
 
 ### `v0.2.3` — public integration gate
 
