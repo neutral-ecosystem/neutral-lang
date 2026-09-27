@@ -6,5 +6,6 @@
 | Release | Status | Recorded at |
 | --- | --- | --- |
 | `v0.1.0` | approved | `2026-09-11` |
+| `v0.3.0` | approved | `1790500916` |
 
 Release records are verified by `cargo xtask quality verify`.
