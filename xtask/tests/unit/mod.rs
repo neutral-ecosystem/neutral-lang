@@ -8,7 +8,8 @@ use super::interface::{
 };
 use super::{
     constants, contract_ids, ensure_ids_covered, ensure_syntax_complete, quality_value_from,
-    render_rustdoc_index, rustdoc_header_configuration, set,
+    release_evidence_readme, render_rustdoc_index, replace_workspace_lock_versions,
+    replace_workspace_package_version, rustdoc_header_configuration, set,
     source_has_non_path_test_configuration, validate_allowed_packages,
     validate_direct_dependencies,
 };
@@ -172,6 +173,35 @@ fn automation_validates_package_version_transitions() {
     assert!(super::validate_version_transition("0.2.0", "0.1.0").is_err());
     assert!(super::validate_semver("0.1.0-rc.01").is_err());
     assert!(super::validate_semver("0.1.0-rc..1").is_err());
+}
+
+#[test]
+/// Version preparation changes only the root workspace package field.
+fn automation_replaces_the_workspace_package_version() {
+    let manifest = "[workspace]\nresolver = \"3\"\n\n[workspace.package]\nversion = \"0.2.0\"\nlicense = \"Apache-2.0\"\n\n[workspace.dependencies]\nversion = \"0.2.0\"\n";
+    let updated = replace_workspace_package_version(manifest, "0.2.0", "0.3.0")
+        .expect("workspace version should update");
+    assert!(updated.contains("[workspace.package]\nversion = \"0.3.0\""));
+    assert!(updated.contains("[workspace.dependencies]\nversion = \"0.2.0\""));
+}
+
+#[test]
+/// Version preparation updates lockfile records only for workspace packages.
+fn automation_replaces_workspace_lock_versions() {
+    let lock = "[[package]]\nname = \"neutral-core\"\nversion = \"0.2.0\"\n\n[[package]]\nname = \"third-party\"\nversion = \"0.2.0\"\n";
+    let packages = BTreeSet::from(["neutral-core".to_owned()]);
+    let updated = replace_workspace_lock_versions(lock, &packages, "0.2.0", "0.3.0")
+        .expect("workspace lock entry should update");
+    assert!(updated.contains("name = \"neutral-core\"\nversion = \"0.3.0\""));
+    assert!(updated.contains("name = \"third-party\"\nversion = \"0.2.0\""));
+}
+
+#[test]
+/// Prepared releases receive the license-derived quality-evidence scaffold.
+fn automation_renders_release_evidence_scaffold() {
+    let evidence = release_evidence_readme("0.3.0", "Apache-2.0");
+    assert!(evidence.starts_with("<!-- SPDX-License-Identifier: Apache-2.0 -->"));
+    assert!(evidence.contains("Neutral v0.3.0 quality evidence"));
 }
 
 #[test]

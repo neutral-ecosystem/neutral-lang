@@ -51,10 +51,6 @@ Before starting the next version:
 
 1. Confirm the released bundle exists under `conformance/releases/<version>/`.
 2. Run `cargo xtask version check` and `cargo xtask ci pr` on the current tree.
-3. Confirm the release's durable quality record is present under
-   `quality/evidence/<version>/`.
-4. Treat that bundle as immutable compatibility evidence while developing the
-   next version.
 
 Tests for a new version may add expectations, but they must not silently weaken
 or rewrite the previous release's expected behavior.

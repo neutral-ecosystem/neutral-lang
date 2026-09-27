@@ -1755,20 +1755,54 @@ fn ensure_no_unreviewed_contract_changes(root: &Path) -> Result<(), String> {
     }
 }
 
-/// Emits a reviewable version-change plan without tagging or publishing.
+/// Propagates one reviewed package-release version without tagging or publishing.
 fn prepare_version(requested: &str) -> Result<(), String> {
     validate_semver(requested)?;
     let root = workspace_root()?;
-    let current = workspace_package_version(&read_workspace_text(
-        &root,
-        constants::WORKSPACE_MANIFEST_FILE,
-    )?)?;
+    let manifest_path = root.join(constants::WORKSPACE_MANIFEST_FILE);
+    let manifest = read_workspace_text(&root, constants::WORKSPACE_MANIFEST_FILE)?;
+    let current = workspace_package_version(&manifest)?;
     validate_version_transition(&current, requested)?;
     ensure_no_unreviewed_contract_changes(&root)?;
     check_versions()?;
+    require_clean_checkout()?;
+
+    let updated_manifest = replace_workspace_package_version(&manifest, &current, requested)?;
+    let lock_path = root.join(constants::CARGO_LOCK_FILE);
+    let lock = read_workspace_text(&root, constants::CARGO_LOCK_FILE)?;
+    let package_names = workspace_package_names(&root)?;
+    let updated_lock = replace_workspace_lock_versions(&lock, &package_names, &current, requested)?;
+    let evidence_directory = root
+        .join(constants::QUALITY_EVIDENCE_DIRECTORY)
+        .join(format!("v{requested}"));
+    let evidence_readme = evidence_directory.join("README.md");
+    if evidence_readme.exists() {
+        return Err(format!(
+            "release evidence is already prepared: {}",
+            evidence_readme.display()
+        ));
+    }
+
     let freeze_bytes = fs::read(root.join(constants::CONTRACT_FREEZE_FILE))
         .map_err(|error| format!("could not read contract freeze: {error}"))?;
     let freeze_digest = sha256_hex(&freeze_bytes);
+
+    fs::create_dir_all(&evidence_directory).map_err(|error| {
+        format!(
+            "could not create release evidence directory {}: {error}",
+            evidence_directory.display()
+        )
+    })?;
+    fs::write(&manifest_path, updated_manifest)
+        .map_err(|error| format!("could not update {}: {error}", manifest_path.display()))?;
+    fs::write(&lock_path, updated_lock)
+        .map_err(|error| format!("could not update {}: {error}", lock_path.display()))?;
+    fs::write(
+        &evidence_readme,
+        release_evidence_readme(requested, &project_license(&root)?),
+    )
+    .map_err(|error| format!("could not write {}: {error}", evidence_readme.display()))?;
+
     let directory = result_root()?.join(constants::VERSION_RESULT_DIRECTORY);
     fs::create_dir_all(&directory)
         .map_err(|error| format!("could not create {}: {error}", directory.display()))?;
@@ -1783,8 +1817,82 @@ fn prepare_version(requested: &str) -> Result<(), String> {
         ),
     )
     .map_err(|error| format!("could not write {}: {error}", output.display()))?;
+    println!(
+        "{} package release prepared: {current} -> {requested}",
+        constants::INFO
+    );
+    println!(
+        "{} updated: {}, {}, {}",
+        constants::INFO,
+        constants::WORKSPACE_MANIFEST_FILE,
+        constants::CARGO_LOCK_FILE,
+        evidence_readme
+            .strip_prefix(&root)
+            .unwrap_or(&evidence_readme)
+            .display()
+    );
     println!("{} version plan: {}", constants::INFO, output.display());
     Ok(())
+}
+
+/// Replaces only the workspace package version in the root manifest.
+fn replace_workspace_package_version(
+    manifest: &str,
+    current: &str,
+    requested: &str,
+) -> Result<String, String> {
+    let mut selected = false;
+    let mut replaced = false;
+    let expected = format!("version = \"{current}\"");
+    let replacement = format!("version = \"{requested}\"");
+    let mut lines = Vec::new();
+
+    for line in manifest.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('[') {
+            selected = trimmed == "[workspace.package]";
+        }
+        if selected && trimmed == expected {
+            let indentation = line.len() - line.trim_start().len();
+            lines.push(format!("{}{}", &line[..indentation], replacement));
+            replaced = true;
+        } else {
+            lines.push(line.to_owned());
+        }
+    }
+    if !replaced {
+        return Err("root Cargo.toml has no matching workspace package version".to_owned());
+    }
+    Ok(format!("{}\n", lines.join("\n")))
+}
+
+/// Replaces each workspace package version in Cargo's lockfile without touching dependencies.
+fn replace_workspace_lock_versions(
+    lock: &str,
+    package_names: &BTreeSet<String>,
+    current: &str,
+    requested: &str,
+) -> Result<String, String> {
+    let mut updated = lock.to_owned();
+    for package_name in package_names {
+        let expected = format!("name = \"{package_name}\"\nversion = \"{current}\"");
+        let replacement = format!("name = \"{package_name}\"\nversion = \"{requested}\"");
+        if !updated.contains(&expected) {
+            return Err(format!(
+                "Cargo.lock is stale for workspace package {package_name} {current}"
+            ));
+        }
+        updated = updated.replacen(&expected, &replacement, 1);
+    }
+    Ok(updated)
+}
+
+/// Renders the durable release-evidence scaffold required before quality approval.
+fn release_evidence_readme(version: &str, license: &str) -> String {
+    format!(
+        "{}\n\n# Neutral v{version} quality evidence\n\nThis directory is prepared by `cargo xtask version prepare {version}`. Keep the\nrelease-quality approval record immutable once `cargo xtask quality approve --release\n{version}` succeeds.\n",
+        html_spdx_marker(license)
+    )
 }
 
 /// Reads scalar key/value pairs from one exact TOML section.
@@ -1986,6 +2094,26 @@ fn workspace_package_manifests(root: &Path) -> Result<Vec<PathBuf>, String> {
     }
     manifests.sort();
     Ok(manifests)
+}
+
+/// Returns the exact package-directory names represented by workspace manifests.
+fn workspace_package_names(root: &Path) -> Result<BTreeSet<String>, String> {
+    workspace_package_manifests(root)?
+        .into_iter()
+        .map(|manifest| {
+            manifest
+                .parent()
+                .and_then(Path::file_name)
+                .and_then(std::ffi::OsStr::to_str)
+                .map(str::to_owned)
+                .ok_or_else(|| {
+                    format!(
+                        "package manifest has no package directory: {}",
+                        manifest.display()
+                    )
+                })
+        })
+        .collect()
 }
 
 /// Collects regular files with one exact filename below a directory.

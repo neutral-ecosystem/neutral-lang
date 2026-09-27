@@ -16,8 +16,12 @@ cargo xtask version check
 cargo xtask version prepare <version>
 ```
 
-Version preparation propagates the workspace version and associated metadata so
-they do not need to be maintained manually across packages.
+Version preparation requires a clean worktree, updates the authoritative
+workspace version and every matching workspace-package lockfile record, and
+creates the required `quality/evidence/v<version>/README.md` scaffold. Package
+manifests inherit `workspace.package.version`, so no per-crate version edits are
+needed. Review and commit those generated repository changes before release
+qualification.
 
 ## Release qualification
 
