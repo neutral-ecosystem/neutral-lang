@@ -2,7 +2,7 @@
 
 # Stage 2.4 capture validation
 
-Status: validation gate complete; `v0.3.0` promotion pending
+Status: validation gate complete; released as `v0.3.0`
 
 Date: 2026-09-25  
 Toolchain: `rustc 1.98.1 (48a229cea 2026-09-01)`

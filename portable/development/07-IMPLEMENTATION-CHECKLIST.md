@@ -107,8 +107,8 @@ Evidence: [Stage 2.4 capture validation](evidence/stage2-4-validation.md).
 
 ### Promote to `v0.3.0`
 
-- [ ] Confirm Stage 2 checklist, manifest, and traceability are complete.
-- [ ] Release `v0.3.0`; update the ledger to `released`.
+- [*] Confirm Stage 2 checklist, manifest, and traceability are complete.
+- [*] Release `v0.3.0`; update the ledger to `released`.
 
 ## Stage 3 — modules, imports, SCCs, and diagnostics
 
