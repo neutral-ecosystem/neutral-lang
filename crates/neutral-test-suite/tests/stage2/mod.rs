@@ -15,17 +15,17 @@ use neutral_vocabulary::VocabularyLock;
 use std::collections::BTreeMap;
 
 /// Generic scalar table decoded from the closed fixture subset.
-type Table = BTreeMap<String, String>;
+pub(super) type Table = BTreeMap<String, String>;
 
 /// Minimal closed representation of one reviewed TOML fixture.
 #[derive(Default)]
-struct Fixture {
+pub(super) struct Fixture {
     /// Root scalar fields.
-    root: Table,
+    pub(super) root: Table,
     /// Named scalar tables.
-    tables: BTreeMap<String, Table>,
+    pub(super) tables: BTreeMap<String, Table>,
     /// Repeated tables.
-    arrays: BTreeMap<String, Vec<Table>>,
+    pub(super) arrays: BTreeMap<String, Vec<Table>>,
 }
 
 /// Current parser destination while reading a reviewed fixture.
@@ -39,10 +39,11 @@ enum Section {
 }
 
 /// Parses exactly the scalar/table subset used by Stage 2 fixtures.
-fn parse_fixture(text: &str) -> Fixture {
+pub(super) fn parse_fixture(text: &str) -> Fixture {
     let mut fixture = Fixture::default();
     let mut section = Section::Root;
-    for source_line in text.lines() {
+    let mut lines = text.lines();
+    while let Some(source_line) = lines.next() {
         let line = source_line.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
@@ -67,6 +68,16 @@ fn parse_fixture(text: &str) -> Fixture {
         let (key, value) = line
             .split_once('=')
             .expect("reviewed fixture line must be key/value");
+        let mut value = value.trim().to_owned();
+        if value.starts_with('[') && !value.ends_with(']') {
+            loop {
+                let continuation = lines.next().expect("reviewed array must be terminated");
+                value.push_str(continuation.trim());
+                if continuation.trim().ends_with(']') {
+                    break;
+                }
+            }
+        }
         let target = match &section {
             Section::Root => &mut fixture.root,
             Section::Table(name) => fixture
@@ -80,9 +91,7 @@ fn parse_fixture(text: &str) -> Fixture {
                 .expect("array table must exist"),
         };
         assert!(
-            target
-                .insert(key.trim().to_owned(), value.trim().to_owned())
-                .is_none(),
+            target.insert(key.trim().to_owned(), value).is_none(),
             "reviewed fixture keys must be unique"
         );
     }
@@ -90,7 +99,7 @@ fn parse_fixture(text: &str) -> Fixture {
 }
 
 /// Decodes the TOML basic-string escapes used by reviewed fixtures.
-fn string(value: &str) -> String {
+pub(super) fn string(value: &str) -> String {
     let body = value
         .strip_prefix('"')
         .and_then(|value| value.strip_suffix('"'))
@@ -115,12 +124,12 @@ fn string(value: &str) -> String {
 }
 
 /// Returns one required decoded string field.
-fn required_string(table: &Table, key: &str) -> String {
+pub(super) fn required_string(table: &Table, key: &str) -> String {
     string(table.get(key).expect("reviewed fixture field must exist"))
 }
 
 /// Returns one required positive integer field.
-fn number(table: &Table, key: &str) -> u64 {
+pub(super) fn number(table: &Table, key: &str) -> u64 {
     table
         .get(key)
         .expect("reviewed numeric field must exist")
@@ -145,7 +154,7 @@ fn hexadecimal(value: &str) -> Vec<u8> {
 }
 
 /// Converts one complete reviewed request fixture to the public contract.
-fn fixture_limits(fixture: &Fixture) -> ProjectCaptureLimits {
+pub(super) fn fixture_limits(fixture: &Fixture) -> ProjectCaptureLimits {
     let controls = fixture
         .tables
         .get("controls")
@@ -168,7 +177,8 @@ fn fixture_limits(fixture: &Fixture) -> ProjectCaptureLimits {
     })
 }
 
-fn request_fixture(text: &str) -> CapturedProjectRequest {
+/// Converts one reviewed request fixture to the public captured-project request.
+pub(super) fn request_fixture(text: &str) -> CapturedProjectRequest {
     let fixture = parse_fixture(text);
     assert_eq!(
         required_string(&fixture.root, "schema"),

@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.capture-fixture/1"
+case_id = "V1-MOD-006-FORBIDDEN-FORMS"
+request_version = "neutral.capture/v1"
+profile = "1.0"
+
+[controls]
+cancelled = false
+total_source_bytes = 4096
+source_bytes_per_unit = 1024
+source_units = 4
+source_id_bytes = 64
+module_id_bytes = 64
+vocabulary_units = 1
+vocabulary_bytes_per_unit = 1024
+total_vocabulary_bytes = 1024
+imports_per_module = 2
+import_edges = 4
+scc_units = 4
+declarations = 8
+diagnostics = 8
+output_bytes = 8192
+
+[[sources]]
+source_id = "source:forbidden-a"
+module_id = "forbidden::alpha"
+source_utf8 = "neu \"1.0\"\nmodule forbidden::alpha\nimport forbidden::* as all\n"
+
+[[sources]]
+source_id = "source:forbidden-b"
+module_id = "forbidden::beta"
+source_utf8 = "neu \"1.0\"\nmodule forbidden::beta\nimport ::forbidden::target as target\n"
+
+[[sources]]
+source_id = "source:forbidden-c"
+module_id = "forbidden::gamma"
+source_utf8 = "neu \"1.0\"\nmodule forbidden::gamma\nimport forbidden::target\n"
+
+[[sources]]
+source_id = "source:forbidden-d"
+module_id = "forbidden::delta"
+source_utf8 = "neu \"1.0\"\nmodule forbidden::delta\npublic import forbidden::target as target\n"

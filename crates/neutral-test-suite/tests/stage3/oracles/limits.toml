@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+requirements = ["V1-MOD-004", "V1-MOD-005"]
+
+[[case]]
+id = "V1-MOD-004-EDGES-EXACT"
+expected_outcome = "accept-graph"
+limit = "import_edges"
+configured = 2
+observed = 2
+dependency_first_sccs = ["chain::c", "chain::b", "chain::a"]
+
+[[case]]
+id = "V1-MOD-004-EDGES-OVER"
+expected_outcome = "reject-graph"
+diagnostic_code = "NEU-MOD-007"
+limit = "import_edges"
+configured = 1
+observed = 2
+partial_graph = "absent"
+
+[[case]]
+id = "V1-MOD-005-SCC-EXACT"
+expected_outcome = "accept-graph"
+limit = "scc_units"
+configured = 2
+observed = 2
+dependency_first_sccs = ["scc::a,scc::b"]
+
+[[case]]
+id = "V1-MOD-005-SCC-OVER"
+expected_outcome = "reject-graph"
+diagnostic_code = "NEU-MOD-007"
+limit = "scc_units"
+configured = 2
+observed = 3
+partial_graph = "absent"
+
+[[case]]
+id = "V1-MOD-004-PER-MODULE-EXACT"
+expected_outcome = "accept-graph"
+limit = "imports_per_module"
+configured = 2
+observed = 2
+dependency_first_sccs = ["fan::left", "fan::right", "fan::main"]
+
+[[case]]
+id = "V1-MOD-004-PER-MODULE-OVER"
+expected_outcome = "reject-graph"
+diagnostic_code = "NEU-MOD-007"
+limit = "imports_per_module"
+configured = 1
+observed = 2
+partial_graph = "absent"

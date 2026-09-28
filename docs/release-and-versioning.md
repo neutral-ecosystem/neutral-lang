@@ -73,7 +73,11 @@ The following example promotes the completed Stage 2 work as `v0.3.0`. Replace
 cargo xtask version prepare 0.3.0
 cargo xtask version check
 git add Cargo.toml Cargo.lock quality/evidence/v0.3.0
-git commit -m "[REL] v0.3.0"
+git tag -s v0.3.0 -m "[REL] release v0.3.0"
+git verify-tag v0.3.0
+git push origin v0.3.0
+
+git push origin HEAD
 git push origin main
 ```
 

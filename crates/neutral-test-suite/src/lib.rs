@@ -17,3 +17,7 @@ mod stage9;
 #[cfg(test)]
 #[path = "../tests/stage2/mod.rs"]
 mod stage2;
+
+#[cfg(test)]
+#[path = "../tests/stage3/mod.rs"]
+mod stage3;

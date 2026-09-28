@@ -142,9 +142,11 @@ Evidence: [Stage 3.2 core module graph](evidence/stage3-2-core-graph.md).
 
 ### `v0.3.4` — validation gate
 
-- [ ] Run full module/import/SCC corpus under shuffled and concurrent schedules.
-- [ ] Run graph limit, recovery, ambiguity, and diagnostic-order tests.
-- [ ] Audit exclusions: wildcard, relative, implicit, re-export, partial module.
+- [*] Run full module/import/SCC corpus under shuffled and concurrent schedules.
+- [*] Run graph limit, recovery, ambiguity, and diagnostic-order tests.
+- [*] Audit exclusions: wildcard, relative, implicit, re-export, partial module.
+
+Evidence: [Stage 3.4 graph validation](evidence/stage3-4-validation.md).
 
 ### Promote to `v0.4.0`
 

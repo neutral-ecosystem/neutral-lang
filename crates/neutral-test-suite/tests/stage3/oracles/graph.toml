@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+requirements = ["V1-MOD-001", "V1-MOD-002", "V1-MOD-004", "V1-MOD-005"]
+
+[[case]]
+id = "V1-MOD-005-VALID-CYCLE"
+expected_outcome = "accept-graph"
+ordered_modules = ["graph::alpha", "graph::orphan", "graph::zeta"]
+ordered_edges = ["graph::alpha -> graph::zeta", "graph::zeta -> graph::alpha"]
+dependency_first_sccs = ["graph::alpha,graph::zeta", "graph::orphan"]
+retained_disconnected_modules = ["graph::orphan"]
+authoritative_ir = "not-produced-by-stage3-graph"
+
+[[case]]
+id = "V1-XMOD-004-SEMANTIC-CYCLE"
+expected_outcome = "accept-graph"
+ordered_modules = ["cycle::left", "cycle::right"]
+ordered_edges = ["cycle::left -> cycle::right", "cycle::right -> cycle::left"]
+dependency_first_sccs = ["cycle::left,cycle::right"]
+stage4_expected_outcome = "reject-semantic-cycle"
+stage4_diagnostic_code = "NEU-XMOD-001"
+stage4_status = "reserved-pending-implementation"
+authoritative_ir = "not-produced-by-stage3-graph"

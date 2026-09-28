@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+requirements = ["V1-MOD-003", "V1-MOD-006"]
+
+[[case]]
+id = "V1-MOD-006-MISSING"
+expected_outcome = "reject-graph"
+diagnostic_code = "NEU-MOD-002"
+diagnostic_module = "missing::main"
+diagnostic_target = "missing::absent"
+partial_graph = "absent"
+
+[[case]]
+id = "V1-MOD-006-SELF"
+expected_outcome = "reject-graph"
+diagnostic_code = "NEU-MOD-003"
+diagnostic_module = "self_case::main"
+diagnostic_target = "self_case::main"
+partial_graph = "absent"
+
+[[case]]
+id = "V1-MOD-006-DUPLICATE"
+expected_outcome = "reject-graph"
+diagnostic_code = "NEU-MOD-004"
+diagnostic_module = "duplicate::main"
+diagnostic_target = "duplicate::shared"
+partial_graph = "absent"
+
+[[case]]
+id = "V1-MOD-003-ALIAS-COLLISION"
+expected_outcome = "reject-graph"
+diagnostic_code = "NEU-MOD-005"
+diagnostic_module = "alias::main"
+diagnostic_alias = "shared"
+partial_graph = "absent"
+
+[[case]]
+id = "V1-MOD-006-FORBIDDEN-FORMS"
+expected_outcome = "reject-graph"
+ordered_diagnostic_modules = [
+  "forbidden::alpha",
+  "forbidden::beta",
+  "forbidden::delta",
+  "forbidden::gamma",
+]
+ordered_diagnostic_codes = [
+  "NEU-MOD-006",
+  "NEU-MOD-006",
+  "NEU-MOD-006",
+  "NEU-MOD-001",
+]
+partial_graph = "absent"
