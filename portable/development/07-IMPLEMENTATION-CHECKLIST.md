@@ -16,12 +16,12 @@ checksums.
 
 ## Baseline — `v0.1.0`
 
-- [*] Confirm the implementation reports exactly `v0.1.0`.
-- [*] Run and retain the complete v0.1 conformance result.
-- [*] Confirm `neu "0.1"` remains explicit and no v1 syntax is accepted.
-- [*] Freeze the starting public API, dependency, diagnostic, and performance
+- [x] Confirm the implementation reports exactly `v0.1.0`.
+- [x] Run and retain the complete v0.1 conformance result.
+- [x] Confirm `neu "0.1"` remains explicit and no v1 syntax is accepted.
+- [x] Freeze the starting public API, dependency, diagnostic, and performance
   snapshots used for regression comparison.
-- [*] Verify the reproducible development environment and clean CI baseline.
+- [x] Verify the reproducible development environment and clean CI baseline.
 
 Baseline exit: all five items pass before Stage 1 implementation starts.
 
@@ -33,37 +33,37 @@ Target transition: `v0.1.0 -> v0.2.0`.
 
 ### `v0.1.1` — contract and fixture gate
 
-- [*] Freeze v0.1/v1.0 profile selection and unsupported-profile behavior.
-- [*] Freeze v1 exclusions, shared limits, diagnostic families, and migration
+- [x] Freeze v0.1/v1.0 profile selection and unsupported-profile behavior.
+- [x] Freeze v1 exclusions, shared limits, diagnostic families, and migration
   policy.
-- [*] Register Stage 1 positive, negative, boundary, and lookalike fixtures.
-- [*] Map Stage 1 requirements to fixture/oracle identifiers.
+- [x] Register Stage 1 positive, negative, boundary, and lookalike fixtures.
+- [x] Map Stage 1 requirements to fixture/oracle identifiers.
 
 ### `v0.1.2` — core implementation gate
 
-- [*] Implement explicit profile dispatch without reinterpreting v0.1.
-- [*] Implement deterministic rejection for unavailable v1 capabilities.
-- [*] Implement shared limits and stable diagnostic envelopes.
+- [x] Implement explicit profile dispatch without reinterpreting v0.1.
+- [x] Implement deterministic rejection for unavailable v1 capabilities.
+- [x] Implement shared limits and stable diagnostic envelopes.
 
 ### `v0.1.3` — public integration gate
 
-- [*] Expose profile/capability discovery through public APIs.
-- [*] Prove reader and CLI profile reporting agree.
-- [*] Prove no public API leaks compiler-private syntax or semantic types.
+- [x] Expose profile/capability discovery through public APIs.
+- [x] Prove reader and CLI profile reporting agree.
+- [x] Prove no public API leaks compiler-private syntax or semantic types.
 
 ### `v0.1.4` — validation gate
 
-- [*] Run inherited v0.1 corpus, Stage 1 corpus, dependency audit, limits, and
+- [x] Run inherited v0.1 corpus, Stage 1 corpus, dependency audit, limits, and
   deterministic repeated/concurrent tests.
-- [*] Review release notes and retained evidence with no skipped required test.
-- [*] Mark every Stage 1 item in the v1 contract checklist complete.
+- [x] Review release notes and retained evidence with no skipped required test.
+- [x] Mark every Stage 1 item in the v1 contract checklist complete.
 
 Evidence: [Stage 1 profile-foundation validation](evidence/stage1.md).
 
 ### Promote to `v0.2.0`
 
-- [*] Confirm `v0.1.4` evidence is complete and immutable.
-- [*] Release `v0.2.0`; update the ledger to `released`.
+- [x] Confirm `v0.1.4` evidence is complete and immutable.
+- [x] Release `v0.2.0`; update the ledger to `released`.
 
 ## Stage 2 — complete no-I/O project capture
 
@@ -71,44 +71,44 @@ Target transition: `v0.2.0 -> v0.3.0`.
 
 ### `v0.2.1` — contract and fixture gate
 
-- [*] Freeze `CapturedProjectRequest`, processing controls, limits, and failure
+- [x] Freeze `CapturedProjectRequest`, processing controls, limits, and failure
   outcomes.
-- [*] Register closure, disconnected-unit, duplicate/mismatch, exact-lock, and
+- [x] Register closure, disconnected-unit, duplicate/mismatch, exact-lock, and
   host-mapping fixtures.
-- [*] Freeze request/header and logical source/module identity rules.
+- [x] Freeze request/header and logical source/module identity rules.
 
 Evidence: [Stage 2.1 captured-project contract gate](evidence/stage2-1-contract-gate.md).
 
 ### `v0.2.2` — core implementation gate
 
-- [*] Implement bounded request validation and immutable capture.
-- [*] Implement complete supplied closure and exact vocabulary-lock coverage.
-- [*] Reject resolver callbacks and prove capture performs no external I/O.
+- [x] Implement bounded request validation and immutable capture.
+- [x] Implement complete supplied closure and exact vocabulary-lock coverage.
+- [x] Reject resolver callbacks and prove capture performs no external I/O.
 
 Evidence: [Stage 2.2 core capture validation](evidence/stage2-2-core-capture.md).
 
 ### `v0.2.3` — public integration gate
 
-- [*] Expose capture outcomes and resource facts through public contracts.
-- [*] Integrate CLI, tests, and Editor-host request construction through the
+- [x] Expose capture outcomes and resource facts through public contracts.
+- [x] Integrate CLI, tests, and Editor-host request construction through the
   same request schema.
-- [*] Verify shuffled source/lock order produces equivalent capture meaning.
+- [x] Verify shuffled source/lock order produces equivalent capture meaning.
 
 Evidence: [Stage 2.3 public capture integration](evidence/stage2-3-public-integration.md).
 
 ### `v0.2.4` — validation gate
 
-- [*] Run inherited v0.1 and all active capture suites.
-- [*] Run malformed-input, allocation-before-validation, cancellation, and
+- [x] Run inherited v0.1 and all active capture suites.
+- [x] Run malformed-input, allocation-before-validation, cancellation, and
   structural-limit tests.
-- [*] Review closure identity and capture replay evidence.
+- [x] Review closure identity and capture replay evidence.
 
 Evidence: [Stage 2.4 capture validation](evidence/stage2-4-validation.md).
 
 ### Promote to `v0.3.0`
 
-- [*] Confirm Stage 2 checklist, manifest, and traceability are complete.
-- [*] Release `v0.3.0`; update the ledger to `released`.
+- [x] Confirm Stage 2 checklist, manifest, and traceability are complete.
+- [x] Release `v0.3.0`; update the ledger to `released`.
 
 ## Stage 3 — modules, imports, SCCs, and diagnostics
 
@@ -116,44 +116,44 @@ Target transition: `v0.3.0 -> v0.4.0`.
 
 ### `v0.3.1` — contract and fixture gate
 
-- [*] Freeze module-name grammar, one-unit rule, import grammar, alias rules,
+- [x] Freeze module-name grammar, one-unit rule, import grammar, alias rules,
   graph ordering, SCC behavior, and diagnostic ordering.
-- [*] Register valid cycle, invalid semantic cycle, missing/self/duplicate
+- [x] Register valid cycle, invalid semantic cycle, missing/self/duplicate
   import, alias collision, and graph-limit fixtures.
-- [*] Review and pin Stage 3 fixture/oracle outcomes and the governing contract;
+- [x] Review and pin Stage 3 fixture/oracle outcomes and the governing contract;
   keep executable conformance pending until the implementation gate.
 
 Evidence: [Stage 3.1 module graph contract gate](evidence/stage3-1-contract-gate.md).
 
 ### `v0.3.2` — core implementation gate
 
-- [*] Implement module/import parsing and deterministic graph construction.
-- [*] Implement SCC condensation and independent per-module import, edge, and
+- [x] Implement module/import parsing and deterministic graph construction.
+- [x] Implement SCC condensation and independent per-module import, edge, and
   SCC bounds; condensation depth remains bounded by the source-unit limit.
-- [*] Keep imports logical and unable to use paths, URLs, or acquisition.
+- [x] Keep imports logical and unable to use paths, URLs, or acquisition.
 
 Evidence: [Stage 3.2 core module graph](evidence/stage3-2-core-graph.md).
 
 ### `v0.3.3` — public integration gate
 
-- [*] Expose module/import facts through captured project and diagnostics.
-- [*] Verify source maps cover all cross-unit diagnostics.
-- [*] Verify incremental and clean graph construction are equivalent.
+- [x] Expose module/import facts through captured project and diagnostics.
+- [x] Verify source maps cover all cross-unit diagnostics.
+- [x] Verify incremental and clean graph construction are equivalent.
 
 Evidence: [Stage 3.3 public graph integration](evidence/stage3-3-public-integration.md).
 
 ### `v0.3.4` — validation gate
 
-- [*] Run full module/import/SCC corpus under shuffled and concurrent schedules.
-- [*] Run graph limit, recovery, ambiguity, and diagnostic-order tests.
-- [*] Audit exclusions: wildcard, relative, implicit, re-export, partial module.
+- [x] Run full module/import/SCC corpus under shuffled and concurrent schedules.
+- [x] Run graph limit, recovery, ambiguity, and diagnostic-order tests.
+- [x] Audit exclusions: wildcard, relative, implicit, re-export, partial module.
 
 Evidence: [Stage 3.4 graph validation](evidence/stage3-4-validation.md).
 
 ### Promote to `v0.4.0`
 
-- [*] Confirm Stage 3 checklist, manifest, and traceability are complete.
-- [ ] Release `v0.4.0`; update the ledger to `released`.
+- [x] Confirm Stage 3 checklist, manifest, and traceability are complete.
+- [x] Release `v0.4.0`; update the ledger to `released`.
 
 ## Stage 4 — public APIs and cross-module semantics
 

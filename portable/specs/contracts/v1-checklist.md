@@ -14,22 +14,22 @@ here.
 
 ## Stage 1 — profile and foundation (`v0.1.0 -> v0.2.0`)
 
-- [*] V1-BASE-001 — Explicit v0.1 and v1.0 profile dispatch.
-- [*] V1-BASE-002 — v0.1 corpus runs unchanged on every release candidate.
-- [*] V1-BASE-003 — v1 diagnostics/limits have stable public families.
-- [*] V1-BASE-004 — No-I/O capture/compile dependency audit.
-- [*] V1-BASE-005 — v1 exclusions reject functions, effects, acquisition, and
+- [x] V1-BASE-001 — Explicit v0.1 and v1.0 profile dispatch.
+- [x] V1-BASE-002 — v0.1 corpus runs unchanged on every release candidate.
+- [x] V1-BASE-003 — v1 diagnostics/limits have stable public families.
+- [x] V1-BASE-004 — No-I/O capture/compile dependency audit.
+- [x] V1-BASE-005 — v1 exclusions reject functions, effects, acquisition, and
   product semantics.
 
 ## Stage 2 — captured project (`v0.2.0 -> v0.3.0`)
 
-- [*] V1-CAP-001 — Versioned complete `CapturedProjectRequest`.
-- [*] V1-CAP-002 — Unique logical module/source identities and header matching.
-- [*] V1-CAP-003 — Complete supplied closure, including disconnected modules.
-- [*] V1-CAP-004 — Exact lock coverage and conflicting host-mapping rejection.
-- [*] V1-CAP-005 — Independent bounds for bytes, modules, imports, SCCs,
+- [x] V1-CAP-001 — Versioned complete `CapturedProjectRequest`.
+- [x] V1-CAP-002 — Unique logical module/source identities and header matching.
+- [x] V1-CAP-003 — Complete supplied closure, including disconnected modules.
+- [x] V1-CAP-004 — Exact lock coverage and conflicting host-mapping rejection.
+- [x] V1-CAP-005 — Independent bounds for bytes, modules, imports, SCCs,
   declarations, diagnostics, and output.
-- [*] V1-CAP-006 — Capture freezes immutable inputs without resolver/I/O.
+- [x] V1-CAP-006 — Capture freezes immutable inputs without resolver/I/O.
 
 ## Stage 3 — modules (`v0.3.0 -> v0.4.0`)
 

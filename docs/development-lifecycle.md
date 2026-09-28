@@ -125,7 +125,7 @@ For each slice:
    coverage when the behavior crosses those boundaries.
 6. Update traceability and user/developer documentation in the same change.
 7. Run the focused test command, then `cargo xtask dev`.
-8. Change the plan marker from `[ ]` to `[*]` only when implementation,
+8. Change the plan marker from `[ ]` to `[x]` only when implementation,
    documentation, fixtures, tests, and required evidence all pass.
 
 Do not mark an item complete because code compiles or one happy-path fixture
@@ -200,7 +200,7 @@ review.
 
 A stage closes only when:
 
-- every required step and slice is marked `[*]`;
+- every required step and slice is marked `[x]`;
 - its linked requirements have executable evidence;
 - fixtures and oracles are registered and digest-consistent;
 - focused, complete, and CI-equivalent tests pass;
@@ -293,7 +293,7 @@ select one unchecked slice
 → add cross-boundary and adversarial evidence
 → update documentation and traceability
 → run cargo xtask dev
-→ mark [*]
+→ mark [x]
 → run cargo xtask ci pr before pushing
 ```
 
@@ -315,4 +315,4 @@ expected behavior is explicit again.
 - [ ] Documentation and traceability match the implementation.
 - [ ] `cargo xtask dev` passes.
 - [ ] `cargo xtask ci pr` passes before push.
-- [ ] The plan item is changed to `[*]` only after all applicable checks pass.
+- [ ] The plan item is changed to `[x]` only after all applicable checks pass.
