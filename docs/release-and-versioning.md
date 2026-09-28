@@ -99,7 +99,7 @@ fix, and run the evaluation again for the new `HEAD`.
 ```sh
 cargo xtask quality approve --release <version>
 git add quality/evidence/v<version> quality/STATUS.md
-git commit -m "[REL] approve <version> quality"
+git commit -m "[REL] v<version>"
 git push origin main
 ```
 
