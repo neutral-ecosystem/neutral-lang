@@ -116,15 +116,20 @@ Target transition: `v0.3.0 -> v0.4.0`.
 
 ### `v0.3.1` — contract and fixture gate
 
-- [ ] Freeze module-name grammar, one-unit rule, import grammar, alias rules,
+- [*] Freeze module-name grammar, one-unit rule, import grammar, alias rules,
   graph ordering, SCC behavior, and diagnostic ordering.
-- [ ] Register valid cycle, invalid semantic cycle, missing/self/duplicate
+- [*] Register valid cycle, invalid semantic cycle, missing/self/duplicate
   import, alias collision, and graph-limit fixtures.
+- [*] Review and pin Stage 3 fixture/oracle outcomes and the governing contract;
+  keep executable conformance pending until the implementation gate.
+
+Evidence: [Stage 3.1 module graph contract gate](evidence/stage3-1-contract-gate.md).
 
 ### `v0.3.2` — core implementation gate
 
 - [ ] Implement module/import parsing and deterministic graph construction.
-- [ ] Implement SCC condensation and independent SCC/depth/edge bounds.
+- [ ] Implement SCC condensation and independent per-module import, edge, and
+  SCC bounds; condensation depth remains bounded by the source-unit limit.
 - [ ] Keep imports logical and unable to use paths, URLs, or acquisition.
 
 ### `v0.3.3` — public integration gate

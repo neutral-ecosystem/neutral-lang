@@ -5,5 +5,5 @@
 # Normal developer commands do not derive their names or test selection from
 # these tracking values.
 active_stage = 3
-active_step = 1
-portable_state = "v1-stage3-module-contract-gate"
+active_step = 2
+portable_state = "v1-stage3-contract-reviewed-implementation-pending"

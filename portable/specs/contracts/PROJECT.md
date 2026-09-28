@@ -29,6 +29,9 @@ Import grammar, graph-closure validation, and SCC construction activate in
 Stage 3; capture never treats their absence in Stage 2 as permission to prune a
 supplied unit.
 
+Stage 3 graph construction follows the [module graph contract](MODULE-GRAPH.md)
+and uses the captured request's existing graph controls.
+
 ## IR and reader
 
 Successful compilation produces complete project IR: modules/import graph,

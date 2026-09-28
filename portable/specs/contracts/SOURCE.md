@@ -52,6 +52,9 @@ Modules form an import graph. Import SCCs are valid and analyzed as a group;
 only illegal declaration/value/embedded-record semantic cycles fail. Input and
 declaration order cannot affect accepted meaning or diagnostic order.
 
+The exact Stage 3 grammar, graph ordering, bounds, and diagnostic catalogue are
+frozen in the [module graph contract](MODULE-GRAPH.md).
+
 Declarations are private unless prefixed `public`. Imported modules can see
 only public names. A public signature must use only public transitively
 reachable types. A public value may reuse a private value, but every exposed

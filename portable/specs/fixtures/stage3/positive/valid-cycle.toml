@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.capture-fixture/1"
+case_id = "V1-MOD-005-VALID-CYCLE"
+request_version = "neutral.capture/v1"
+profile = "1.0"
+
+[controls]
+cancelled = false
+total_source_bytes = 4096
+source_bytes_per_unit = 1024
+source_units = 3
+source_id_bytes = 64
+module_id_bytes = 64
+vocabulary_units = 1
+vocabulary_bytes_per_unit = 1024
+total_vocabulary_bytes = 1024
+imports_per_module = 1
+import_edges = 2
+scc_units = 2
+declarations = 8
+diagnostics = 8
+output_bytes = 8192
+
+[[sources]]
+source_id = "source:graph-zeta"
+module_id = "graph::zeta"
+source_utf8 = "neu \"1.0\"\nmodule graph::zeta\nimport graph::alpha as alpha\n"
+
+[[sources]]
+source_id = "source:graph-orphan"
+module_id = "graph::orphan"
+source_utf8 = "neu \"1.0\"\nmodule graph::orphan\n"
+
+[[sources]]
+source_id = "source:graph-alpha"
+module_id = "graph::alpha"
+source_utf8 = "neu \"1.0\"\nmodule graph::alpha\nimport graph::zeta as zeta\n"

@@ -61,3 +61,21 @@ all must be present before `v1.0.0`; see [the release plan](../PLAN.md).
 Their normative envelope and failure catalogue are in the
 [captured project request contract](contracts/CAPTURE-REQUEST.md). Stage 2.1
 freezes these requirements and fixtures without claiming their implementation.
+
+## Stage 3 frozen module-graph identifiers
+
+- `V1-MOD-001`: exact v1 profile and qualified module/import grammar.
+- `V1-MOD-002`: one captured source unit per logical module, with exact
+  request/header agreement.
+- `V1-MOD-003`: required import aliases in the shared local alias namespace.
+- `V1-MOD-004`: deterministic bounded graph construction, canonical ordering,
+  and source-mapped graph diagnostics.
+- `V1-MOD-005`: valid import SCCs with bounded membership and deterministic
+  dependency-first condensation.
+- `V1-MOD-006`: missing, self, duplicate, wildcard, relative, implicit, and
+  re-export import failures without acquisition.
+
+The normative grammar, graph behavior, limits, and `NEU-MOD` diagnostic
+catalogue are in the [module graph contract](contracts/MODULE-GRAPH.md).
+The registered semantic-cycle fixture also reserves Stage 4 `V1-XMOD-004`;
+Stage 3 must accept its import SCC, not claim semantic evaluation.

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "stage2-capture-fixtures-active"
+status = "stage2-active-stage3-reviewed"
 profile = "1.0"
 
 # v1 fixture bytes and expected outcomes are added by their owning stage.
@@ -47,3 +47,25 @@ fixture_families = [
 ]
 oracle_directory = "portable/conformance/oracles/stage2"
 review_date = "2026-09-25"
+
+[[suite]]
+id = "stage3-module-graph"
+status = "reviewed-pending-implementation"
+requirements = [
+  "V1-MOD-001",
+  "V1-MOD-002",
+  "V1-MOD-003",
+  "V1-MOD-004",
+  "V1-MOD-005",
+  "V1-MOD-006",
+  "V1-XMOD-004",
+]
+fixture_families = [
+  "valid-cycle-and-disconnected-unit",
+  "semantic-cycle-reserved-for-stage4",
+  "missing-self-duplicate-import",
+  "alias-collision-and-forbidden-forms",
+  "exact-and-one-over-graph-limits",
+]
+oracle_directory = "portable/conformance/oracles/stage3"
+review_date = "2026-09-28"

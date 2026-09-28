@@ -15,3 +15,4 @@ contracts and release evidence remain under `conformance/releases/` and
 - [Stage 2.2 core capture validation](stage2-2-core-capture.md)
 - [Stage 2.3 public capture integration](stage2-3-public-integration.md)
 - [Stage 2.4 capture validation](stage2-4-validation.md)
+- [Stage 3.1 module graph contract gate](stage3-1-contract-gate.md)

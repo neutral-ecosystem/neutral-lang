@@ -13,6 +13,8 @@ rules for values, records, lists, source literals, or v0 vocabulary encoding.
   views.
 - [CAPTURE-REQUEST.md](CAPTURE-REQUEST.md): exact Stage 2 request envelope,
   controls, limits, identities, host boundary, and fail-closed outcomes.
+- [MODULE-GRAPH.md](MODULE-GRAPH.md): Stage 3 module grammar, import edges,
+  aliases, SCC ordering, limits, and graph diagnostics.
 - [VOCABULARY.md](VOCABULARY.md): exact data-only vocabulary locks and authoring
   metadata boundary.
 - [AUTHORING.md](AUTHORING.md): the separately versioned Editor bridge.

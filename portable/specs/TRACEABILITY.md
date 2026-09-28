@@ -21,8 +21,13 @@ are added to the manifest when their stage activates.
 | V1-CAP-004 — locks and host mappings | [CAPTURE-REQUEST](contracts/CAPTURE-REQUEST.md), [VOCABULARY](contracts/VOCABULARY.md) | 01 | exact/missing/extra/conflicting lock and host mapping oracles |
 | V1-CAP-005 — independent limits | [CAPTURE-REQUEST](contracts/CAPTURE-REQUEST.md) | 01 | exact/one-over capture limit evidence |
 | V1-CAP-006 — immutable no-I/O capture | [CAPTURE-REQUEST](contracts/CAPTURE-REQUEST.md), [PROJECT](contracts/PROJECT.md) | 01 | dependency audit and no-resolver public-boundary evidence |
-| Module graph and SCCs | [PROJECT](contracts/PROJECT.md), [SOURCE](contracts/SOURCE.md) | 01 | Stage 3 graph/SCC limits and negative diagnostics |
-| Public semantics | [SOURCE](contracts/SOURCE.md) | 02 | visibility, closure, cross-module reuse/ref, semantic-cycle corpus |
+| V1-MOD-001 — module/import grammar | [MODULE-GRAPH](contracts/MODULE-GRAPH.md), [SOURCE](contracts/SOURCE.md) | 01 | qualified-module and forbidden-form fixtures |
+| V1-MOD-002 — one unit per module | [CAPTURE-REQUEST](contracts/CAPTURE-REQUEST.md), [MODULE-GRAPH](contracts/MODULE-GRAPH.md) | 01 | Stage 2 duplicate-module oracle and Stage 3 graph fixtures |
+| V1-MOD-003 — local aliases | [MODULE-GRAPH](contracts/MODULE-GRAPH.md) | 01 | alias-collision and required-alias fixtures |
+| V1-MOD-004 — deterministic bounded graph | [MODULE-GRAPH](contracts/MODULE-GRAPH.md) | 01 | graph ordering and edge/per-module exact/one-over oracles |
+| V1-MOD-005 — SCC behavior | [MODULE-GRAPH](contracts/MODULE-GRAPH.md) | 01 | valid cycle, disconnected member, and SCC exact/one-over oracles |
+| V1-MOD-006 — invalid imports | [MODULE-GRAPH](contracts/MODULE-GRAPH.md) | 01 | missing/self/duplicate/forbidden-form negative oracles |
+| Public semantics, including V1-XMOD-004 | [SOURCE](contracts/SOURCE.md), [MODULE-GRAPH](contracts/MODULE-GRAPH.md) | 02 | visibility, closure, cross-module reuse/ref, semantic-cycle corpus; import SCC accepted in Stage 3 |
 | Vocabulary/location values | [VOCABULARY](contracts/VOCABULARY.md) | 02 | exact-lock and inert-value corpus |
 | Project IR and reader | [PROJECT](contracts/PROJECT.md) | 02 | validated IR, public view, independent reader probe |
 | Identity/artifacts | [PROJECT](contracts/PROJECT.md) | 03 | canonical transcript and SHA-256 vectors |

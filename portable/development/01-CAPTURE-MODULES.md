@@ -35,6 +35,11 @@ aliased logical-module imports; deterministic graph construction; and SCC
 collection. Imports neither contain paths/URLs nor perform resolution. A module
 cycle is valid unless a separately defined semantic cycle is invalid.
 
+The Stage 3.1 grammar, alias, graph, SCC, limit, and diagnostic decisions are
+frozen in the [module graph contract](../specs/contracts/MODULE-GRAPH.md).
+Its reviewed fixture/oracle inventory is recorded in the
+[Stage 3.1 gate evidence](evidence/stage3-1-contract-gate.md).
+
 ## Exit evidence
 
 Positive and negative multi-file request fixtures cover duplicate modules,

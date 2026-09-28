@@ -16,7 +16,7 @@ only when its `.4 -> next .0` promotion evidence is retained.
 | --- | --- | --- | --- |
 | 1 | `v0.1.0 -> v0.2.0` | released | [profile matrix, inherited v0 corpus, v1 exclusion/audit evidence](evidence/stage1.md); release promotion complete |
 | 2 | `v0.2.0 -> v0.3.0` | released | [Stage 2.1 contract gate](evidence/stage2-1-contract-gate.md); [Stage 2.2 core capture](evidence/stage2-2-core-capture.md); [Stage 2.3 public integration](evidence/stage2-3-public-integration.md); [Stage 2.4 validation](evidence/stage2-4-validation.md); `v0.3.0` release and quality approval complete |
-| 3 | `v0.3.0 -> v0.4.0` | not started | module/import/SCC/determinism fixtures |
+| 3 | `v0.3.0 -> v0.4.0` | in progress | [Stage 3.1 module graph contract gate](evidence/stage3-1-contract-gate.md); module/import/SCC implementation and validation pending |
 | 4 | `v0.4.0 -> v0.5.0` | not started | visibility/public closure/cross-module semantic fixtures |
 | 5 | `v0.5.0 -> v0.6.0` | not started | exact vocabulary lock and inert-location fixtures |
 | 6 | `v0.6.0 -> v0.7.0` | not started | project IR/reader/view public probe |

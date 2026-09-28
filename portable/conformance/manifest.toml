@@ -182,6 +182,104 @@ oracle = "portable/conformance/oracles/stage2/limits.toml"
 oracle_sha256 = "e143bab8aa2f9aa0076c1bbf50e1ed7e481fe2d41ce2b188ec9fb101eaff7d04"
 
 [[suite]]
+id = "stage3-module-graph"
+profile = "1.0"
+active_from_stage = 3
+status = "reviewed-pending-implementation"
+
+[[case]]
+id = "V1-MOD-005-VALID-CYCLE"
+fixture = "portable/specs/fixtures/stage3/positive/valid-cycle.toml"
+fixture_sha256 = "c835aebc8c97a4a7f908a573cea44cabf5e1077be9ab66790262b2532aef290f"
+oracle = "portable/conformance/oracles/stage3/graph.toml"
+oracle_sha256 = "3d46e24ab1591d37b48e0cd088b694993bd4b533f79fbda94e303076d8ba9bbb"
+
+[[case]]
+id = "V1-XMOD-004-SEMANTIC-CYCLE"
+active_from_stage = 4
+fixture = "portable/specs/fixtures/stage3/negative/semantic-cycle.toml"
+fixture_sha256 = "4066dd337caf7c45a43e21c61d77ed5c24c1998ec1fa2752cc579cfffc475a4d"
+oracle = "portable/conformance/oracles/stage3/graph.toml"
+oracle_sha256 = "3d46e24ab1591d37b48e0cd088b694993bd4b533f79fbda94e303076d8ba9bbb"
+
+[[case]]
+id = "V1-MOD-006-MISSING"
+fixture = "portable/specs/fixtures/stage3/negative/missing-import.toml"
+fixture_sha256 = "0c12a82ad7ae5db7af1f11645fd380fd75aa3bed5ded93ae36be6c1e15c3222f"
+oracle = "portable/conformance/oracles/stage3/import-errors.toml"
+oracle_sha256 = "88b6fccc33b8de08d9b41a032620ea514338313e1a89eb292f1ababd51afdd5f"
+
+[[case]]
+id = "V1-MOD-006-SELF"
+fixture = "portable/specs/fixtures/stage3/negative/self-import.toml"
+fixture_sha256 = "40eae3672469736e3b7eff16d8e35eb1dd9c4e8468c144c7087769e558adc668"
+oracle = "portable/conformance/oracles/stage3/import-errors.toml"
+oracle_sha256 = "88b6fccc33b8de08d9b41a032620ea514338313e1a89eb292f1ababd51afdd5f"
+
+[[case]]
+id = "V1-MOD-006-DUPLICATE"
+fixture = "portable/specs/fixtures/stage3/negative/duplicate-import.toml"
+fixture_sha256 = "6308c54b88c692a37b9293b5139e01e30047e483f78c941aadb8e3db40187b16"
+oracle = "portable/conformance/oracles/stage3/import-errors.toml"
+oracle_sha256 = "88b6fccc33b8de08d9b41a032620ea514338313e1a89eb292f1ababd51afdd5f"
+
+[[case]]
+id = "V1-MOD-003-ALIAS-COLLISION"
+fixture = "portable/specs/fixtures/stage3/negative/alias-collision.toml"
+fixture_sha256 = "f1c976529adf3f87b4a62464600732ae64ae0532d4a9fc22be065761c5a08123"
+oracle = "portable/conformance/oracles/stage3/import-errors.toml"
+oracle_sha256 = "88b6fccc33b8de08d9b41a032620ea514338313e1a89eb292f1ababd51afdd5f"
+
+[[case]]
+id = "V1-MOD-006-FORBIDDEN-FORMS"
+fixture = "portable/specs/fixtures/stage3/negative/forbidden-import-forms.toml"
+fixture_sha256 = "1176b3d5b302c700612ecd10e55286f0e9694838ca145dbc8fed56f708eff4e3"
+oracle = "portable/conformance/oracles/stage3/import-errors.toml"
+oracle_sha256 = "88b6fccc33b8de08d9b41a032620ea514338313e1a89eb292f1ababd51afdd5f"
+
+[[case]]
+id = "V1-MOD-004-EDGES-EXACT"
+fixture = "portable/specs/fixtures/stage3/boundary/import-edges-exact.toml"
+fixture_sha256 = "ce4c1d2324356b70d4cedd9080b506dcc1fdd19ee6e649dee3e7e88ca711d951"
+oracle = "portable/conformance/oracles/stage3/limits.toml"
+oracle_sha256 = "6fd04add9d9a4a33303c1701bfb305e2c10ab188aa357b7413e1b73bc28879b6"
+
+[[case]]
+id = "V1-MOD-004-EDGES-OVER"
+fixture = "portable/specs/fixtures/stage3/boundary/import-edges-over.toml"
+fixture_sha256 = "998cb15064e8a358c7e589c73742e56eaba623054032c6b0f943da4d76b91185"
+oracle = "portable/conformance/oracles/stage3/limits.toml"
+oracle_sha256 = "6fd04add9d9a4a33303c1701bfb305e2c10ab188aa357b7413e1b73bc28879b6"
+
+[[case]]
+id = "V1-MOD-005-SCC-EXACT"
+fixture = "portable/specs/fixtures/stage3/boundary/scc-units-exact.toml"
+fixture_sha256 = "2e6df76d6e8938009e070acc5198cf9ed8b21236f9b4eebe22e5d502ef4b4c8a"
+oracle = "portable/conformance/oracles/stage3/limits.toml"
+oracle_sha256 = "6fd04add9d9a4a33303c1701bfb305e2c10ab188aa357b7413e1b73bc28879b6"
+
+[[case]]
+id = "V1-MOD-005-SCC-OVER"
+fixture = "portable/specs/fixtures/stage3/boundary/scc-units-over.toml"
+fixture_sha256 = "2e7b7f75b57a7d504dcec7fc175e07660b053b83b1f9002782ea821a103017d9"
+oracle = "portable/conformance/oracles/stage3/limits.toml"
+oracle_sha256 = "6fd04add9d9a4a33303c1701bfb305e2c10ab188aa357b7413e1b73bc28879b6"
+
+[[case]]
+id = "V1-MOD-004-PER-MODULE-EXACT"
+fixture = "portable/specs/fixtures/stage3/boundary/imports-per-module-exact.toml"
+fixture_sha256 = "9b2008f940895aec0383bb96cd80cd44a10f721e4a7a6c1e6cc97fab53dc7a28"
+oracle = "portable/conformance/oracles/stage3/limits.toml"
+oracle_sha256 = "6fd04add9d9a4a33303c1701bfb305e2c10ab188aa357b7413e1b73bc28879b6"
+
+[[case]]
+id = "V1-MOD-004-PER-MODULE-OVER"
+fixture = "portable/specs/fixtures/stage3/boundary/imports-per-module-over.toml"
+fixture_sha256 = "43e59d98492fe1d827f17e6897866128de5c675be4ff76711ceb9a3d80edf468"
+oracle = "portable/conformance/oracles/stage3/limits.toml"
+oracle_sha256 = "6fd04add9d9a4a33303c1701bfb305e2c10ab188aa357b7413e1b73bc28879b6"
+
+[[suite]]
 id = "visibility-and-vocabularies"
 profile = "1.0"
 active_from_stage = 4
