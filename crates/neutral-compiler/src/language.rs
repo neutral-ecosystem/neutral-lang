@@ -13,3 +13,13 @@ pub(crate) mod names {
         STRING, TRUE, USE, is_protected_name,
     };
 }
+
+/// Exact v1 graph keywords kept separate from the frozen v0 token vocabulary.
+pub(crate) mod graph_names {
+    /// Starts one logical module import.
+    pub(crate) const IMPORT: &str = "import";
+    /// Introduces the required local alias.
+    pub(crate) const AS: &str = "as";
+    /// Public declaration prefix; imports cannot be re-exported.
+    pub(crate) const PUBLIC: &str = "public";
+}

@@ -20,9 +20,15 @@ use std::sync::Arc;
 
 mod frontend;
 mod language;
+mod module_graph;
 mod project_capture;
 mod semantics;
 
+pub use module_graph::diagnostics as module_graph_diagnostics;
+pub use module_graph::{
+    GraphComponent, GraphEdge, GraphModule, ModuleGraph, ModuleGraphDiagnostic, ModuleGraphFailure,
+    build_module_graph,
+};
 pub use project_capture::{
     CAPTURE_REQUEST_VERSION, CapturedProject, CapturedProjectRequest,
     CapturedProjectRequestBuilder, CapturedProjectSource, CapturedProjectVocabulary,

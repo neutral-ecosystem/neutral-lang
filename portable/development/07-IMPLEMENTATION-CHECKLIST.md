@@ -127,10 +127,12 @@ Evidence: [Stage 3.1 module graph contract gate](evidence/stage3-1-contract-gate
 
 ### `v0.3.2` — core implementation gate
 
-- [ ] Implement module/import parsing and deterministic graph construction.
-- [ ] Implement SCC condensation and independent per-module import, edge, and
+- [*] Implement module/import parsing and deterministic graph construction.
+- [*] Implement SCC condensation and independent per-module import, edge, and
   SCC bounds; condensation depth remains bounded by the source-unit limit.
-- [ ] Keep imports logical and unable to use paths, URLs, or acquisition.
+- [*] Keep imports logical and unable to use paths, URLs, or acquisition.
+
+Evidence: [Stage 3.2 core module graph](evidence/stage3-2-core-graph.md).
 
 ### `v0.3.3` — public integration gate
 

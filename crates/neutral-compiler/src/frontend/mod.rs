@@ -10,9 +10,12 @@ use neutral_core::{
 
 mod format_style;
 mod formatter;
+mod graph_syntax;
 mod layout;
 mod lexer;
 mod parser;
+
+pub(crate) use graph_syntax::{GraphImport, GraphSyntaxErrorKind, scan_graph_source};
 
 /// Raw lexing result with nonsemantic trivia kept separate from parser tokens.
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -2,7 +2,7 @@
 
 # Module and import graph contract
 
-Status: accepted Stage 3 contract; implementation pending
+Status: accepted Stage 3 contract; core graph implemented, public integration pending
 
 This contract refines [SOURCE](SOURCE.md) and [PROJECT](PROJECT.md) for Stage 3.
 It uses the already frozen `neutral.capture/v1` request and its processing

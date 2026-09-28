@@ -19,6 +19,11 @@ CLI, Editor-style hosts, and test harnesses supply the same logical source and
 vocabulary facts while retaining locations outside core. Successful capture
 exposes exact immutable sources, vocabularies, aggregate resource facts,
 meaning equivalence, and replay through a newly supplied cancellation token.
+The pure `build_module_graph` API scans those already-captured bytes for logical
+module imports, validates the complete supplied closure, and returns a
+deterministic, bounded SCC graph with source-accounted edges. Graph construction
+cannot acquire source units or resolve paths and URLs. Attaching these graph
+facts to the public compilation result is a separate integration step.
 Its private frontend recognizes the supported source, identifier, comment, exact-number,
 bounded-string, Boolean, nullable-scalar, null, nominal-record, and
 contextual-record behavior.
