@@ -91,6 +91,7 @@ fn automation_parses_the_stable_command_surface() {
         ),
         (vec!["package"], Task::Package),
         (vec!["release", "prepare"], Task::ReleasePrepare),
+        (vec!["release", "tag"], Task::ReleaseTag),
         (
             vec!["version", "prepare", "0.2.0-rc.1"],
             Task::Version(VersionAction::Prepare("0.2.0-rc.1".to_owned())),

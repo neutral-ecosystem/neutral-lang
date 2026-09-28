@@ -76,6 +76,7 @@ Stable commands:\n\
   docs                                           generate workspace API documentation\n\
   validate <artifact>|binaries                   validate a release artifact or binaries\n\
   package                                        assemble the selected distribution\n\
+  release tag                                    print the tag derived from release TOML and Cargo.toml\n\
   release prepare                                prepare, but never publish, a release\n\
   version show|check|prepare <version>            inspect or prepare package versioning\n\
   portable install <directory>                   atomically install a reviewed portable\n\
@@ -148,6 +149,8 @@ pub(crate) enum Task {
     Package,
     /// Prepare a release without publishing it.
     ReleasePrepare,
+    /// Print the current release tag for automation without parsing human output.
+    ReleaseTag,
     /// Inspect or prepare package versioning.
     Version(VersionAction),
     /// Verify or snapshot the active portable package.
@@ -321,6 +324,7 @@ pub(crate) fn parse(arguments: &[String]) -> Result<Task, String> {
         ))),
         [PACKAGE_COMMAND] => Ok(Task::Package),
         [RELEASE_COMMAND, "prepare"] => Ok(Task::ReleasePrepare),
+        [RELEASE_COMMAND, "tag"] => Ok(Task::ReleaseTag),
         [VERSION_COMMAND, "show"] => Ok(Task::Version(VersionAction::Show)),
         [VERSION_COMMAND, "check"] => Ok(Task::Version(VersionAction::Check)),
         [VERSION_COMMAND, "prepare", version] => {

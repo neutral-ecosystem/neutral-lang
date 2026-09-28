@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          ref: main
+          ref: ${{ github.event_name == 'push' && github.ref || 'main' }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -27,16 +27,23 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           tag_commit="$(git rev-list -n 1 "$RELEASE_TAG")"
-          main_commit="$(git rev-parse HEAD)"
+          main_commit="$(git rev-parse refs/remotes/origin/main)"
           test "$tag_commit" = "$main_commit"
+          git switch -C main "$tag_commit"
+      - name: Verify tag matches the workspace release plan
+        if: github.event_name == 'push'
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: test "$(cargo xtask release tag)" = "$RELEASE_TAG"
       - run: cargo xtask release prepare
       - name: Resolve package directory
         id: package
         run: |
           candidate_commit="$(git rev-parse HEAD)"
           host="$(rustc -vV | sed -n 's/^host: //p')"
-          package_directory="$(find test-results/release/package -mindepth 3 -maxdepth 3 -type d -path "*/$candidate_commit/$host" -print -quit)"
-          test -n "$package_directory"
+          release_tag="$(cargo xtask release tag)"
+          package_directory="test-results/release/package/$release_tag/$candidate_commit/$host"
+          test -d "$package_directory"
           test -f "$package_directory/SHA256SUMS"
           echo "directory=$package_directory" >> "$GITHUB_OUTPUT"
       - name: Verify assembled checksums

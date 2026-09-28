@@ -50,8 +50,8 @@ cargo xtask version prepare <version>
 independent frozen contract versions. `cargo xtask version check` verifies that
 every package and lockfile entry inherits the one workspace package version.
 
-`cargo xtask version prepare <version>` accepts a plain SemVer value—such as
-`0.3.0`, not `v0.3.0`. It requires a clean worktree and automatically updates:
+`cargo xtask version prepare <version>` accepts plain SemVer, without the `v`
+prefix. It requires a clean worktree and automatically updates:
 
 - root `Cargo.toml` (`workspace.package.version`);
 - matching workspace-package records in `Cargo.lock`; and
@@ -64,20 +64,18 @@ evaluation.
 
 ## Full promotion procedure
 
-The following example promotes the completed Stage 2 work as `v0.3.0`. Replace
-`0.3.0` only with the approved next package version.
+Use the next approved package version for `<version>` below. Once prepared, the
+root `Cargo.toml` is authoritative; neither the shell script nor the workflow
+hardcodes a release version. `cargo xtask release tag` prints the corresponding
+`v<version>` directly from the workspace version and `config/release.toml`.
 
 ### 1. Prepare and commit the version
 
 ```sh
-cargo xtask version prepare 0.3.0
+cargo xtask version prepare <version>
 cargo xtask version check
-git add Cargo.toml Cargo.lock quality/evidence/v0.3.0
-git tag -s v0.3.0 -m "[REL] release v0.3.0"
-git verify-tag v0.3.0
-git push origin v0.3.0
-
-git push origin HEAD
+git add Cargo.toml Cargo.lock quality/evidence/v<version>
+git commit -m "[REL] prepare <version>"
 git push origin main
 ```
 
@@ -99,9 +97,9 @@ fix, and run the evaluation again for the new `HEAD`.
 ### 3. Record the human release approval
 
 ```sh
-cargo xtask quality approve --release 0.3.0
-git add quality/evidence/v0.3.0 quality/STATUS.md
-git commit -m "[REL] approve v0.3.0 quality"
+cargo xtask quality approve --release <version>
+git add quality/evidence/v<version> quality/STATUS.md
+git commit -m "[REL] approve <version> quality"
 git push origin main
 ```
 
@@ -113,10 +111,9 @@ local machine, retains the decision.
 
 ### 4. Assemble and validate release files
 
-## Release qualification
-
 ```sh
-cargo xtask release prepare
+scripts/linux/release.sh tag
+scripts/linux/release.sh prepare
 ```
 
 Release preparation validates branch, `HEAD`, worktree cleanliness, version
@@ -124,28 +121,34 @@ consistency, quality evidence, approval, and distribution scope. It assembles
 candidate binaries, checksums, manifests, and supporting evidence beneath
 `test-results/release/`.
 
-Inspect the generated package before publication. The local command does not
-push commits, create tags, upload artifacts, publish packages, or create a
-GitHub release.
+Inspect the generated package before publication. `prepare` does not push
+commits, create tags, upload artifacts, or create a GitHub release. The exact
+package directory is
+`test-results/release/package/<tag>/<main-commit>/<host-target>/`.
 
 ### 5. Create the source tag and publish
 
-After reviewing the assembled files, create the signed tag from the clean,
-approved `main` commit and push it:
+After reviewing the assembled files, run the explicit publication action from
+clean `main` whose `HEAD` has already been pushed to `origin/main`:
 
 ```sh
-git tag -s v0.3.0 -m "Neutral v0.3.0"
-git push origin v0.3.0
+scripts/linux/release.sh publish
 ```
 
-The tag-triggered GitHub release workflow is the only publication step. It can
-build and attach the selected binary assets, but it must not replace the local
-approval, quality evaluation, or release preparation above.
+The script derives the tag from the release plan, re-runs release qualification,
+creates and verifies a signed tag only if it does not already exist, and pushes
+that tag without force. It refuses to move an existing local or remote tag.
+The tag-triggered GitHub workflow checks out that exact tag commit, confirms it
+is still `main` HEAD, rebuilds and verifies the selected package, and creates
+a draft GitHub Release with the title `neutral-lang <tag>`. Review the draft
+and its assets before any separate publication decision. A manual
+workflow dispatch qualifies current `main` without publishing. Neither path
+replaces the human approval step.
 
 ## Recovery and common mistakes
 
-- **`invalid package SemVer: v0.3.0`** — pass `0.3.0` to `version prepare` and
-  `quality approve`; only the Git tag has the `v` prefix.
+- **`invalid package SemVer: v<version>`** — pass plain `<version>` to
+  `version prepare` and `quality approve`; only the Git tag has the `v` prefix.
 - **`quality evaluation requires a clean worktree`** — commit or intentionally
   discard unrelated work, then rerun the evaluation for the new `HEAD`.
 - **`release evidence directory is not prepared`** — run and commit `cargo
@@ -156,3 +159,7 @@ approval, quality evaluation, or release preparation above.
   a valid `quality approve` command is the documented exception.
 - **`release prepare` rejects the branch or worktree** — check out `main`, push
   the relevant commits, and ensure `git status --short` has no output.
+- **The derived tag already exists** — release tags are immutable. Do not
+  retarget or force-push it. Check whether the corresponding release already
+  contains the expected assets; use a new approved workspace version for a
+  new source candidate.

@@ -74,6 +74,10 @@ fn execute(task: Task) -> Result<(), String> {
         Task::Validate(target) => validate(target),
         Task::Package => package(),
         Task::ReleasePrepare => release_prepare(),
+        Task::ReleaseTag => {
+            println!("{}", release_plan()?.release_tag);
+            Ok(())
+        }
         Task::Version(action) => version(action),
         Task::Portable(action) => portable(action),
         Task::Clean => clean_results(),
@@ -553,11 +557,16 @@ fn check_workflow_contract() -> Result<(), String> {
     }
     for requirement in [
         "tags: ['v*']",
-        "ref: main",
+        "github.event_name == 'push' && github.ref || 'main'",
         "Verify tag identifies main HEAD",
+        "git switch -C main",
+        "cargo xtask release tag",
+        "sha256sum --check SHA256SUMS",
         "contents: write",
         "if: github.event_name == 'push'",
         "gh release create",
+        "--verify-tag",
+        "--draft",
     ] {
         if !release.contains(requirement) {
             return Err(format!(
@@ -1345,6 +1354,54 @@ fn require_main_head_checkout() -> Result<String, String> {
     Ok(head)
 }
 
+/// Requires an approved release candidate followed only by its evidence commit.
+fn verify_release_approval() -> Result<(), String> {
+    let plan = release_plan()?;
+    let approvals = read_quality_approvals()?;
+    let approval = approvals
+        .iter()
+        .find(|record| record.release == plan.release_tag)
+        .ok_or_else(|| {
+            format!(
+                "release {} has no quality approval record",
+                plan.release_tag
+            )
+        })?;
+    if approval.status != "approved" {
+        return Err(format!(
+            "release {} quality approval is not approved",
+            plan.release_tag
+        ));
+    }
+    let root = workspace_root()?;
+    if approval.quality_gates_sha256 != sha256_file(&root.join(constants::QUALITY_GATES_FILE))? {
+        return Err("quality gates changed after release approval".to_owned());
+    }
+    let parent = command_output("git", &["rev-parse", "HEAD^"])?;
+    if parent != approval.commit {
+        return Err(format!(
+            "release {} must use the approval-evidence commit immediately after its evaluated candidate {}",
+            plan.release_tag, approval.commit
+        ));
+    }
+    let changed = command_output("git", &["diff", "--name-only", &approval.commit, "HEAD"])?;
+    let expected = BTreeSet::from([
+        format!(
+            "{}/{}/record.toml",
+            constants::QUALITY_EVIDENCE_DIRECTORY,
+            plan.release_tag
+        ),
+        constants::QUALITY_STATUS_FILE.to_owned(),
+    ]);
+    let actual = changed.lines().map(str::to_owned).collect::<BTreeSet<_>>();
+    if actual != expected {
+        return Err(format!(
+            "approval commit must change only {expected:?}; found {actual:?}"
+        ));
+    }
+    Ok(())
+}
+
 /// One immutable generated distribution file.
 struct DistributionAsset {
     /// Plain filename beneath the release package directory.
@@ -1633,6 +1690,7 @@ fn release_prepare() -> Result<(), String> {
                 "main-head",
                 Box::new(|| require_main_head_checkout().map(drop)),
             ),
+            ("approval", Box::new(verify_release_approval)),
             ("quality", Box::new(|| quality(QualityProfile::Release))),
             ("package", Box::new(package)),
         ],
