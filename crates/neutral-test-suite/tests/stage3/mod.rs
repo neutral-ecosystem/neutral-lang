@@ -300,6 +300,121 @@ fn determinism_stage3_corpus_is_shuffle_and_concurrency_invariant() {
 }
 
 #[test]
+/// Public graph facts and cross-unit diagnostics retain exact captured source maps.
+fn integration_stage3_public_graph_locations_cover_every_unit() {
+    let valid = capture_project(request_fixture(include_str!(
+        "fixtures/positive/valid-cycle.toml"
+    )))
+    .expect("valid graph request must capture");
+    let graph = valid
+        .module_graph(&CancellationToken::new())
+        .expect("public project graph must build");
+    for module in graph.modules() {
+        let source = valid
+            .sources()
+            .iter()
+            .find(|source| source.source_id() == module.source_id())
+            .expect("module source ID must name a captured unit");
+        let location = module.source_location();
+        assert_eq!(location.source(), source.digest());
+        assert!(
+            usize::try_from(location.span().end()).is_ok_and(|end| end <= source.bytes().len())
+        );
+    }
+    for edge in graph.edges() {
+        let source = valid
+            .sources()
+            .iter()
+            .find(|source| source.source_id() == edge.source_id())
+            .expect("import source ID must name a captured unit");
+        let location = edge.source_location();
+        assert_eq!(location.source(), source.digest());
+        assert!(
+            usize::try_from(location.span().end()).is_ok_and(|end| end <= source.bytes().len())
+        );
+        assert_eq!(edge.from(), source.module_id());
+    }
+
+    let invalid = capture_project(request_fixture(include_str!(
+        "fixtures/negative/forbidden-import-forms.toml"
+    )))
+    .expect("invalid graph request must still capture");
+    let failure = invalid
+        .module_graph(&CancellationToken::new())
+        .expect_err("public graph must expose source-accounted diagnostics");
+    for diagnostic in failure.diagnostics() {
+        let source = invalid
+            .sources()
+            .iter()
+            .find(|source| source.source_id() == diagnostic.source_id())
+            .expect("graph diagnostic must name its captured source unit");
+        let location = diagnostic
+            .source_location()
+            .expect("source-accounted failure must retain a typed location");
+        assert_eq!(location.source(), source.digest());
+        assert_eq!(location.span(), diagnostic.span());
+        assert!(
+            usize::try_from(location.span().end()).is_ok_and(|end| end <= source.bytes().len())
+        );
+    }
+}
+
+#[test]
+/// An edited closure rebuilt from captured facts equals a fresh clean request.
+fn integration_stage3_incremental_recapture_equals_clean_graph() {
+    let original = capture_project(request_fixture(include_str!(
+        "fixtures/positive/valid-cycle.toml"
+    )))
+    .expect("original request must capture");
+    let original_graph = original
+        .module_graph(&CancellationToken::new())
+        .expect("original graph must build");
+    let edited_sources = original
+        .sources()
+        .iter()
+        .map(|source| {
+            let bytes = if source.module_id() == "graph::alpha" {
+                b"neu \"1.0\"\nmodule graph::alpha\n".to_vec()
+            } else {
+                source.bytes().to_vec()
+            };
+            CapturedSourceInput::new(source.source_id(), source.module_id(), bytes)
+        })
+        .collect::<Vec<_>>();
+    let recaptured = capture_project(CapturedProjectRequest::new(
+        CAPTURE_REQUEST_VERSION,
+        original.profile(),
+        edited_sources.clone(),
+        Vec::new(),
+        ProjectCaptureControls::new(original.limits(), CancellationToken::new()),
+    ))
+    .expect("edited captured closure must be accepted");
+    let mut clean_sources = edited_sources;
+    clean_sources.reverse();
+    let clean = capture_project(CapturedProjectRequest::new(
+        CAPTURE_REQUEST_VERSION,
+        original.profile(),
+        clean_sources,
+        Vec::new(),
+        ProjectCaptureControls::new(original.limits(), CancellationToken::new()),
+    ))
+    .expect("clean request must be accepted");
+    assert!(recaptured.meaning_equivalent(&clean));
+    let edited_graph = recaptured
+        .module_graph(&CancellationToken::new())
+        .expect("edited graph must build");
+    assert_eq!(
+        edited_graph,
+        clean
+            .module_graph(&CancellationToken::new())
+            .expect("clean graph must build")
+    );
+    assert_ne!(edited_graph, original_graph);
+    assert_eq!(original_graph.edges().len(), 2);
+    assert_eq!(edited_graph.edges().len(), 1);
+}
+
+#[test]
 /// Multiple graph failures preserve source order, diagnostic bounds, and recovery.
 fn validation_stage3_diagnostic_bound_and_recovery() {
     let valid = capture_project(request_fixture(include_str!(

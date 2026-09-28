@@ -2,6 +2,7 @@
 
 //! Complete, bounded, and effect-free project capture for the v1 profile.
 
+use crate::module_graph::{ModuleGraph, ModuleGraphFailure, build_module_graph};
 use neutral_core::{
     CancellationToken, SourceContentDigest, VocabularyContentDigest, profile::LanguageProfile,
 };
@@ -430,6 +431,18 @@ pub struct CapturedProject {
 }
 
 impl CapturedProject {
+    /// Validates this complete captured closure and builds its logical module graph.
+    ///
+    /// # Errors
+    ///
+    /// Returns source-accounted graph diagnostics without publishing a partial graph.
+    pub fn module_graph(
+        &self,
+        cancellation: &CancellationToken,
+    ) -> Result<ModuleGraph, ModuleGraphFailure> {
+        build_module_graph(self, cancellation)
+    }
+
     /// Returns the exact captured language profile.
     #[must_use]
     pub const fn profile(&self) -> LanguageProfile {

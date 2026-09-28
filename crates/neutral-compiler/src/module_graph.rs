@@ -6,7 +6,7 @@ use crate::{
     CapturedProject, CapturedProjectSource,
     frontend::{GraphImport, GraphSyntaxErrorKind, scan_graph_source},
 };
-use neutral_core::{ByteSpan, CancellationToken};
+use neutral_core::{ByteSpan, CancellationToken, SourceContentDigest, SourceLocation};
 use std::{
     collections::{BTreeMap, BTreeSet},
     sync::Arc,
@@ -39,6 +39,8 @@ pub struct GraphModule {
     module_id: Arc<str>,
     /// Exact inert source ID.
     source_id: Arc<str>,
+    /// Exact captured source-byte identity.
+    source_digest: SourceContentDigest,
     /// Module-header span in original source bytes.
     header_span: ByteSpan,
 }
@@ -54,6 +56,12 @@ impl GraphModule {
     #[must_use]
     pub fn source_id(&self) -> &str {
         &self.source_id
+    }
+
+    /// Returns a typed original-byte location for the module header.
+    #[must_use]
+    pub const fn source_location(&self) -> SourceLocation {
+        SourceLocation::new(self.source_digest, self.header_span)
     }
 
     /// Returns the original-byte module-header span.
@@ -72,6 +80,10 @@ pub struct GraphEdge {
     target: Arc<str>,
     /// Required local alias.
     alias: Arc<str>,
+    /// Exact source ID of the importing unit.
+    source_id: Arc<str>,
+    /// Exact captured source-byte identity of the importing unit.
+    source_digest: SourceContentDigest,
     /// Import statement span in original source bytes.
     span: ByteSpan,
 }
@@ -93,6 +105,18 @@ impl GraphEdge {
     #[must_use]
     pub fn alias(&self) -> &str {
         &self.alias
+    }
+
+    /// Returns the source ID of the unit containing this import.
+    #[must_use]
+    pub fn source_id(&self) -> &str {
+        &self.source_id
+    }
+
+    /// Returns a typed original-byte location for the complete import.
+    #[must_use]
+    pub const fn source_location(&self) -> SourceLocation {
+        SourceLocation::new(self.source_digest, self.span)
     }
 
     /// Returns the original-byte import span.
@@ -157,6 +181,8 @@ pub struct ModuleGraphDiagnostic {
     module_id: Arc<str>,
     /// Exact source ID, if one is available.
     source_id: Arc<str>,
+    /// Exact captured source-byte identity, absent for graph-wide failures.
+    source_digest: Option<SourceContentDigest>,
     /// Original-byte span in the captured source.
     span: ByteSpan,
     /// Safe logical target ID, when applicable.
@@ -182,6 +208,13 @@ impl ModuleGraphDiagnostic {
     #[must_use]
     pub fn source_id(&self) -> &str {
         &self.source_id
+    }
+
+    /// Returns a typed original-byte location, or none for a graph-wide failure.
+    #[must_use]
+    pub fn source_location(&self) -> Option<SourceLocation> {
+        self.source_digest
+            .map(|digest| SourceLocation::new(digest, self.span))
     }
 
     /// Returns the original-byte failure span.
@@ -313,6 +346,7 @@ fn scan_sources<'a>(
                     source: GraphModule {
                         module_id: Arc::from(source.module_id()),
                         source_id: Arc::from(source.source_id()),
+                        source_digest: source.digest(),
                         header_span: syntax.header_span,
                     },
                     captured_source: source,
@@ -389,6 +423,8 @@ fn validate_edges(
                     from: Arc::clone(&member.source.module_id),
                     target: Arc::from(import.target.as_str()),
                     alias: Arc::from(import.alias.as_str()),
+                    source_id: Arc::clone(&member.source.source_id),
+                    source_digest: member.source.source_digest,
                     span: import.span,
                 });
             }
@@ -414,6 +450,7 @@ fn graph_wide_diagnostic(code: &'static str) -> ModuleGraphDiagnostic {
         code,
         module_id: Arc::from(""),
         source_id: Arc::from(""),
+        source_digest: None,
         span: zero_span(),
         target: Arc::from(""),
         alias: Arc::from(""),
@@ -432,6 +469,7 @@ fn diagnostic(
         code,
         module_id: Arc::from(source.module_id()),
         source_id: Arc::from(source.source_id()),
+        source_digest: Some(source.digest()),
         span,
         target: Arc::from(target),
         alias: Arc::from(alias),
@@ -457,14 +495,7 @@ fn failure(mut errors: Vec<ModuleGraphDiagnostic>, limit: u64) -> ModuleGraphFai
             ))
     });
     if u64::try_from(errors.len()).unwrap_or(u64::MAX) > limit {
-        return single_failure(ModuleGraphDiagnostic {
-            code: diagnostics::LIMIT_EXCEEDED,
-            module_id: Arc::from(""),
-            source_id: Arc::from(""),
-            span: zero_span(),
-            target: Arc::from(""),
-            alias: Arc::from(""),
-        });
+        return single_failure(graph_wide_diagnostic(diagnostics::LIMIT_EXCEEDED));
     }
     ModuleGraphFailure {
         diagnostics: Arc::from(errors),
