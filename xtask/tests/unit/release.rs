@@ -46,6 +46,24 @@ fn release_plan_rejects_empty_scope() {
     fs::remove_file(path).expect("temporary release plan should be removable");
 }
 
+#[test]
+/// Binary publication cannot bypass the selected immutable source-tag channel.
+fn release_plan_rejects_binaries_without_a_source_tag() {
+    let path = temporary_plan_path("binary-without-source");
+    fs::write(
+        &path,
+        concat!(
+            "source_tag = false\n",
+            "github_binaries = true\n",
+            "crates_io = false\n",
+            "binaries = [\"neutral-cli\", \"neutral-probe\"]\n",
+        ),
+    )
+    .expect("temporary release plan should be writable");
+    assert!(ReleasePlan::read(&path, "0.1.0").is_err());
+    fs::remove_file(path).expect("temporary release plan should be removable");
+}
+
 /// Returns a process-unique temporary release-plan path.
 fn temporary_plan_path(label: &str) -> std::path::PathBuf {
     std::env::temp_dir().join(format!(

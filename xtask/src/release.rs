@@ -58,6 +58,11 @@ impl ReleasePlan {
         if self.channels.is_empty() {
             return Err("at least one release distribution channel must be selected".to_owned());
         }
+        if self.channels.contains(&DistributionChannel::GithubBinaries)
+            && !self.channels.contains(&DistributionChannel::SourceTag)
+        {
+            return Err("GitHub binary distribution requires a source tag".to_owned());
+        }
         if self.channels.contains(&DistributionChannel::GithubBinaries) && self.binaries.is_empty()
         {
             return Err("GitHub binary distribution requires at least one binary".to_owned());

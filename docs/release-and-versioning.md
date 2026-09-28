@@ -11,8 +11,8 @@ then its quality approval, then the locally assembled distribution, and finally
 an explicit signed Git tag.
 
 Language and artifact contract versions are separate from the package-release
-version. Do not change frozen contract versions merely because the package moves
-from (for example) `0.2.0` to `0.3.0`.
+version. Do not change frozen contract versions merely because the workspace
+package version advances.
 
 ## Before starting
 

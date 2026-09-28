@@ -177,7 +177,9 @@ Use these commands for quality gates, coverage, fuzzing, and analysis.
 
 ### Artifacts, versions, and releases
 
-Use these commands to validate artifacts and prepare releases.
+Use these commands to validate artifacts, inspect the TOML-derived tag, and
+prepare a release. Pushing a signed tag is a separate, explicit action that
+creates a draft GitHub Release.
 
 <details>
 <summary><strong>Commands</strong></summary>
@@ -188,6 +190,8 @@ Use these commands to validate artifacts and prepare releases.
 | Validate repository binaries | `cargo xtask validate binaries` |
 | Assemble a distribution | `cargo xtask package` |
 | Prepare a release | `cargo xtask release prepare` |
+| Show the release tag | `cargo xtask release tag` |
+| Push the signed tag for a draft release | `scripts/linux/release.sh publish` |
 | Build the release profile | `cargo xtask build --profile release` |
 | Show the workspace version | `cargo xtask version show` |
 | Check version consistency | `cargo xtask version check` |
