@@ -136,9 +136,11 @@ Evidence: [Stage 3.2 core module graph](evidence/stage3-2-core-graph.md).
 
 ### `v0.3.3` — public integration gate
 
-- [ ] Expose module/import facts through captured project and diagnostics.
-- [ ] Verify source maps cover all cross-unit diagnostics.
-- [ ] Verify incremental and clean graph construction are equivalent.
+- [*] Expose module/import facts through captured project and diagnostics.
+- [*] Verify source maps cover all cross-unit diagnostics.
+- [*] Verify incremental and clean graph construction are equivalent.
+
+Evidence: [Stage 3.3 public graph integration](evidence/stage3-3-public-integration.md).
 
 ### `v0.3.4` — validation gate
 
@@ -150,7 +152,7 @@ Evidence: [Stage 3.4 graph validation](evidence/stage3-4-validation.md).
 
 ### Promote to `v0.4.0`
 
-- [ ] Confirm Stage 3 checklist, manifest, and traceability are complete.
+- [*] Confirm Stage 3 checklist, manifest, and traceability are complete.
 - [ ] Release `v0.4.0`; update the ledger to `released`.
 
 ## Stage 4 — public APIs and cross-module semantics

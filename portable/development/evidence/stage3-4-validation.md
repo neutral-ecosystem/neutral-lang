@@ -2,7 +2,7 @@
 
 # Stage 3.4 graph validation
 
-Status: validation gate complete; Stage 3.3 public integration remains open
+Status: validation gate complete; Stage 3.3 integration recorded separately
 
 Date: 2026-09-28  
 Target gate: `v0.3.4`
@@ -41,7 +41,5 @@ The fixture hash check reported zero manifest or freeze updates. The frozen
 module graph contract remains byte-identical to its registered digest; its
 historical status line is intentionally not edited to track implementation.
 
-This validation does not close Stage 3.3. The graph and its cross-unit
-diagnostics still need to be attached to the public captured-project result,
-with source-map and incremental/clean equivalence evidence, before Stage 3 can
-be promoted.
+Stage 3.3 public graph access, typed source locations, and edited/clean
+equivalence are recorded in [Stage 3.3 evidence](stage3-3-public-integration.md).

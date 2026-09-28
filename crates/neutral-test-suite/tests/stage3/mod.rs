@@ -342,6 +342,7 @@ fn integration_stage3_public_graph_locations_cover_every_unit() {
     let failure = invalid
         .module_graph(&CancellationToken::new())
         .expect_err("public graph must expose source-accounted diagnostics");
+    assert_eq!(failure.diagnostics().len(), invalid.sources().len());
     for diagnostic in failure.diagnostics() {
         let source = invalid
             .sources()

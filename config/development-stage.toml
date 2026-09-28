@@ -6,4 +6,4 @@
 # these tracking values.
 active_stage = 3
 active_step = 3
-portable_state = "v1-stage3-core-graph-implemented-public-integration-pending"
+portable_state = "v1-stage3-validation-complete-release-pending"

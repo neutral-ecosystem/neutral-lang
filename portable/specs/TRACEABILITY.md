@@ -36,3 +36,9 @@ are added to the manifest when their stage activates.
 
 The `v1.0.0` release is blocked if a v1 contract rule lacks an active fixture
 family, expected outcome, owner, or public-boundary evidence.
+
+The active Stage 3 graph family is pinned in the
+[conformance manifest](../conformance/manifest.toml) and exercised by the
+[core graph](../development/evidence/stage3-2-core-graph.md),
+[public integration](../development/evidence/stage3-3-public-integration.md),
+and [validation](../development/evidence/stage3-4-validation.md) evidence.

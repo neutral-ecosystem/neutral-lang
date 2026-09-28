@@ -185,7 +185,7 @@ oracle_sha256 = "e143bab8aa2f9aa0076c1bbf50e1ed7e481fe2d41ce2b188ec9fb101eaff7d0
 id = "stage3-module-graph"
 profile = "1.0"
 active_from_stage = 3
-status = "reviewed-pending-implementation"
+status = "required"
 
 [[case]]
 id = "V1-MOD-005-VALID-CYCLE"
