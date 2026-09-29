@@ -27,7 +27,7 @@ are added to the manifest when their stage activates.
 | V1-MOD-004 — deterministic bounded graph | [MODULE-GRAPH](contracts/MODULE-GRAPH.md) | 01 | graph ordering and edge/per-module exact/one-over oracles |
 | V1-MOD-005 — SCC behavior | [MODULE-GRAPH](contracts/MODULE-GRAPH.md) | 01 | valid cycle, disconnected member, and SCC exact/one-over oracles |
 | V1-MOD-006 — invalid imports | [MODULE-GRAPH](contracts/MODULE-GRAPH.md) | 01 | missing/self/duplicate/forbidden-form negative oracles |
-| Public semantics, including V1-XMOD-004 | [SOURCE](contracts/SOURCE.md), [MODULE-GRAPH](contracts/MODULE-GRAPH.md) | 02 | visibility, closure, cross-module reuse/ref, semantic-cycle corpus; import SCC accepted in Stage 3 |
+| V1-VIS-001..003, V1-XMOD-001..004 — public semantics | [PUBLIC-SEMANTICS](contracts/PUBLIC-SEMANTICS.md), [SOURCE](contracts/SOURCE.md), [MODULE-GRAPH](contracts/MODULE-GRAPH.md) | 04 | [Stage 4 fixtures/oracles](../conformance/manifest.toml), [public integration and validation](../development/evidence/stage4-validation.md), reader-only probe; import SCC accepted independently of semantic cycles |
 | Vocabulary/location values | [VOCABULARY](contracts/VOCABULARY.md) | 02 | exact-lock and inert-value corpus |
 | Project IR and reader | [PROJECT](contracts/PROJECT.md) | 02 | validated IR, public view, independent reader probe |
 | Identity/artifacts | [PROJECT](contracts/PROJECT.md) | 03 | canonical transcript and SHA-256 vectors |
@@ -42,3 +42,5 @@ The active Stage 3 graph family is pinned in the
 [core graph](../development/evidence/stage3-2-core-graph.md),
 [public integration](../development/evidence/stage3-3-public-integration.md),
 and [validation](../development/evidence/stage3-4-validation.md) evidence.
+The active Stage 4 public-semantics family is pinned in the same manifest and
+reviewed in [Stage 4 integration and validation](../development/evidence/stage4-validation.md).

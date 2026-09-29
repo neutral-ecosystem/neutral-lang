@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "stage3-active"
+status = "stage4-active"
 profile = "1.0"
 
 # v1 fixture bytes and expected outcomes are added by their owning stage.
@@ -72,7 +72,7 @@ review_date = "2026-09-28"
 
 [[suite]]
 id = "stage4-public-semantics"
-status = "reviewed-contract-fixtures"
+status = "reviewed-active"
 requirements = [
   "V1-VIS-001",
   "V1-VIS-002",

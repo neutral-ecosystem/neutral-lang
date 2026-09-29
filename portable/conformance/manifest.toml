@@ -283,7 +283,7 @@ oracle_sha256 = "6fd04add9d9a4a33303c1701bfb305e2c10ab188aa357b7413e1b73bc28879b
 id = "visibility-and-vocabularies"
 profile = "1.0"
 active_from_stage = 4
-status = "stage4-fixtures-registered"
+status = "required"
 
 [[case]]
 id = "V1-VIS-003-PRIVATE-TYPE-LEAK"

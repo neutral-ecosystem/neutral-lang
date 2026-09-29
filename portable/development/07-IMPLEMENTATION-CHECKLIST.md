@@ -195,7 +195,7 @@ records the integration and compatibility review.
 
 ### Promote to `v0.5.0`
 
-- [ ] Confirm Stage 4 checklist, manifest, and traceability are complete.
+- [x] Confirm Stage 4 checklist, manifest, and traceability are complete.
 - [ ] Release `v0.5.0`; update the ledger to `released`.
 
 ## Stage 5 — multiple vocabularies and inert location values

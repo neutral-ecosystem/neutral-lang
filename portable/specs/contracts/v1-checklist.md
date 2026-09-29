@@ -43,13 +43,13 @@ here.
 
 ## Stage 4 — public project semantics (`v0.4.0 -> v0.5.0`)
 
-- [ ] V1-VIS-001 — Private-by-default root declarations and explicit `public`.
-- [ ] V1-VIS-002 — Imported access only through qualified public names.
-- [ ] V1-VIS-003 — Public signatures close over public reachable types.
-- [ ] V1-XMOD-001 — Cross-module immutable value reuse and provenance.
-- [ ] V1-XMOD-002 — Cross-module `Ref<T>` records stable module-symbol identity.
-- [ ] V1-XMOD-003 — Publicly exposed refs cannot target private bindings.
-- [ ] V1-XMOD-004 — Semantic-cycle rules remain separate from import SCCs.
+- [x] V1-VIS-001 — Private-by-default root declarations and explicit `public`.
+- [x] V1-VIS-002 — Imported access only through qualified public names.
+- [x] V1-VIS-003 — Public signatures close over public reachable types.
+- [x] V1-XMOD-001 — Cross-module immutable value reuse and provenance.
+- [x] V1-XMOD-002 — Cross-module `Ref<T>` records stable module-symbol identity.
+- [x] V1-XMOD-003 — Publicly exposed refs cannot target private bindings.
+- [x] V1-XMOD-004 — Semantic-cycle rules remain separate from import SCCs.
 
 ## Stage 5 — vocabulary and locations (`v0.5.0 -> v0.6.0`)
 
