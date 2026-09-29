@@ -163,16 +163,20 @@ Target transition: `v0.4.0 -> v0.5.0`.
 
 ### `v0.4.1` — contract and fixture gate
 
-- [ ] Freeze private-by-default/public syntax, public type closure, qualified
+- [x] Freeze private-by-default/public syntax, public type closure, qualified
   access, reuse/ref rules, and semantic-cycle behavior.
-- [ ] Register visibility leak, private ref target, type compatibility,
+- [x] Register visibility leak, private ref target, type compatibility,
   provenance, and cross-SCC value-cycle fixtures.
 
 ### `v0.4.2` — core implementation gate
 
-- [ ] Implement visibility-aware name/type/value/ref resolution.
-- [ ] Implement public signature closure and exposed-reference target checks.
-- [ ] Implement stable cross-module module-symbol identity edges.
+- [x] Implement visibility-aware name/type/value/ref resolution.
+- [x] Implement public signature closure and exposed-reference target checks.
+- [x] Implement stable cross-module module-symbol identity edges.
+
+The Stage 4 core analyzer resolves declaration dependencies and validates
+visibility before any project-IR publication. Stage 4.3 still owns public
+export/reader integration; Stage 4.4 owns full adversarial validation.
 
 ### `v0.4.3` — public integration gate
 

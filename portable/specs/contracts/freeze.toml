@@ -24,7 +24,7 @@ external_ir_encoding = "NIR-CBOR/1.0-plan"
 [fixture_corpus]
 manifest_path = "portable/conformance/manifest.toml"
 fixture_oracle_review_path = "portable/conformance/fixture-oracle-review.toml"
-status = "stage1, stage2, and stage3 suites active"
+status = "stage1 through stage4 contract/fixture suites active"
 
 [stage2_contract_gate]
 capture_request_path = "portable/specs/contracts/CAPTURE-REQUEST.md"
@@ -35,3 +35,8 @@ status = "implemented"
 module_graph_path = "portable/specs/contracts/MODULE-GRAPH.md"
 module_graph_sha256 = "9f08587edb2d4be96d8239331b0f0f7bc4cadebbff72e464e46913494958f949"
 status = "implemented"
+
+[stage4_contract_gate]
+public_semantics_path = "portable/specs/contracts/PUBLIC-SEMANTICS.md"
+public_semantics_sha256 = "199aec178c964f3c51872b98e921bca89f5c532549ea176bdf3197afa39833bc"
+status = "core-resolution-implemented; public integration pending"

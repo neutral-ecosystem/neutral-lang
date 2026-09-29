@@ -60,3 +60,6 @@ only public names. A public signature must use only public transitively
 reachable types. A public value may reuse a private value, but every exposed
 `Ref<T>` must target a public binding. Visibility is language API shape, not
 authorization or effect permission.
+
+The exact Stage 4 resolution, type-closure, identity-edge, and semantic-cycle
+rules are frozen in the [public project semantics contract](PUBLIC-SEMANTICS.md).

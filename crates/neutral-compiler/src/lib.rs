@@ -24,6 +24,11 @@ mod module_graph;
 mod project_capture;
 mod semantics;
 
+pub use frontend::{
+    ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic, ProjectSemanticFailure,
+    ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind, analyze_project_semantics,
+};
+
 pub use module_graph::diagnostics as module_graph_diagnostics;
 pub use module_graph::{
     GraphComponent, GraphEdge, GraphModule, ModuleGraph, ModuleGraphDiagnostic, ModuleGraphFailure,

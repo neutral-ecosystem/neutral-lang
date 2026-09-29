@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+requirements = ["V1-VIS-001", "V1-VIS-002", "V1-VIS-003", "V1-XMOD-001", "V1-XMOD-002", "V1-XMOD-003", "V1-XMOD-004"]
+
+[[case]]
+id = "V1-VIS-003-PRIVATE-TYPE-LEAK"
+expected_outcome = "reject-semantics"
+diagnostic_code = "NEU-XMOD-004"
+offending_module = "api::types"
+authoritative_ir = "none"
+
+[[case]]
+id = "V1-XMOD-003-PRIVATE-REF-TARGET"
+expected_outcome = "reject-semantics"
+diagnostic_code = "NEU-XMOD-005"
+offending_module = "api"
+authoritative_ir = "none"
+
+[[case]]
+id = "V1-XMOD-001-NOMINAL-MISMATCH"
+expected_outcome = "reject-semantics"
+diagnostic_code = "NEU-XMOD-006"
+offending_module = "types::beta"
+authoritative_ir = "none"
+
+[[case]]
+id = "V1-XMOD-001-REUSE-PROVENANCE"
+expected_outcome = "accept-resolution"
+value_edge = "service::consumer::copied -> service::source::answer"
+reference_edge = "service::consumer::pointer -> service::source::answer"
+dependency_first_values = ["service::consumer::pointer", "service::source::seed", "service::source::answer", "service::consumer::copied"]
+authoritative_ir = "pending-stage6"
+
+[[case]]
+id = "V1-XMOD-004-CROSS-SCC-VALUE-CYCLE"
+expected_outcome = "reject-semantics"
+diagnostic_code = "NEU-XMOD-001"
+offending_module = "cycle::left"
+authoritative_ir = "none"

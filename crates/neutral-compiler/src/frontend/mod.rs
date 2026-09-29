@@ -14,6 +14,12 @@ mod graph_syntax;
 mod layout;
 mod lexer;
 mod parser;
+mod project_semantics;
+
+pub use project_semantics::{
+    ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic, ProjectSemanticFailure,
+    ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind, analyze_project_semantics,
+};
 
 pub(crate) use graph_syntax::{GraphImport, GraphSyntaxErrorKind, scan_graph_source};
 

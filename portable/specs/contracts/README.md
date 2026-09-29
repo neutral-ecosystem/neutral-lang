@@ -15,6 +15,8 @@ rules for values, records, lists, source literals, or v0 vocabulary encoding.
   controls, limits, identities, host boundary, and fail-closed outcomes.
 - [MODULE-GRAPH.md](MODULE-GRAPH.md): Stage 3 module grammar, import edges,
   aliases, SCC ordering, limits, and graph diagnostics.
+- [PUBLIC-SEMANTICS.md](PUBLIC-SEMANTICS.md): Stage 4 visibility, public type
+  closure, qualified resolution, semantic cycles, and identity edges.
 - [VOCABULARY.md](VOCABULARY.md): exact data-only vocabulary locks and authoring
   metadata boundary.
 - [AUTHORING.md](AUTHORING.md): the separately versioned Editor bridge.

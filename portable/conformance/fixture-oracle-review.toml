@@ -69,3 +69,25 @@ fixture_families = [
 ]
 oracle_directory = "portable/conformance/oracles/stage3"
 review_date = "2026-09-28"
+
+[[suite]]
+id = "stage4-public-semantics"
+status = "reviewed-contract-fixtures"
+requirements = [
+  "V1-VIS-001",
+  "V1-VIS-002",
+  "V1-VIS-003",
+  "V1-XMOD-001",
+  "V1-XMOD-002",
+  "V1-XMOD-003",
+  "V1-XMOD-004",
+]
+fixture_families = [
+  "private-public-type-closure",
+  "private-reference-target",
+  "nominal-type-incompatibility",
+  "cross-module-reuse-provenance",
+  "cross-scc-value-cycle",
+]
+oracle_directory = "portable/conformance/oracles/stage4"
+review_date = "2026-09-29"

@@ -283,7 +283,42 @@ oracle_sha256 = "6fd04add9d9a4a33303c1701bfb305e2c10ab188aa357b7413e1b73bc28879b
 id = "visibility-and-vocabularies"
 profile = "1.0"
 active_from_stage = 4
-status = "planned"
+status = "stage4-fixtures-registered"
+
+[[case]]
+id = "V1-VIS-003-PRIVATE-TYPE-LEAK"
+fixture = "portable/specs/fixtures/stage4/negative/visibility-leak.toml"
+fixture_sha256 = "97df86770a50a285a164232f0336935ca4aae1f5902c0a8e8d9e8c17773e5f45"
+oracle = "portable/conformance/oracles/stage4/semantics.toml"
+oracle_sha256 = "c5d54fd1b5388acd0c4f2fd8f73a19db1e611379d9f6c336fd1c22f987ce280a"
+
+[[case]]
+id = "V1-XMOD-003-PRIVATE-REF-TARGET"
+fixture = "portable/specs/fixtures/stage4/negative/private-ref-target.toml"
+fixture_sha256 = "207e4d90cd830faea78e6f03b62e7434d1f1fe2d675034307cf7dbaf16ee9aa1"
+oracle = "portable/conformance/oracles/stage4/semantics.toml"
+oracle_sha256 = "c5d54fd1b5388acd0c4f2fd8f73a19db1e611379d9f6c336fd1c22f987ce280a"
+
+[[case]]
+id = "V1-XMOD-001-NOMINAL-MISMATCH"
+fixture = "portable/specs/fixtures/stage4/negative/type-incompatible.toml"
+fixture_sha256 = "4c726e3256d75d62e260848f07c9a2591f54b4274a45c9d06ccf45c60cd29db7"
+oracle = "portable/conformance/oracles/stage4/semantics.toml"
+oracle_sha256 = "c5d54fd1b5388acd0c4f2fd8f73a19db1e611379d9f6c336fd1c22f987ce280a"
+
+[[case]]
+id = "V1-XMOD-001-REUSE-PROVENANCE"
+fixture = "portable/specs/fixtures/stage4/positive/reuse-provenance.toml"
+fixture_sha256 = "559ce9deae527060a9cd5036ce57a938bfe01298713604fa61c204706d5c3e65"
+oracle = "portable/conformance/oracles/stage4/semantics.toml"
+oracle_sha256 = "c5d54fd1b5388acd0c4f2fd8f73a19db1e611379d9f6c336fd1c22f987ce280a"
+
+[[case]]
+id = "V1-XMOD-004-CROSS-SCC-VALUE-CYCLE"
+fixture = "portable/specs/fixtures/stage4/negative/cross-scc-value-cycle.toml"
+fixture_sha256 = "f43a6a825be6c4422605093d4c73cdcf0a7d368ab5a69e085a0669c34c9fa19c"
+oracle = "portable/conformance/oracles/stage4/semantics.toml"
+oracle_sha256 = "c5d54fd1b5388acd0c4f2fd8f73a19db1e611379d9f6c336fd1c22f987ce280a"
 
 [[suite]]
 id = "project-ir-and-identities"

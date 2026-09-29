@@ -18,7 +18,7 @@ promotion and release-quality evidence exist.
 | 1 | `v0.1.0 -> v0.2.0` | released | [profile matrix, inherited v0 corpus, v1 exclusion/audit evidence](evidence/stage1.md); release promotion complete |
 | 2 | `v0.2.0 -> v0.3.0` | released | [Stage 2.1 contract gate](evidence/stage2-1-contract-gate.md); [Stage 2.2 core capture](evidence/stage2-2-core-capture.md); [Stage 2.3 public integration](evidence/stage2-3-public-integration.md); [Stage 2.4 validation](evidence/stage2-4-validation.md); `v0.3.0` release and quality approval complete |
 | 3 | `v0.3.0 -> v0.4.0` | released | [Stage 3.1 contract](evidence/stage3-1-contract-gate.md), [Stage 3.2 core graph](evidence/stage3-2-core-graph.md), [Stage 3.3 public integration](evidence/stage3-3-public-integration.md), and [Stage 3.4 validation](evidence/stage3-4-validation.md) passed; [v0.4.0 quality approval](../../quality/evidence/v0.4.0/record.toml) and signed tag retained |
-| 4 | `v0.4.0 -> v0.5.0` | not started | visibility/public closure/cross-module semantic fixtures |
+| 4 | `v0.4.0 -> v0.5.0` | contract and core gates complete; integration/validation pending | [public semantics contract](../specs/contracts/PUBLIC-SEMANTICS.md), [pinned fixtures](../conformance/manifest.toml), and compiler/cross-package tests; public reader and full adversarial suites remain |
 | 5 | `v0.5.0 -> v0.6.0` | not started | exact vocabulary lock and inert-location fixtures |
 | 6 | `v0.6.0 -> v0.7.0` | not started | project IR/reader/view public probe |
 | 7 | `v0.7.0 -> v0.8.0` | not started | reviewed transcript and identity vectors |
