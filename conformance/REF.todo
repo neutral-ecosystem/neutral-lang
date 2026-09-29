@@ -1,2 +1,2 @@
 1. ref this section (legacy) and try to merge it with the quality folder, the new sub v1.0.0 shouldn't be necessary backwards compatible,
-so maybe merge the 2 folders to eliminates 2 path fixtures env, and make it more streamlined 
+so maybe merge the 2 folders to eliminates 2 path fixtures env, and make it more streamlined, each faeture can be tested fixure must still work unless requirement chnaged  
