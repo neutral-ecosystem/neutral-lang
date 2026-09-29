@@ -7,6 +7,7 @@
 //! perform host I/O.
 
 pub mod language;
+pub mod project_interface;
 
 use neutral_core::{
     ByteSpan, CoreError, SemanticDigest, SourceContentDigest, StructuralLimits,

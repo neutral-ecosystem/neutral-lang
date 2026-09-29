@@ -19,3 +19,4 @@ contracts and release evidence remain under `conformance/releases/` and
 - [Stage 3.2 core module graph](stage3-2-core-graph.md)
 - [Stage 3.3 public graph integration](stage3-3-public-integration.md)
 - [Stage 3.4 graph validation](stage3-4-validation.md)
+- [Stage 4 public integration and validation](stage4-validation.md)

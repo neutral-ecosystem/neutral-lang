@@ -19,6 +19,11 @@ immutable scalar, nominal-record, and qualified vocabulary traversal; recursive
 type/value/default-provenance validation; exact vocabulary-contract validation;
 and indexed source lookup. `neutral-encoding` owns hostile framed-byte decoding
 and exposes a reader view only after the complete external artifact validates.
+The separate Stage 4 `ValidatedProjectInterface` checks a public-only,
+in-process interface snapshot without compiler linkage. It exposes public
+exports, checked signature fingerprints, and cross-module value/reference
+enumeration; no source IDs, private declarations, or raw provenance are part
+of that view. It is not the future complete project-IR reader.
 
 ## Command
 

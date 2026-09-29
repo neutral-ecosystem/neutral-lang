@@ -10,7 +10,75 @@ use neutral_core::{
     CancellationToken, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity,
 };
 use neutral_encoding::{DecodeError, DecodeLimits, decode};
-use neutral_reader::{ElementId, ValidatedDocument};
+use neutral_reader::{
+    ElementId, ModuleSymbolIdentity, ProjectPublicEdge, ValidatedDocument,
+    ValidatedProjectInterface,
+};
+
+/// Public-only Stage 4 interface observations made without compiler linkage.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProjectInterfaceSummary {
+    /// Canonically ordered public export names.
+    exports: Vec<String>,
+    /// Cross-module public immutable reuse edges.
+    cross_module_values: Vec<String>,
+    /// Cross-module public identity-reference edges.
+    cross_module_references: Vec<String>,
+    /// Checked signature fingerprint text.
+    fingerprint: String,
+}
+
+impl ProjectInterfaceSummary {
+    /// Returns all public export identities.
+    #[must_use]
+    pub fn exports(&self) -> &[String] {
+        &self.exports
+    }
+
+    /// Returns public cross-module value reuse edges.
+    #[must_use]
+    pub fn cross_module_values(&self) -> &[String] {
+        &self.cross_module_values
+    }
+
+    /// Returns public cross-module identity-reference edges.
+    #[must_use]
+    pub fn cross_module_references(&self) -> &[String] {
+        &self.cross_module_references
+    }
+
+    /// Returns the checked public signature fingerprint.
+    #[must_use]
+    pub fn fingerprint(&self) -> &str {
+        &self.fingerprint
+    }
+}
+
+/// Enumerates a validated public interface using only reader contracts.
+#[must_use]
+pub fn summarize_project_interface(
+    interface: &ValidatedProjectInterface,
+) -> ProjectInterfaceSummary {
+    let symbol = |identity: &ModuleSymbolIdentity| {
+        format!(
+            "{}::{}",
+            identity.module().module_name(),
+            identity.declaration_name()
+        )
+    };
+    let edge =
+        |edge: &ProjectPublicEdge| format!("{} -> {}", symbol(edge.from()), symbol(edge.to()));
+    ProjectInterfaceSummary {
+        exports: interface
+            .exports()
+            .iter()
+            .map(|export| symbol(export.identity()))
+            .collect(),
+        cross_module_values: interface.cross_module_values().map(edge).collect(),
+        cross_module_references: interface.cross_module_references().map(edge).collect(),
+        fingerprint: interface.fingerprint().to_string(),
+    }
+}
 
 /// Stable host-output prefixes shared by the probe library and binary.
 pub mod output {

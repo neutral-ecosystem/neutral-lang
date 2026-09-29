@@ -175,21 +175,23 @@ Target transition: `v0.4.0 -> v0.5.0`.
 - [x] Implement stable cross-module module-symbol identity edges.
 
 The Stage 4 core analyzer resolves declaration dependencies and validates
-visibility before any project-IR publication. Stage 4.3 still owns public
-export/reader integration; Stage 4.4 owns full adversarial validation.
+visibility before any project-IR publication. Its narrow public-interface
+snapshot is independently validated by the reader; complete project IR remains
+Stage 6 work. [Stage 4 validation evidence](evidence/stage4-validation.md)
+records the integration and compatibility review.
 
 ### `v0.4.3` — public integration gate
 
-- [ ] Expose public export indices and redacted provenance through the reader.
-- [ ] Verify private implementation details cannot leak through public views.
-- [ ] Verify independent consumer enumeration of cross-module values and refs.
+- [x] Expose public export indices and redacted provenance through the reader.
+- [x] Verify private implementation details cannot leak through public views.
+- [x] Verify independent consumer enumeration of cross-module values and refs.
 
 ### `v0.4.4` — validation gate
 
-- [ ] Run visibility, public closure, reuse, ref, semantic cycle, and reader
+- [x] Run visibility, public closure, reuse, ref, semantic cycle, and reader
   security suites.
-- [ ] Run deterministic ordering and public-API fingerprint tests.
-- [ ] Review compatibility behavior for all extended v0 semantic rules.
+- [x] Run deterministic ordering and public-API fingerprint tests.
+- [x] Review compatibility behavior for all extended v0 semantic rules.
 
 ### Promote to `v0.5.0`
 

@@ -5,7 +5,12 @@
 use super::{Token, TokenKind, lexer};
 use crate::{CapturedProject, ModuleGraph, language::graph_names};
 use neutral_core::{
-    ByteSpan, CancellationToken, SourceContentDigest, SourceLocation, profile::V1_SOURCE_PROFILE,
+    ByteSpan, CancellationToken, CoreError, SourceContentDigest, SourceLocation,
+    profile::V1_SOURCE_PROFILE,
+};
+use neutral_ir::project_interface::{
+    MAX_PROJECT_INTERFACE_TYPE_DEPTH, ProjectInterface, ProjectPublicEdge, ProjectPublicEdgeKind,
+    ProjectPublicExport, ProjectPublicField, ProjectPublicSignature, ProjectPublicType,
 };
 use neutral_ir::{LogicalModuleIdentity, ModuleSymbolIdentity};
 use std::{
@@ -152,6 +157,8 @@ pub struct ProjectSemanticModel {
     dependencies: Arc<[ProjectDependency]>,
     /// Immutable binding identities in dependency-first order.
     value_order: Arc<[ModuleSymbolIdentity]>,
+    /// Public-only interface with private source/provenance omitted.
+    public_interface: Arc<ProjectInterface>,
 }
 
 impl ProjectSemanticModel {
@@ -171,6 +178,12 @@ impl ProjectSemanticModel {
     #[must_use]
     pub fn value_order(&self) -> &[ModuleSymbolIdentity] {
         &self.value_order
+    }
+
+    /// Returns the public-only interface for independent reader validation.
+    #[must_use]
+    pub const fn public_interface(&self) -> &Arc<ProjectInterface> {
+        &self.public_interface
     }
 }
 
@@ -247,7 +260,7 @@ struct Root {
     /// Explicit binding type, absent for records.
     declared_type: Option<TypeExpr>,
     /// Record field types in source order.
-    fields: Vec<TypeExpr>,
+    fields: Vec<(String, TypeExpr)>,
     /// Exact binding initializer tokens.
     value: Vec<Token>,
 }
@@ -387,7 +400,7 @@ pub fn analyze_project_semantics(
                 false,
             );
         }
-        for ty in &root.fields {
+        for (_, ty) in &root.fields {
             resolve_type(
                 ty,
                 owner,
@@ -433,6 +446,18 @@ pub fn analyze_project_semantics(
         )));
     }
     let value_order = dependency_first_values(&roots, &edges);
+    let public_interface = build_public_interface(&roots, &modules, &edges).map_err(|_| {
+        let source = captured.sources().first();
+        single(diagnostic(
+            diagnostics::LIMIT_EXCEEDED,
+            source.map_or("", |source| source.module_id()),
+            source.map_or_else(
+                || SourceContentDigest::from_bytes(&[]),
+                crate::CapturedProjectSource::digest,
+            ),
+            zero_span(),
+        ))
+    })?;
     edges.sort_by(|a, b| {
         (a.from(), a.kind(), a.to(), a.source.span().start()).cmp(&(
             b.from(),
@@ -449,6 +474,7 @@ pub fn analyze_project_semantics(
         symbols: Arc::from(symbols),
         dependencies: Arc::from(edges),
         value_order: Arc::from(value_order),
+        public_interface: Arc::new(public_interface),
     })
 }
 
@@ -486,6 +512,107 @@ fn dependency_first_values(
         order.push(roots[&ready].symbol.identity.clone());
     }
     order
+}
+
+/// Projects only public signatures and public-to-public identity edges.
+fn build_public_interface(
+    roots: &BTreeMap<(String, String), Root>,
+    modules: &BTreeMap<String, ModuleContext>,
+    edges: &[ProjectDependency],
+) -> Result<ProjectInterface, CoreError> {
+    let mut exports = Vec::new();
+    let public_keys = roots
+        .iter()
+        .filter(|(_, root)| root.symbol.is_public)
+        .map(|(key, _)| key.clone())
+        .collect::<BTreeSet<_>>();
+    for (owner, root) in roots {
+        if !root.symbol.is_public {
+            continue;
+        }
+        let signature = match root.symbol.kind {
+            ProjectSymbolKind::Binding => ProjectPublicSignature::Binding(public_type(
+                root.declared_type
+                    .as_ref()
+                    .expect("bindings have a declared type"),
+                &owner.0,
+                modules,
+            )),
+            ProjectSymbolKind::Record => {
+                let mut fields = root
+                    .fields
+                    .iter()
+                    .map(|(name, ty)| {
+                        ProjectPublicField::new(name, public_type(ty, &owner.0, modules))
+                    })
+                    .collect::<Vec<_>>();
+                fields.sort_by(|left, right| left.name().cmp(right.name()));
+                ProjectPublicSignature::Record(fields)
+            }
+        };
+        exports.push(ProjectPublicExport::new(
+            root.symbol.identity.clone(),
+            signature,
+        ));
+    }
+    let mut public_edges = edges
+        .iter()
+        .filter(|edge| {
+            public_keys.contains(&key(edge.from())) && public_keys.contains(&key(edge.to()))
+        })
+        .map(|edge| {
+            ProjectPublicEdge::new(
+                edge.from().clone(),
+                edge.to().clone(),
+                match edge.kind() {
+                    ProjectDependencyKind::Type => ProjectPublicEdgeKind::Type,
+                    ProjectDependencyKind::ReferenceType => ProjectPublicEdgeKind::ReferenceType,
+                    ProjectDependencyKind::Value => ProjectPublicEdgeKind::Value,
+                    ProjectDependencyKind::Reference => ProjectPublicEdgeKind::Reference,
+                },
+            )
+        })
+        .collect::<Vec<_>>();
+    public_edges.sort_by(|left, right| {
+        (left.from(), left.kind(), left.to()).cmp(&(right.from(), right.kind(), right.to()))
+    });
+    public_edges.dedup();
+    ProjectInterface::with_computed_fingerprint(exports, public_edges)
+}
+
+/// Converts a resolved source type to an alias-independent public type.
+fn public_type(
+    ty: &TypeExpr,
+    module_id: &str,
+    modules: &BTreeMap<String, ModuleContext>,
+) -> ProjectPublicType {
+    match ty {
+        TypeExpr::Num => ProjectPublicType::Num,
+        TypeExpr::String => ProjectPublicType::String,
+        TypeExpr::Bool => ProjectPublicType::Bool,
+        TypeExpr::Nominal(alias, name, _) => {
+            let owner = alias.as_ref().map_or(module_id, |alias| {
+                modules[module_id]
+                    .aliases
+                    .get(alias)
+                    .expect("resolved import alias")
+                    .as_str()
+            });
+            ProjectPublicType::Nominal(ModuleSymbolIdentity::new(
+                LogicalModuleIdentity::new(V1_SOURCE_PROFILE, owner),
+                name,
+            ))
+        }
+        TypeExpr::List(inner) => {
+            ProjectPublicType::List(Box::new(public_type(inner, module_id, modules)))
+        }
+        TypeExpr::Ref(inner) => {
+            ProjectPublicType::Ref(Box::new(public_type(inner, module_id, modules)))
+        }
+        TypeExpr::Nullable(inner) => {
+            ProjectPublicType::Nullable(Box::new(public_type(inner, module_id, modules)))
+        }
+    }
 }
 
 /// Parses root declarations with the existing byte-accurate lexer.
@@ -671,8 +798,9 @@ fn symbol(
 }
 
 /// Parses comma-terminated record fields and their type expressions.
-fn parse_fields(tokens: &[Token]) -> Option<Vec<TypeExpr>> {
+fn parse_fields(tokens: &[Token]) -> Option<Vec<(String, TypeExpr)>> {
     let mut fields = Vec::new();
+    let mut names = BTreeSet::new();
     let mut start = 0;
     let mut depth = 0_u64;
     for (index, token) in tokens.iter().enumerate() {
@@ -707,7 +835,13 @@ fn parse_fields(tokens: &[Token]) -> Option<Vec<TypeExpr>> {
                 if name_index + 1 != before_default {
                     return None;
                 }
-                fields.push(parse_complete_type(&field[..name_index])?);
+                let TokenKind::Identifier(name) = &field[name_index].kind else {
+                    return None;
+                };
+                if !names.insert(name.clone()) {
+                    return None;
+                }
+                fields.push((name.clone(), parse_complete_type(&field[..name_index])?));
                 if before_default < field.len() && !validate_value(&field[before_default + 1..]) {
                     return None;
                 }
@@ -731,7 +865,7 @@ fn parse_complete_type(tokens: &[Token]) -> Option<TypeExpr> {
 
 /// Parses one recursive core, nominal, list, ref, or nullable type.
 fn parse_type(tokens: &[Token], index: &mut usize, depth: usize) -> Option<TypeExpr> {
-    if depth > graph_names::MAX_PROJECT_NESTING_DEPTH {
+    if depth > MAX_PROJECT_INTERFACE_TYPE_DEPTH {
         return None;
     }
     let first = tokens.get(*index)?;
@@ -798,7 +932,7 @@ fn validate_value(tokens: &[Token]) -> bool {
 
 /// Consumes one bounded scalar, reuse, reference, record, or list value.
 fn parse_value_shape(tokens: &[Token], index: &mut usize, depth: usize) -> Option<()> {
-    if depth > graph_names::MAX_PROJECT_NESTING_DEPTH {
+    if depth > MAX_PROJECT_INTERFACE_TYPE_DEPTH {
         return None;
     }
     let token = tokens.get(*index)?;

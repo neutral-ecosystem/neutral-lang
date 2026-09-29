@@ -17,10 +17,15 @@ use std::{
     sync::Arc,
 };
 
+mod project_interface;
+
+pub use project_interface::{ProjectInterfaceError, ValidatedProjectInterface};
+
 pub use neutral_core::profile::{
     LanguageCapability, LanguageProfile, LanguageProfileDescriptor, ProfileAvailability,
 };
 pub use neutral_ir::ElementId;
+pub use neutral_ir::{ModuleSymbolIdentity, project_interface::ProjectPublicEdge};
 
 /// Returns the shared deterministic language-profile capability catalogue.
 #[must_use]

@@ -1,0 +1,328 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//! Stage 4 public-interface facts, separate from the future complete project IR.
+
+use crate::ModuleSymbolIdentity;
+use neutral_core::{CoreError, SemanticDigest, nht_frame, profile::V1_SOURCE_PROFILE};
+
+/// Domain separating public signature fingerprints from all other identities.
+pub const PROJECT_INTERFACE_FINGERPRINT_DOMAIN: &str = "neutral/project-interface/v1";
+/// Maximum nested type layers accepted by the Stage 4 interface contract.
+pub const MAX_PROJECT_INTERFACE_TYPE_DEPTH: usize = 64;
+
+/// A canonical public type signature with alias-independent nominal identity.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ProjectPublicType {
+    /// Exact number type.
+    Num,
+    /// Unicode string type.
+    String,
+    /// Boolean type.
+    Bool,
+    /// Public nominal record owned by one logical module.
+    Nominal(ModuleSymbolIdentity),
+    /// Invariant ordered list type.
+    List(Box<Self>),
+    /// Invariant identity-reference target type.
+    Ref(Box<Self>),
+    /// One explicit outer nullable layer.
+    Nullable(Box<Self>),
+}
+
+impl ProjectPublicType {
+    /// Frames one bounded canonical type for the interface transcript.
+    fn transcript(&self, depth: usize) -> Result<Vec<u8>, CoreError> {
+        if depth > MAX_PROJECT_INTERFACE_TYPE_DEPTH {
+            return Err(CoreError::TranscriptLengthExceeded);
+        }
+        match self {
+            Self::Num => nht_frame("num", &[]),
+            Self::String => nht_frame("string", &[]),
+            Self::Bool => nht_frame("bool", &[]),
+            Self::Nominal(identity) => nht_frame("nominal", &identity_transcript(identity)?),
+            Self::List(inner) => nht_frame("list", &inner.transcript(depth + 1)?),
+            Self::Ref(inner) => nht_frame("ref", &inner.transcript(depth + 1)?),
+            Self::Nullable(inner) => nht_frame("nullable", &inner.transcript(depth + 1)?),
+        }
+    }
+}
+
+/// One public record field's name and canonical type.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProjectPublicField {
+    /// Exact canonical field name.
+    name: String,
+    /// Alias-independent field type.
+    ty: ProjectPublicType,
+}
+
+impl ProjectPublicField {
+    /// Constructs a field for a canonical public record signature.
+    #[must_use]
+    pub fn new(name: impl Into<String>, ty: ProjectPublicType) -> Self {
+        Self {
+            name: name.into(),
+            ty,
+        }
+    }
+
+    /// Returns the canonical field name.
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Returns the canonical field type.
+    #[must_use]
+    pub const fn ty(&self) -> &ProjectPublicType {
+        &self.ty
+    }
+
+    /// Frames one field without depending on source order or trivia.
+    fn transcript(&self) -> Result<Vec<u8>, CoreError> {
+        let mut payload = nht_frame("name", self.name.as_bytes())?;
+        payload.extend(nht_frame("type", &self.ty.transcript(0)?)?);
+        nht_frame("field", &payload)
+    }
+}
+
+/// One public declaration signature, excluding private implementation values.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ProjectPublicSignature {
+    /// An immutable binding's explicit type.
+    Binding(ProjectPublicType),
+    /// A nominal record's fields in canonical name order.
+    Record(Vec<ProjectPublicField>),
+}
+
+impl ProjectPublicSignature {
+    /// Frames one public declaration signature.
+    fn transcript(&self) -> Result<Vec<u8>, CoreError> {
+        match self {
+            Self::Binding(ty) => nht_frame("binding", &ty.transcript(0)?),
+            Self::Record(fields) => {
+                let mut payload = Vec::new();
+                for field in fields {
+                    payload.extend(field.transcript()?);
+                }
+                nht_frame("record", &payload)
+            }
+        }
+    }
+}
+
+/// One exported root with no private source or provenance data.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProjectPublicExport {
+    /// Stable full module-symbol identity.
+    identity: ModuleSymbolIdentity,
+    /// Public type or record signature.
+    signature: ProjectPublicSignature,
+}
+
+impl ProjectPublicExport {
+    /// Constructs one public export entry.
+    #[must_use]
+    pub const fn new(identity: ModuleSymbolIdentity, signature: ProjectPublicSignature) -> Self {
+        Self {
+            identity,
+            signature,
+        }
+    }
+
+    /// Returns the full alias-independent symbol identity.
+    #[must_use]
+    pub const fn identity(&self) -> &ModuleSymbolIdentity {
+        &self.identity
+    }
+
+    /// Returns its public signature without an implementation value.
+    #[must_use]
+    pub const fn signature(&self) -> &ProjectPublicSignature {
+        &self.signature
+    }
+
+    /// Frames one canonical exported declaration.
+    fn transcript(&self) -> Result<Vec<u8>, CoreError> {
+        let mut payload = identity_transcript(&self.identity)?;
+        payload.extend(nht_frame("signature", &self.signature.transcript()?)?);
+        nht_frame("export", &payload)
+    }
+}
+
+/// Public dependency kind retained after private provenance redaction.
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum ProjectPublicEdgeKind {
+    /// Public nominal type dependency.
+    Type,
+    /// Public nominal target under a reference type.
+    ReferenceType,
+    /// Immutable value reuse between public roots.
+    Value,
+    /// Identity-only reference between public roots.
+    Reference,
+}
+
+impl ProjectPublicEdgeKind {
+    /// Returns the stable transcript spelling of one typed edge.
+    const fn spelling(self) -> &'static str {
+        match self {
+            Self::Type => "type",
+            Self::ReferenceType => "reference-type",
+            Self::Value => "value",
+            Self::Reference => "reference",
+        }
+    }
+}
+
+/// One public-to-public edge without source ID, span, or private target.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProjectPublicEdge {
+    /// Public consumer root.
+    from: ModuleSymbolIdentity,
+    /// Public dependency target.
+    to: ModuleSymbolIdentity,
+    /// Typed public dependency category.
+    kind: ProjectPublicEdgeKind,
+}
+
+impl ProjectPublicEdge {
+    /// Constructs one redacted public dependency edge.
+    #[must_use]
+    pub const fn new(
+        from: ModuleSymbolIdentity,
+        to: ModuleSymbolIdentity,
+        kind: ProjectPublicEdgeKind,
+    ) -> Self {
+        Self { from, to, kind }
+    }
+
+    /// Returns the public consumer identity.
+    #[must_use]
+    pub const fn from(&self) -> &ModuleSymbolIdentity {
+        &self.from
+    }
+
+    /// Returns the public target identity.
+    #[must_use]
+    pub const fn to(&self) -> &ModuleSymbolIdentity {
+        &self.to
+    }
+
+    /// Returns the public edge category.
+    #[must_use]
+    pub const fn kind(&self) -> ProjectPublicEdgeKind {
+        self.kind
+    }
+
+    /// Frames one alias-independent edge without source provenance.
+    fn transcript(&self) -> Result<Vec<u8>, CoreError> {
+        let mut payload = nht_frame("from", &identity_transcript(&self.from)?)?;
+        payload.extend(nht_frame("to", &identity_transcript(&self.to)?)?);
+        payload.extend(nht_frame("kind", self.kind.spelling().as_bytes())?);
+        nht_frame("edge", &payload)
+    }
+}
+
+/// Public interface snapshot awaiting independent reader validation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProjectInterface {
+    /// Public exports in canonical module-symbol order.
+    exports: Vec<ProjectPublicExport>,
+    /// Public-to-public dependency edges in canonical order.
+    edges: Vec<ProjectPublicEdge>,
+    /// Declared public signature fingerprint.
+    fingerprint: SemanticDigest,
+}
+
+impl ProjectInterface {
+    /// Constructs a snapshot with a separately supplied declared fingerprint.
+    #[must_use]
+    pub const fn from_parts(
+        exports: Vec<ProjectPublicExport>,
+        edges: Vec<ProjectPublicEdge>,
+        fingerprint: SemanticDigest,
+    ) -> Self {
+        Self {
+            exports,
+            edges,
+            fingerprint,
+        }
+    }
+
+    /// Constructs a snapshot with its canonical public-interface fingerprint.
+    ///
+    /// # Errors
+    ///
+    /// Returns transcript framing failures for unrepresentable payloads.
+    pub fn with_computed_fingerprint(
+        exports: Vec<ProjectPublicExport>,
+        edges: Vec<ProjectPublicEdge>,
+    ) -> Result<Self, CoreError> {
+        let fingerprint = Self::fingerprint_for(&exports, &edges)?;
+        Ok(Self {
+            exports,
+            edges,
+            fingerprint,
+        })
+    }
+
+    /// Returns public exports in canonical order.
+    #[must_use]
+    pub fn exports(&self) -> &[ProjectPublicExport] {
+        &self.exports
+    }
+
+    /// Returns only public-to-public edges, with private provenance omitted.
+    #[must_use]
+    pub fn edges(&self) -> &[ProjectPublicEdge] {
+        &self.edges
+    }
+
+    /// Returns the declared public signature fingerprint.
+    #[must_use]
+    pub const fn fingerprint(&self) -> SemanticDigest {
+        self.fingerprint
+    }
+
+    /// Recomputes the fingerprint from the complete public signature surface.
+    ///
+    /// # Errors
+    ///
+    /// Returns transcript framing failures for unrepresentable payloads.
+    pub fn recompute_fingerprint(&self) -> Result<SemanticDigest, CoreError> {
+        Self::fingerprint_for(&self.exports, &self.edges)
+    }
+
+    /// Hashes exports and public edges with one domain-separated transcript.
+    fn fingerprint_for(
+        exports: &[ProjectPublicExport],
+        edges: &[ProjectPublicEdge],
+    ) -> Result<SemanticDigest, CoreError> {
+        let mut payload = nht_frame("profile", V1_SOURCE_PROFILE.as_bytes())?;
+        for export in exports {
+            payload.extend(export.transcript()?);
+        }
+        for edge in edges {
+            payload.extend(edge.transcript()?);
+        }
+        SemanticDigest::from_nht(PROJECT_INTERFACE_FINGERPRINT_DOMAIN, &payload)
+    }
+}
+
+/// Frames one full module-symbol identity with the exact profile.
+fn identity_transcript(identity: &ModuleSymbolIdentity) -> Result<Vec<u8>, CoreError> {
+    let mut payload = nht_frame(
+        "profile",
+        identity.module().language_behavior_version().as_bytes(),
+    )?;
+    payload.extend(nht_frame(
+        "module",
+        identity.module().module_name().as_bytes(),
+    )?);
+    payload.extend(nht_frame(
+        "declaration",
+        identity.declaration_name().as_bytes(),
+    )?);
+    Ok(payload)
+}

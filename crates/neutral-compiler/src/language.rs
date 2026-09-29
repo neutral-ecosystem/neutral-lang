@@ -22,6 +22,4 @@ pub(crate) mod graph_names {
     pub(crate) const AS: &str = "as";
     /// Public declaration prefix; imports cannot be re-exported.
     pub(crate) const PUBLIC: &str = "public";
-    /// Maximum recursive type/value nesting retained by the Stage 4 analyzer.
-    pub(crate) const MAX_PROJECT_NESTING_DEPTH: usize = 64;
 }

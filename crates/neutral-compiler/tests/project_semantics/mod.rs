@@ -129,6 +129,58 @@ fn cross_scc_value_cycle_is_rejected() {
 }
 
 #[test]
+/// An import SCC with acyclic semantic dependencies remains valid.
+fn import_scc_without_semantic_cycle_is_accepted() {
+    let (captured, graph) = project(&[
+        (
+            "cycle::right",
+            "import cycle::left as left\npublic num answer = left::seed\n",
+        ),
+        (
+            "cycle::left",
+            "import cycle::right as right\npublic num seed = 42\n",
+        ),
+    ]);
+    let model = analyze_project_semantics(&captured, &graph, &CancellationToken::new())
+        .expect("imports alone do not create a semantic cycle");
+    assert_eq!(model.public_interface().exports().len(), 2);
+}
+
+#[test]
+/// Multiple missing-name diagnostics follow module and original-byte order.
+fn semantic_diagnostic_order_is_capture_invariant() {
+    let bodies = [
+        ("zeta", "num second = absent\nnum first = missing\n"),
+        ("alpha", "num value = unknown\n"),
+    ];
+    let (first_capture, first_graph) = project(&bodies);
+    let (second_capture, second_graph) = project(&[bodies[1], bodies[0]]);
+    let failures = [
+        analyze_project_semantics(&first_capture, &first_graph, &CancellationToken::new())
+            .expect_err("missing names"),
+        analyze_project_semantics(&second_capture, &second_graph, &CancellationToken::new())
+            .expect_err("missing names after reorder"),
+    ];
+    for failure in failures {
+        let ordered = failure
+            .diagnostics()
+            .iter()
+            .map(|diagnostic| {
+                (
+                    diagnostic.module_id().to_owned(),
+                    diagnostic.source_location().span().start(),
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(ordered.len(), 3);
+        assert_eq!(ordered[0].0, "alpha");
+        assert!(ordered[1].1 < ordered[2].1);
+        assert_eq!(ordered[1].0, "zeta");
+        assert_eq!(ordered[2].0, "zeta");
+    }
+}
+
+#[test]
 /// Private imported names and absent imports have the same public failure.
 fn private_imported_name_is_not_resolved() {
     assert_eq!(

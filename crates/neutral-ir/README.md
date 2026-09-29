@@ -18,6 +18,10 @@ contextual record values; display is deterministic and escapes hostile controls.
 It also carries exact captured vocabulary identity/version/schema/encoding/
 digest/feature facts, qualified type contracts and values, and distinct
 vocabulary-default provenance without introducing an executable value kind.
+For project development, its public-interface contract carries only exported
+signatures and public-to-public dependency edges. The domain-separated
+fingerprint covers that signature surface, not private values or the future
+complete project identity.
 
 ## Command
 

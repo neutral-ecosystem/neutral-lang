@@ -2,7 +2,7 @@
 
 # Public project semantics contract
 
-Status: accepted Stage 4 contract; project IR and reader publication remain Stage 6 work
+Status: accepted Stage 4 contract; complete project IR and authoritative reader publication remain Stage 6 work
 
 This contract refines [SOURCE](SOURCE.md) and [MODULE-GRAPH](MODULE-GRAPH.md).
 It changes neither the captured request nor the v0.1 profile. All resolution
@@ -65,6 +65,35 @@ for contextual value validation/lowering, and for publishing the export index,
 source maps, and redacted public reader view. A successful Stage 4 resolution
 model is not an authoritative compiled project and does not activate `neu
 "1.0"` in the standalone compiler.
+
+## Stage 4 public interface snapshot
+
+Before the complete Stage 6 project IR, the compiler may produce a narrow
+in-process public-interface snapshot. It contains only explicitly public
+module-symbol identities, canonical binding type signatures or record field
+name/type signatures, and public-to-public type, value-reuse, and identity-ref
+edges. A dependency on a private local value is absent from this snapshot;
+source IDs, byte spans, captured bytes, private roots, private edge endpoints,
+and raw provenance are never members of the public snapshot. The reader
+rejects unordered/duplicate exports or edges, dangling or non-public nominal
+type targets, type edges inconsistent with public signatures, structurally
+incompatible edge categories, excess type nesting, and a stale
+fingerprint before exposing a view. An independent consumer can enumerate
+cross-module value and reference edges using only the reader contract.
+The reader checks internal consistency of the supplied public-only snapshot;
+without the complete project IR it cannot independently prove that a producer
+did not omit or misclassify a declaration. The compiler owns that projection,
+and Stage 6 will validate the authoritative complete-project boundary.
+
+The snapshot fingerprint is an NHT-v1 SHA-256 transcript in the
+`neutral/project-interface/v1` domain over the exact profile, canonically
+ordered public symbols, their type signatures, and public-to-public edges.
+Alias spelling, captured source order, source locations, and private
+implementation values do not enter it. It is a *public signature fingerprint*,
+not a full logical-project identity or a guarantee about record default values
+or contextual value lowering. Stage 6 owns complete validated project IR and
+the authoritative public view; Stage 7 owns the complete project identity
+chain.
 
 ## Semantic dependency and diagnostic rules
 

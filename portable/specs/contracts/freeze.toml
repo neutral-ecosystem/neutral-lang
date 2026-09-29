@@ -38,5 +38,5 @@ status = "implemented"
 
 [stage4_contract_gate]
 public_semantics_path = "portable/specs/contracts/PUBLIC-SEMANTICS.md"
-public_semantics_sha256 = "199aec178c964f3c51872b98e921bca89f5c532549ea176bdf3197afa39833bc"
-status = "core-resolution-implemented; public integration pending"
+public_semantics_sha256 = "960f5a532a858622304cbd77020ec720fef0dba64a242902dd060b4062d17710"
+status = "stage4-integration-validation-complete"

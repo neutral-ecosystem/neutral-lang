@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.capture-fixture/1"
+case_id = "V1-XMOD-001-REUSE-PROVENANCE"
+request_version = "neutral.capture/v1"
+profile = "1.0"
+
+[controls]
+cancelled = false
+total_source_bytes = 4096
+source_bytes_per_unit = 2048
+source_units = 2
+source_id_bytes = 64
+module_id_bytes = 64
+vocabulary_units = 1
+vocabulary_bytes_per_unit = 1024
+total_vocabulary_bytes = 1024
+imports_per_module = 1
+import_edges = 1
+scc_units = 2
+declarations = 8
+diagnostics = 8
+output_bytes = 8192
+
+[[sources]]
+source_id = "source:consumer"
+module_id = "service::consumer"
+source_utf8 = "neu \"1.0\"\nmodule service::consumer\nimport service::source as source\npublic num copied = source::answer\npublic Ref<num> pointer = ref(source::answer)\n"
+
+[[sources]]
+source_id = "source:source"
+module_id = "service::source"
+source_utf8 = "neu \"1.0\"\nmodule service::source\nnum seed = 42\npublic num answer = seed\n"
