@@ -21,7 +21,9 @@
 The executable ownership inventory is
 [`config/repository-layout.toml`](../config/repository-layout.toml). Generated
 output policy is defined in
-[`config/generated-outputs.toml`](../config/generated-outputs.toml).
+[`config/generated-outputs.toml`](../config/generated-outputs.toml). Local
+tool and result-root defaults live in
+[`config/automation.toml`](../config/automation.toml).
 
 The API website is generated under ignored `target/doc/` and published at the
 [Neutral API documentation website](https://neutral-lang-doc.younesrabeh.workers.dev/).
@@ -29,7 +31,7 @@ The API website is generated under ignored `target/doc/` and published at the
 ## Generated output and cleanup
 
 Use `cargo xtask clean` to remove generated repository evidence. Cleanup is
-restricted to the validated relative result root and cannot target the
+restricted to the validated, Git-ignored relative result root and cannot target the
 repository root, a parent or absolute directory, released conformance data,
 tracked quality policy, or an installed portable plan.
 

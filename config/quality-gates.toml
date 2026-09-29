@@ -5,8 +5,8 @@
 [coverage]
 tool = "cargo-llvm-cov"
 toolchain = "nightly-only"
-html_output = "test-results/analysis/coverage/html/index.html"
-json_output = "test-results/analysis/coverage/coverage.json"
+html_output = "analysis/coverage/html/index.html"
+json_output = "analysis/coverage/coverage.json"
 exclusion_regex = "(^|/)xtask/"
 exclusion_policy = "reviewed: repository automation is command-tested separately; production coverage excludes only xtask"
 minimum_line_percent = 85

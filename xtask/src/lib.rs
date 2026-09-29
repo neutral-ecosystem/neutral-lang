@@ -18,18 +18,37 @@ use std::{
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
+mod configuration;
 pub mod constants;
+mod environment;
 mod fixtures;
 mod interface;
 mod portable_stage;
 mod release;
 mod released_conformance;
+mod results;
+mod versioning;
 
+use configuration::{
+    active_test_profile, automation_value, cargo_command, cargo_target_directory,
+    configuration_array_from, configuration_section, configuration_value, is_safe_relative_path,
+    quality_array, quality_value, repository_directories, rustc_command, test_minimums,
+};
+use environment::{
+    bootstrap, json_string, print_environment_manifest, verify_complete_environment,
+    verify_environment,
+};
 use interface::{
     BuildProfile, CiProfile, FuzzMode, PerformanceProfile, PortableAction, QualityAction,
     QualityProfile, Task, TestLevel, ValidationTarget, VersionAction,
 };
 use released_conformance::ReleasedBundle;
+use results::{clean_results, quality_output_path, result_root};
+use versioning::{
+    check_versions, collect_named_files, html_spdx_marker, line_spdx_marker, project_license,
+    project_slug, sha256_hex, validate_semver, version, workspace_package_directory,
+    workspace_package_license, workspace_package_manifests, workspace_package_version,
+};
 
 /// One named fallible step in an aggregate automation workflow.
 type WorkflowStep<'a> = (&'static str, Box<dyn FnOnce() -> Result<(), String> + 'a>);
@@ -89,333 +108,6 @@ fn execute(task: Task) -> Result<(), String> {
     }
 }
 
-/// Creates ignored automation-result directories and records the local environment.
-fn bootstrap() -> Result<(), String> {
-    verify_environment()?;
-    let result_directory = result_root()?.join("bootstrap");
-    fs::create_dir_all(&result_directory)
-        .map_err(|error| format!("could not create {}: {error}", result_directory.display()))?;
-    fs::write(
-        result_directory.join("environment.json"),
-        environment_manifest()?,
-    )
-    .map_err(|error| format!("could not write bootstrap environment manifest: {error}"))?;
-    println!("{} workspace bootstrap: pass", constants::INFO);
-    Ok(())
-}
-
-/// Verifies the files and selected Rust toolchain channel required by the workspace.
-fn verify_environment() -> Result<(), String> {
-    let workspace_root = workspace_root()?;
-    for required_path in [
-        "Cargo.lock",
-        "rust-toolchain.toml",
-        "config/dependency-sources.toml",
-        constants::CONFORMANCE_CONFIG_FILE,
-        "config/generated-outputs.toml",
-        "config/host-policy.toml",
-        "config/ir-encoding.toml",
-        "config/quality-gates.toml",
-        "config/release.toml",
-        "config/repository-layout.toml",
-        "config/test-levels.toml",
-        "config/test-suites.toml",
-        constants::QUALITY_MANIFEST_FILE,
-    ] {
-        if !workspace_root.join(required_path).is_file() {
-            return Err(format!("missing required workspace file: {required_path}"));
-        }
-    }
-
-    let inherited_manifest =
-        ReleasedBundle::load(&workspace_root)?.member("conformance/manifest.toml");
-    if !workspace_root.join(&inherited_manifest).is_file() {
-        return Err(format!(
-            "missing required workspace file: {inherited_manifest}"
-        ));
-    }
-
-    let rustc_version = command_output(constants::RUSTC_COMMAND, &["--version"])?;
-    let _cargo_version = command_output(constants::CARGO_COMMAND, &["--version"])?;
-    let rust_channel = rust_channel()?;
-    if !rust_version_matches_channel(&rustc_version, &rust_channel) {
-        return Err(format!(
-            "Rust channel {rust_channel} is required; found {rustc_version}"
-        ));
-    }
-    let verbose_rustc = command_output(constants::RUSTC_COMMAND, &["-vV"])?;
-    let host = verbose_rustc
-        .lines()
-        .find_map(|line| line.strip_prefix("host: "))
-        .ok_or_else(|| "rustc -vV did not report a host target".to_owned())?;
-    let host_policy = read_workspace_text(&workspace_root, "config/host-policy.toml")?;
-    if !host_policy.contains(&format!("supported = [\"{host}\"]")) {
-        return Err(format!(
-            "unsupported release host {host}; use a host listed in config/host-policy.toml"
-        ));
-    }
-
-    println!("{} environment verification: pass", constants::INFO);
-    Ok(())
-}
-
-/// Verifies the complete stable, analysis, and release workstation tool set.
-fn verify_complete_environment() -> Result<(), String> {
-    verify_environment()?;
-    let mut failures = Vec::new();
-    for tool in required_tool_specs() {
-        if let Err(error) = tool_version(&tool) {
-            failures.push(error);
-        }
-    }
-    if failures.is_empty() {
-        println!("{} complete environment tool set: pass", constants::INFO);
-        Ok(())
-    } else {
-        Err(format!(
-            "complete environment verification failed:\n{}",
-            failures.join("\n")
-        ))
-    }
-}
-
-/// Describes one executable and an actionable installation hint.
-struct ToolSpec {
-    /// Stable machine-readable manifest key.
-    key: &'static str,
-    /// Human-readable tool name used in diagnostics.
-    label: &'static str,
-    /// Executable resolved from the selected environment.
-    command: &'static str,
-    /// Arguments that print a bounded identity or version.
-    arguments: &'static [&'static str],
-    /// Action the operator can take when verification fails.
-    install_hint: &'static str,
-}
-
-/// Returns the complete release-workstation tool inventory.
-fn required_tool_specs() -> Vec<ToolSpec> {
-    vec![
-        ToolSpec {
-            key: "rustfmt",
-            label: "Rustfmt",
-            command: constants::RUSTFMT_COMMAND,
-            arguments: &["--version"],
-            install_hint: "run `rustup component add rustfmt`",
-        },
-        ToolSpec {
-            key: "clippy",
-            label: "Clippy",
-            command: constants::CARGO_COMMAND,
-            arguments: &["clippy", "--version"],
-            install_hint: "run `rustup component add clippy`",
-        },
-        ToolSpec {
-            key: "rustup_active_toolchain",
-            label: "Rustup",
-            command: constants::RUSTUP_COMMAND,
-            arguments: &["show", "active-toolchain"],
-            install_hint: "install Rustup from https://rustup.rs",
-        },
-        ToolSpec {
-            key: "nightly_rustc",
-            label: "isolated nightly Rust",
-            command: constants::RUSTUP_COMMAND,
-            arguments: &["run", "nightly", "rustc", "--version"],
-            install_hint: "run `rustup toolchain install nightly --profile minimal`",
-        },
-        ToolSpec {
-            key: "cargo_llvm_cov",
-            label: "LLVM coverage tools",
-            command: constants::CARGO_COMMAND,
-            arguments: &["llvm-cov", "--version"],
-            install_hint: "run `rustup component add --toolchain nightly llvm-tools-preview` and `cargo install cargo-llvm-cov`",
-        },
-        ToolSpec {
-            key: "cargo_fuzz",
-            label: "coverage-guided fuzzing tools",
-            command: constants::CARGO_COMMAND,
-            arguments: &["fuzz", "--version"],
-            install_hint: "run `cargo install cargo-fuzz`",
-        },
-        ToolSpec {
-            key: "cargo_mutants",
-            label: "mutation testing tools",
-            command: constants::CARGO_COMMAND,
-            arguments: &["mutants", "--version"],
-            install_hint: "run `cargo install cargo-mutants`",
-        },
-        ToolSpec {
-            key: "valgrind",
-            label: "Valgrind",
-            command: constants::VALGRIND_COMMAND,
-            arguments: &["--version"],
-            install_hint: "install the distribution `valgrind` package",
-        },
-        ToolSpec {
-            key: "git",
-            label: "Git",
-            command: constants::GIT_COMMAND,
-            arguments: &["--version"],
-            install_hint: "install the distribution `git` package",
-        },
-        ToolSpec {
-            key: "sh",
-            label: "POSIX shell",
-            command: constants::POSIX_SHELL_COMMAND,
-            arguments: &["-c", "printf 'POSIX shell'"],
-            install_hint: "install a POSIX-compatible `sh`",
-        },
-        ToolSpec {
-            key: "tar",
-            label: "tar",
-            command: constants::TAR_COMMAND,
-            arguments: &["--version"],
-            install_hint: "install the distribution `tar` package",
-        },
-        ToolSpec {
-            key: "curl",
-            label: "curl",
-            command: constants::CURL_COMMAND,
-            arguments: &["--version"],
-            install_hint: "install TLS-enabled `curl` with system certificates",
-        },
-        ToolSpec {
-            key: "sha256sum",
-            label: "SHA-256 checksum utility",
-            command: constants::SHA256_COMMAND,
-            arguments: &["--version"],
-            install_hint: "install the distribution `coreutils` package",
-        },
-    ]
-}
-
-/// Returns a verified one-line tool version or an actionable error.
-fn tool_version(tool: &ToolSpec) -> Result<String, String> {
-    command_output(tool.command, tool.arguments)
-        .map(|output| output.lines().next().unwrap_or_default().to_owned())
-        .map_err(|error| {
-            format!(
-                "{} is unavailable ({error}); {}",
-                tool.label, tool.install_hint
-            )
-        })
-}
-
-/// Prints the machine-readable environment manifest without writing tracked files.
-fn print_environment_manifest() -> Result<(), String> {
-    println!("{} {}", constants::MANIFEST, environment_manifest()?);
-    Ok(())
-}
-
-/// Builds the machine-readable environment manifest used in generated evidence.
-fn environment_manifest() -> Result<String, String> {
-    let rustc_version = command_output(constants::RUSTC_COMMAND, &["--version"])?;
-    let cargo_version = command_output(constants::CARGO_COMMAND, &["--version"])?;
-    let rust_channel = rust_channel()?;
-    let active_stage = active_stage()?;
-    let host_image = host_image();
-    let kernel = command_output(constants::UNAME_COMMAND, &["-srmo"])
-        .unwrap_or_else(|error| format!("unavailable: {error}"));
-    let tools = environment_tools_json();
-    Ok(format!(
-        concat!(
-            "{{\n",
-            "  \"host_image\": \"{}\",\n",
-            "  \"kernel\": \"{}\",\n",
-            "  \"rust_channel\": \"{}\",\n",
-            "  \"rustc\": \"{}\",\n",
-            "  \"cargo\": \"{}\",\n",
-            "  \"active_stage\": {},\n",
-            "  \"tools\": {{\n{}\n  }}\n",
-            "}}"
-        ),
-        json_string(&host_image),
-        json_string(&kernel),
-        json_string(&rust_channel),
-        json_string(&rustc_version),
-        json_string(&cargo_version),
-        active_stage,
-        tools,
-    ))
-}
-
-/// Returns the host operating-system identity without a user-specific path.
-fn host_image() -> String {
-    fs::read_to_string("/etc/os-release")
-        .ok()
-        .and_then(|content| {
-            content.lines().find_map(|line| {
-                line.strip_prefix("PRETTY_NAME=")
-                    .map(|value| value.trim_matches('"').to_owned())
-            })
-        })
-        .unwrap_or_else(|| "unknown operating system".to_owned())
-}
-
-/// Renders all specialized tool versions, retaining unavailable diagnostics.
-fn environment_tools_json() -> String {
-    required_tool_specs()
-        .into_iter()
-        .map(|tool| {
-            let version =
-                tool_version(&tool).unwrap_or_else(|error| format!("unavailable: {error}"));
-            format!("    \"{}\": \"{}\"", tool.key, json_string(&version))
-        })
-        .collect::<Vec<_>>()
-        .join(",\n")
-}
-
-/// Reads the selected Rust channel from the repository toolchain manifest.
-fn rust_channel() -> Result<String, String> {
-    let path = workspace_root()?.join("rust-toolchain.toml");
-    let manifest = fs::read_to_string(&path)
-        .map_err(|error| format!("could not read {}: {error}", path.display()))?;
-    manifest
-        .lines()
-        .map(str::trim)
-        .find_map(|line| line.strip_prefix("channel = \"")?.strip_suffix('"'))
-        .map(str::to_owned)
-        .ok_or_else(|| "rust-toolchain.toml has no quoted channel".to_owned())
-}
-
-/// Returns whether one compiler version belongs to the selected toolchain channel.
-fn rust_version_matches_channel(rustc_version: &str, channel: &str) -> bool {
-    if channel == "stable" {
-        rustc_version.starts_with("rustc ")
-            && !["-nightly", "-beta", "-dev"]
-                .iter()
-                .any(|marker| rustc_version.contains(marker))
-    } else {
-        rustc_version.starts_with(&format!("rustc {channel} "))
-    }
-}
-
-/// Derives the active conformance stage from required portable manifest suites.
-fn active_stage() -> Result<u8, String> {
-    portable_stage::active_conformance_stage(&workspace_root()?)
-}
-
-/// Escapes a string for the limited JSON values emitted by automation evidence.
-fn json_string(value: &str) -> String {
-    let mut escaped = String::with_capacity(value.len());
-    for character in value.chars() {
-        match character {
-            '"' => escaped.push_str("\\\""),
-            '\\' => escaped.push_str("\\\\"),
-            '\n' => escaped.push_str("\\n"),
-            '\r' => escaped.push_str("\\r"),
-            '\t' => escaped.push_str("\\t"),
-            character if character.is_control() => {
-                write!(&mut escaped, "\\u{:04x}", u32::from(character))
-                    .expect("writing to a String cannot fail");
-            }
-            character => escaped.push(character),
-        }
-    }
-    escaped
-}
-
 /// Runs the complete auto-formatting workflow intended before ordinary commits.
 fn develop() -> Result<(), String> {
     run_recorded_workflow(
@@ -428,7 +120,6 @@ fn develop() -> Result<(), String> {
             ("lint", Box::new(lint)),
             ("tests", Box::new(|| test_suite(TestLevel::All))),
             ("smoke", Box::new(|| test_suite(TestLevel::Smoke))),
-            ("fuzz-regressions", Box::new(|| fuzz(FuzzMode::Smoke))),
             ("docs", Box::new(documentation)),
         ],
     )
@@ -477,19 +168,8 @@ fn verify_repository_markdown_links() -> Result<(), String> {
     let canonical_root = fs::canonicalize(&root)
         .map_err(|error| format!("could not canonicalize workspace root: {error}"))?;
     let mut files = vec![root.join(constants::ROOT_README_FILE)];
-    for directory in [
-        ".cargo",
-        ".devcontainer",
-        ".github",
-        "config",
-        "conformance",
-        "crates",
-        "fuzz",
-        "quality",
-        "scripts",
-        "xtask",
-    ] {
-        collect_regular_files(&root.join(directory), &mut files)?;
+    for directory in repository_directories(&root)? {
+        collect_regular_files(&root.join(directory.path), &mut files)?;
     }
     let mut failures = Vec::new();
     for file in files
@@ -539,10 +219,14 @@ fn check_workflow_contract() -> Result<(), String> {
     if !ci.contains("cargo xtask ci pr") {
         return Err("ci.yml does not delegate to `cargo xtask ci pr`".to_owned());
     }
+    let retained_workflows = format!(
+        "path: {}/workflows",
+        automation_value("output", "results_root")?
+    );
     for retention_requirement in [
         "if: always()",
-        "actions/upload-artifact@v7",
-        "path: test-results/workflows",
+        "actions/upload-artifact@",
+        &retained_workflows,
     ] {
         if !ci.contains(retention_requirement) {
             return Err(format!(
@@ -608,11 +292,11 @@ fn build(profile: BuildProfile) -> Result<(), String> {
 fn documentation() -> Result<(), String> {
     run_rustdoc()?;
     let metadata = command_output(
-        constants::CARGO_COMMAND,
+        &cargo_command()?,
         &["metadata", "--format-version", "1", "--no-deps"],
     )?;
     let index = render_rustdoc_index(&metadata)?;
-    let output_directory = workspace_root()?.join(constants::RUSTDOC_OUTPUT_DIRECTORY);
+    let output_directory = cargo_target_directory()?.join("doc");
     fs::create_dir_all(&output_directory).map_err(|error| {
         format!(
             "could not create rustdoc directory {}: {error}",
@@ -694,25 +378,17 @@ fn run_rustdoc() -> Result<(), String> {
     rustdoc_flags.push_str(&rustdoc_header_configuration());
 
     let arguments = ["doc", "--workspace", "--no-deps"];
-    let status = Command::new(constants::CARGO_COMMAND)
+    let cargo = cargo_command()?;
+    let status = Command::new(&cargo)
         .current_dir(workspace_root()?)
         .env(constants::CARGO_ENCODED_RUSTDOCFLAGS, rustdoc_flags)
         .args(arguments)
         .status()
-        .map_err(|error| {
-            format!(
-                "could not run {} {}: {error}",
-                constants::CARGO_COMMAND,
-                arguments.join(" ")
-            )
-        })?;
-    status.success().then_some(()).ok_or_else(|| {
-        format!(
-            "{} {} failed with {status}",
-            constants::CARGO_COMMAND,
-            arguments.join(" ")
-        )
-    })
+        .map_err(|error| format!("could not run {} {}: {error}", cargo, arguments.join(" ")))?;
+    status
+        .success()
+        .then_some(())
+        .ok_or_else(|| format!("{} {} failed with {status}", cargo, arguments.join(" ")))
 }
 
 /// Derives a stable non-security cache token from the shared rustdoc header.
@@ -794,10 +470,12 @@ fn coverage() -> Result<(), String> {
     let functions = quality_value("coverage", "minimum_function_percent")?;
     let regions = quality_value("coverage", "minimum_region_percent")?;
     let exclusions = quality_value("coverage", "exclusion_regex")?;
-    let root = result_root()?;
-    let html = root.join(constants::COVERAGE_HTML_DIRECTORY);
-    let html_index = html.join("html/index.html");
-    let json = root.join(constants::COVERAGE_JSON_FILE);
+    let html_index = quality_output_path("coverage", "html_output")?;
+    let html = html_index
+        .parent()
+        .and_then(Path::parent)
+        .ok_or_else(|| "coverage HTML output must be below a report directory".to_owned())?;
+    let json = quality_output_path("coverage", "json_output")?;
     fs::create_dir_all(
         json.parent()
             .ok_or_else(|| "coverage JSON output has no parent".to_owned())?,
@@ -877,7 +555,6 @@ fn quality(profile: QualityProfile) -> Result<(), String> {
         ("lint", Box::new(lint)),
         ("tests", Box::new(|| test_suite(TestLevel::All))),
         ("smoke", Box::new(|| test_suite(TestLevel::Smoke))),
-        ("fuzz-regressions", Box::new(|| fuzz(FuzzMode::Smoke))),
         (
             "probe-build",
             Box::new(|| run_cargo(&["build", "--locked", "--package", constants::NEUTRAL_PROBE])),
@@ -933,7 +610,7 @@ fn evaluate_quality(profile: QualityProfile) -> Result<(), String> {
     }
     let manifest_sha256 = sha256_file(&root.join(constants::QUALITY_MANIFEST_FILE))?;
     let quality_gates_sha256 = sha256_file(&root.join(constants::QUALITY_GATES_FILE))?;
-    let toolchain = command_output(constants::RUSTC_COMMAND, &["--version"])?;
+    let toolchain = command_output(&rustc_command()?, &["--version"])?;
     let license_marker = line_spdx_marker(&project_license(&root)?);
     fs::write(
         &output,
@@ -1226,16 +903,17 @@ fn verify_recorded_quality_gates() -> Result<(), String> {
 /// Validates either built release binaries or one encoded artifact.
 fn validate(target: ValidationTarget) -> Result<(), String> {
     match target {
-        ValidationTarget::Binaries => {
-            validate_release_binaries(&workspace_root()?.join(constants::CARGO_RELEASE_DIRECTORY))
-        }
+        ValidationTarget::Binaries => validate_release_binaries(
+            &cargo_target_directory()?.join("release"),
+            &release_plan()?.binaries,
+        ),
         ValidationTarget::Artifact(path) => {
             if !path.is_file() {
                 return Err(format!("artifact does not exist: {}", path.display()));
             }
             let probe = release_binary_path(
-                &workspace_root()?.join(constants::CARGO_RELEASE_DIRECTORY),
-                constants::NEUTRAL_PROBE_BINARY,
+                &cargo_target_directory()?.join("release"),
+                constants::NEUTRAL_PROBE,
             );
             if !probe.is_file() {
                 return Err(format!(
@@ -1249,11 +927,8 @@ fn validate(target: ValidationTarget) -> Result<(), String> {
 }
 
 /// Validates release-mode CLI and probe entry points plus the probe boundary.
-fn validate_release_binaries(directory: &Path) -> Result<(), String> {
-    for binary in [
-        constants::NEUTRAL_CLI_BINARY,
-        constants::NEUTRAL_PROBE_BINARY,
-    ] {
+fn validate_release_binaries(directory: &Path, binaries: &[String]) -> Result<(), String> {
+    for binary in binaries {
         let path = release_binary_path(directory, binary);
         if !path.is_file() {
             return Err(format!(
@@ -1434,8 +1109,8 @@ fn package() -> Result<(), String> {
     }
     let root = workspace_root()?;
     let host = rust_host()?;
-    let source_directory = root.join(constants::CARGO_RELEASE_DIRECTORY);
-    validate_release_binaries(&source_directory)?;
+    let source_directory = cargo_target_directory()?.join("release");
+    validate_release_binaries(&source_directory, &plan.binaries)?;
     let output_directory = result_root()?
         .join(constants::RELEASE_RESULT_DIRECTORY)
         .join("package")
@@ -1483,19 +1158,20 @@ fn release_distribution_assets(
 ) -> Result<Vec<DistributionAsset>, String> {
     let version = plan.release_tag.trim_start_matches('v');
     let license = project_license(root)?;
+    let artifact_name = project_slug(root)?;
     let license_marker = html_spdx_marker(&license);
     let entry_context = ReleaseEntryContext {
         version,
         candidate_commit,
         license: &license,
     };
-    let source_name = format!("neutral-lang-{}-source.tar", plan.release_tag);
+    let source_name = format!("{artifact_name}-{}-source.tar", plan.release_tag);
     let lock_bytes = fs::read(root.join(constants::CARGO_LOCK_FILE))
         .map_err(|error| format!("could not read release dependency lock: {error}"))?;
     let mut assets = vec![
         DistributionAsset {
             filename: source_name,
-            bytes: source_archive(root, version, candidate_commit)?,
+            bytes: source_archive(root, &artifact_name, version, candidate_commit)?,
         },
         DistributionAsset {
             filename: constants::RELEASE_SBOM_FILE.to_owned(),
@@ -1503,30 +1179,28 @@ fn release_distribution_assets(
         },
         DistributionAsset {
             filename: constants::RELEASE_INSTALL_FILE.to_owned(),
-            bytes: format!("{license_marker}\n\n# Install Neutral {version}\n\nSupported target: `{host}`. Verify the downloaded files with `sha256sum --check SHA256SUMS`, install `neutral-cli` and `neutral-probe` into a directory on `PATH`, then run `neutral-cli --version` and `neutral-probe --help`.\n").into_bytes(),
+            bytes: release_install_guide(
+                &license_marker,
+                &artifact_name,
+                version,
+                host,
+                &plan.binaries,
+            ),
         },
         DistributionAsset {
             filename: constants::RELEASE_PROVENANCE_FILE.to_owned(),
-            bytes: format!("{{\"schema_version\":1,\"builder\":\"cargo xtask package\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"release_tag\":\"{}\",\"target\":\"{}\",\"rustc\":\"{}\",\"cargo_lock_sha256\":\"{}\",\"reproducible_command\":\"cargo xtask package\"}}\n", json_string(candidate_commit), json_string(&plan.release_tag), json_string(host), json_string(&command_output(constants::RUSTC_COMMAND, &["--version"])?), sha256_hex(&lock_bytes)).into_bytes(),
+            bytes: format!("{{\"schema_version\":1,\"builder\":\"cargo xtask package\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"release_tag\":\"{}\",\"target\":\"{}\",\"rustc\":\"{}\",\"cargo_lock_sha256\":\"{}\",\"reproducible_command\":\"cargo xtask package\"}}\n", json_string(candidate_commit), json_string(&plan.release_tag), json_string(host), json_string(&command_output(&rustc_command()?, &["--version"])?), sha256_hex(&lock_bytes)).into_bytes(),
         },
     ];
     let mut entries = Vec::new();
     let mut checksums = Vec::new();
-    for binary in &plan.binaries {
-        let filename = release_binary_path(Path::new(""), binary)
-            .to_string_lossy()
-            .into_owned();
-        let bytes = fs::read(release_binary_path(source_directory, binary))
-            .map_err(|error| format!("could not hash release binary {binary}: {error}"))?;
-        append_release_entry(
-            &mut entries,
-            &mut checksums,
-            &filename,
-            &bytes,
-            "github-binaries",
-            &entry_context,
-        );
-    }
+    append_binary_release_entries(
+        &mut entries,
+        &mut checksums,
+        source_directory,
+        &plan.binaries,
+        &entry_context,
+    )?;
     for asset in &assets {
         let channel = if asset.filename.ends_with("-source.tar") {
             "source-tag"
@@ -1564,7 +1238,7 @@ fn release_distribution_assets(
             &entry_context,
         );
     }
-    let manifest = format!("{{\"schema_version\":1,\"release_tag\":\"{}\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"license\":\"{}\",\"supported_targets\":[\"{}\"],\"crates_io_selected\":false,\"known_limitations\":[\"single supported Linux x86_64 target\",\"no runtime or application semantics\"],\"deferred\":[\"additional host targets\",\"crates.io publication\"],\"artifacts\":[{}]}}\n", json_string(&plan.release_tag), json_string(candidate_commit), json_string(&license), json_string(host), entries.join(",")).into_bytes();
+    let manifest = release_manifest_bytes(plan, &entry_context, host, &entries);
     checksums.push(format!(
         "{}  {}\n",
         sha256_hex(&manifest),
@@ -1582,14 +1256,82 @@ fn release_distribution_assets(
     Ok(assets)
 }
 
+/// Hashes the selected built binaries into one release manifest and checksum set.
+fn append_binary_release_entries(
+    entries: &mut Vec<String>,
+    checksums: &mut Vec<String>,
+    source_directory: &Path,
+    binaries: &[String],
+    context: &ReleaseEntryContext<'_>,
+) -> Result<(), String> {
+    for binary in binaries {
+        let filename = release_binary_path(Path::new(""), binary)
+            .to_string_lossy()
+            .into_owned();
+        let bytes = fs::read(release_binary_path(source_directory, binary))
+            .map_err(|error| format!("could not hash release binary {binary}: {error}"))?;
+        append_release_entry(
+            entries,
+            checksums,
+            &filename,
+            &bytes,
+            "github-binaries",
+            context,
+        );
+    }
+    Ok(())
+}
+
+/// Renders the installation instructions for the exact selected binary set.
+fn release_install_guide(
+    license_marker: &str,
+    artifact_name: &str,
+    version: &str,
+    host: &str,
+    binaries: &[String],
+) -> Vec<u8> {
+    let programs = binaries
+        .iter()
+        .map(|binary| format!("`{binary}`"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!(
+        "{license_marker}\n\n# Install {artifact_name} {version}\n\nSupported target: `{host}`. Verify the downloaded files with `sha256sum --check SHA256SUMS`, install {programs} into a directory on `PATH`, then run each installed binary with `--help`.\n"
+    )
+    .into_bytes()
+}
+
+/// Renders metadata from the selected channels and assembled artifact records.
+fn release_manifest_bytes(
+    plan: &release::ReleasePlan,
+    context: &ReleaseEntryContext<'_>,
+    host: &str,
+    entries: &[String],
+) -> Vec<u8> {
+    let crates_io_selected = plan
+        .channels
+        .contains(&release::DistributionChannel::CratesIo);
+    let deferred = if crates_io_selected {
+        "[\"additional host targets\"]"
+    } else {
+        "[\"additional host targets\",\"crates.io publication\"]"
+    };
+    format!("{{\"schema_version\":1,\"release_tag\":\"{}\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"license\":\"{}\",\"supported_targets\":[\"{}\"],\"crates_io_selected\":{crates_io_selected},\"known_limitations\":[\"single-host binary package\",\"no runtime or application semantics\"],\"deferred\":{deferred},\"artifacts\":[{}]}}\n", json_string(&plan.release_tag), json_string(context.candidate_commit), json_string(context.license), json_string(host), entries.join(",")).into_bytes()
+}
+
 /// Produces deterministic tracked source bytes for one exact candidate commit.
-fn source_archive(root: &Path, version: &str, candidate_commit: &str) -> Result<Vec<u8>, String> {
+fn source_archive(
+    root: &Path,
+    artifact_name: &str,
+    version: &str,
+    candidate_commit: &str,
+) -> Result<Vec<u8>, String> {
     let archive = Command::new("git")
         .current_dir(root)
         .args([
             "archive",
             "--format=tar",
-            &format!("--prefix=neutral-lang-{version}/"),
+            &format!("--prefix={artifact_name}-{version}/"),
             candidate_commit,
         ])
         .output()
@@ -1793,616 +1535,12 @@ fn release_prepare() -> Result<(), String> {
 
 /// Returns the host triple reported by the selected Rust compiler.
 fn rust_host() -> Result<String, String> {
-    let verbose = command_output(constants::RUSTC_COMMAND, &["-vV"])?;
+    let verbose = command_output(&rustc_command()?, &["-vV"])?;
     verbose
         .lines()
         .find_map(|line| line.strip_prefix("host: "))
         .map(str::to_owned)
         .ok_or_else(|| "rustc -vV did not report a host triple".to_owned())
-}
-
-/// Executes the stable version command family.
-fn version(action: VersionAction) -> Result<(), String> {
-    match action {
-        VersionAction::Show => show_versions(),
-        VersionAction::Check => check_versions(),
-        VersionAction::Prepare(requested) => prepare_version(&requested),
-    }
-}
-
-/// Displays the package version separately from every frozen contract version.
-fn show_versions() -> Result<(), String> {
-    let root = workspace_root()?;
-    let package = workspace_package_version(&read_workspace_text(
-        &root,
-        constants::WORKSPACE_MANIFEST_FILE,
-    )?)?;
-    println!("{} package-release {package}", constants::INFO);
-    let freeze = read_workspace_text(
-        &root,
-        &ReleasedBundle::load(&root)?.member("specs/contracts/freeze.toml"),
-    )?;
-    for (name, value) in configuration_section(&freeze, "contract_versions")? {
-        println!("{} contract {name}={value}", constants::INFO);
-    }
-    Ok(())
-}
-
-/// Checks that package versions inherit the one workspace release version.
-fn check_versions() -> Result<(), String> {
-    let root = workspace_root()?;
-    let package_version = workspace_package_version(&read_workspace_text(
-        &root,
-        constants::WORKSPACE_MANIFEST_FILE,
-    )?)?;
-    for manifest in workspace_package_manifests(&root)? {
-        let content = fs::read_to_string(&manifest)
-            .map_err(|error| format!("could not read {}: {error}", manifest.display()))?;
-        if !content
-            .lines()
-            .any(|line| line.trim() == "version.workspace = true")
-        {
-            return Err(format!(
-                "workspace package must inherit version.workspace: {}",
-                manifest.display()
-            ));
-        }
-        for inherited in ["license.workspace = true", "repository.workspace = true"] {
-            if !content.lines().any(|line| line.trim() == inherited) {
-                return Err(format!(
-                    "workspace package must inherit {inherited}: {}",
-                    manifest.display()
-                ));
-            }
-        }
-    }
-    verify_dependency_lock(&root, &package_version)?;
-    let freeze = read_workspace_text(
-        &root,
-        &ReleasedBundle::load(&root)?.member("specs/contracts/freeze.toml"),
-    )?;
-    if configuration_value(&freeze, "status").as_deref() != Some("approved")
-        || configuration_section(&freeze, "contract_versions")?.is_empty()
-    {
-        return Err("contract freeze must remain approved and version-complete".to_owned());
-    }
-    println!("{} centralized package versions: pass", constants::INFO);
-    Ok(())
-}
-
-/// Rejects ordinary version work mixed with unreviewed normative changes.
-fn ensure_no_unreviewed_contract_changes(root: &Path) -> Result<(), String> {
-    let bundle = ReleasedBundle::load(root)?;
-    let freeze = bundle.member("specs/contracts/freeze.toml");
-    let specs = bundle.member("specs");
-    let manifest = bundle.member("conformance/manifest.toml");
-    let oracles = bundle.member("conformance/oracles");
-    let review = bundle.member("conformance/fixture-oracle-review.toml");
-    let output = Command::new("git")
-        .current_dir(root)
-        .args([
-            "diff",
-            "--name-only",
-            "HEAD",
-            "--",
-            constants::CONFORMANCE_CONFIG_FILE,
-            &freeze,
-            &specs,
-            &manifest,
-            &oracles,
-            &review,
-            "config/ir-encoding.toml",
-        ])
-        .output()
-        .map_err(|error| format!("could not inspect normative changes: {error}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "could not inspect normative changes: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
-    }
-    let changed = String::from_utf8(output.stdout)
-        .map_err(|error| format!("Git emitted non-UTF-8 paths: {error}"))?;
-    if changed.trim().is_empty() {
-        Ok(())
-    } else {
-        Err(format!(
-            "ordinary package-version work includes normative changes requiring contract-freeze review: {}",
-            changed.lines().collect::<Vec<_>>().join(", ")
-        ))
-    }
-}
-
-/// Propagates one reviewed package-release version without tagging or publishing.
-fn prepare_version(requested: &str) -> Result<(), String> {
-    validate_semver(requested)?;
-    let root = workspace_root()?;
-    let manifest_path = root.join(constants::WORKSPACE_MANIFEST_FILE);
-    let manifest = read_workspace_text(&root, constants::WORKSPACE_MANIFEST_FILE)?;
-    let current = workspace_package_version(&manifest)?;
-    validate_version_transition(&current, requested)?;
-    ensure_no_unreviewed_contract_changes(&root)?;
-    check_versions()?;
-    require_clean_checkout()?;
-
-    let updated_manifest = replace_workspace_package_version(&manifest, &current, requested)?;
-    let lock_path = root.join(constants::CARGO_LOCK_FILE);
-    let lock = read_workspace_text(&root, constants::CARGO_LOCK_FILE)?;
-    let package_names = workspace_package_names(&root)?;
-    let updated_lock = replace_workspace_lock_versions(&lock, &package_names, &current, requested)?;
-    let evidence_directory = root
-        .join(constants::QUALITY_EVIDENCE_DIRECTORY)
-        .join(format!("v{requested}"));
-    let evidence_readme = evidence_directory.join("README.md");
-    if evidence_readme.exists() {
-        return Err(format!(
-            "release evidence is already prepared: {}",
-            evidence_readme.display()
-        ));
-    }
-
-    let freeze_bytes =
-        fs::read(root.join(ReleasedBundle::load(&root)?.member("specs/contracts/freeze.toml")))
-            .map_err(|error| format!("could not read contract freeze: {error}"))?;
-    let freeze_digest = sha256_hex(&freeze_bytes);
-
-    fs::create_dir_all(&evidence_directory).map_err(|error| {
-        format!(
-            "could not create release evidence directory {}: {error}",
-            evidence_directory.display()
-        )
-    })?;
-    fs::write(&manifest_path, updated_manifest)
-        .map_err(|error| format!("could not update {}: {error}", manifest_path.display()))?;
-    fs::write(&lock_path, updated_lock)
-        .map_err(|error| format!("could not update {}: {error}", lock_path.display()))?;
-    fs::write(
-        &evidence_readme,
-        release_evidence_readme(requested, &project_license(&root)?),
-    )
-    .map_err(|error| format!("could not write {}: {error}", evidence_readme.display()))?;
-
-    let directory = result_root()?.join(constants::VERSION_RESULT_DIRECTORY);
-    fs::create_dir_all(&directory)
-        .map_err(|error| format!("could not create {}: {error}", directory.display()))?;
-    let output = directory.join(format!("prepare-{requested}.json"));
-    fs::write(
-        &output,
-        format!(
-            "{{\"schema_version\":1,\"current\":\"{}\",\"requested\":\"{}\",\"derived_updates\":[],\"contract_freeze_sha256\":\"{}\",\"frozen_contracts_changed\":false,\"actions\":[\"edit-workspace-package-version\",\"run-version-check\",\"review\"],\"status\":\"review-required\"}}\n",
-            json_string(&current),
-            json_string(requested),
-            freeze_digest
-        ),
-    )
-    .map_err(|error| format!("could not write {}: {error}", output.display()))?;
-    println!(
-        "{} package release prepared: {current} -> {requested}",
-        constants::INFO
-    );
-    println!(
-        "{} updated: {}, {}, {}",
-        constants::INFO,
-        constants::WORKSPACE_MANIFEST_FILE,
-        constants::CARGO_LOCK_FILE,
-        evidence_readme
-            .strip_prefix(&root)
-            .unwrap_or(&evidence_readme)
-            .display()
-    );
-    println!("{} version plan: {}", constants::INFO, output.display());
-    Ok(())
-}
-
-/// Replaces only the workspace package version in the root manifest.
-fn replace_workspace_package_version(
-    manifest: &str,
-    current: &str,
-    requested: &str,
-) -> Result<String, String> {
-    let mut selected = false;
-    let mut replaced = false;
-    let expected = format!("version = \"{current}\"");
-    let replacement = format!("version = \"{requested}\"");
-    let mut lines = Vec::new();
-
-    for line in manifest.lines() {
-        let trimmed = line.trim();
-        if trimmed.starts_with('[') {
-            selected = trimmed == "[workspace.package]";
-        }
-        if selected && trimmed == expected {
-            let indentation = line.len() - line.trim_start().len();
-            lines.push(format!("{}{}", &line[..indentation], replacement));
-            replaced = true;
-        } else {
-            lines.push(line.to_owned());
-        }
-    }
-    if !replaced {
-        return Err("root Cargo.toml has no matching workspace package version".to_owned());
-    }
-    Ok(format!("{}\n", lines.join("\n")))
-}
-
-/// Replaces each workspace package version in Cargo's lockfile without touching dependencies.
-fn replace_workspace_lock_versions(
-    lock: &str,
-    package_names: &BTreeSet<String>,
-    current: &str,
-    requested: &str,
-) -> Result<String, String> {
-    let mut updated = lock.to_owned();
-    for package_name in package_names {
-        let expected = format!("name = \"{package_name}\"\nversion = \"{current}\"");
-        let replacement = format!("name = \"{package_name}\"\nversion = \"{requested}\"");
-        if !updated.contains(&expected) {
-            return Err(format!(
-                "Cargo.lock is stale for workspace package {package_name} {current}"
-            ));
-        }
-        updated = updated.replacen(&expected, &replacement, 1);
-    }
-    Ok(updated)
-}
-
-/// Renders the durable release-evidence scaffold required before quality approval.
-fn release_evidence_readme(version: &str, license: &str) -> String {
-    format!(
-        "{}\n\n# Neutral v{version} quality evidence\n\nThis directory is prepared by `cargo xtask version prepare {version}`. Keep the\nrelease-quality approval record immutable once `cargo xtask quality approve --release\n{version}` succeeds.\n",
-        html_spdx_marker(license)
-    )
-}
-
-/// Reads scalar key/value pairs from one exact TOML section.
-fn configuration_section(content: &str, section: &str) -> Result<Vec<(String, String)>, String> {
-    let heading = format!("[{section}]");
-    let mut selected = false;
-    let mut values = Vec::new();
-    for line in content.lines().map(str::trim) {
-        if line.starts_with('[') {
-            selected = line == heading;
-            continue;
-        }
-        if !selected || line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let (name, value) = line
-            .split_once('=')
-            .ok_or_else(|| format!("invalid [{section}] entry: {line}"))?;
-        values.push((
-            name.trim().to_owned(),
-            value.trim().trim_matches('"').to_owned(),
-        ));
-    }
-    Ok(values)
-}
-
-/// Reads one unsectioned scalar from constrained TOML-like configuration.
-fn configuration_value(content: &str, key: &str) -> Option<String> {
-    content.lines().map(str::trim).find_map(|line| {
-        let (candidate, value) = line.split_once('=')?;
-        (candidate.trim() == key).then(|| value.trim().trim_matches('"').to_owned())
-    })
-}
-
-/// Checks the root release lock and its declared dependency-source policy.
-fn verify_dependency_lock(root: &Path, package_version: &str) -> Result<(), String> {
-    let policy = read_workspace_text(root, constants::DEPENDENCY_SOURCES_FILE)?;
-    for requirement in [
-        "lockfile = \"Cargo.lock\"",
-        "review = \"quality/reviews/dependency-review.md\"",
-        "allow_crates_io_registry = true",
-        "allow_git_sources = false",
-        "allow_external_paths = false",
-    ] {
-        if !policy.contains(requirement) {
-            return Err(format!(
-                "dependency-source policy must declare `{requirement}`"
-            ));
-        }
-    }
-    let review = read_workspace_text(root, "quality/reviews/dependency-review.md")?;
-    if !review.contains("Result: pass for the current lockfile") || !review.contains("cargo audit")
-    {
-        return Err("dependency and advisory review is absent or not passing".to_owned());
-    }
-    let lock = read_workspace_text(root, constants::CARGO_LOCK_FILE)?;
-    for package in lock.split("[[package]]").skip(1) {
-        if package.contains("source = \"git+") {
-            return Err("Cargo.lock contains a forbidden Git dependency".to_owned());
-        }
-        if package.contains("source = \"registry+") && !package.contains("checksum = \"") {
-            return Err("Cargo.lock contains a registry package without a checksum".to_owned());
-        }
-    }
-    for manifest in workspace_package_manifests(root)? {
-        verify_manifest_dependency_paths(root, &manifest)?;
-        let package_name = manifest
-            .parent()
-            .and_then(Path::file_name)
-            .and_then(std::ffi::OsStr::to_str)
-            .ok_or_else(|| {
-                format!(
-                    "package manifest has no package directory: {}",
-                    manifest.display()
-                )
-            })?;
-        let expected = format!("name = \"{package_name}\"\nversion = \"{package_version}\"");
-        if !lock.contains(&expected) {
-            return Err(format!(
-                "Cargo.lock is stale for workspace package {package_name} {package_version}"
-            ));
-        }
-    }
-    let output = Command::new(constants::CARGO_COMMAND)
-        .current_dir(root)
-        .args([
-            "metadata",
-            "--locked",
-            "--offline",
-            "--format-version",
-            "1",
-            "--no-deps",
-        ])
-        .output()
-        .map_err(|error| format!("could not validate Cargo.lock: {error}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "Cargo.lock is stale or unavailable offline: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
-    }
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    if stderr.lines().any(|line| line.contains("warning:")) {
-        return Err(format!(
-            "Cargo metadata emitted a release-relevant warning: {}",
-            stderr.trim()
-        ));
-    }
-    Ok(())
-}
-
-/// Requires every manifest path dependency to resolve inside the workspace.
-fn verify_manifest_dependency_paths(root: &Path, manifest: &Path) -> Result<(), String> {
-    let content = fs::read_to_string(manifest)
-        .map_err(|error| format!("could not read {}: {error}", manifest.display()))?;
-    let canonical_root = fs::canonicalize(root)
-        .map_err(|error| format!("could not canonicalize workspace root: {error}"))?;
-    for tail in content.split("path = \"").skip(1) {
-        let dependency = tail
-            .split_once('"')
-            .map(|(value, _)| value)
-            .ok_or_else(|| format!("malformed path dependency in {}", manifest.display()))?;
-        let path = manifest.parent().unwrap_or(root).join(dependency);
-        let canonical = fs::canonicalize(&path).map_err(|error| {
-            format!(
-                "could not resolve path dependency {}: {error}",
-                path.display()
-            )
-        })?;
-        if !canonical.starts_with(&canonical_root) {
-            return Err(format!(
-                "manifest path dependency escapes the workspace: {}",
-                path.display()
-            ));
-        }
-    }
-    Ok(())
-}
-
-/// Reads the root workspace package version from its exact TOML section.
-fn workspace_package_version(manifest: &str) -> Result<String, String> {
-    let version = workspace_package_value(manifest, "version")?;
-    validate_semver(&version)?;
-    Ok(version)
-}
-
-/// Reads the root workspace package license identifier.
-fn workspace_package_license(manifest: &str) -> Result<String, String> {
-    let license = workspace_package_value(manifest, "license")?;
-    if license.is_empty() {
-        return Err("root Cargo.toml has an empty [workspace.package] license".to_owned());
-    }
-    Ok(license)
-}
-
-/// Reads one quoted value from the root workspace package section.
-fn workspace_package_value(manifest: &str, key: &str) -> Result<String, String> {
-    let mut selected = false;
-    let prefix = format!("{key} = \"");
-    for line in manifest.lines().map(str::trim) {
-        if line.starts_with('[') {
-            selected = line == "[workspace.package]";
-            continue;
-        }
-        if selected
-            && let Some(value) = line
-                .strip_prefix(&prefix)
-                .and_then(|line| line.strip_suffix('"'))
-        {
-            return Ok(value.to_owned());
-        }
-    }
-    Err(format!("root Cargo.toml has no [workspace.package] {key}"))
-}
-
-/// Reads the project license identifier from the root workspace manifest.
-fn project_license(root: &Path) -> Result<String, String> {
-    workspace_package_license(&read_workspace_text(
-        root,
-        constants::WORKSPACE_MANIFEST_FILE,
-    )?)
-}
-
-/// Returns the line-comment SPDX marker for one license identifier.
-fn line_spdx_marker(license: &str) -> String {
-    format!("# SPDX-License-Identifier: {license}")
-}
-
-/// Returns the HTML-comment SPDX marker for one license identifier.
-fn html_spdx_marker(license: &str) -> String {
-    format!("<!-- SPDX-License-Identifier: {license} -->")
-}
-
-/// Returns every non-root workspace package manifest.
-fn workspace_package_manifests(root: &Path) -> Result<Vec<PathBuf>, String> {
-    let mut manifests = Vec::new();
-    for directory in [root.join("crates"), root.join("xtask")] {
-        collect_named_files(&directory, "Cargo.toml", &mut manifests)?;
-    }
-    manifests.sort();
-    Ok(manifests)
-}
-
-/// Returns the exact package-directory names represented by workspace manifests.
-fn workspace_package_names(root: &Path) -> Result<BTreeSet<String>, String> {
-    workspace_package_manifests(root)?
-        .into_iter()
-        .map(|manifest| {
-            manifest
-                .parent()
-                .and_then(Path::file_name)
-                .and_then(std::ffi::OsStr::to_str)
-                .map(str::to_owned)
-                .ok_or_else(|| {
-                    format!(
-                        "package manifest has no package directory: {}",
-                        manifest.display()
-                    )
-                })
-        })
-        .collect()
-}
-
-/// Collects regular files with one exact filename below a directory.
-fn collect_named_files(
-    directory: &Path,
-    name: &str,
-    files: &mut Vec<PathBuf>,
-) -> Result<(), String> {
-    for entry in fs::read_dir(directory)
-        .map_err(|error| format!("could not inspect {}: {error}", directory.display()))?
-    {
-        let entry = entry.map_err(|error| format!("could not inspect directory entry: {error}"))?;
-        let path = entry.path();
-        if path.is_dir() {
-            collect_named_files(&path, name, files)?;
-        } else if path.file_name().and_then(std::ffi::OsStr::to_str) == Some(name) {
-            files.push(path);
-        }
-    }
-    Ok(())
-}
-
-/// Validates the supported numeric `SemVer` core with an optional prerelease suffix.
-fn validate_semver(value: &str) -> Result<(), String> {
-    let (core, suffix) = value
-        .split_once('-')
-        .map_or((value, None), |(core, suffix)| (core, Some(suffix)));
-    let components = core.split('.').collect::<Vec<_>>();
-    let numeric = components.len() == 3
-        && components.iter().all(|component| {
-            !component.is_empty()
-                && component.bytes().all(|byte| byte.is_ascii_digit())
-                && (component == &"0" || !component.starts_with('0'))
-        });
-    let valid_suffix = suffix.is_none_or(|suffix| {
-        !suffix.is_empty()
-            && suffix.split('.').all(|identifier| {
-                !identifier.is_empty()
-                    && identifier
-                        .bytes()
-                        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
-                    && (!identifier.bytes().all(|byte| byte.is_ascii_digit())
-                        || identifier == "0"
-                        || !identifier.starts_with('0'))
-            })
-    });
-    if numeric && valid_suffix {
-        Ok(())
-    } else {
-        Err(format!("invalid package SemVer: {value}"))
-    }
-}
-
-/// Rejects package-version downgrades and invalid prerelease transitions.
-fn validate_version_transition(current: &str, requested: &str) -> Result<(), String> {
-    let current = parsed_semver(current)?;
-    let requested = parsed_semver(requested)?;
-    if compare_semver(&requested, &current) != std::cmp::Ordering::Greater {
-        return Err(
-            "requested package version must be greater than the current version".to_owned(),
-        );
-    }
-    Ok(())
-}
-
-/// Parses supported `SemVer` into numeric core and prerelease identifiers.
-fn parsed_semver(value: &str) -> Result<(u64, u64, u64, Vec<String>), String> {
-    validate_semver(value)?;
-    let (core, prerelease) = value
-        .split_once('-')
-        .map_or((value, ""), |(core, prerelease)| (core, prerelease));
-    let mut numbers = core.split('.').map(|value| {
-        value
-            .parse::<u64>()
-            .map_err(|error| format!("invalid package SemVer component: {error}"))
-    });
-    let parsed = (
-        numbers.next().transpose()?.unwrap_or_default(),
-        numbers.next().transpose()?.unwrap_or_default(),
-        numbers.next().transpose()?.unwrap_or_default(),
-        prerelease
-            .split('.')
-            .filter(|value| !value.is_empty())
-            .map(str::to_owned)
-            .collect(),
-    );
-    Ok(parsed)
-}
-
-/// Compares two parsed `SemVer` values using numeric prerelease precedence.
-fn compare_semver(
-    left: &(u64, u64, u64, Vec<String>),
-    right: &(u64, u64, u64, Vec<String>),
-) -> std::cmp::Ordering {
-    let core = (left.0, left.1, left.2).cmp(&(right.0, right.1, right.2));
-    if core != std::cmp::Ordering::Equal {
-        return core;
-    }
-    match (left.3.is_empty(), right.3.is_empty()) {
-        (true, false) => std::cmp::Ordering::Greater,
-        (false, true) => std::cmp::Ordering::Less,
-        (true, true) => std::cmp::Ordering::Equal,
-        (false, false) => compare_prerelease(&left.3, &right.3),
-    }
-}
-
-/// Compares `SemVer` prerelease identifier sequences.
-fn compare_prerelease(left: &[String], right: &[String]) -> std::cmp::Ordering {
-    for (left, right) in left.iter().zip(right) {
-        let ordering = match (left.parse::<u64>(), right.parse::<u64>()) {
-            (Ok(left), Ok(right)) => left.cmp(&right),
-            (Ok(_), Err(_)) => std::cmp::Ordering::Less,
-            (Err(_), Ok(_)) => std::cmp::Ordering::Greater,
-            (Err(_), Err(_)) => left.cmp(right),
-        };
-        if ordering != std::cmp::Ordering::Equal {
-            return ordering;
-        }
-    }
-    left.len().cmp(&right.len())
-}
-
-/// Returns the lowercase SHA-256 digest of exact bytes.
-fn sha256_hex(bytes: &[u8]) -> String {
-    let digest = Sha256::digest(bytes);
-    let mut output = String::with_capacity(digest.len() * 2);
-    for byte in digest {
-        write!(&mut output, "{byte:02x}").expect("writing to a String cannot fail");
-    }
-    output
 }
 
 /// Executes the active portable lifecycle command family.
@@ -2783,8 +1921,20 @@ fn markdown_link_targets(content: &str) -> Vec<String> {
 /// Rejects production or executable-test references to archived portable inputs.
 fn ensure_no_portable_archive_dependencies(root: &Path) -> Result<(), String> {
     let mut files = Vec::new();
-    collect_regular_files(&root.join("crates"), &mut files)?;
-    collect_regular_files(&root.join("xtask"), &mut files)?;
+    let mut production_roots = Vec::new();
+    for manifest in workspace_package_manifests(root)? {
+        let package_root = manifest
+            .parent()
+            .ok_or_else(|| format!("workspace manifest has no parent: {}", manifest.display()))?;
+        collect_regular_files(package_root, &mut files)?;
+        let content = fs::read_to_string(&manifest)
+            .map_err(|error| format!("could not read {}: {error}", manifest.display()))?;
+        if configuration::quality_value_from(&content, "package", "name").as_deref()
+            != Some(constants::XTASK)
+        {
+            production_roots.push(package_root.to_path_buf());
+        }
+    }
     let forbidden = [
         concat!("portable", "/archive/"),
         concat!("portable", "/archived/"),
@@ -2799,8 +1949,10 @@ fn ensure_no_portable_archive_dependencies(root: &Path) -> Result<(), String> {
         })
         .filter_map(|path| {
             let content = fs::read_to_string(path).ok()?;
-            let uses_active_portable =
-                path.starts_with(root.join("crates")) && content.contains("portable/");
+            let uses_active_portable = production_roots
+                .iter()
+                .any(|package_root| path.starts_with(package_root))
+                && content.contains("portable/");
             (uses_active_portable || forbidden.iter().any(|value| content.contains(value))).then(
                 || {
                     path.strip_prefix(root)
@@ -2926,6 +2078,10 @@ fn portable_digest_records(root: &Path, files: &[PathBuf]) -> Result<String, Str
 fn check_generated_outputs() -> Result<(), String> {
     let root = workspace_root()?;
     let inventory = read_workspace_text(&root, constants::GENERATED_OUTPUTS_FILE)?;
+    let result_directory = automation_value("output", "results_root")?;
+    if !is_safe_relative_path(Path::new(&result_directory)) {
+        return Err("configured generated-results root is not a safe relative path".to_owned());
+    }
     for name in [
         "rustdoc",
         "coverage",
@@ -2947,7 +2103,8 @@ fn check_generated_outputs() -> Result<(), String> {
         let path = configuration_value(entry, "path")
             .ok_or_else(|| "generated output has no path".to_owned())?;
         let tracking = configuration_value(entry, "tracking");
-        let ephemeral_output = (path.starts_with("target/") || path.starts_with("test-results/"))
+        let ephemeral_output = (path.starts_with("target/")
+            || path.starts_with(&format!("{result_directory}/")))
             && tracking.as_deref() == Some("ignored");
         if !ephemeral_output
             || configuration_value(entry, "owner").is_none()
@@ -2961,9 +2118,11 @@ fn check_generated_outputs() -> Result<(), String> {
     }
     let ignore = read_workspace_text(&root, ".gitignore")?;
     if !ignore.lines().any(|line| line.trim() == "target")
-        || !ignore.lines().any(|line| line.trim() == "test-results/")
+        || !ignore
+            .lines()
+            .any(|line| line.trim() == format!("{result_directory}/"))
     {
-        return Err("target and test-results must remain ignored generated roots".to_owned());
+        return Err("Cargo target and configured results must remain ignored".to_owned());
     }
     println!("{} generated-output ownership: pass", constants::INFO);
     Ok(())
@@ -3033,29 +2192,16 @@ fn check_quality_inventory() -> Result<(), String> {
 fn check_repository_structure() -> Result<(), String> {
     let root = workspace_root()?;
     let expected_license_marker = html_spdx_marker(&project_license(&root)?);
-    let layout = read_workspace_text(&root, constants::REPOSITORY_LAYOUT_FILE)?;
-    let expected = BTreeSet::from([
-        ".cargo".to_owned(),
-        ".devcontainer".to_owned(),
-        ".github".to_owned(),
-        "config".to_owned(),
-        "conformance".to_owned(),
-        "crates".to_owned(),
-        "docs".to_owned(),
-        "assets".to_owned(),
-        "fuzz".to_owned(),
-        "quality".to_owned(),
-        "scripts".to_owned(),
-        "xtask".to_owned(),
-    ]);
     let mut configured = BTreeSet::new();
-    for entry in layout.split("[[directory]]").skip(1) {
-        let path = configuration_value(entry, "path")
-            .ok_or_else(|| "repository directory has no path".to_owned())?;
-        let readme = configuration_value(entry, "readme")
-            .ok_or_else(|| format!("repository directory {path} has no README"))?;
-        if configuration_value(entry, "owner").is_none()
-            || configuration_value(entry, "lifecycle").is_none()
+    for directory in repository_directories(&root)? {
+        let path = directory.path;
+        let readme = directory.readme;
+        if !is_safe_relative_path(Path::new(&path))
+            || Path::new(&path).components().count() != 1
+            || !is_safe_relative_path(Path::new(&readme))
+            || !readme.starts_with(&format!("{path}/"))
+            || directory.owner.is_empty()
+            || directory.lifecycle.is_empty()
             || !root.join(&path).is_dir()
             || !root.join(&readme).is_file()
         {
@@ -3069,7 +2215,31 @@ fn check_repository_structure() -> Result<(), String> {
                 "repository README lacks its license marker: {readme}"
             ));
         }
-        configured.insert(path);
+        if !configured.insert(path.clone()) {
+            return Err(format!("repository directory is declared twice: {path}"));
+        }
+    }
+    let tracked = Command::new(constants::GIT_COMMAND)
+        .current_dir(&root)
+        .args(["ls-files", "--cached", "-z"])
+        .output()
+        .map_err(|error| format!("could not enumerate tracked repository roots: {error}"))?;
+    if !tracked.status.success() {
+        return Err("could not enumerate tracked repository roots".to_owned());
+    }
+    let mut expected = BTreeSet::new();
+    for file in tracked
+        .stdout
+        .split(|byte| *byte == 0)
+        .filter(|file| !file.is_empty())
+    {
+        let name = std::str::from_utf8(file)
+            .map_err(|error| format!("tracked repository path is not UTF-8: {error}"))?;
+        if let Some((directory, _)) = name.split_once('/')
+            && directory != constants::PORTABLE_DIRECTORY
+        {
+            expected.insert(directory.to_owned());
+        }
     }
     if configured != expected {
         return Err(format!(
@@ -3106,7 +2276,6 @@ fn verify_ignore_policy(root: &Path) -> Result<(), String> {
     let ignore = read_workspace_text(root, ".gitignore")?;
     for required in [
         "target",
-        "test-results/",
         "**/mutants.out*/",
         "fuzz/artifacts/",
         "fuzz/corpus/*/",
@@ -3125,12 +2294,19 @@ fn verify_ignore_policy(root: &Path) -> Result<(), String> {
             return Err(format!("generated-state ignore is missing {required}"));
         }
     }
+    let results_ignore = format!("{}/", automation_value("output", "results_root")?);
+    if !ignore.lines().any(|line| line.trim() == results_ignore) {
+        return Err(format!(
+            "generated-state ignore is missing {results_ignore}"
+        ));
+    }
     let bundle = ReleasedBundle::load(root)?;
     let freeze = bundle.member("specs/contracts/freeze.toml");
     let manifest = bundle.member("conformance/manifest.toml");
     for required in [
         "Cargo.lock",
         "rust-toolchain.toml",
+        constants::AUTOMATION_CONFIG_FILE,
         constants::CONFORMANCE_CONFIG_FILE,
         "config/release.toml",
         &freeze,
@@ -3153,31 +2329,42 @@ fn verify_ignore_policy(root: &Path) -> Result<(), String> {
 
 /// Verifies coverage environment, outputs, thresholds, and exclusion policy.
 fn verify_coverage_policy() -> Result<(), String> {
-    for (key, expected) in [
-        ("toolchain", "nightly-only"),
-        (
-            "html_output",
-            "test-results/analysis/coverage/html/index.html",
-        ),
-        (
-            "json_output",
-            "test-results/analysis/coverage/coverage.json",
-        ),
-        ("minimum_line_percent", "85"),
-        ("minimum_function_percent", "90"),
-        ("minimum_region_percent", "80"),
+    let toolchain = quality_value("coverage", "toolchain")?;
+    if toolchain != "nightly-only" && toolchain != "stable" {
+        return Err(format!(
+            "unsupported coverage toolchain policy: {toolchain}"
+        ));
+    }
+    let html = quality_output_path("coverage", "html_output")?;
+    if !html.ends_with("html/index.html") {
+        return Err("coverage HTML output must end in html/index.html".to_owned());
+    }
+    let json = quality_output_path("coverage", "json_output")?;
+    if json.extension().and_then(std::ffi::OsStr::to_str) != Some("json") {
+        return Err("coverage JSON output must have a .json extension".to_owned());
+    }
+    for (minimum_key, observed_key) in [
+        ("minimum_line_percent", "observed_line_percent"),
+        ("minimum_function_percent", "observed_function_percent"),
+        ("minimum_region_percent", "observed_region_percent"),
     ] {
-        if quality_value("coverage", key)? != expected {
+        let minimum = quality_value("coverage", minimum_key)?
+            .parse::<f64>()
+            .map_err(|error| format!("invalid coverage {minimum_key}: {error}"))?;
+        let observed = quality_value("coverage", observed_key)?
+            .parse::<f64>()
+            .map_err(|error| format!("invalid coverage {observed_key}: {error}"))?;
+        if !(minimum > 0.0 && minimum <= 100.0 && observed >= minimum && observed <= 100.0) {
             return Err(format!(
-                "coverage policy {key} must remain configured as {expected}"
+                "coverage {observed_key} does not satisfy {minimum_key}"
             ));
         }
     }
-    if quality_value("coverage", "exclusion_regex")? != "(^|/)xtask/" {
-        return Err("coverage may exclude only the separately command-tested xtask".to_owned());
+    if quality_value("coverage", "exclusion_regex")?.is_empty() {
+        return Err("coverage exclusions must be explicit".to_owned());
     }
     let exclusions = quality_value("coverage", "exclusion_policy")?;
-    if !exclusions.starts_with("reviewed:") || !exclusions.contains("only xtask") {
+    if !exclusions.starts_with("reviewed:") {
         return Err("coverage exclusions require an explicit reviewed rationale".to_owned());
     }
     Ok(())
@@ -3232,13 +2419,13 @@ fn verify_fuzz_ownership(root: &Path) -> Result<(), String> {
 
 /// Rejects tracked generated products while retaining documented empty roots.
 fn verify_generated_file_hygiene(root: &Path) -> Result<(), String> {
-    let output = Command::new("git")
+    let result_directory = automation_value("output", "results_root")?;
+    let output = Command::new(constants::GIT_COMMAND)
         .current_dir(root)
         .args([
             "ls-files",
             "--",
             "target",
-            "test-results",
             "mutants.out",
             "mutants.out.old",
             "fuzz/artifacts",
@@ -3246,6 +2433,7 @@ fn verify_generated_file_hygiene(root: &Path) -> Result<(), String> {
             "portable/archive",
             "portable/archived",
         ])
+        .arg(result_directory)
         .output()
         .map_err(|error| format!("could not inspect tracked generated files: {error}"))?;
     if !output.status.success() {
@@ -3267,56 +2455,6 @@ fn verify_generated_file_hygiene(root: &Path) -> Result<(), String> {
             "generated or archived products are tracked: {}",
             tracked.join(", ")
         ))
-    }
-}
-
-/// Reads one scalar value from a section of the quality configuration.
-fn quality_value(section: &str, key: &str) -> Result<String, String> {
-    let configuration_path = workspace_root()?.join(constants::QUALITY_GATES_FILE);
-    let configuration = fs::read_to_string(&configuration_path)
-        .map_err(|error| format!("could not read {}: {error}", configuration_path.display()))?;
-    quality_value_from(&configuration, section, key)
-        .ok_or_else(|| format!("quality configuration has no [{section}] {key} value"))
-}
-
-/// Extracts one scalar value from a simple TOML section without interpreting it.
-fn quality_value_from(configuration: &str, section: &str, key: &str) -> Option<String> {
-    let heading = format!("[{section}]");
-    let mut selected = false;
-    for line in configuration.lines().map(str::trim) {
-        if line.starts_with('[') {
-            selected = line == heading;
-            continue;
-        }
-        if !selected || line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let (candidate, value) = line.split_once('=')?;
-        if candidate.trim() == key {
-            return Some(value.trim().trim_matches('"').to_owned());
-        }
-    }
-    None
-}
-
-/// Reads one quoted-string array from the quality configuration.
-fn quality_array(section: &str, key: &str) -> Result<Vec<String>, String> {
-    let value = quality_value(section, key)?;
-    let inner = value
-        .strip_prefix('[')
-        .and_then(|value| value.strip_suffix(']'))
-        .ok_or_else(|| format!("quality [{section}] {key} must be an array"))?;
-    let values = inner
-        .split(',')
-        .map(str::trim)
-        .map(|value| value.trim_matches('"'))
-        .filter(|value| !value.is_empty())
-        .map(str::to_owned)
-        .collect::<Vec<_>>();
-    if values.is_empty() {
-        Err(format!("quality [{section}] {key} array is empty"))
-    } else {
-        Ok(values)
     }
 }
 
@@ -3378,7 +2516,7 @@ fn run_shell_smoke() -> Result<(), String> {
 /// Verifies that every current test category has its configured minimum.
 fn verify_test_counts(profile: &str) -> Result<(), String> {
     let test_list = command_output(
-        constants::CARGO_COMMAND,
+        &cargo_command()?,
         &[
             "test",
             "--workspace",
@@ -3418,45 +2556,6 @@ fn validate_test_minimums(
     Ok(())
 }
 
-/// Returns the durable current test-minimum profile.
-fn active_test_profile() -> &'static str {
-    constants::CURRENT_TEST_PROFILE
-}
-
-/// Reads one test-minimum configuration owned by the workspace.
-fn test_minimums(profile: &str) -> Result<BTreeMap<String, usize>, String> {
-    let configuration_path = workspace_root()?.join("config/test-suites.toml");
-    let configuration = fs::read_to_string(&configuration_path)
-        .map_err(|error| format!("could not read {}: {error}", configuration_path.display()))?;
-    let section = format!("[{profile}.minimum]");
-    let mut in_requested_section = false;
-    let mut minimums = BTreeMap::new();
-
-    for line in configuration.lines().map(str::trim) {
-        if line.starts_with('[') {
-            in_requested_section = line == section;
-            continue;
-        }
-        if !in_requested_section || line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let Some((name, value)) = line.split_once('=') else {
-            return Err(format!("invalid {profile} test-minimum entry: {line}"));
-        };
-        let minimum = value
-            .trim()
-            .parse::<usize>()
-            .map_err(|error| format!("invalid test minimum for {}: {error}", name.trim()))?;
-        minimums.insert(name.trim().to_owned(), minimum);
-    }
-
-    if minimums.is_empty() {
-        Err(format!("{profile} test-minimum configuration is empty"))
-    } else {
-        Ok(minimums)
-    }
-}
-
 /// Runs one internal CI profile using only stable public task compositions.
 fn ci(profile: CiProfile) -> Result<(), String> {
     match profile {
@@ -3479,24 +2578,16 @@ fn run_ci_gate(profile: &str, quality_profile: QualityProfile) -> Result<(), Str
 
 /// Runs Cargo with inherited standard streams and converts failures to task errors.
 fn run_cargo(arguments: &[&str]) -> Result<(), String> {
-    let status = Command::new(constants::CARGO_COMMAND)
+    let cargo = cargo_command()?;
+    let status = Command::new(&cargo)
         .current_dir(workspace_root()?)
         .args(arguments)
         .status()
-        .map_err(|error| {
-            format!(
-                "could not run {} {}: {error}",
-                constants::CARGO_COMMAND,
-                arguments.join(" ")
-            )
-        })?;
-    status.success().then_some(()).ok_or_else(|| {
-        format!(
-            "{} {} failed with {status}",
-            constants::CARGO_COMMAND,
-            arguments.join(" ")
-        )
-    })
+        .map_err(|error| format!("could not run {} {}: {error}", cargo, arguments.join(" ")))?;
+    status
+        .success()
+        .then_some(())
+        .ok_or_else(|| format!("{} {} failed with {status}", cargo, arguments.join(" ")))
 }
 
 /// Returns trimmed UTF-8 output from a successful command.
@@ -3687,7 +2778,7 @@ fn write_workflow_summary(
     let commit = command_output(constants::GIT_COMMAND, &["rev-parse", "HEAD"])?;
     let worktree_clean =
         command_output(constants::GIT_COMMAND, &["status", "--porcelain"])?.is_empty();
-    let rustc = command_output(constants::RUSTC_COMMAND, &["--version"])?;
+    let rustc = command_output(&rustc_command()?, &["--version"])?;
     fs::write(
         path,
         format!(
@@ -3720,37 +2811,6 @@ fn unix_time_millis() -> Result<u128, String> {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_millis())
         .map_err(|error| format!("system clock precedes Unix epoch: {error}"))
-}
-
-/// Returns the configured result root after rejecting unsafe paths.
-fn result_root() -> Result<PathBuf, String> {
-    let configured = env::var("NEUTRAL_TEST_RESULTS").unwrap_or_else(|_| "test-results".to_owned());
-    let path = PathBuf::from(&configured);
-    if !is_safe_result_path(&path) {
-        return Err(
-            "NEUTRAL_TEST_RESULTS must be a relative path beneath the workspace".to_owned(),
-        );
-    }
-    Ok(workspace_root()?.join(path))
-}
-
-/// Returns whether a configured result path cannot name the workspace or escape it.
-fn is_safe_result_path(path: &std::path::Path) -> bool {
-    !path.as_os_str().is_empty()
-        && path
-            .components()
-            .all(|component| matches!(component, Component::Normal(_)))
-}
-
-/// Removes only the configured generated-result root after validating its path.
-fn clean_results() -> Result<(), String> {
-    let root = result_root()?;
-    if root.exists() {
-        fs::remove_dir_all(&root)
-            .map_err(|error| format!("could not remove {}: {error}", root.display()))?;
-    }
-    println!("{} generated results cleaned", constants::INFO);
-    Ok(())
 }
 
 /// Checks all declared package and effect boundaries against Cargo's graph.
@@ -3832,7 +2892,10 @@ fn verify_pure_source_effects(root: &Path) -> Result<(), String> {
         constants::NEUTRAL_COMPILER,
     ] {
         let mut files = Vec::new();
-        collect_regular_files(&root.join("crates").join(package).join("src"), &mut files)?;
+        collect_regular_files(
+            &workspace_package_directory(root, package)?.join("src"),
+            &mut files,
+        )?;
         for file in files
             .iter()
             .filter(|path| path.extension().and_then(std::ffi::OsStr::to_str) == Some("rs"))
@@ -4052,8 +3115,15 @@ fn collect_regular_files(directory: &Path, files: &mut Vec<PathBuf>) -> Result<(
 fn check_test_layout() -> Result<(), String> {
     let root = workspace_root()?;
     let mut source_files = Vec::new();
-    collect_regular_files(&root.join("crates"), &mut source_files)?;
-    collect_regular_files(&root.join("xtask/src"), &mut source_files)?;
+    for manifest in workspace_package_manifests(&root)? {
+        let source = manifest
+            .parent()
+            .ok_or_else(|| format!("workspace manifest has no parent: {}", manifest.display()))?
+            .join("src");
+        if source.is_dir() {
+            collect_regular_files(&source, &mut source_files)?;
+        }
+    }
     let mut violations = Vec::new();
     for path in source_files {
         if path.extension().and_then(|value| value.to_str()) != Some("rs")
@@ -4120,12 +3190,21 @@ fn ensure_registered_paths_exist(root: &Path, manifest: &str) -> Result<(), Stri
     }
 }
 
-/// Returns the workspace root derived from the `xtask` package location.
+/// Finds the owning Cargo workspace even if the automation crate moves.
 fn workspace_root() -> Result<PathBuf, String> {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .map(PathBuf::from)
-        .ok_or_else(|| "xtask manifest has no workspace-root parent".to_owned())
+    let manifest_directory = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    for directory in manifest_directory.ancestors() {
+        let manifest = directory.join(constants::WORKSPACE_MANIFEST_FILE);
+        if !manifest.is_file() {
+            continue;
+        }
+        let content = fs::read_to_string(&manifest)
+            .map_err(|error| format!("could not read {}: {error}", manifest.display()))?;
+        if content.lines().any(|line| line.trim() == "[workspace]") {
+            return Ok(directory.to_path_buf());
+        }
+    }
+    Err("automation package is not inside a Cargo workspace".to_owned())
 }
 
 /// Returns the exact normal-dependency policy for every workspace package.
@@ -4205,7 +3284,7 @@ fn tree_output(
     edges: &str,
     depth: Option<u8>,
 ) -> Result<String, String> {
-    let mut command = Command::new(constants::CARGO_COMMAND);
+    let mut command = Command::new(cargo_command()?);
     command.current_dir(workspace_root).args([
         "tree",
         "--locked",

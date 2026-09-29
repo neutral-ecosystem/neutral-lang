@@ -40,7 +40,8 @@ Markdown file. Mark the single portable checklist item complete after review.
 
 Run `cargo xtask --help` for the authoritative command list. The root
 [Development](../README.md#development) table provides the command-oriented
-index.
+index. For command order, local defaults, and optional environment overrides,
+see [developer command flow](workflow-optimization.md).
 
 ## Documentation
 

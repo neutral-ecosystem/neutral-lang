@@ -2,8 +2,6 @@
 
 //! Shared names for Neutral automation commands, packages, and output.
 
-/// Cargo executable used by workspace automation.
-pub const CARGO_COMMAND: &str = "cargo";
 /// Rust formatter executable used for environment verification.
 pub const RUSTFMT_COMMAND: &str = "rustfmt";
 /// Rust toolchain manager used to isolate analysis-only nightly tools.
@@ -26,8 +24,6 @@ pub const UNAME_COMMAND: &str = "uname";
 pub const CARGO_ENCODED_RUSTDOCFLAGS: &str = "CARGO_ENCODED_RUSTDOCFLAGS";
 /// Cargo metadata placeholder replaced while generating the rustdoc landing page.
 pub const CARGO_METADATA_PLACEHOLDER: &str = "__NEUTRAL_CARGO_METADATA__";
-/// Rust compiler executable used for toolchain verification.
-pub const RUSTC_COMMAND: &str = "rustc";
 /// Informational output category prefix.
 pub const INFO: &str = "[info]";
 /// Error output category prefix.
@@ -36,8 +32,6 @@ pub const ERROR: &str = "[error]";
 pub const WARN: &str = "[warn]";
 /// Machine-readable manifest output category prefix.
 pub const MANIFEST: &str = "[manifest]";
-/// Generated rustdoc output directory relative to the workspace root.
-pub const RUSTDOC_OUTPUT_DIRECTORY: &str = "target/doc";
 /// Generated workspace rustdoc landing-page filename.
 pub const RUSTDOC_INDEX_FILE: &str = "index.html";
 /// Repository-owned source directory for shared visual assets.
@@ -70,6 +64,14 @@ pub const RUSTDOC_HEADER_HASH_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 pub const RUSTDOC_HEADER_HASH_PRIME: u64 = 0x0000_0100_0000_01b3;
 /// Explicit inherited-language conformance selection relative to the workspace root.
 pub const CONFORMANCE_CONFIG_FILE: &str = "config/conformance.toml";
+/// Local automation defaults relative to the workspace root.
+pub const AUTOMATION_CONFIG_FILE: &str = "config/automation.toml";
+/// Optional Cargo executable override shared with platform adapters.
+pub const CARGO_COMMAND_ENV: &str = "NEUTRAL_CARGO_COMMAND";
+/// Optional Rust compiler executable override shared with platform adapters.
+pub const RUSTC_COMMAND_ENV: &str = "NEUTRAL_RUSTC_COMMAND";
+/// Optional generated-results root override.
+pub const TEST_RESULTS_ENV: &str = "NEUTRAL_TEST_RESULTS";
 /// Active quality-gate configuration relative to the workspace root.
 pub const QUALITY_GATES_FILE: &str = "config/quality-gates.toml";
 /// Durable quality-document inventory relative to the workspace root.
@@ -96,10 +98,10 @@ pub const GENERATED_OUTPUTS_FILE: &str = "config/generated-outputs.toml";
 pub const REPOSITORY_LAYOUT_FILE: &str = "config/repository-layout.toml";
 /// Durable test-level ownership inventory relative to the workspace root.
 pub const TEST_LEVELS_FILE: &str = "config/test-levels.toml";
+/// Active test-discovery minima relative to the workspace root.
+pub const TEST_SUITES_FILE: &str = "config/test-suites.toml";
 /// Durable test-minimum profile used by normal commands.
 pub const CURRENT_TEST_PROFILE: &str = "current";
-/// Cargo release output directory relative to the workspace root.
-pub const CARGO_RELEASE_DIRECTORY: &str = "target/release";
 /// Repository license file included in binary distributions.
 pub const LICENSE_FILE: &str = "LICENSE";
 /// Repository overview included in binary distributions.
@@ -142,8 +144,6 @@ pub const TEST_PATH_ATTRIBUTE_MARKER: &str = "#[path =";
 pub const NEUTRAL_BENCH: &str = "neutral-bench";
 /// Workspace package name for the command-line shell.
 pub const NEUTRAL_CLI: &str = "neutral-cli";
-/// Release binary filename for the Neutral host command line.
-pub const NEUTRAL_CLI_BINARY: &str = "neutral-cli";
 /// Workspace package name for the compiler.
 pub const NEUTRAL_COMPILER: &str = "neutral-compiler";
 /// Workspace package name for the core contract types.
@@ -154,8 +154,6 @@ pub const NEUTRAL_ENCODING: &str = "neutral-encoding";
 pub const NEUTRAL_IR: &str = "neutral-ir";
 /// Workspace package name for the probe executable.
 pub const NEUTRAL_PROBE: &str = "neutral-probe";
-/// Release binary filename for the standalone Neutral probe.
-pub const NEUTRAL_PROBE_BINARY: &str = "neutral-probe";
 /// Workspace package name for the reader.
 pub const NEUTRAL_READER: &str = "neutral-reader";
 /// Workspace package name for the test suite.
@@ -178,7 +176,3 @@ pub const WORKFLOW_SUMMARY_FILE: &str = "summary.json";
 pub const VERSION_RESULT_DIRECTORY: &str = "version";
 /// Generated portable snapshot root relative to the result root.
 pub const PORTABLE_SNAPSHOT_DIRECTORY: &str = "portable/snapshot";
-/// Human-readable LLVM coverage directory relative to the result root.
-pub const COVERAGE_HTML_DIRECTORY: &str = "analysis/coverage";
-/// Machine-readable LLVM coverage file relative to the result root.
-pub const COVERAGE_JSON_FILE: &str = "analysis/coverage/coverage.json";

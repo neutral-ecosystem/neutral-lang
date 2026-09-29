@@ -2,16 +2,19 @@
 
 //! Tests for dependency-boundary policy failures.
 
+use super::configuration::quality_value_from;
 use super::interface::{
     BuildProfile, CiProfile, FuzzMode, PerformanceProfile, PortableAction, QualityAction,
     QualityProfile, Task, TestLevel, ValidationTarget, VersionAction,
 };
+use super::versioning::{
+    release_evidence_readme, replace_workspace_lock_versions, replace_workspace_package_version,
+    validate_version_transition,
+};
 use super::{
-    constants, contract_ids, ensure_ids_covered, ensure_syntax_complete, quality_value_from,
-    release_evidence_readme, render_rustdoc_index, replace_workspace_lock_versions,
-    replace_workspace_package_version, rustdoc_header_configuration, set,
-    source_has_non_path_test_configuration, validate_allowed_packages,
-    validate_direct_dependencies,
+    constants, contract_ids, ensure_ids_covered, ensure_syntax_complete, render_rustdoc_index,
+    rustdoc_header_configuration, set, source_has_non_path_test_configuration,
+    validate_allowed_packages, validate_direct_dependencies,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -166,13 +169,64 @@ fn automation_reads_named_quality_values() {
 }
 
 #[test]
+/// Root settings cannot accidentally inherit a same-named value from a section.
+fn automation_keeps_root_configuration_scoped() {
+    let configuration = "schema_version = 1\n[other]\nschema_version = 2\n";
+    assert_eq!(
+        super::configuration_value(configuration, "schema_version"),
+        Some("1".to_owned())
+    );
+    assert_eq!(
+        super::configuration_value("[other]\nname = \"x\"", "name"),
+        None
+    );
+}
+
+#[test]
+/// Supported hosts may contain several configured targets without exact-text matching.
+fn automation_reads_multiple_supported_hosts() {
+    let policy = "[hosts]\nsupported = [\"host-a\", \"host-b\"]\n";
+    assert_eq!(
+        super::configuration_array_from(policy, "hosts", "supported")
+            .expect("supported host array"),
+        ["host-a", "host-b"]
+    );
+}
+
+#[test]
+/// Workspace members are read from multiline Cargo configuration, not crate paths.
+fn automation_reads_multiline_workspace_members() {
+    let manifest = "[workspace]\nmembers = [\n    \"packages/engine\",\n    \"tools/runner\",\n]\n";
+    assert_eq!(
+        super::configuration_array_from(manifest, "workspace", "members")
+            .expect("workspace members"),
+        ["packages/engine", "tools/runner"]
+    );
+}
+
+#[test]
+/// Workspace package discovery follows Cargo members instead of directory names.
+fn automation_resolves_workspace_members_from_cargo() {
+    let root = super::workspace_root().expect("workspace root");
+    let manifest = super::read_workspace_text(&root, constants::WORKSPACE_MANIFEST_FILE)
+        .expect("workspace manifest");
+    let members = super::configuration_array_from(&manifest, "workspace", "members")
+        .expect("workspace members");
+    let manifests = super::workspace_package_manifests(&root).expect("package manifests");
+    assert_eq!(manifests.len(), members.len());
+    assert!(manifests.iter().all(|path| path.is_file()));
+    let slug = super::project_slug(&root).expect("safe project name");
+    assert!(!slug.is_empty());
+}
+
+#[test]
 /// Package transitions follow `SemVer` precedence and reject invalid versions.
 fn automation_validates_package_version_transitions() {
-    assert!(super::validate_version_transition("0.1.0-rc.1", "0.1.0-rc.2").is_ok());
-    assert!(super::validate_version_transition("0.1.0-rc.2", "0.1.0").is_ok());
-    assert!(super::validate_version_transition("0.1.0", "0.2.0").is_ok());
-    assert!(super::validate_version_transition("0.1.0", "0.1.0").is_err());
-    assert!(super::validate_version_transition("0.2.0", "0.1.0").is_err());
+    assert!(validate_version_transition("0.1.0-rc.1", "0.1.0-rc.2").is_ok());
+    assert!(validate_version_transition("0.1.0-rc.2", "0.1.0").is_ok());
+    assert!(validate_version_transition("0.1.0", "0.2.0").is_ok());
+    assert!(validate_version_transition("0.1.0", "0.1.0").is_err());
+    assert!(validate_version_transition("0.2.0", "0.1.0").is_err());
     assert!(super::validate_semver("0.1.0-rc.01").is_err());
     assert!(super::validate_semver("0.1.0-rc..1").is_err());
 }
@@ -418,9 +472,10 @@ fn automation_records_failed_workflow_steps() {
 #[test]
 /// Verifies that the environment manifest identifies the selected toolchain channel.
 fn environment_manifest_identifies_the_toolchain_channel() {
-    let manifest = super::environment_manifest().expect("environment manifest should be available");
-    let channel = super::rust_channel().expect("toolchain channel should be readable");
-    let stage = super::active_stage().expect("active stage should be readable");
+    let manifest = super::environment::environment_manifest()
+        .expect("environment manifest should be available");
+    let channel = super::environment::rust_channel().expect("toolchain channel should be readable");
+    let stage = super::environment::active_stage().expect("active stage should be readable");
     assert!(manifest.contains(&format!("\"rust_channel\": \"{channel}\"")));
     assert!(manifest.contains(&format!("\"active_stage\": {stage}")));
     assert!(manifest.contains("\"tools\": {"));
@@ -430,14 +485,14 @@ fn environment_manifest_identifies_the_toolchain_channel() {
 #[test]
 /// Verifies missing workstation tools produce an actionable diagnostic.
 fn missing_environment_tool_reports_an_install_action() {
-    let tool = super::ToolSpec {
+    let tool = super::environment::ToolSpec {
         key: "missing",
         label: "Missing test tool",
-        command: "neutral-command-that-must-not-exist",
+        command: "neutral-command-that-must-not-exist".to_owned(),
         arguments: &["--version"],
         install_hint: "install the missing test tool",
     };
-    let error = super::tool_version(&tool).expect_err("missing tool must fail");
+    let error = super::environment::tool_version(&tool).expect_err("missing tool must fail");
     assert!(error.contains("Missing test tool is unavailable"));
     assert!(error.contains("install the missing test tool"));
 }
@@ -445,11 +500,11 @@ fn missing_environment_tool_reports_an_install_action() {
 #[test]
 /// Verifies the stable channel excludes prerelease compiler identities.
 fn stable_toolchain_channel_rejects_prereleases() {
-    assert!(super::rust_version_matches_channel(
+    assert!(super::environment::rust_version_matches_channel(
         "rustc 1.98.1 (stable-hash 2026-09-03)",
         "stable",
     ));
-    assert!(!super::rust_version_matches_channel(
+    assert!(!super::environment::rust_version_matches_channel(
         "rustc 1.99.0-nightly (nightly-hash 2026-09-05)",
         "stable",
     ));
@@ -560,13 +615,33 @@ fn probe_allowlist_rejects_a_compiler_dependency_in_the_probe_closure() {
 #[test]
 /// Verifies that automation cleanup cannot target a parent or workspace path.
 fn automation_rejects_unsafe_result_paths() {
-    assert!(super::is_safe_result_path(std::path::Path::new(
+    assert!(super::results::is_safe_result_path(std::path::Path::new(
         "test-results"
     )));
-    assert!(!super::is_safe_result_path(std::path::Path::new(".")));
-    assert!(!super::is_safe_result_path(std::path::Path::new(
+    assert!(!super::results::is_safe_result_path(std::path::Path::new(
+        "."
+    )));
+    assert!(!super::results::is_safe_result_path(std::path::Path::new(
         "../test-results"
     )));
+    assert!(!super::results::is_safe_result_path(std::path::Path::new(
+        "target"
+    )));
+    assert!(!super::results::is_safe_result_path(std::path::Path::new(
+        "target/release"
+    )));
+}
+
+#[test]
+/// Configured quality report files stay beneath the selected generated root.
+fn automation_scopes_coverage_outputs_to_results() {
+    let root = super::result_root().expect("generated root");
+    let html =
+        super::quality_output_path("coverage", "html_output").expect("configured HTML report");
+    let json =
+        super::quality_output_path("coverage", "json_output").expect("configured JSON report");
+    assert!(html.starts_with(&root));
+    assert!(json.starts_with(&root));
 }
 
 #[test]
@@ -580,16 +655,13 @@ fn automation_stages_the_selected_binary_package() {
         .expect("temporary license should be written");
     std::fs::write(root.join(constants::ROOT_README_FILE), "readme")
         .expect("temporary README should be written");
-    for binary in [
-        constants::NEUTRAL_CLI_BINARY,
-        constants::NEUTRAL_PROBE_BINARY,
-    ] {
+    for binary in [constants::NEUTRAL_CLI, constants::NEUTRAL_PROBE] {
         std::fs::write(super::release_binary_path(&source, binary), binary)
             .expect("temporary binary should be written");
     }
     let binaries = vec![
-        constants::NEUTRAL_CLI_BINARY.to_owned(),
-        constants::NEUTRAL_PROBE_BINARY.to_owned(),
+        constants::NEUTRAL_CLI.to_owned(),
+        constants::NEUTRAL_PROBE.to_owned(),
     ];
     let assets = vec![super::DistributionAsset {
         filename: constants::RELEASE_CHECKSUM_FILE.to_owned(),
@@ -668,7 +740,9 @@ fn xtask_commands_and_helpers() {
     let root = super::workspace_root().expect("workspace root should exist");
     assert!(root.exists());
     let res_root = super::result_root().expect("result root should exist");
-    assert!(res_root.ends_with("test-results"));
+    let configured =
+        super::automation_value("output", "results_root").expect("configured result directory");
+    assert!(res_root.ends_with(configured));
 
     let uniq_dir = super::unique_generated_directory(&res_root.join("unit-test-probe"))
         .expect("unique result dir");
@@ -691,7 +765,7 @@ fn xtask_commands_and_helpers() {
         super::ensure_registered_paths_exist(&root, &bundle.member("specs/REQUIREMENTS.md"))
             .is_ok()
     );
-    assert!(super::ensure_inventory_registered(&root, "config", "config/conformance.toml config/dependency-sources.toml config/generated-outputs.toml config/host-policy.toml config/ir-encoding.toml config/quality-gates.toml config/release.toml config/repository-layout.toml config/test-levels.toml config/test-suites.toml").is_ok());
+    assert!(super::ensure_inventory_registered(&root, "config", "config/automation.toml config/conformance.toml config/dependency-sources.toml config/generated-outputs.toml config/host-policy.toml config/ir-encoding.toml config/quality-gates.toml config/release.toml config/repository-layout.toml config/test-levels.toml config/test-suites.toml").is_ok());
 
     assert!(super::print_environment_manifest().is_ok());
     assert_eq!(super::active_test_profile(), "current");

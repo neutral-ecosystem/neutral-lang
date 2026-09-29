@@ -21,8 +21,9 @@ The developer chooses the next task from the active portable checklist and
 marks it complete only after reviewing its implementation and evidence. No
 command chooses tasks or changes checklist markers on the developer's behalf.
 
-`dev` formats and runs the ordinary code, test, lint, smoke, fuzz-regression,
-and documentation checks in maintained order. `ci pr` is the non-mutating
+`dev` formats and runs the ordinary code, test, lint, smoke,
+and documentation checks in maintained order. The all-test pass includes the
+fuzz regression cases, so they are not run a second time. `ci pr` is the non-mutating
 pre-push gate used by hosted CI; its generated summary and event log record the
 exact commit, worktree cleanliness, package version, toolchain, steps, and
 result. Run a focused `cargo xtask test <level>` while coding, then the

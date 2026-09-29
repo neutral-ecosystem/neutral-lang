@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# Local defaults for repository automation. Environment overrides are optional:
+# NEUTRAL_CARGO_COMMAND, NEUTRAL_RUSTC_COMMAND, and NEUTRAL_TEST_RESULTS.
+schema_version = 1
+
+[tools]
+cargo = "cargo"
+rustc = "rustc"
+
+[output]
+results_root = "test-results"

@@ -53,15 +53,23 @@ publish, mutate frozen contracts, or write into another repository.
 | Path | Ownership |
 | --- | --- |
 | `src/interface.rs` | Stable stage-free command grammar and help |
+| `src/configuration.rs` | Reads repository policy and local automation defaults |
+| `src/environment.rs` | Toolchain and host checks; environment evidence |
+| `src/results.rs` | Ignored generated-result paths and safe cleanup |
+| `src/versioning.rs` | Package version, dependency lock, and inherited-contract checks |
 | `src/portable_stage.rs` | Derived active conformance-suite stage for environment evidence |
 | `src/release.rs` | Typed fail-closed release-scope parsing |
-| `src/constants.rs` | Shared package, path, executable, and output names |
-| `src/lib.rs` | Reusable command implementations and repository checks |
+| `src/constants.rs` | Stable package, contract, and output names—not user defaults |
+| `src/lib.rs` | Command composition and remaining repository checks |
 | `tests/unit/` | Parser, safety, boundary, release-plan, and helper tests |
 
 Use `cargo xtask --help` for the authoritative command list. The root README
 documents contributor usage and migration from removed legacy names. Linux and
 Windows scripts are thin adapters that delegate here.
+
+Local defaults live in [`config/automation.toml`](../config/automation.toml).
+The [developer command guide](../docs/workflow-optimization.md) maps other
+changeable policies to their owning configuration files.
 
 Full coverage-guided fuzzing, LLVM coverage, and mutation analysis require their
 documented external Cargo tools. Missing tools fail their command; bounded fuzz

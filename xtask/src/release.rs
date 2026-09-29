@@ -2,6 +2,7 @@
 
 //! Typed, fail-closed parsing for the explicit release-authority selection.
 
+use super::configuration::{configuration_value, quality_value_from};
 use std::{collections::BTreeSet, fs, path::Path};
 
 /// One explicitly selected release distribution channel.
@@ -31,6 +32,9 @@ impl ReleasePlan {
     pub(crate) fn read(path: &Path, package_version: &str) -> Result<Self, String> {
         let content = fs::read_to_string(path)
             .map_err(|error| format!("could not read {}: {error}", path.display()))?;
+        if configuration_value(&content, "schema_version").as_deref() != Some("1") {
+            return Err("unsupported release configuration schema".to_owned());
+        }
         let mut channels = BTreeSet::new();
         if required_bool(&content, "source_tag")? {
             channels.insert(DistributionChannel::SourceTag);
@@ -69,12 +73,14 @@ impl ReleasePlan {
         }
         if self.binaries.iter().any(|binary| {
             binary.is_empty()
-                || binary.contains('/')
-                || binary.contains('\\')
-                || binary == "."
-                || binary == ".."
+                || !binary
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
         }) {
-            return Err("release binary names must be plain package names".to_owned());
+            return Err("release binary names must be plain ASCII package names".to_owned());
+        }
+        if self.binaries.iter().collect::<BTreeSet<_>>().len() != self.binaries.len() {
+            return Err("release binary names must be unique".to_owned());
         }
         Ok(())
     }
@@ -82,7 +88,7 @@ impl ReleasePlan {
 
 /// Reads one required Boolean from the constrained release TOML.
 fn required_bool(content: &str, key: &str) -> Result<bool, String> {
-    match required_value(content, key)? {
+    match required_value(content, key)?.as_str() {
         "true" => Ok(true),
         "false" => Ok(false),
         _ => Err(format!("release {key} must be true or false")),
@@ -113,16 +119,9 @@ fn required_array(content: &str, key: &str) -> Result<Vec<String>, String> {
 }
 
 /// Finds one exact key in the constrained release TOML.
-fn required_value<'a>(content: &'a str, key: &str) -> Result<&'a str, String> {
-    content
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty() && !line.starts_with('#') && !line.starts_with('['))
-        .find_map(|line| {
-            let (candidate, value) = line.split_once('=')?;
-            (candidate.trim() == key).then_some(value.trim())
-        })
-        .ok_or_else(|| format!("release configuration has no {key}"))
+fn required_value(content: &str, key: &str) -> Result<String, String> {
+    quality_value_from(content, "distribution", key)
+        .ok_or_else(|| format!("release [distribution] has no {key}"))
 }
 
 #[cfg(test)]

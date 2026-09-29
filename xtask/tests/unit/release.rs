@@ -12,6 +12,7 @@ fn release_plan_accepts_an_explicit_scope() {
     fs::write(
         &path,
         concat!(
+            "schema_version = 1\n[distribution]\n",
             "source_tag = true\n",
             "github_binaries = true\n",
             "crates_io = false\n",
@@ -35,6 +36,7 @@ fn release_plan_rejects_empty_scope() {
     fs::write(
         &path,
         concat!(
+            "schema_version = 1\n[distribution]\n",
             "source_tag = false\n",
             "github_binaries = false\n",
             "crates_io = false\n",
@@ -53,6 +55,7 @@ fn release_plan_rejects_binaries_without_a_source_tag() {
     fs::write(
         &path,
         concat!(
+            "schema_version = 1\n[distribution]\n",
             "source_tag = false\n",
             "github_binaries = true\n",
             "crates_io = false\n",
@@ -61,6 +64,36 @@ fn release_plan_rejects_binaries_without_a_source_tag() {
     )
     .expect("temporary release plan should be writable");
     assert!(ReleasePlan::read(&path, "0.1.0").is_err());
+    fs::remove_file(path).expect("temporary release plan should be removable");
+}
+
+#[test]
+/// Duplicate or path-like binary selections cannot become release filenames.
+fn release_plan_rejects_unsafe_binary_names() {
+    let path = temporary_plan_path("unsafe-binary");
+    for binaries in ["[\"neutral-cli\", \"neutral-cli\"]", "[\"../escape\"]"] {
+        fs::write(
+            &path,
+            format!(
+                "schema_version = 1\n[distribution]\nsource_tag = true\ngithub_binaries = true\ncrates_io = false\nbinaries = {binaries}\n"
+            ),
+        )
+        .expect("temporary release plan should be writable");
+        assert!(ReleasePlan::read(&path, env!("CARGO_PKG_VERSION")).is_err());
+    }
+    fs::remove_file(path).expect("temporary release plan should be removable");
+}
+
+#[test]
+/// A distribution block cannot silently inherit values from another TOML section.
+fn release_plan_requires_the_selected_schema_and_section() {
+    let path = temporary_plan_path("wrong-section");
+    fs::write(
+        &path,
+        "schema_version = 1\n[unrelated]\nsource_tag = true\ngithub_binaries = true\ncrates_io = false\nbinaries = [\"neutral-cli\"]\n",
+    )
+    .expect("temporary release plan should be writable");
+    assert!(ReleasePlan::read(&path, env!("CARGO_PKG_VERSION")).is_err());
     fs::remove_file(path).expect("temporary release plan should be removable");
 }
 
