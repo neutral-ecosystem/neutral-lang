@@ -1,9 +1,0 @@
-# SPDX-License-Identifier: Apache-2.0
-
-# The v1 portable plan is active and its inherited v0.1 entry baseline has
-# passed. Stages 1 and 2 are released (v0.2.0 and v0.3.0); Stage 3 is next.
-# Normal developer commands do not derive their names or test selection from
-# these tracking values.
-active_stage = 3
-active_step = 3
-portable_state = "v1-stage3-validation-complete-release-pending"

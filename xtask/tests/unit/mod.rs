@@ -44,6 +44,7 @@ fn automation_rejects_unknown_campaign_profiles() {
 fn automation_parses_the_stable_command_surface() {
     let cases = [
         (vec!["dev"], Task::Dev),
+        (vec!["progress"], Task::Progress),
         (vec!["fmt"], Task::Format { write: false }),
         (vec!["fmt", "--write"], Task::Format { write: true }),
         (vec!["lint"], Task::Lint),
@@ -667,7 +668,7 @@ fn xtask_commands_and_helpers() {
         )
         .is_ok()
     );
-    assert!(super::ensure_inventory_registered(&root, "config", "config/dependency-sources.toml config/development-stage.toml config/generated-outputs.toml config/host-policy.toml config/ir-encoding.toml config/quality-gates.toml config/release.toml config/repository-layout.toml config/test-levels.toml config/test-suites.toml").is_ok());
+    assert!(super::ensure_inventory_registered(&root, "config", "config/dependency-sources.toml config/generated-outputs.toml config/host-policy.toml config/ir-encoding.toml config/quality-gates.toml config/release.toml config/repository-layout.toml config/test-levels.toml config/test-suites.toml").is_ok());
 
     assert!(super::print_environment_manifest().is_ok());
     assert_eq!(super::active_test_profile(), "current");

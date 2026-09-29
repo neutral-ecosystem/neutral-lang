@@ -21,6 +21,7 @@ use std::{
 pub mod constants;
 mod fixtures;
 mod interface;
+mod progress;
 mod release;
 
 use interface::{
@@ -58,6 +59,7 @@ fn execute(task: Task) -> Result<(), String> {
         }
         Task::Bootstrap => bootstrap(),
         Task::Dev => develop(),
+        Task::Progress => progress::show(),
         Task::EnvironmentVerify => verify_complete_environment(),
         Task::EnvironmentManifest => print_environment_manifest(),
         Task::Format { write } => format_workspace(write),
@@ -107,7 +109,6 @@ fn verify_environment() -> Result<(), String> {
     for required_path in [
         "Cargo.lock",
         "rust-toolchain.toml",
-        "config/development-stage.toml",
         "config/dependency-sources.toml",
         "config/generated-outputs.toml",
         "config/host-policy.toml",
@@ -381,20 +382,9 @@ fn rust_version_matches_channel(rustc_version: &str, channel: &str) -> bool {
     }
 }
 
-/// Reads the active implementation stage from the repository configuration.
+/// Derives the active conformance stage from required portable manifest suites.
 fn active_stage() -> Result<u8, String> {
-    let configuration_path = workspace_root()?.join("config/development-stage.toml");
-    let configuration = fs::read_to_string(&configuration_path)
-        .map_err(|error| format!("could not read {}: {error}", configuration_path.display()))?;
-    let value = configuration
-        .lines()
-        .map(str::trim)
-        .find_map(|line| line.strip_prefix("active_stage ="))
-        .ok_or_else(|| "development-stage configuration has no active_stage".to_owned())?;
-    value
-        .trim()
-        .parse::<u8>()
-        .map_err(|error| format!("invalid active_stage value: {error}"))
+    progress::active_conformance_stage(&workspace_root()?)
 }
 
 /// Escapes a string for the limited JSON values emitted by automation evidence.

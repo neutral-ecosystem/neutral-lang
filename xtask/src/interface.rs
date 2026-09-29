@@ -42,6 +42,8 @@ const ENVIRONMENT_COMMAND: &str = "environment";
 const DOCS_COMMAND: &str = "docs";
 /// Ordered local-development workflow command name.
 const DEV_COMMAND: &str = "dev";
+/// Read-only view of the active portable checklist and local gate evidence.
+const PROGRESS_COMMAND: &str = "progress";
 /// Mutation-analysis command name.
 const MUTATE_COMMAND: &str = "mutate";
 /// Stable command name for fixture synchronization.
@@ -59,6 +61,7 @@ Usage: cargo xtask <command> [options]\n\n\
 Stable commands:\n\
   bootstrap                                      verify the host workspace\n\
   dev                                            format, check, lint, test, and document\n\
+  progress                                      show next portable task and local CI state\n\
   fixtures [sync|check]                          synchronize or verify fixture SHA-256 digests\n\
   environment verify|manifest                    inspect the selected tools\n\
   fmt [--write]                                  check or apply Rust formatting\n\
@@ -88,6 +91,7 @@ Automation workflows:\n\
 /// Command fragments that every contributor-facing command map must expose.
 pub(crate) const DOCUMENTED_COMMANDS: &[&str] = &[
     "cargo xtask dev",
+    "cargo xtask progress",
     "cargo xtask fmt",
     "cargo xtask lint",
     "cargo xtask check",
@@ -114,6 +118,8 @@ pub(crate) enum Task {
     Bootstrap,
     /// Run the ordered, auto-formatting local-development workflow.
     Dev,
+    /// Summarize the active portable checklist without editing tracked files.
+    Progress,
     /// Verify the selected environment.
     EnvironmentVerify,
     /// Print a machine-readable environment manifest.
@@ -289,6 +295,7 @@ pub(crate) fn parse(arguments: &[String]) -> Result<Task, String> {
         [] | [HELP_OPTION | SHORT_HELP_OPTION] => Ok(Task::Help),
         [BOOTSTRAP_COMMAND] => Ok(Task::Bootstrap),
         [DEV_COMMAND] => Ok(Task::Dev),
+        [PROGRESS_COMMAND] => Ok(Task::Progress),
         [ENVIRONMENT_COMMAND, "verify"] => Ok(Task::EnvironmentVerify),
         [ENVIRONMENT_COMMAND, "manifest"] => Ok(Task::EnvironmentManifest),
         [FORMAT_COMMAND] => Ok(Task::Format { write: false }),
