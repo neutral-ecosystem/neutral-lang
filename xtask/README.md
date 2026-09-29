@@ -16,10 +16,13 @@ release record to its evaluated commit and gate configuration, then generates
 the human-readable status page. Evidence can evolve without per-edit digest
 bookkeeping.
 
-`cargo xtask dev`, `cargo xtask ci pr`, and `cargo xtask release prepare` are
-ordered aggregate workflows. Every step emits start/pass/fail events plus a
+The active conformance stage is derived internally from required manifest
+suites, not a second stage-status file. `cargo xtask dev`, `cargo xtask ci pr`,
+and `cargo xtask release prepare` are ordered aggregate workflows. Every step
+emits start/pass/fail events plus a
 final summary beneath `test-results/workflows/`, including duration, source
-commit, package version, selected compiler, and project license. A failing run
+commit, worktree cleanliness, package version, selected compiler, and project
+license. A failing run
 retains the exact failed step instead of losing all context behind a final exit
 code.
 
@@ -50,6 +53,7 @@ publish, mutate frozen contracts, or write into another repository.
 | Path | Ownership |
 | --- | --- |
 | `src/interface.rs` | Stable stage-free command grammar and help |
+| `src/portable_stage.rs` | Derived active conformance-suite stage for environment evidence |
 | `src/release.rs` | Typed fail-closed release-scope parsing |
 | `src/constants.rs` | Shared package, path, executable, and output names |
 | `src/lib.rs` | Reusable command implementations and repository checks |

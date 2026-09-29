@@ -4,315 +4,102 @@
 
 [< Back to Neutral](../README.md) • [Documentation Hub](README.md)
 
-This guide defines how Neutral development advances from one released version
-to the next. It connects the temporary `portable/` execution plan, contracts,
-fixtures, implementation, tests, quality evidence, release qualification, and
-final archival into one repeatable iteration.
+Neutral has one short daily loop. The active `portable/` package owns future
+requirements and the checklist; the released `conformance/` bundle owns existing
+behavior. `cargo xtask` owns validation order and writes run logs beneath ignored
+`test-results/`. Do not create a Markdown evidence report for every small edit.
 
-## Lifecycle overview
-
-```mermaid
-flowchart LR
-    Release[Current release] --> Plan[Install next portable plan]
-    Plan --> Freeze[Approve contracts and fixtures]
-    Freeze --> Slices[Implement staged slices]
-    Slices --> Harden[Run complete quality gates]
-    Harden --> Qualify[Qualify main HEAD]
-    Qualify --> Promote[Create release conformance bundle]
-    Promote --> Archive[Archive portable plan]
-    Archive --> Release
-```
-
-The current release remains defined by its immutable directory under
-`conformance/releases/`. An active `portable/` package describes future work;
-it is never part of an already released language contract.
-
-## Repository rules
-
-| Rule | Required practice |
-| --- | --- |
-| One authoritative version | Derive package and release identity from `[workspace.package].version` in the root `Cargo.toml`. |
-| One command surface | Use `cargo xtask`; scripts and CI remain thin adapters. |
-| Latest stable development | Keep stable as the repository default. Use nightly only for tooling that requires it. |
-| Main-head qualification | Perform release evaluation, approval, packaging, and tag qualification from the intended clean `main` `HEAD`. |
-| Frozen behavior is immutable | Never edit a released contract, fixture, oracle, or conformance manifest to make a new implementation pass. |
-| Future work stays portable | Keep proposed-version planning and unfinished contracts under the active `portable/` package. |
-| No hidden host behavior | Source and vocabulary input must be captured explicitly; compiler logic must not depend on ambient files, network access, time, or process state. |
-| Centralized constants | Reuse owning crate constants and configuration instead of duplicating commands, versions, diagnostic prefixes, or contract vocabulary. |
-| Document every function | Add Rust documentation to public and private functions. |
-| Stable output categories | Format user-visible automation and command output as `[category] message`, using the shared category constants. |
-| Tests belong to owners | Put test bodies in the owning crate's `tests/` tree; production modules retain only path-based test declarations when needed. |
-| Generated output is disposable | Keep Cargo, Rustdoc, analysis, benchmark, and workflow results under ignored `target/` or `test-results/` roots. |
-| Evidence is reviewed | Do not convert raw generated output into an approval claim without recording its method, scope, result, and limitations. |
-
-## 1. Close the current release baseline
-
-Before starting the next version:
-
-1. Confirm the released bundle exists under `conformance/releases/<version>/`.
-2. Run `cargo xtask version check` and `cargo xtask ci pr` on the current tree.
-
-Tests for a new version may add expectations, but they must not silently weaken
-or rewrite the previous release's expected behavior.
-
-## 2. Install the next portable plan
-
-Obtain the reviewed next-version package from its planning repository, then run:
+## The normal loop
 
 ```sh
-cargo xtask portable install <directory>
-cargo xtask portable verify
-```
-
-Installation is atomic and refuses to overwrite an existing `portable/`
-directory. Verification requires, at minimum:
-
-```text
-portable/
-├── PLAN.md
-├── lifecycle.toml
-├── specs/
-│   ├── REQUIREMENTS.md
-│   ├── TRACEABILITY.md
-│   ├── contracts/
-│   │   └── freeze.toml
-│   └── fixtures/
-└── conformance/
-    ├── manifest.toml
-    └── oracles/
-```
-
-The package must identify an active numeric version series, contain no symbolic
-links or special files, keep local links valid, and pass its recorded freeze
-digests. A rejected installation is retained beneath `test-results/portable/`
-for review rather than becoming the active plan.
-
-Contract and checklist filenames beyond `freeze.toml` belong to the portable
-package itself. Verification deliberately does not assume a language version,
-contract name, checklist name, or identifier prefix.
-
-## 3. Freeze contracts before implementation
-
-Do not begin behavior-changing production work while a blocking normative
-question remains. The contract-freeze gate should establish:
-
-- accepted requirements and terminology;
-- syntax, identity, vocabulary, IR, encoding, diagnostic, and limit contracts;
-- a reviewed fixture/oracle manifest with immutable digests;
-- explicit answers or dispositions for normative questions;
-- traceability from each production task to its requirement and expected
-  evidence.
-
-`freeze.toml` is the machine-readable gate. Narrative documents explain the
-decisions, while the manifest binds the exact reviewed inputs. When a frozen
-contract must change, reopen the review and regenerate its recorded digest; do
-not edit around the mismatch.
-
-## 4. Execute one stage, step, and slice at a time
-
-`portable/PLAN.md` is the active execution order. Work from the earliest
-unfinished blocking item and keep each iteration small enough to review as one
-coherent behavior change.
-
-For each slice:
-
-1. Read the linked requirement, decision, contract, fixture, oracle, and
-   acceptance criteria.
-2. Add or update positive and negative fixtures for the behavior being changed.
-3. Add the smallest owning-crate test that expresses the contract.
-4. Implement the production change within the documented crate boundary.
-5. Add integration, system, conformance, property, security, or fuzz-regression
-   coverage when the behavior crosses those boundaries.
-6. Update traceability and user/developer documentation in the same change.
-7. Run the focused test command, then `cargo xtask dev`.
-8. Change the plan marker from `[ ]` to `[x]` only when implementation,
-   documentation, fixtures, tests, and required evidence all pass.
-
-Do not mark an item complete because code compiles or one happy-path fixture
-passes. A slice is complete only when its failure behavior, limits, ownership,
-and evidence are also resolved.
-
-## 5. Design fixtures and oracles
-
-Fixtures are executable contract examples, not convenient test data.
-
-| Fixture class | Purpose |
-| --- | --- |
-| Positive | Prove accepted syntax and exact logical meaning. |
-| Negative | Prove invalid, ambiguous, over-limit, or unsupported input fails with the expected classification. |
-| Boundary | Exercise each structural limit exactly at the boundary and one unit over it. |
-| Metamorphic | Prove non-semantic transformations preserve logical identity. |
-| Hostile | Prove corrupt, truncated, oversized, duplicate, dangling, or unknown input fails boundedly. |
-
-Organize fixtures by polarity and primary feature. Keep expected oracles outside
-production code, register them in the conformance manifest, and bind the
-reviewed manifest through the freeze record. Production code must never contain
-fixture-specific branches.
-
-When expected behavior changes intentionally, update the contract first, review
-the affected fixture and oracle, update its digest, then change implementation.
-
-## 6. Build the test pyramid with the feature
-
-Choose the narrowest test level that proves each fact, then add broader levels
-only for real boundaries.
-
-| Level | Responsibility |
-| --- | --- |
-| Unit | Pure behavior owned by one crate. |
-| Smoke | Released command shells start and expose their stable interface. |
-| Integration | Public contracts compose correctly across crates. |
-| System | Host, filesystem, process, binary, and failure-atomicity behavior. |
-| Conformance | Source fixtures and external artifacts match frozen oracles. |
-| Property/metamorphic | Invariants hold over many generated or transformed inputs. |
-| Security | Limits, cancellation, malformed inputs, isolation, and fail-closed behavior. |
-| Fuzz regression | Previously discovered malformed inputs remain bounded and non-panicking. |
-| Performance | Controlled profiles detect time, memory, allocation, and growth regressions. |
-
-Run focused tests while implementing:
-
-```sh
-cargo xtask test unit
-cargo xtask test integration
-cargo xtask test conformance
-```
-
-Before completing a slice, run:
-
-```sh
+# implement the next contract-backed task with its owning tests and fixtures
 cargo xtask dev
-```
-
-Before completing a stage, run:
-
-```sh
-cargo xtask test all
 cargo xtask ci pr
 ```
 
-The activated minimum counts and suite ownership live in
-[`config/test-suites.toml`](../config/test-suites.toml) and
-[`config/test-levels.toml`](../config/test-levels.toml). Tests must grow with
-behavior; lowering a minimum to make a gate pass requires explicit policy
-review.
+The developer chooses the next task from the active portable checklist and
+marks it complete only after reviewing its implementation and evidence. No
+command chooses tasks or changes checklist markers on the developer's behalf.
 
-## 7. Complete a stage
+`dev` formats and runs the ordinary code, test, lint, smoke, fuzz-regression,
+and documentation checks in maintained order. `ci pr` is the non-mutating
+pre-push gate used by hosted CI; its generated summary and event log record the
+exact commit, worktree cleanliness, package version, toolchain, steps, and
+result. Run a focused `cargo xtask test <level>` while coding, then the
+complete gate before marking
+the checklist item `[x]`.
 
-A stage closes only when:
+## What remains authored
 
-- every required step and slice is marked `[x]`;
-- its linked requirements have executable evidence;
-- fixtures and oracles are registered and digest-consistent;
-- focused, complete, and CI-equivalent tests pass;
-- documentation and traceability describe the implemented state;
-- no blocking normative or security question remains;
-- generated evidence records the actual result without being manually edited.
+| Authored source | When to change it |
+| --- | --- |
+| `portable/specs/` contracts and decisions | A normative language rule changes or a question is resolved. Reopen the freeze review first. |
+| Fixtures, oracles, manifest, and traceability | Observable behavior or its executable evidence changes. Run `cargo xtask fixtures check` and `cargo xtask portable verify`. |
+| Owning crate tests, code, and Rustdoc | The implementation changes. Every function, including private ones, needs a doc comment. |
+| `portable/` checklist | A complete reviewed task passes its applicable gates; change only its checkbox. |
+| `docs/` or crate READMEs | A user-facing command, public behavior, boundary, or development rule changes. |
+| `quality/reviews/` | A human security, risk, dependency, or policy judgment changes. |
 
-Record the new stage and step only in the active tracking source designated by
-the portable plan. Do not make production behavior depend on stage numbers;
-normal commands use the durable current test profile.
+The checklist is the only routine hand-maintained completion tracker. Existing
+historical stage notes may stay for audit, but new per-slice Markdown evidence
+files are optional, not a gate. Prefer the test, frozen fixture/oracle, and
+generated CI log. Write a short durable review only when a result needs human
+interpretation, a limitation must be accepted, or policy requires it. The
+validation ledger is historical context, not a second daily status source.
 
-## 8. Harden the completed version
+Do not copy raw generated output into tracked Markdown. Do not edit generated
+`quality/STATUS.md`; `cargo xtask quality render` derives it from approval
+records. `cargo xtask check` verifies the durable quality-document inventory.
 
-After feature stages complete, run the full quality program appropriate to the
-release. This includes deterministic repetition, adversarial concurrency,
-coverage, mutation testing, fuzz campaigns, dependency review, threat modeling,
-memory/allocation profiling, performance growth, stress, and soak testing where
-required by policy.
+## One feature, one boundary
 
-```sh
-cargo xtask quality --profile release
-RUSTUP_TOOLCHAIN=nightly cargo xtask coverage
-RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign
-```
+1. Read the next unchecked task and its linked contract in the active portable
+   plan.
+2. Add positive, negative, boundary, and hostile fixtures where relevant; pin
+   expected outcomes before accepting implementation behavior.
+3. Add focused tests in the owning crate's `tests/` tree. Add public-boundary,
+   deterministic, cancellation, and limit tests when the feature crosses those
+   boundaries.
+4. Implement without ambient I/O in compiler core, documenting every function.
+5. Run focused tests, `cargo xtask dev`, then `cargo xtask ci pr`. Fix failures
+   rather than lowering quality thresholds or rewriting frozen expectations.
+6. Update the single checklist marker and only the authored sources in the
+   table above that actually changed.
 
-Raw reports remain under `test-results/`. Durable conclusions belong in the
-quality review/evidence structure and must be registered according to the
-[quality system](../quality/README.md).
+An unresolved normative question pauses implementation. Reopen the contract,
+decision, fixture/oracle, and freeze review together; a test or generated
+report cannot silently redefine the language.
 
-## 9. Prepare and qualify the version
+## Stage and release boundaries
 
-Choose the approved next SemVer and update repository metadata through the
-version command:
+At a stage boundary, run the active conformance corpus and `cargo xtask ci pr`.
+Review that the stage checklist, manifest, traceability, diagnostics, limits,
+and public integration agree. The gate logs are generated, not copied into a
+new note for every step. Only a reviewer can mark the stage complete.
 
-```sh
-cargo xtask version prepare <version>
-cargo xtask version check
-```
+For a release, follow [release and versioning](release-and-versioning.md):
+prepare the workspace version, evaluate the clean `main` commit, record the
+quality approval, assemble and inspect the package, then push the signed tag.
+Those actions intentionally remain separate because they change the release
+authority or publish an immutable ref.
 
-Commit the completed implementation and perform final qualification from a
-clean `main` `HEAD`:
+Before replacing a completed active portable plan, promote the accepted
+contracts, fixtures, oracles, and manifest into an immutable
+`conformance/releases/<version>/` bundle. Run `cargo xtask portable verify` and
+`cargo xtask portable snapshot`, review the generated snapshot, archive it in
+the roadmap repository, and only then remove `portable/`. Normal compiler and
+test behavior must continue to work without that temporary planning folder.
 
-```sh
-cargo xtask quality evaluate --profile release
-cargo xtask quality approve --release <version>
-cargo xtask release prepare
-```
+## Stable repository rules
 
-Release preparation validates the selected source state and assembles the
-configured distribution. It does not push, tag, upload, or publish. Publication
-remains an explicit tag-triggered repository operation after review.
-
-## 10. Promote conformance and archive the iteration
-
-Before removing the active plan:
-
-1. Promote the accepted specifications, fixtures, oracles, and manifest into a
-   new immutable `conformance/releases/<version>/` bundle.
-2. Verify production and executable tests depend only on the released bundle,
-   never on archived roadmap material.
-3. Record the release's reviewed quality conclusions under
-   `quality/evidence/<version>/`.
-4. Create and verify a digest-addressed snapshot:
-
-   ```sh
-   cargo xtask portable verify
-   cargo xtask portable snapshot
-   ```
-
-5. Review the generated snapshot and migration report under
-   `test-results/portable/snapshot/`, then archive it in the designated external
-   planning repository.
-6. Remove `portable/` only after promotion and archival are confirmed.
-7. Leave the repository in the documented awaiting-next-version state.
-
-Conformance promotion and external archival are deliberate review actions; the
-current automation verifies and snapshots their inputs but does not silently
-publish them elsewhere.
-
-## One complete iteration
-
-A normal implementation iteration follows this loop:
-
-```text
-select one unchecked slice
-→ read its frozen contract and expected evidence
-→ add fixtures and failing tests
-→ implement inside the owning crate
-→ run focused tests
-→ add cross-boundary and adversarial evidence
-→ update documentation and traceability
-→ run cargo xtask dev
-→ mark [x]
-→ run cargo xtask ci pr before pushing
-```
-
-If any step reveals an unresolved contract question, stop the implementation
-loop, reopen the relevant decision and freeze review, and resume only after the
-expected behavior is explicit again.
-
-## Iteration completion checklist
-
-- [ ] The change is linked to an accepted requirement.
-- [ ] Positive, negative, and applicable boundary fixtures exist.
-- [ ] Expected oracles are reviewed and registered.
-- [ ] The owning crate contains focused tests.
-- [ ] Cross-crate and host boundaries have the required broader tests.
-- [ ] Structural limits, cancellation, and failure behavior are covered.
-- [ ] Every new or changed function is documented.
-- [ ] Shared names and values come from their owning constants or configuration.
-- [ ] User-visible output follows `[category] message`.
-- [ ] Documentation and traceability match the implementation.
-- [ ] `cargo xtask dev` passes.
-- [ ] `cargo xtask ci pr` passes before push.
-- [ ] The plan item is changed to `[x]` only after all applicable checks pass.
+- Derive package and tag identity from root `Cargo.toml`; keep language and
+  artifact contract versions independent.
+- Use stable Rust by default. Use nightly only for tools that require it.
+- Keep host acquisition, filesystem, network, credentials, and execution out of
+  compiler core.
+- Use owning constants/configuration for shared values and `[category] message`
+  for command output.
+- Keep test bodies in owning `tests/` trees, and generated results under ignored
+  `target/` or `test-results/`.
+- Preserve the inherited released corpus. Never edit a released contract or
+  oracle to make a new implementation pass.

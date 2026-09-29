@@ -6,17 +6,18 @@ Status: active release-train ledger
 
 ## Rules
 
-The checklist is the completion authority; this ledger is the status view. A
-stage is **not started**, **in progress**, **validated**, or **released**. It
-can be marked validated only when all of its checklist items are checked and
-the matching conformance suites are active and passing. A stage is released
-only when its `.4 -> next .0` promotion evidence is retained.
+The portable implementation checklist is the completion authority. Developers
+select and review work themselves; workflow logs under ignored `test-results/`
+retain commit-bound toolchain and gate outcomes.
+This ledger preserves milestone decisions and links to exceptional reviews,
+not a second per-edit status report. A stage is released only after its
+promotion and release-quality evidence exist.
 
 | Stage | Transition | Current status | Validation required to advance |
 | --- | --- | --- | --- |
 | 1 | `v0.1.0 -> v0.2.0` | released | [profile matrix, inherited v0 corpus, v1 exclusion/audit evidence](evidence/stage1.md); release promotion complete |
 | 2 | `v0.2.0 -> v0.3.0` | released | [Stage 2.1 contract gate](evidence/stage2-1-contract-gate.md); [Stage 2.2 core capture](evidence/stage2-2-core-capture.md); [Stage 2.3 public integration](evidence/stage2-3-public-integration.md); [Stage 2.4 validation](evidence/stage2-4-validation.md); `v0.3.0` release and quality approval complete |
-| 3 | `v0.3.0 -> v0.4.0` | release pending | [Stage 3.1 contract](evidence/stage3-1-contract-gate.md), [Stage 3.2 core graph](evidence/stage3-2-core-graph.md), [Stage 3.3 public integration](evidence/stage3-3-public-integration.md), and [Stage 3.4 validation](evidence/stage3-4-validation.md) passed; release and quality approval pending |
+| 3 | `v0.3.0 -> v0.4.0` | released | [Stage 3.1 contract](evidence/stage3-1-contract-gate.md), [Stage 3.2 core graph](evidence/stage3-2-core-graph.md), [Stage 3.3 public integration](evidence/stage3-3-public-integration.md), and [Stage 3.4 validation](evidence/stage3-4-validation.md) passed; [v0.4.0 quality approval](../../quality/evidence/v0.4.0/record.toml) and signed tag retained |
 | 4 | `v0.4.0 -> v0.5.0` | not started | visibility/public closure/cross-module semantic fixtures |
 | 5 | `v0.5.0 -> v0.6.0` | not started | exact vocabulary lock and inert-location fixtures |
 | 6 | `v0.6.0 -> v0.7.0` | not started | project IR/reader/view public probe |
@@ -30,17 +31,11 @@ only when its `.4 -> next .0` promotion evidence is retained.
 | --- | --- | --- |
 | Released `v0.1.0` implementation and environment | validated | [baseline validation](evidence/v0-baseline.md) |
 
-## Per-release validation stack
+## Release evidence
 
-For every `v0.n.1`, `.2`, `.3`, `.4`, record:
-
-- [ ] toolchain and tested source state;
-- [ ] inherited v0.1 suite result;
-- [ ] active v1 manifest suites and fixture/oracle result;
-- [ ] formatter, linter, unit, integration, property/fuzz, and limit result;
-- [ ] public reader/authoring/consumer probe result applicable to the release;
-- [ ] deterministic repeated/concurrent result and identity-vector result;
-- [ ] reviewed migration note and any deliberately deferred checklist items.
-
-The final `v1.0.0` promotion additionally requires every row above plus all
-items in [the v1 checklist](../specs/contracts/v1-checklist.md).
+The generated PR and release workflows record toolchain, source commit,
+inherited and active suites, quality steps, and their results. Release approval
+is retained in `quality/evidence/<version>/record.toml`. A milestone row above
+only needs an authored note when a limitation, deferral, or normative decision
+cannot be expressed by those machine-checked sources. The final `v1.0.0`
+promotion also requires [the v1 checklist](../specs/contracts/v1-checklist.md).

@@ -29,15 +29,14 @@ cargo xtask environment verify
 
 ```sh
 cargo xtask dev
-```
-
-This runs the normal formatting, compilation, lint, test, and documentation
-checks in their maintained order. Before pushing to `main`, run the same
-non-mutating composition as hosted CI:
-
-```sh
 cargo xtask ci pr
 ```
+
+Developers select and review the next task in the active portable checklist.
+`dev` runs formatting, compilation, lint, tests, and documentation in their
+maintained order. `ci pr` is the non-mutating pre-push gate and retains its
+result under ignored `test-results/`; routine edits need no separate evidence
+Markdown file. Mark the single portable checklist item complete after review.
 
 Run `cargo xtask --help` for the authoritative command list. The root
 [Development](../README.md#development) table provides the command-oriented

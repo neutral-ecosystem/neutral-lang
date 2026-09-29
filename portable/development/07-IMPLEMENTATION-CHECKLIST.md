@@ -8,11 +8,13 @@ This is the operational tracking file for the complete journey from `v0.1.0`
 to `v1.0.0`. Check an item only when its linked implementation and retained
 validation evidence exist. Design acceptance alone does not complete an item.
 
-For every release below, record the toolchain, commands/results, and evidence
-location in the [validation ledger](06-VALIDATION-LEDGER.md). This active
-single-maintainer train does not require a separate approver or a fresh digest
-of each evidence record; immutable release artifacts may still carry their own
-checksums.
+Developers choose and review the next unchecked item. `cargo xtask dev` and
+`cargo xtask ci pr` retain the toolchain, commit, commands, and results in
+ignored workflow logs. This checklist is the routine completion authority;
+do not create a separate Markdown evidence note for each small change. Add a
+durable review only for a contract decision, exceptional risk, or gate that
+needs human interpretation. The [validation ledger](06-VALIDATION-LEDGER.md)
+is historical release context, not a duplicate daily tracker.
 
 ## Baseline — `v0.1.0`
 

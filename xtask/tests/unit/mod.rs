@@ -33,6 +33,7 @@ fn automation_rejects_unknown_campaign_profiles() {
         vec!["quality", "unknown"],
         vec!["ci", "stage1"],
         vec!["format"],
+        vec!["progress"],
         vec!["clean-results"],
     ] {
         assert!(super::run(arguments.into_iter().map(str::to_owned)).is_err());
@@ -44,7 +45,6 @@ fn automation_rejects_unknown_campaign_profiles() {
 fn automation_parses_the_stable_command_surface() {
     let cases = [
         (vec!["dev"], Task::Dev),
-        (vec!["progress"], Task::Progress),
         (vec!["fmt"], Task::Format { write: false }),
         (vec!["fmt", "--write"], Task::Format { write: true }),
         (vec!["lint"], Task::Lint),
@@ -409,6 +409,7 @@ fn automation_records_failed_workflow_steps() {
         .expect("failed workflow events should exist");
 
     assert!(summary.contains("\"status\":\"fail\""));
+    assert!(summary.contains("\"worktree_clean\":"));
     assert!(summary.contains("line one\\n\\\"line two\\\""));
     assert!(events.contains("\"step\":\"synthetic\""));
     assert!(events.contains("\"status\":\"fail\""));
@@ -601,6 +602,25 @@ fn automation_stages_the_selected_binary_package() {
     assert!(output.join(constants::LICENSE_FILE).is_file());
     assert!(output.join(constants::ROOT_README_FILE).is_file());
     assert!(output.join(constants::RELEASE_CHECKSUM_FILE).is_file());
+    assert!(
+        super::stage_binary_package(&root, &source, &output, &binaries, &assets, "{}\n").is_ok()
+    );
+    std::fs::write(output.join(constants::RELEASE_CHECKSUM_FILE), "tampered")
+        .expect("temporary package asset should be writable");
+    assert!(
+        super::stage_binary_package(&root, &source, &output, &binaries, &assets, "{}\n").is_err()
+    );
+    std::fs::write(output.join(constants::RELEASE_CHECKSUM_FILE), "checksums")
+        .expect("temporary package asset should be restored");
+    std::fs::write(output.join("unexpected"), "extra")
+        .expect("unexpected package file should be writable");
+    assert!(
+        super::stage_binary_package(&root, &source, &output, &binaries, &assets, "{}\n").is_err()
+    );
+    std::fs::remove_file(output.join("unexpected"))
+        .expect("unexpected package file should be removable");
+    std::fs::remove_file(output.join(constants::LICENSE_FILE))
+        .expect("temporary package license should be removable");
     assert!(
         super::stage_binary_package(&root, &source, &output, &binaries, &assets, "{}\n").is_err()
     );

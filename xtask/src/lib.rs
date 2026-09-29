@@ -21,7 +21,7 @@ use std::{
 pub mod constants;
 mod fixtures;
 mod interface;
-mod progress;
+mod portable_stage;
 mod release;
 
 use interface::{
@@ -59,7 +59,6 @@ fn execute(task: Task) -> Result<(), String> {
         }
         Task::Bootstrap => bootstrap(),
         Task::Dev => develop(),
-        Task::Progress => progress::show(),
         Task::EnvironmentVerify => verify_complete_environment(),
         Task::EnvironmentManifest => print_environment_manifest(),
         Task::Format { write } => format_workspace(write),
@@ -384,7 +383,7 @@ fn rust_version_matches_channel(rustc_version: &str, channel: &str) -> bool {
 
 /// Derives the active conformance stage from required portable manifest suites.
 fn active_stage() -> Result<u8, String> {
-    progress::active_conformance_stage(&workspace_root()?)
+    portable_stage::active_conformance_stage(&workspace_root()?)
 }
 
 /// Escapes a string for the limited JSON values emitted by automation evidence.
@@ -1619,10 +1618,14 @@ fn stage_binary_package(
     summary: &str,
 ) -> Result<(), String> {
     if output_directory.exists() {
-        return Err(format!(
-            "package output already exists: {}; run `cargo xtask clean` before a new assembly",
-            output_directory.display()
-        ));
+        return verify_existing_binary_package(
+            root,
+            source_directory,
+            output_directory,
+            binaries,
+            assets,
+            summary,
+        );
     }
     let parent = output_directory
         .parent()
@@ -1666,6 +1669,90 @@ fn stage_binary_package(
             output_directory.display()
         )
     })?;
+    Ok(())
+}
+
+/// Reuses an existing package only when its exact file set and bytes still match.
+fn verify_existing_binary_package(
+    root: &Path,
+    source_directory: &Path,
+    output_directory: &Path,
+    binaries: &[String],
+    assets: &[DistributionAsset],
+    summary: &str,
+) -> Result<(), String> {
+    let output_type = fs::symlink_metadata(output_directory)
+        .map_err(|error| format!("could not inspect {}: {error}", output_directory.display()))?
+        .file_type();
+    if !output_type.is_dir() {
+        return Err(format!(
+            "existing package output is not a regular directory: {}",
+            output_directory.display()
+        ));
+    }
+    let mut expected = BTreeMap::new();
+    for binary in binaries {
+        let filename = release_binary_path(Path::new(""), binary)
+            .to_string_lossy()
+            .into_owned();
+        let bytes = fs::read(release_binary_path(source_directory, binary))
+            .map_err(|error| format!("could not read release binary {binary}: {error}"))?;
+        if expected.insert(filename, bytes).is_some() {
+            return Err(format!("duplicate release binary: {binary}"));
+        }
+    }
+    for filename in [constants::LICENSE_FILE, constants::ROOT_README_FILE] {
+        let bytes = fs::read(root.join(filename))
+            .map_err(|error| format!("could not read release {filename}: {error}"))?;
+        expected.insert(filename.to_owned(), bytes);
+    }
+    for asset in assets {
+        if expected
+            .insert(asset.filename.clone(), asset.bytes.clone())
+            .is_some()
+        {
+            return Err(format!("duplicate release asset: {}", asset.filename));
+        }
+    }
+    expected.insert(
+        "package-summary.json".to_owned(),
+        summary.as_bytes().to_vec(),
+    );
+
+    for entry in fs::read_dir(output_directory)
+        .map_err(|error| format!("could not inspect {}: {error}", output_directory.display()))?
+    {
+        let entry = entry.map_err(|error| format!("could not inspect package entry: {error}"))?;
+        let filename = entry.file_name().to_string_lossy().into_owned();
+        if !entry
+            .file_type()
+            .map_err(|error| format!("could not inspect package {filename}: {error}"))?
+            .is_file()
+        {
+            return Err(format!("package entry is not a regular file: {filename}"));
+        }
+        let expected_bytes = expected
+            .remove(&filename)
+            .ok_or_else(|| format!("unexpected package file: {filename}"))?;
+        let actual_bytes = fs::read(entry.path())
+            .map_err(|error| format!("could not read package file {filename}: {error}"))?;
+        if actual_bytes != expected_bytes {
+            return Err(format!(
+                "existing package file differs from current build: {filename}"
+            ));
+        }
+    }
+    if !expected.is_empty() {
+        return Err(format!(
+            "existing package is incomplete: {}",
+            expected.keys().cloned().collect::<Vec<_>>().join(", ")
+        ));
+    }
+    println!(
+        "{} existing package verified: {}",
+        constants::INFO,
+        output_directory.display()
+    );
     Ok(())
 }
 
@@ -3556,11 +3643,13 @@ fn write_workflow_summary(
     let version = workspace_package_version(&manifest)?;
     let license = workspace_package_license(&manifest)?;
     let commit = command_output(constants::GIT_COMMAND, &["rev-parse", "HEAD"])?;
+    let worktree_clean =
+        command_output(constants::GIT_COMMAND, &["status", "--porcelain"])?.is_empty();
     let rustc = command_output(constants::RUSTC_COMMAND, &["--version"])?;
     fs::write(
         path,
         format!(
-            "{{\"schema_version\":1,\"workflow\":\"{}\",\"profile\":\"{}\",\"status\":\"{}\",\"completed_steps\":{completed_steps},\"total_steps\":{total_steps},\"started_at_unix_ms\":{started_at_unix_ms},\"updated_at_unix_ms\":{},\"source_commit\":\"{}\",\"package_version\":\"{}\",\"license\":\"{}\",\"rustc\":\"{}\",\"error\":{}}}\n",
+            "{{\"schema_version\":1,\"workflow\":\"{}\",\"profile\":\"{}\",\"status\":\"{}\",\"completed_steps\":{completed_steps},\"total_steps\":{total_steps},\"started_at_unix_ms\":{started_at_unix_ms},\"updated_at_unix_ms\":{},\"source_commit\":\"{}\",\"worktree_clean\":{worktree_clean},\"package_version\":\"{}\",\"license\":\"{}\",\"rustc\":\"{}\",\"error\":{}}}\n",
             json_string(workflow),
             json_string(profile),
             json_string(status),

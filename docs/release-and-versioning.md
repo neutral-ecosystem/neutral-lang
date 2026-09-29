@@ -136,6 +136,8 @@ scripts/linux/release.sh publish
 ```
 
 The script derives the tag from the release plan, re-runs release qualification,
+verifies and reuses an already assembled package only when every file matches
+the current build,
 creates and verifies a signed tag only if it does not already exist, and pushes
 that tag without force. It refuses to move an existing local or remote tag.
 The tag-triggered GitHub workflow checks out that exact tag commit, confirms it
