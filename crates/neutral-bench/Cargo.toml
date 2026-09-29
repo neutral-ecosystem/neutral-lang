@@ -19,7 +19,7 @@ neutral-probe = { path = "../neutral-probe" }
 neutral-reader = { path = "../neutral-reader" }
 
 [[bench]]
-name = "stage9"
+name = "performance"
 harness = false
 
 [lints]

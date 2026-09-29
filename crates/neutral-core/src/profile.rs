@@ -37,7 +37,7 @@ pub const DEFAULT_TRAVERSAL_NODES: u64 = 1_000_000;
 pub enum LanguageProfile {
     /// Frozen, implemented v0.1 source behavior.
     V0_1,
-    /// Reserved v1.0 source behavior, recognized but not implemented in Stage 1.
+    /// Reserved v1.0 source behavior, recognized but unavailable to standalone compilation.
     V1_0,
 }
 

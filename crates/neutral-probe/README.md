@@ -20,7 +20,7 @@ generic and contains no fixture-specific interpretation. The standalone binary
 accepts one encoded artifact path, validates it under the hard decoder limits,
 and emits the same shared-renderer `[info]` observations as the in-process
 library, or one bounded `[error]`.
-The library also summarizes validated Stage 4 public-interface snapshots via
+The library also summarizes validated public-interface snapshots via
 the reader alone; this in-process path has no compiler dependency and does not
 claim that the standalone encoded-project format is active yet.
 

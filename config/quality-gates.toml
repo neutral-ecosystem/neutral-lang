@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# Stage 9 quality thresholds. A gate is not a pass until its named tool has
+# Approved quality thresholds. A gate is not a pass until its named tool has
 # produced retained evidence for the exact candidate under review.
 [coverage]
 tool = "cargo-llvm-cov"
@@ -40,7 +40,7 @@ readiness_runs_per_target = 256
 status = "full-campaign-pass"
 
 [performance]
-harness = "neutral-bench/stage9"
+harness = "neutral-bench/performance"
 pr_profile = "informational"
 release_profile = "five-direct-samples-and-massif-2026-09-08"
 soak_profile = "extended-soak-50000-massif-2026-09-08"

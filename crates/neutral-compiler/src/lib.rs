@@ -5,8 +5,8 @@
 //! This crate owns capture contracts, the private frontend and semantic model,
 //! and lowering into public logical IR. Its pure captured-input compilation
 //! path must not use filesystem, process, environment, network, locale, or clock
-//! authority. Stage 2 established captured-input contracts; Stages 3 through
-//! 6.2 extend the private frontend while preserving the same effect-free boundary.
+//! authority. Project capture and the private frontend preserve that same
+//! effect-free boundary as language features evolve.
 
 use neutral_core::{
     ByteSpan, CancellationToken, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity,

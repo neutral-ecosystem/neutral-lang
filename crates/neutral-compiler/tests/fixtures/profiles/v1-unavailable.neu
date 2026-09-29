@@ -1,0 +1,4 @@
+neu "1.0"
+module profile_unavailable
+
+num answer = 42

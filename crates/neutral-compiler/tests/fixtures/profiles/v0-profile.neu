@@ -1,0 +1,4 @@
+neu "0.1"
+module profile_positive
+
+num answer = 42

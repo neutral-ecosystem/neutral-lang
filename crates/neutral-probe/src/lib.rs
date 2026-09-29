@@ -15,7 +15,7 @@ use neutral_reader::{
     ValidatedProjectInterface,
 };
 
-/// Public-only Stage 4 interface observations made without compiler linkage.
+/// Public-only interface observations made without compiler linkage.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectInterfaceSummary {
     /// Canonically ordered public export names.

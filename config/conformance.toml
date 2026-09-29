@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# Immutable language-behavior corpus inherited by every current release.
+# This version is independent of workspace.package.version in Cargo.toml.
+schema_version = 1
+inherited_release = "v0.1.0"

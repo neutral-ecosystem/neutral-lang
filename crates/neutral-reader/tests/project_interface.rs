@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Compiler-independent validation of public Stage 4 interface snapshots.
+//! Compiler-independent validation of public interface snapshots.
 
 use neutral_core::{SemanticDigest, profile::V1_SOURCE_PROFILE};
 use neutral_ir::{

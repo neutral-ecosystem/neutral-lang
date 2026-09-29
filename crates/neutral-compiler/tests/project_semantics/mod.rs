@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Stage 4 semantic-project contract tests.
+//! Semantic-project contract tests.
 
 use super::*;
 use crate::{

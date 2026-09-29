@@ -18,10 +18,13 @@ contextual record values; display is deterministic and escapes hostile controls.
 It also carries exact captured vocabulary identity/version/schema/encoding/
 digest/feature facts, qualified type contracts and values, and distinct
 vocabulary-default provenance without introducing an executable value kind.
-For project development, its public-interface contract carries only exported
-signatures and public-to-public dependency edges. The domain-separated
-fingerprint covers that signature surface, not private values or the future
-complete project identity.
+For project development, `project_interface` is the shared public contract
+used by the compiler producer, independent reader validator, and probe
+consumer. It carries only exported signatures and public-to-public dependency
+edges. Its source-profile version comes from `neutral-core`; the Cargo package
+version comes from the workspace manifest. Neither is duplicated in this
+interface. The domain-separated fingerprint covers that signature surface,
+not private values or the future complete project identity.
 
 ## Command
 

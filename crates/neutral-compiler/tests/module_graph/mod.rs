@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Core Stage 3 graph construction, boundaries, and fail-closed behavior.
+//! Core graph construction, boundaries, and fail-closed behavior.
 
 use super::*;
 use crate::{
@@ -145,8 +145,8 @@ fn valid_cycle_and_shuffled_input_are_deterministic() {
 }
 
 #[test]
-/// A semantic value cycle is still a valid import graph for Stage 3.
-fn semantic_cycle_is_deferred_to_stage_four() {
+/// A semantic value cycle is still a valid import graph.
+fn semantic_cycle_does_not_invalidate_import_graph() {
     let project = captured(
         &[
             (
@@ -161,7 +161,7 @@ fn semantic_cycle_is_deferred_to_stage_four() {
         limits(2),
     );
     let graph = build_module_graph(&project, &CancellationToken::new())
-        .expect("Stage 3 must accept import SCC independently of value semantics");
+        .expect("graph construction must accept import SCCs independently of value semantics");
     assert_eq!(graph.components().len(), 1);
     assert_eq!(graph.components()[0].modules().len(), 2);
 }

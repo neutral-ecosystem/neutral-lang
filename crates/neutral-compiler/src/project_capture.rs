@@ -814,7 +814,7 @@ fn freeze_project(
     })
 }
 
-/// Minimal bounded header facts required by Stage 2 capture.
+/// Minimal bounded header facts required by project capture.
 struct HeaderFacts<'a> {
     /// Exact unescaped profile text.
     profile: &'a str,
@@ -896,7 +896,7 @@ fn valid_name_segment(value: &str) -> bool {
         && !value.contains("__")
 }
 
-/// Checks the Stage 2 canonical vocabulary identity spelling.
+/// Checks the canonical vocabulary identity spelling during capture.
 fn valid_vocabulary_identity(value: &str) -> bool {
     value
         .bytes()

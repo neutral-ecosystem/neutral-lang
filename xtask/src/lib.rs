@@ -23,11 +23,13 @@ mod fixtures;
 mod interface;
 mod portable_stage;
 mod release;
+mod released_conformance;
 
 use interface::{
     BuildProfile, CiProfile, FuzzMode, PerformanceProfile, PortableAction, QualityAction,
     QualityProfile, Task, TestLevel, ValidationTarget, VersionAction,
 };
+use released_conformance::ReleasedBundle;
 
 /// One named fallible step in an aggregate automation workflow.
 type WorkflowStep<'a> = (&'static str, Box<dyn FnOnce() -> Result<(), String> + 'a>);
@@ -109,6 +111,7 @@ fn verify_environment() -> Result<(), String> {
         "Cargo.lock",
         "rust-toolchain.toml",
         "config/dependency-sources.toml",
+        constants::CONFORMANCE_CONFIG_FILE,
         "config/generated-outputs.toml",
         "config/host-policy.toml",
         "config/ir-encoding.toml",
@@ -117,12 +120,19 @@ fn verify_environment() -> Result<(), String> {
         "config/repository-layout.toml",
         "config/test-levels.toml",
         "config/test-suites.toml",
-        "conformance/releases/v0.1.0/conformance/manifest.toml",
         constants::QUALITY_MANIFEST_FILE,
     ] {
         if !workspace_root.join(required_path).is_file() {
             return Err(format!("missing required workspace file: {required_path}"));
         }
+    }
+
+    let inherited_manifest =
+        ReleasedBundle::load(&workspace_root)?.member("conformance/manifest.toml");
+    if !workspace_root.join(&inherited_manifest).is_file() {
+        return Err(format!(
+            "missing required workspace file: {inherited_manifest}"
+        ));
     }
 
     let rustc_version = command_output(constants::RUSTC_COMMAND, &["--version"])?;
@@ -1808,7 +1818,10 @@ fn show_versions() -> Result<(), String> {
         constants::WORKSPACE_MANIFEST_FILE,
     )?)?;
     println!("{} package-release {package}", constants::INFO);
-    let freeze = read_workspace_text(&root, constants::CONTRACT_FREEZE_FILE)?;
+    let freeze = read_workspace_text(
+        &root,
+        &ReleasedBundle::load(&root)?.member("specs/contracts/freeze.toml"),
+    )?;
     for (name, value) in configuration_section(&freeze, "contract_versions")? {
         println!("{} contract {name}={value}", constants::INFO);
     }
@@ -1844,7 +1857,10 @@ fn check_versions() -> Result<(), String> {
         }
     }
     verify_dependency_lock(&root, &package_version)?;
-    let freeze = read_workspace_text(&root, constants::CONTRACT_FREEZE_FILE)?;
+    let freeze = read_workspace_text(
+        &root,
+        &ReleasedBundle::load(&root)?.member("specs/contracts/freeze.toml"),
+    )?;
     if configuration_value(&freeze, "status").as_deref() != Some("approved")
         || configuration_section(&freeze, "contract_versions")?.is_empty()
     {
@@ -1856,6 +1872,12 @@ fn check_versions() -> Result<(), String> {
 
 /// Rejects ordinary version work mixed with unreviewed normative changes.
 fn ensure_no_unreviewed_contract_changes(root: &Path) -> Result<(), String> {
+    let bundle = ReleasedBundle::load(root)?;
+    let freeze = bundle.member("specs/contracts/freeze.toml");
+    let specs = bundle.member("specs");
+    let manifest = bundle.member("conformance/manifest.toml");
+    let oracles = bundle.member("conformance/oracles");
+    let review = bundle.member("conformance/fixture-oracle-review.toml");
     let output = Command::new("git")
         .current_dir(root)
         .args([
@@ -1863,11 +1885,12 @@ fn ensure_no_unreviewed_contract_changes(root: &Path) -> Result<(), String> {
             "--name-only",
             "HEAD",
             "--",
-            constants::CONTRACT_FREEZE_FILE,
-            "conformance/releases/v0.1.0/specs",
-            constants::CONFORMANCE_MANIFEST_FILE,
-            "conformance/releases/v0.1.0/conformance/oracles",
-            "conformance/releases/v0.1.0/conformance/fixture-oracle-review.toml",
+            constants::CONFORMANCE_CONFIG_FILE,
+            &freeze,
+            &specs,
+            &manifest,
+            &oracles,
+            &review,
             "config/ir-encoding.toml",
         ])
         .output()
@@ -1918,8 +1941,9 @@ fn prepare_version(requested: &str) -> Result<(), String> {
         ));
     }
 
-    let freeze_bytes = fs::read(root.join(constants::CONTRACT_FREEZE_FILE))
-        .map_err(|error| format!("could not read contract freeze: {error}"))?;
+    let freeze_bytes =
+        fs::read(root.join(ReleasedBundle::load(&root)?.member("specs/contracts/freeze.toml")))
+            .map_err(|error| format!("could not read contract freeze: {error}"))?;
     let freeze_digest = sha256_hex(&freeze_bytes);
 
     fs::create_dir_all(&evidence_directory).map_err(|error| {
@@ -3101,12 +3125,16 @@ fn verify_ignore_policy(root: &Path) -> Result<(), String> {
             return Err(format!("generated-state ignore is missing {required}"));
         }
     }
+    let bundle = ReleasedBundle::load(root)?;
+    let freeze = bundle.member("specs/contracts/freeze.toml");
+    let manifest = bundle.member("conformance/manifest.toml");
     for required in [
         "Cargo.lock",
         "rust-toolchain.toml",
+        constants::CONFORMANCE_CONFIG_FILE,
         "config/release.toml",
-        "conformance/releases/v0.1.0/specs/contracts/freeze.toml",
-        "conformance/releases/v0.1.0/conformance/manifest.toml",
+        &freeze,
+        &manifest,
         "scripts/linux/bootstrap.sh",
     ] {
         let output = Command::new(constants::GIT_COMMAND)
@@ -3300,15 +3328,29 @@ fn performance(profile: PerformanceProfile) -> Result<(), String> {
         PerformanceProfile::Soak => "soak",
     };
     match profile {
-        "pr" | "release" | "soak" => run_cargo(&[
-            "bench",
-            "--package",
-            constants::NEUTRAL_BENCH,
-            "--bench",
-            constants::STAGE9_BENCHMARK,
-            "--",
-            profile,
-        ]),
+        "pr" | "release" | "soak" => {
+            let harness = quality_value("performance", "harness")?;
+            let (package, target) = harness
+                .split_once('/')
+                .ok_or_else(|| "quality performance harness must be package/target".to_owned())?;
+            if package != constants::NEUTRAL_BENCH
+                || target.is_empty()
+                || !target
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+            {
+                return Err(format!("invalid quality performance harness: {harness}"));
+            }
+            run_cargo(&[
+                "bench",
+                "--package",
+                package,
+                "--bench",
+                target,
+                "--",
+                profile,
+            ])
+        }
         _ => unreachable!("performance profile is closed by command parsing"),
     }
 }
@@ -3848,16 +3890,18 @@ fn verify_release_path_independence(root: &Path) -> Result<(), String> {
 
 /// Checks accepted IDs, completed syntax items, and fixture/oracle inventories.
 fn check_traceability() -> Result<(), String> {
+    let root = workspace_root()?;
+    let bundle = ReleasedBundle::load(&root)?;
     check_traceability_bundle(
-        constants::REQUIREMENTS_FILE,
-        constants::SYNTAX_CONTRACT_FILE,
-        constants::SYNTAX_CHECKLIST_FILE,
-        constants::TRACEABILITY_FILE,
-        constants::CONFORMANCE_MANIFEST_FILE,
-        constants::FIXTURE_DIRECTORY,
-        constants::ORACLE_DIRECTORY,
+        &bundle.member("specs/REQUIREMENTS.md"),
+        &bundle.member("specs/contracts/syntax.md"),
+        &bundle.member("specs/contracts/syntax-checklist.md"),
+        &bundle.member("specs/TRACEABILITY.md"),
+        &bundle.member("conformance/manifest.toml"),
+        &bundle.member("specs/fixtures"),
+        &bundle.member("conformance/oracles"),
     )?;
-    verify_frozen_input_digests(&workspace_root()?, constants::CONTRACT_FREEZE_FILE)
+    verify_frozen_input_digests(&root, &bundle.member("specs/contracts/freeze.toml"))
 }
 
 /// Checks the version-independent conformance inventory of an installed portable package.
@@ -3944,7 +3988,7 @@ fn ensure_ids_covered(
     }
 }
 
-/// Rejects an unchecked master syntax item after Stage 8 traceability closure.
+/// Rejects an unchecked master syntax item after traceability closure.
 fn ensure_syntax_complete(path: &str, content: &str) -> Result<(), String> {
     let unchecked = content
         .lines()

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Independent validation and redacted traversal of Stage 4 public interfaces.
+//! Independent validation and redacted traversal of public interfaces.
 
 use neutral_core::profile::V1_SOURCE_PROFILE;
 use neutral_ir::{

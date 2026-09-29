@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Core Stage 2 project-capture tests.
+//! Core project-capture tests.
 
 use super::*;
 use neutral_core::VocabularyContentDigest;

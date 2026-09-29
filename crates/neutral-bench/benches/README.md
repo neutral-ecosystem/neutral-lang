@@ -2,7 +2,7 @@
 
 # Benchmark harnesses
 
-This directory owns executable performance profiles. The Stage 9 harness
+This directory owns executable performance profiles. The `performance` harness
 measures compilation, reader validation, artifact encoding/decoding, probe
 traversal, structural growth, concurrent isolation, stress, and bounded soak
 work without adding dependencies to production crates.

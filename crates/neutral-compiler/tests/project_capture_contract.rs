@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Public Stage 2 project-capture integration contract.
+//! Public project-capture integration contract.
 
 use neutral_compiler::{
     CapturedProject, CapturedProjectRequestBuilder, CapturedProjectSource,

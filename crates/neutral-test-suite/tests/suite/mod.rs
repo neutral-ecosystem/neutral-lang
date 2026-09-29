@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Cross-package tests for active Stage 2 through Stage 8 vertical slices.
+//! Cross-package tests for released syntax, values, artifacts, and host boundaries.
 
 use neutral_compiler::{
     CompilationFailureDetail, CompilationRequest, CompilationResult, LANGUAGE_BEHAVIOR_VERSION,
@@ -391,7 +391,7 @@ fn integration_minimal_compiler_to_reader() {
 
 #[test]
 /// Verifies frozen numeric spellings lower to exact normalized public values.
-fn conformance_stage3_exact_number_positive_oracles() {
+fn conformance_exact_number_positive_oracles() {
     let cases = [
         (NUMBER_FRACTION, "123e-2/1"),
         (NUMBER_EXPONENT, "-125e1/1"),
@@ -424,7 +424,7 @@ fn property_equivalent_number_spellings_normalize_and_fingerprint_equally() {
 
 #[test]
 /// Verifies frozen malformed numeric spellings produce stable semantic diagnostics.
-fn conformance_stage3_exact_number_negative_oracles() {
+fn conformance_exact_number_negative_oracles() {
     let cases = [
         (
             include_bytes!(
@@ -507,7 +507,7 @@ fn security_exact_number_limits_fail_before_ir_allocation() {
 
 #[test]
 /// Verifies nullable scalar null and outer widening fixtures through public IR.
-fn conformance_stage3_nullable_scalar_positive_oracles() {
+fn conformance_nullable_scalar_positive_oracles() {
     let null_cases = [
         (NULLABLE_STRING_NULL, "string?"),
         (NULLABLE_NUM_NULL, "num?"),
@@ -547,7 +547,7 @@ fn system_nullable_null_remains_distinct_from_absence() {
 
 #[test]
 /// Verifies null and malformed nullability fail at their frozen boundaries.
-fn conformance_stage3_nullable_scalar_negative_oracles() {
+fn conformance_nullable_scalar_negative_oracles() {
     let cases: [FailureOracle<'_>; 2] = [
         (
             include_bytes!(
@@ -592,7 +592,7 @@ fn property_typed_null_fingerprints_remain_distinct() {
 
 #[test]
 /// Verifies frozen nominal record fixtures through public logical IR.
-fn conformance_stage4_nominal_record_positive_oracles() {
+fn conformance_nominal_record_positive_oracles() {
     let basic = compile_artifacts(NOMINAL_RECORD);
     let record = &basic.logical_document().record_types()[0];
     assert_eq!(record.name(), "Metadata");
@@ -670,7 +670,7 @@ fn property_record_declaration_and_field_order_is_nonsemantic() {
 
 #[test]
 /// Verifies frozen nominal record failures own stable codes and source spans.
-fn conformance_stage4_nominal_record_negative_oracles() {
+fn conformance_nominal_record_negative_oracles() {
     let cases: [FailureOracle<'_>; 9] = [
         (
             include_bytes!(
@@ -790,7 +790,7 @@ fn security_record_limits_fail_before_schema_resolution() {
 
 #[test]
 /// Verifies every required/defaulted and nullable/non-nullable field state.
-fn conformance_stage4_closed_defaults_positive_oracles() {
+fn conformance_closed_defaults_positive_oracles() {
     let matrix = compile_artifacts(FIELD_STATE_DEFAULTS);
     let schema = &matrix.logical_document().record_types()[0];
     assert_eq!(
@@ -899,7 +899,7 @@ fn security_reader_rejects_incomplete_field_provenance() {
 
 #[test]
 /// Verifies non-closed and ill-typed defaults fail with frozen ownership.
-fn conformance_stage4_closed_defaults_negative_oracles() {
+fn conformance_closed_defaults_negative_oracles() {
     let cases: [FailureOracle<'_>; 5] = [
         (
             include_bytes!(
@@ -955,7 +955,7 @@ fn conformance_stage4_closed_defaults_negative_oracles() {
 
 #[test]
 /// Verifies ordered, empty, nested, nullable, and defaulted list values.
-fn conformance_stage4_ordered_lists_positive_oracles() {
+fn conformance_ordered_lists_positive_oracles() {
     let ordered = compile_artifacts(ORDERED_STRINGS);
     assert_eq!(
         ordered.logical_document().declarations()[0]
@@ -996,7 +996,7 @@ fn conformance_stage4_ordered_lists_positive_oracles() {
 
 #[test]
 /// Verifies malformed and heterogeneous list items have stable ownership.
-fn conformance_stage4_ordered_lists_negative_oracles() {
+fn conformance_ordered_lists_negative_oracles() {
     let cases: [FailureOracle<'_>; 2] = [
         (
             include_bytes!(
@@ -1114,7 +1114,7 @@ fn system_ordered_lists_cross_reader_and_probe() {
 
 #[test]
 /// Verifies forward, transitive, nested, and nullable reuse lower final values.
-fn conformance_stage5_immutable_reuse_positive_oracles() {
+fn conformance_immutable_reuse_positive_oracles() {
     let forward = compile_artifacts(FORWARD_TRANSITIVE_REUSE);
     let declarations = forward.logical_document().declarations();
     assert_eq!(declarations.len(), 3);
@@ -1181,7 +1181,7 @@ fn conformance_stage5_immutable_reuse_positive_oracles() {
 
 #[test]
 /// Verifies unresolved names, wrong kinds, cycles, and covariance produce no IR.
-fn conformance_stage5_immutable_reuse_negative_oracles() {
+fn conformance_immutable_reuse_negative_oracles() {
     let cases = [
         (
             include_bytes!("../../../../conformance/releases/v0.1.0/specs/fixtures/negative/reuse/unknown-value.neu")
@@ -1305,7 +1305,7 @@ fn system_immutable_reuse_crosses_reader_and_probe() {
 
 #[test]
 /// Verifies forward, nested, recursive, and combined typed reference fixtures.
-fn conformance_stage5_typed_references_positive_oracles() {
+fn conformance_typed_references_positive_oracles() {
     let forward = compile_artifacts(FORWARD_REFERENCE);
     let selected = forward
         .logical_document()
@@ -1345,7 +1345,7 @@ fn conformance_stage5_typed_references_positive_oracles() {
 
 #[test]
 /// Verifies reference target name, kind, and exact type rejection boundaries.
-fn conformance_stage5_typed_references_negative_oracles() {
+fn conformance_typed_references_negative_oracles() {
     let cases = [
         (
             include_bytes!(
@@ -1535,7 +1535,7 @@ fn system_minimal_reader_to_probe() {
 }
 
 #[test]
-/// Verifies all frozen positive oracle fields for the Stage 2 source case.
+/// Verifies all frozen positive oracle fields for the source case.
 fn conformance_minimal_positive_oracle() {
     let artifacts = compile_artifacts(MINIMAL_SOURCE);
     let document = artifacts.logical_document();
@@ -1635,7 +1635,7 @@ fn conformance_minimal_negative_oracles() {
 
 #[test]
 /// Verifies all frozen Slice 3.1 positive source facts and reader output.
-fn conformance_stage3_source_text_positive_oracles() {
+fn conformance_source_text_positive_oracles() {
     let cases = [
         (
             COMMENTS_SOURCE,
@@ -1684,7 +1684,7 @@ fn conformance_stage3_source_text_positive_oracles() {
 
 #[test]
 /// Verifies frozen Slice 3.1 failures expose exact classes, codes, and spans.
-fn conformance_stage3_source_text_negative_oracles() {
+fn conformance_source_text_negative_oracles() {
     let cases = [
         (
             INVALID_IDENTIFIER,
@@ -1742,7 +1742,7 @@ fn conformance_stage3_source_text_negative_oracles() {
 
 #[test]
 /// Verifies frozen string and Boolean values, source facts, and provenance.
-fn conformance_stage3_string_and_boolean_positive_oracles() {
+fn conformance_string_and_boolean_positive_oracles() {
     let cases = [
         (
             STRING_SOURCE,
@@ -1820,7 +1820,7 @@ fn conformance_stage3_string_and_boolean_positive_oracles() {
 
 #[test]
 /// Verifies every frozen invalid string, Boolean, and version spelling.
-fn conformance_stage3_string_and_boolean_negative_oracles() {
+fn conformance_string_and_boolean_negative_oracles() {
     let cases: [FailureOracle<'_>; 9] = [
         (
             include_bytes!(
@@ -2240,7 +2240,7 @@ fn system_captured_vocabulary_crosses_reader_and_probe() {
 
 #[test]
 /// Verifies the frozen minimal source and exact bundle match their accepted oracle.
-fn conformance_stage6_minimal_vocabulary_oracle() {
+fn conformance_minimal_vocabulary_oracle() {
     let CompilationResult::Success(artifacts) =
         compile_with_vocabulary(MINIMAL_VOCABULARY, VOCABULARY_BUNDLE)
     else {
@@ -2259,7 +2259,7 @@ fn conformance_stage6_minimal_vocabulary_oracle() {
 
 #[test]
 /// Verifies missing capture and unknown qualified types fail with frozen diagnostics.
-fn conformance_stage6_vocabulary_resolution_failures() {
+fn conformance_vocabulary_resolution_failures() {
     let missing = compile_failure(MISSING_VOCABULARY_CAPTURE);
     assert_eq!(missing.class(), ResultClass::Vocabulary);
     assert_eq!(
@@ -2279,7 +2279,7 @@ fn conformance_stage6_vocabulary_resolution_failures() {
 
 #[test]
 /// Verifies vocabulary payload fields use distinct closed-schema diagnostics.
-fn conformance_stage6_vocabulary_payload_failures() {
+fn conformance_vocabulary_payload_failures() {
     for (source, code) in [
         (
             UNKNOWN_VOCABULARY_FIELD,
@@ -2470,7 +2470,7 @@ fn security_reader_rejects_missing_vocabulary_contract() {
 
 #[test]
 /// Verifies the external encoder emits the fixed frame and all five sections.
-fn integration_stage7_encoder_emits_complete_fixed_frame() {
+fn integration_encoder_emits_complete_fixed_frame() {
     let document = compile_reader(MINIMAL_SOURCE);
     let encoded = encode(&document, &ProducerInfo::new("test", TEST_PRODUCER_VERSION))
         .expect("validated fixture should encode");
@@ -2491,7 +2491,7 @@ fn integration_stage7_encoder_emits_complete_fixed_frame() {
 
 #[test]
 /// Verifies an external artifact reconstructs exact immutable reader views.
-fn system_stage7_encoded_artifact_reconstructs_reader_views() {
+fn system_encoded_artifact_reconstructs_reader_views() {
     let original = compile_reader(COMBINED_REUSE_REFERENCE);
     let encoded = encode(
         &original,
@@ -2511,7 +2511,7 @@ fn system_stage7_encoded_artifact_reconstructs_reader_views() {
 
 #[test]
 /// Verifies producer changes remain isolated from logical and companion sections.
-fn property_stage7_producer_changes_are_envelope_only() {
+fn property_producer_changes_are_envelope_only() {
     let document = compile_reader(MINIMAL_SOURCE);
     let first =
         encode(&document, &ProducerInfo::new("one", "1")).expect("first producer should encode");
@@ -2536,7 +2536,7 @@ fn property_stage7_producer_changes_are_envelope_only() {
 
 #[test]
 /// Verifies encoding is deterministic implementation behavior and never mutates input.
-fn property_stage7_encoding_is_deterministic_and_nonmutating() {
+fn property_encoding_is_deterministic_and_nonmutating() {
     let document = compile_reader(COMBINED_REUSE_REFERENCE);
     let before = document.artifacts().as_ref().clone();
     let producer = ProducerInfo::new("test", TEST_PRODUCER_VERSION);
@@ -2546,7 +2546,7 @@ fn property_stage7_encoding_is_deterministic_and_nonmutating() {
 
 #[test]
 /// Verifies every positive source fixture reaches bounded external encoding.
-fn conformance_stage7_every_positive_fixture_encodes() {
+fn conformance_every_positive_fixture_encodes() {
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(Path::parent)
@@ -2591,7 +2591,7 @@ fn conformance_stage7_every_positive_fixture_encodes() {
 
 #[test]
 /// Verifies the exact canonical header, indentation, field, list, and spacing style.
-fn conformance_stage8_formatter_emits_canonical_layout() {
+fn conformance_formatter_emits_canonical_layout() {
     let source = b"/* license */ neu \"0.1\"\r\nmodule style\r\nrecord Item{string name,}\r\nList<Item>items=[{name:\"x\",},]\r\n";
     let expected = b"/* license */\nneu \"0.1\"\nmodule style\n\nrecord Item {\n    string name,\n}\n\nList<Item> items = [\n    {\n        name: \"x\",\n    },\n]\n";
     assert_eq!(format_fixture(source, false), expected);
@@ -2599,7 +2599,7 @@ fn conformance_stage8_formatter_emits_canonical_layout() {
 
 #[test]
 /// Verifies the published complete language example compiles with its captured bundle.
-fn conformance_stage8_documentation_showcase_compiles() {
+fn conformance_documentation_showcase_compiles() {
     let source = LANGUAGE_SHOWCASE
         .split_once("```neu\n")
         .and_then(|(_, remainder)| remainder.split_once("\n```"))
@@ -2613,7 +2613,7 @@ fn conformance_stage8_documentation_showcase_compiles() {
 
 #[test]
 /// Verifies formatting every positive source fixture is exactly idempotent.
-fn property_stage8_formatter_is_idempotent_across_positive_corpus() {
+fn property_formatter_is_idempotent_across_positive_corpus() {
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(Path::parent)
@@ -2637,7 +2637,7 @@ fn property_stage8_formatter_is_idempotent_across_positive_corpus() {
 
 #[test]
 /// Verifies formatting preserves logical IR and every accepted provenance category.
-fn property_stage8_formatter_preserves_logic_and_provenance() {
+fn property_formatter_preserves_logic_and_provenance() {
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(Path::parent)
@@ -2668,7 +2668,7 @@ fn property_stage8_formatter_preserves_logic_and_provenance() {
 
 #[test]
 /// Verifies comment relocation is deterministic and remains logically irrelevant.
-fn property_stage8_formatter_places_comments_deterministically() {
+fn property_formatter_places_comments_deterministically() {
     let before_name = b"neu \"0.1\"\nmodule comments\nnum /* retained */ answer = 42\n";
     let before_type = b"neu \"0.1\"\nmodule comments\n/* retained */ num answer = 42\n";
     let first = format_fixture(before_name, false);
@@ -2686,7 +2686,7 @@ fn property_stage8_formatter_places_comments_deterministically() {
 
 #[test]
 /// Verifies formatted bytes acquire a distinct source identity without changing logic.
-fn property_stage8_formatted_bytes_are_not_artifact_identity() {
+fn property_formatted_bytes_are_not_artifact_identity() {
     let source = b"neu \"0.1\"\r\nmodule identity\r\nnum\tanswer=00042\r\n";
     let formatted = format_fixture(source, false);
     assert_ne!(source.as_slice(), formatted);
@@ -2701,7 +2701,7 @@ fn property_stage8_formatted_bytes_are_not_artifact_identity() {
 
 #[test]
 /// Verifies representative hostile framing, integrity, capability, and limit classes.
-fn security_stage7_hostile_encoded_inputs_fail_boundedly() {
+fn security_hostile_encoded_inputs_fail_boundedly() {
     let document = compile_reader(MINIMAL_SOURCE);
     let encoded = encode(
         &document,
@@ -2750,7 +2750,7 @@ fn security_stage7_hostile_encoded_inputs_fail_boundedly() {
 
 #[test]
 /// Verifies arbitrary single-byte encoded mutations terminate without partial views.
-fn fuzz_smoke_stage7_single_byte_mutations_terminate() {
+fn fuzz_smoke_single_byte_mutations_terminate() {
     let document = compile_reader(MINIMAL_SOURCE);
     let encoded = encode(
         &document,
@@ -2829,7 +2829,7 @@ fn fuzz_decoder_arbitrary_byte_campaign_terminates() {
 
 #[test]
 /// Verifies an oversized envelope string fails before a complete frame exists.
-fn security_stage7_oversized_producer_text_fails_boundedly() {
+fn security_oversized_producer_text_fails_boundedly() {
     let document = compile_reader(MINIMAL_SOURCE);
     let oversized = "x".repeat(encoding::MAXIMUM_TEXT_BYTES + 1);
     assert_eq!(

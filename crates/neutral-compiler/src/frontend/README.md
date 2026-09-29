@@ -4,14 +4,10 @@
 
 This directory owns compiler-private source decoding, raw tokens, physical
 newline retention, semantic line-end normalization, and the recovery-free
-parser. Stage 3 adds exact trivia, identifiers, bounded string escape
-decoding, Unicode scalar validation, exact numbers, Boolean literals, postfix
-scalar nullability, and explicit null. Stage 4 Slice 4.1 adds bounded multiline
-record declarations, nominal types, required fields, and recursively contextual
-record values. Slice 4.2 adds field defaults and closed scalar/null/record
-constant syntax. Slice 4.3 adds invariant list types and bounded ordered list
-values. Stage 5 adds ordinary immutable-value reuse and typed identity
-references while keeping executable expressions inactive.
+parser. It handles exact trivia, identifiers, bounded string escape decoding,
+Unicode scalar validation, exact numbers, Boolean literals, nullability,
+record declarations and defaults, invariant lists, immutable-value reuse, and
+typed identity references. Executable expressions remain inactive.
 
 Nothing here is a public Neutral contract. Public consumers receive only
 bounded diagnostics and validated public IR. A partial or

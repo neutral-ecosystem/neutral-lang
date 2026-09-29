@@ -3,7 +3,7 @@
 //! Owner package for executable cross-package Neutral tests.
 //!
 //! Smoke, integration, system, conformance, determinism, and security tests are
-//! introduced here as their stages become active. This non-published crate must
+//! grouped here by responsibility. This non-published crate must
 //! not provide production APIs or duplicate normative fixtures.
 
 #[cfg(test)]
@@ -11,17 +11,17 @@
 mod tests;
 
 #[cfg(test)]
-#[path = "../tests/stage9/mod.rs"]
-mod stage9;
+#[path = "../tests/hardening/mod.rs"]
+mod hardening;
 
 #[cfg(test)]
-#[path = "../tests/stage2/mod.rs"]
-mod stage2;
+#[path = "../tests/project_capture/mod.rs"]
+mod project_capture;
 
 #[cfg(test)]
-#[path = "../tests/stage3/mod.rs"]
-mod stage3;
+#[path = "../tests/module_graph/mod.rs"]
+mod module_graph;
 
 #[cfg(test)]
-#[path = "../tests/stage4/mod.rs"]
-mod stage4;
+#[path = "../tests/public_semantics/mod.rs"]
+mod public_semantics;

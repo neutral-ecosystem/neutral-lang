@@ -68,16 +68,9 @@ pub const RUSTDOC_HEADER_CFG_PREFIX: &str = "neutral_rustdoc_header";
 pub const RUSTDOC_HEADER_HASH_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 /// FNV-1a prime used for the non-security rustdoc cache token.
 pub const RUSTDOC_HEADER_HASH_PRIME: u64 = 0x0000_0100_0000_01b3;
-/// Accepted v0.1.0 release requirements relative to the workspace root.
-pub const REQUIREMENTS_FILE: &str = "conformance/releases/v0.1.0/specs/REQUIREMENTS.md";
-/// Authoritative v0.1.0 syntax contract relative to the workspace root.
-pub const SYNTAX_CONTRACT_FILE: &str = "conformance/releases/v0.1.0/specs/contracts/syntax.md";
-/// Checked v0.1.0 syntax implementation mirror relative to the workspace root.
-pub const SYNTAX_CHECKLIST_FILE: &str =
-    "conformance/releases/v0.1.0/specs/contracts/syntax-checklist.md";
-/// Complete v0.1.0 implementation evidence index relative to the workspace root.
-pub const TRACEABILITY_FILE: &str = "conformance/releases/v0.1.0/specs/TRACEABILITY.md";
-/// Stage 9 quality-gate configuration relative to the workspace root.
+/// Explicit inherited-language conformance selection relative to the workspace root.
+pub const CONFORMANCE_CONFIG_FILE: &str = "config/conformance.toml";
+/// Active quality-gate configuration relative to the workspace root.
 pub const QUALITY_GATES_FILE: &str = "config/quality-gates.toml";
 /// Durable quality-document inventory relative to the workspace root.
 pub const QUALITY_MANIFEST_FILE: &str = "quality/manifest.toml";
@@ -87,9 +80,9 @@ pub const QUALITY_STATUS_FILE: &str = "quality/STATUS.md";
 pub const QUALITY_EVIDENCE_DIRECTORY: &str = "quality/evidence";
 /// Ignored commit-bound quality evaluations relative to the result root.
 pub const QUALITY_EVALUATION_DIRECTORY: &str = "quality/evaluations";
-/// Stage 10 release-selection configuration relative to the workspace root.
+/// Release-selection configuration relative to the workspace root.
 pub const RELEASE_CONFIG_FILE: &str = "config/release.toml";
-/// Approved Stage 9 residual-risk record relative to the workspace root.
+/// Approved residual-risk record relative to the workspace root.
 pub const RESIDUAL_RISKS_FILE: &str = "quality/reviews/residual-risks.md";
 /// Root workspace manifest relative to the workspace root.
 pub const WORKSPACE_MANIFEST_FILE: &str = "Cargo.toml";
@@ -141,14 +134,6 @@ pub const PORTABLE_FIXTURE_DIRECTORY: &str = "portable/specs/fixtures";
 pub const PORTABLE_ORACLE_DIRECTORY: &str = "portable/conformance/oracles";
 /// Active portable conformance manifest relative to the workspace root.
 pub const PORTABLE_CONFORMANCE_MANIFEST_FILE: &str = "portable/conformance/manifest.toml";
-/// Approved v0.1.0 contract-freeze manifest relative to the workspace root.
-pub const CONTRACT_FREEZE_FILE: &str = "conformance/releases/v0.1.0/specs/contracts/freeze.toml";
-/// Immutable v0.1.0 fixture root relative to the workspace root.
-pub const FIXTURE_DIRECTORY: &str = "conformance/releases/v0.1.0/specs/fixtures";
-/// Immutable v0.1.0 oracle root relative to the workspace root.
-pub const ORACLE_DIRECTORY: &str = "conformance/releases/v0.1.0/conformance/oracles";
-/// Executable v0.1.0 conformance manifest relative to the workspace root.
-pub const CONFORMANCE_MANIFEST_FILE: &str = "conformance/releases/v0.1.0/conformance/manifest.toml";
 /// Rust marker that identifies a test-only source declaration.
 pub const TEST_CONFIGURATION_MARKER: &str = "#[cfg(test)]";
 /// Rust marker proving a test module body is stored outside production source.
@@ -181,8 +166,6 @@ pub const NEUTRAL_TEST_SUPPORT: &str = "neutral-test-support";
 pub const NEUTRAL_VOCABULARY: &str = "neutral-vocabulary";
 /// Workspace package name for this automation crate.
 pub const XTASK: &str = "xtask";
-/// Harness-free Stage 9 benchmark target name.
-pub const STAGE9_BENCHMARK: &str = "stage9";
 /// Relative root for generated release preparation and packages.
 pub const RELEASE_RESULT_DIRECTORY: &str = "release";
 /// Generated aggregate workflow-log directory relative to the result root.

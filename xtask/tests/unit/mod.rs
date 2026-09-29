@@ -151,7 +151,7 @@ fn automation_rejects_non_utf8_command_output() {
 }
 
 #[test]
-/// Verifies Stage 9 tool arguments come from the quality-gate configuration.
+/// Verifies tool arguments come from the active quality-gate configuration.
 fn automation_reads_named_quality_values() {
     let configuration =
         "[coverage]\nminimum_line_percent = 85\n\n[fuzz]\ntargets = [\"source\", \"ir\"]\n";
@@ -493,7 +493,7 @@ fn automation_rejects_missing_traceability_identifiers() {
 }
 
 #[test]
-/// Verifies unchecked syntax items fail the completed Stage 8 gate.
+/// Verifies unchecked syntax items fail the completed traceability gate.
 fn automation_rejects_unchecked_syntax_contracts() {
     assert!(ensure_syntax_complete("syntax.md", "- [ ] SYN-GOV-001").is_err());
     assert!(ensure_syntax_complete("syntax.md", "- [x] SYN-GOV-001").is_ok());
@@ -681,17 +681,43 @@ fn xtask_commands_and_helpers() {
     assert!(super::collect_regular_files(&root.join("config"), &mut files).is_ok());
     assert!(!files.is_empty());
 
+    let bundle = super::ReleasedBundle::load(&root).expect("configured inherited bundle");
     assert!(
-        super::ensure_registered_paths_exist(
-            &root,
-            "conformance/releases/v0.1.0/specs/REQUIREMENTS.md"
-        )
-        .is_ok()
+        bundle
+            .member("specs/REQUIREMENTS.md")
+            .starts_with("conformance/releases/v")
     );
-    assert!(super::ensure_inventory_registered(&root, "config", "config/dependency-sources.toml config/generated-outputs.toml config/host-policy.toml config/ir-encoding.toml config/quality-gates.toml config/release.toml config/repository-layout.toml config/test-levels.toml config/test-suites.toml").is_ok());
+    assert!(
+        super::ensure_registered_paths_exist(&root, &bundle.member("specs/REQUIREMENTS.md"))
+            .is_ok()
+    );
+    assert!(super::ensure_inventory_registered(&root, "config", "config/conformance.toml config/dependency-sources.toml config/generated-outputs.toml config/host-policy.toml config/ir-encoding.toml config/quality-gates.toml config/release.toml config/repository-layout.toml config/test-levels.toml config/test-suites.toml").is_ok());
 
     assert!(super::print_environment_manifest().is_ok());
     assert_eq!(super::active_test_profile(), "current");
     let min_map = super::test_minimums("current").expect("test minimums");
     assert!(!min_map.is_empty());
+}
+
+#[test]
+/// Conformance selection rejects traversal, absent bundles, and unknown schemas.
+fn inherited_conformance_selection_is_bounded_and_explicit() {
+    let root = super::workspace_root().expect("workspace root");
+    for configuration in [
+        "schema_version = 2\ninherited_release = \"v0.1.0\"\n",
+        "schema_version = 1\ninherited_release = \"../v0.1.0\"\n",
+        "schema_version = 1\ninherited_release = \"v99.0.0\"\n",
+    ] {
+        assert!(
+            super::ReleasedBundle::from_configuration(&root, configuration).is_err(),
+            "invalid release selection must fail: {configuration}"
+        );
+    }
+    assert!(
+        super::ReleasedBundle::from_configuration(
+            &root,
+            "schema_version = 1\ninherited_release = \"v0.1.0\"\n"
+        )
+        .is_ok()
+    );
 }

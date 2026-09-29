@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Stage 4 public-interface facts, separate from the future complete project IR.
+//! Public-interface facts, separate from the future complete project IR.
 
 use crate::ModuleSymbolIdentity;
 use neutral_core::{CoreError, SemanticDigest, nht_frame, profile::V1_SOURCE_PROFILE};
 
 /// Domain separating public signature fingerprints from all other identities.
 pub const PROJECT_INTERFACE_FINGERPRINT_DOMAIN: &str = "neutral/project-interface/v1";
-/// Maximum nested type layers accepted by the Stage 4 interface contract.
+/// Maximum nested type layers accepted by the public-interface contract.
 pub const MAX_PROJECT_INTERFACE_TYPE_DEPTH: usize = 64;
 
 /// A canonical public type signature with alias-independent nominal identity.

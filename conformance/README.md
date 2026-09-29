@@ -13,4 +13,12 @@ released bundle; they must never depend on an archived roadmap checkout.
 
 New-version planning belongs in an optional root `portable/` directory. Its
 accepted contracts are promoted into a new immutable release bundle only when
-that version completes qualification.
+that version completes qualification. The inherited bundle used by automation
+is selected in [`config/conformance.toml`](../config/conformance.toml), not
+inferred from the package version in `Cargo.toml`.
+
+Conformance stays separate from [`quality/`](../quality/README.md): this tree
+contains normative test inputs and expected behavior; quality contains policy,
+human review, and commit-bound release approval. Combining them would make
+an evidence update appear to modify a frozen language contract, and would
+weaken the inherited compatibility checks.

@@ -20,6 +20,10 @@ Policy defines what must be demonstrated. Reviews interpret source and dynamic
 results. Versioned evidence records what was actually demonstrated for a
 release. A generated result is never promoted merely by copying raw output; its
 method, scope, outcome, owner, and limitations must be reviewed first.
+Frozen language contracts, fixtures, and oracles remain in
+[`conformance/`](../conformance/README.md), not in this approval tree. The
+package release version and the inherited language-behavior corpus have
+different lifecycles.
 
 `cargo xtask check` validates that every authored non-README Markdown document
 is listed once in `manifest.toml`, remains in its declared category, exists, and

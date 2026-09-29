@@ -24,7 +24,7 @@ for logical module imports, validates the complete supplied closure, and
 returns a deterministic, bounded SCC graph. Modules, edges, and diagnostics
 retain exact source IDs and typed original-byte locations. Graph construction
 cannot acquire source units or resolve paths and URLs.
-The Stage 4 project analyzer resolves public/private roots and cross-module
+The project analyzer resolves public/private roots and cross-module
 type, value, and reference edges over that graph. It can produce a narrow
 public-only interface snapshot with a signature fingerprint; this is not yet
 the complete project IR or activation of the v1 standalone compiler profile.

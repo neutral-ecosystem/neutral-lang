@@ -114,7 +114,7 @@ fn is_scalar_type(kind: &TokenKind) -> bool {
     )
 }
 
-/// Returns whether a token can end one active Stage 5.2 value construct.
+/// Returns whether a token can end one active value construct.
 fn is_value_end(kind: &TokenKind) -> bool {
     matches!(
         kind,

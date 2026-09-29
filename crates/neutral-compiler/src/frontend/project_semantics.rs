@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Effect-free Stage 4 declaration and cross-module semantic analysis.
+//! Effect-free declaration and cross-module semantic analysis.
 
 use super::{Token, TokenKind, lexer};
 use crate::{CapturedProject, ModuleGraph, language::graph_names};
@@ -22,7 +22,7 @@ use std::{
 #[path = "../../tests/project_semantics/mod.rs"]
 mod tests;
 
-/// Stable Stage 4 semantic diagnostic codes.
+/// Stable project-semantic diagnostic codes.
 pub mod diagnostics {
     /// An ordinary value or embedded type dependency forms a cycle.
     pub const SEMANTIC_CYCLE: &str = "NEU-XMOD-001";
@@ -44,7 +44,7 @@ pub mod diagnostics {
     pub const CANCELLED: &str = "NEU-XMOD-009";
     /// A supplied graph does not belong to the captured source closure.
     pub const GRAPH_MISMATCH: &str = "NEU-XMOD-010";
-    /// A Stage 4 declaration or value violates the inherited source grammar.
+    /// A project declaration or value violates the inherited source grammar.
     pub const INVALID_SOURCE: &str = "NEU-XMOD-011";
 }
 
@@ -148,7 +148,7 @@ impl ProjectDependency {
     }
 }
 
-/// Stage 4 resolution facts, not a validated project or authoritative IR.
+/// Project resolution facts, not a validated project or authoritative IR.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectSemanticModel {
     /// Every root in canonical module-symbol order.
@@ -187,10 +187,10 @@ impl ProjectSemanticModel {
     }
 }
 
-/// One bounded, deterministic Stage 4 failure location.
+/// One bounded, deterministic project-semantic failure location.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectSemanticDiagnostic {
-    /// Stable Stage 4 failure code.
+    /// Stable project-semantic failure code.
     code: &'static str,
     /// Exact owning logical module.
     module_id: Arc<str>,
@@ -283,7 +283,7 @@ struct ModuleContext {
     aliases: BTreeMap<String, String>,
 }
 
-/// Resolves the Stage 4 declaration graph of one captured project.
+/// Resolves the declaration graph of one captured project.
 ///
 /// # Errors
 ///
