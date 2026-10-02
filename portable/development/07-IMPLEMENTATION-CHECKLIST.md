@@ -217,9 +217,11 @@ Target transition: `v0.5.0 -> v0.6.0`.
 
 ### `v0.5.3` — public integration gate
 
-- [ ] Expose canonical vocabulary identities/revisions through IR and reader.
-- [ ] Verify aliases remain source-local and non-semantic.
+- [x] Expose canonical vocabulary identities/revisions through IR and reader.
+- [x] Verify aliases remain source-local and non-semantic.
 - [ ] Verify vocabulary metadata affects authoring presentation only.
+  The semantic exclusion is verified; the separate authoring input and
+  presentation projection are specified for Stage 8 and do not exist yet.
 
 ### `v0.5.4` — validation gate
 

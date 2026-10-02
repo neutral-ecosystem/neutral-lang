@@ -5,10 +5,11 @@
 use neutral_core::profile::V1_SOURCE_PROFILE;
 use neutral_ir::{
     ModuleSymbolIdentity,
-    language::{is_exact_release_version, is_snake_name, is_upper_name},
+    language::{is_exact_release_version, is_protected_name, is_snake_name, is_upper_name},
     project_interface::{
         MAX_PROJECT_INTERFACE_TYPE_DEPTH, ProjectInterface, ProjectPublicEdge,
         ProjectPublicEdgeKind, ProjectPublicExport, ProjectPublicSignature, ProjectPublicType,
+        ProjectPublicVocabulary,
     },
 };
 use std::{
@@ -19,6 +20,8 @@ use std::{
 /// A reader rejection of an invalid or non-public project interface.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProjectInterfaceError {
+    /// A locked vocabulary fact was malformed, duplicated, or out of order.
+    InvalidVocabulary,
     /// An export identity was malformed, duplicated, or out of order.
     InvalidExport,
     /// A public signature had malformed fields, inaccessible types, or excess depth.
@@ -44,6 +47,20 @@ impl ValidatedProjectInterface {
     /// Rejects invalid export order, types, edges, or fingerprint before a view
     /// is published. No source IDs, private roots, or raw provenance are exposed.
     pub fn from_interface(interface: Arc<ProjectInterface>) -> Result<Self, ProjectInterfaceError> {
+        let mut vocabulary_index = BTreeMap::new();
+        let mut previous_vocabulary = None;
+        for vocabulary in interface.vocabularies() {
+            if !is_upper_name(vocabulary.identity())
+                || is_protected_name(vocabulary.identity())
+                || !is_exact_release_version(vocabulary.version())
+                || previous_vocabulary.is_some_and(|identity| identity >= vocabulary.identity())
+                || !valid_public_type_names(vocabulary.public_types())
+            {
+                return Err(ProjectInterfaceError::InvalidVocabulary);
+            }
+            previous_vocabulary = Some(vocabulary.identity());
+            vocabulary_index.insert(vocabulary.identity(), vocabulary);
+        }
         let exports = interface.exports();
         let mut index = BTreeMap::new();
         let mut previous = None;
@@ -57,7 +74,7 @@ impl ValidatedProjectInterface {
             index.insert(export.identity(), position);
         }
         for export in exports {
-            if !valid_signature(export.signature(), &index, exports) {
+            if !valid_signature(export.signature(), &index, exports, &vocabulary_index) {
                 return Err(ProjectInterfaceError::InvalidSignature);
             }
         }
@@ -113,6 +130,12 @@ impl ValidatedProjectInterface {
     #[must_use]
     pub fn exports(&self) -> &[ProjectPublicExport] {
         self.interface.exports()
+    }
+
+    /// Returns independently checked canonical vocabulary identities and revisions.
+    #[must_use]
+    pub fn vocabularies(&self) -> &[ProjectPublicVocabulary] {
+        self.interface.vocabularies()
     }
 
     /// Finds one public export by exact full module-symbol identity.
@@ -212,15 +235,16 @@ fn valid_signature(
     signature: &ProjectPublicSignature,
     index: &BTreeMap<&ModuleSymbolIdentity, usize>,
     exports: &[ProjectPublicExport],
+    vocabularies: &BTreeMap<&str, &ProjectPublicVocabulary>,
 ) -> bool {
     match signature {
-        ProjectPublicSignature::Binding(ty) => valid_type(ty, 0, index, exports),
+        ProjectPublicSignature::Binding(ty) => valid_type(ty, 0, index, exports, vocabularies),
         ProjectPublicSignature::Record(fields) => {
             let mut previous = None;
             for field in fields {
                 if !is_snake_name(field.name())
                     || previous.is_some_and(|name| name >= field.name())
-                    || !valid_type(field.ty(), 0, index, exports)
+                    || !valid_type(field.ty(), 0, index, exports, vocabularies)
                 {
                     return false;
                 }
@@ -237,6 +261,7 @@ fn valid_type(
     depth: usize,
     index: &BTreeMap<&ModuleSymbolIdentity, usize>,
     exports: &[ProjectPublicExport],
+    vocabularies: &BTreeMap<&str, &ProjectPublicVocabulary>,
 ) -> bool {
     if depth > MAX_PROJECT_INTERFACE_TYPE_DEPTH {
         return false;
@@ -251,7 +276,12 @@ fn valid_type(
             identity,
             version,
             name,
-        } => is_upper_name(identity) && is_exact_release_version(version) && is_upper_name(name),
+        } => vocabularies
+            .get(identity.as_str())
+            .is_some_and(|vocabulary| {
+                vocabulary.version() == version
+                    && vocabulary.public_types().binary_search(name).is_ok()
+            }),
         ProjectPublicType::Nominal(identity) => index.get(identity).is_some_and(|position| {
             matches!(
                 exports[*position].signature(),
@@ -259,13 +289,28 @@ fn valid_type(
             )
         }),
         ProjectPublicType::List(inner) | ProjectPublicType::Ref(inner) => {
-            valid_type(inner, depth + 1, index, exports)
+            valid_type(inner, depth + 1, index, exports, vocabularies)
         }
         ProjectPublicType::Nullable(inner) => {
             !matches!(inner.as_ref(), ProjectPublicType::Nullable(_))
-                && valid_type(inner, depth + 1, index, exports)
+                && valid_type(inner, depth + 1, index, exports, vocabularies)
         }
     }
+}
+
+/// Checks canonical public type names without exposing private bundle members.
+fn valid_public_type_names(names: &[String]) -> bool {
+    let mut previous = None;
+    for name in names {
+        if !is_upper_name(name)
+            || is_protected_name(name)
+            || previous.is_some_and(|old| old >= name.as_str())
+        {
+            return false;
+        }
+        previous = Some(name.as_str());
+    }
+    true
 }
 
 /// Checks public endpoints and edge category against their export kinds.

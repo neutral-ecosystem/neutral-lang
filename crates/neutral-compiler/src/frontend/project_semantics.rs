@@ -14,7 +14,7 @@ use neutral_core::{
 use neutral_ir::project_interface::{
     MAX_PROJECT_INTERFACE_TYPE_DEPTH, ProjectInterface, ProjectLocationValue, ProjectPublicEdge,
     ProjectPublicEdgeKind, ProjectPublicExport, ProjectPublicField, ProjectPublicSignature,
-    ProjectPublicType,
+    ProjectPublicType, ProjectPublicVocabulary,
 };
 use neutral_ir::{LogicalModuleIdentity, ModuleSymbolIdentity};
 use std::{
@@ -641,7 +641,23 @@ fn build_public_interface(
         (left.from(), left.kind(), left.to()).cmp(&(right.from(), right.kind(), right.to()))
     });
     public_edges.dedup();
-    ProjectInterface::with_computed_fingerprint(exports, public_edges)
+    let public_vocabularies = vocabularies
+        .vocabularies()
+        .values()
+        .map(|vocabulary| {
+            ProjectPublicVocabulary::new(
+                vocabulary.identity(),
+                vocabulary.version(),
+                vocabulary
+                    .types()
+                    .iter()
+                    .filter(|ty| ty.is_public())
+                    .map(|ty| ty.name().to_owned())
+                    .collect(),
+            )
+        })
+        .collect();
+    ProjectInterface::with_vocabularies(public_vocabularies, exports, public_edges)
 }
 
 /// Converts a resolved source type to an alias-independent public type.

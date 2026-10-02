@@ -1,10 +1,11 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Stage 5 contract and core implementation
+# Stage 5 contract, core, and public integration
 
 Status: `v0.5.1` contract/fixture gate and `v0.5.2` core gate implemented;
-public integration, hostile-input validation, and release promotion remain
-separate Stage 5 work.
+two of three `v0.5.3` integration checks implemented. The authoring metadata
+presentation check awaits the separate Stage 8 input/schema. Hostile-input
+validation and release promotion remain separate Stage 5 work.
 
 The [vocabulary contract](../../specs/contracts/VOCABULARY.md) freezes repeated
 aliased requirements, exact lock cover, closed v1 project-bundle schema,
@@ -27,8 +28,15 @@ path lookup, normalization, authorization, or acquisition API is present.
 
 This is the internal captured-project semantic path. The standalone v1 profile
 remains unavailable, and the complete contextual value graph/project artifact
-is Stage 6 work. Stage 5.3 must make the reader validate vocabulary identities
-against complete locked project facts; Stage 5.4 must run the full executable
+is Stage 6 work. Stage 5.3 carries a canonical, public-only catalogue of every
+locked vocabulary in the project interface. Catalogue facts participate in its
+fingerprint. The compiler excludes aliases and private type names; the
+independent reader checks canonical ordering, release syntax, public type
+membership, signature-to-lock closure, and fingerprint. Alias renaming yields
+an identical complete interface. Inline metadata still fails the closed
+semantic bundle schema. There is no separate authoring metadata input or
+presentation projection yet, so a presentation-only effect cannot be tested
+until Stage 8 defines that input. Stage 5.4 must run the full executable
 fixture suite, hostile decoder limits/fuzzing, and negative effect audit.
 
 Verified on 2026-10-02:
@@ -43,8 +51,10 @@ cargo xtask ci pr
 
 The Stage 5 TOML requests were also parsed and each `bundle_utf8` SHA-256
 checked against its exact lock. The direct compiler tests cover multiple
-aliases, canonical public type fingerprints, source-inaccessible private
-types, executable members, embedded recursion, and distinct inert locations.
-Inline authoring metadata is rejected by the semantic bundle schema.
-The composed CI profile passed with its ignored workflow log at
-`test-results/workflows/ci/pr/run-39-0`.
+aliases, identical complete public interfaces after alias renaming,
+source-inaccessible private types, executable members, embedded recursion,
+and distinct inert locations. Independent reader tests cover missing,
+misversioned, inaccessible, duplicate, and unordered vocabulary facts, plus
+fingerprint tampering. Inline authoring metadata is rejected by the semantic
+bundle schema. The composed CI profile passed with its ignored workflow log
+at `test-results/workflows/ci/pr/run-2-23`.

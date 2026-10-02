@@ -150,7 +150,7 @@ fn rejects_inline_authoring_metadata() {
 #[test]
 /// Public source types retain canonical lock identity, not local alias spelling.
 fn public_vocabulary_type_uses_canonical_identity() {
-    let types = "{\"name\":\"Visible\",\"public\":true,\"fields\":[]}";
+    let types = "{\"name\":\"Hidden\",\"public\":false,\"fields\":[]},{\"name\":\"Visible\",\"public\":true,\"fields\":[]}";
     let captured = captured(
         "neu \"1.0\"\nmodule api\nuse Alpha as local\npublic local::Visible item = {}\n",
         vec![vocabulary("Alpha", types)],
@@ -159,6 +159,11 @@ fn public_vocabulary_type_uses_canonical_identity() {
     let model = analyze_project_semantics(&captured, &graph, &CancellationToken::new())
         .expect("public vocabulary type resolves");
     let exports = model.public_interface().exports();
+    let vocabularies = model.public_interface().vocabularies();
+    assert_eq!(vocabularies.len(), 1);
+    assert_eq!(vocabularies[0].identity(), "Alpha");
+    assert_eq!(vocabularies[0].version(), "1.0.0");
+    assert_eq!(vocabularies[0].public_types(), ["Visible"]);
     assert_eq!(exports.len(), 1);
     assert_eq!(
         exports[0].signature(),
@@ -223,7 +228,7 @@ fn locations_are_inert_distinct_values() {
 }
 
 #[test]
-/// Alias spelling cannot perturb the canonical public type fingerprint.
+/// Alias spelling cannot perturb the complete canonical public interface.
 fn alias_renaming_preserves_public_fingerprint() {
     let types = "{\"name\":\"Visible\",\"public\":true,\"fields\":[]}";
     let resolve = |alias: &str| {
@@ -235,7 +240,7 @@ fn alias_renaming_preserves_public_fingerprint() {
         analyze_project_semantics(&captured, &graph, &CancellationToken::new())
             .expect("valid semantic model")
             .public_interface()
-            .fingerprint()
+            .clone()
     };
     assert_eq!(resolve("first"), resolve("second"));
 }

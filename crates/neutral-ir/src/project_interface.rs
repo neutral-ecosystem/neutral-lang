@@ -233,6 +233,61 @@ pub struct ProjectPublicEdge {
     kind: ProjectPublicEdgeKind,
 }
 
+/// One locked vocabulary's public, alias-free type catalogue.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProjectPublicVocabulary {
+    /// Canonical identity from the exact captured lock.
+    identity: String,
+    /// Exact semantic release from that lock.
+    version: String,
+    /// Source-authorable type names in canonical order; private names are absent.
+    public_types: Vec<String>,
+}
+
+impl ProjectPublicVocabulary {
+    /// Constructs one public-only locked vocabulary fact.
+    #[must_use]
+    pub fn new(
+        identity: impl Into<String>,
+        version: impl Into<String>,
+        public_types: Vec<String>,
+    ) -> Self {
+        Self {
+            identity: identity.into(),
+            version: version.into(),
+            public_types,
+        }
+    }
+
+    /// Returns the canonical identity, never a local source alias.
+    #[must_use]
+    pub fn identity(&self) -> &str {
+        &self.identity
+    }
+
+    /// Returns the exact locked semantic release.
+    #[must_use]
+    pub fn version(&self) -> &str {
+        &self.version
+    }
+
+    /// Returns only public source-authorable type names.
+    #[must_use]
+    pub fn public_types(&self) -> &[String] {
+        &self.public_types
+    }
+
+    /// Frames the complete public fact without alias or authoring metadata.
+    fn transcript(&self) -> Result<Vec<u8>, CoreError> {
+        let mut payload = nht_frame("identity", self.identity.as_bytes())?;
+        payload.extend(nht_frame("version", self.version.as_bytes())?);
+        for name in &self.public_types {
+            payload.extend(nht_frame("public-type", name.as_bytes())?);
+        }
+        nht_frame("vocabulary", &payload)
+    }
+}
+
 impl ProjectPublicEdge {
     /// Constructs one redacted public dependency edge.
     #[must_use]
@@ -274,6 +329,8 @@ impl ProjectPublicEdge {
 /// Public interface snapshot awaiting independent reader validation.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectInterface {
+    /// Locked public vocabulary facts in canonical identity order.
+    vocabularies: Vec<ProjectPublicVocabulary>,
     /// Public exports in canonical module-symbol order.
     exports: Vec<ProjectPublicExport>,
     /// Public-to-public dependency edges in canonical order.
@@ -291,6 +348,23 @@ impl ProjectInterface {
         fingerprint: SemanticDigest,
     ) -> Self {
         Self {
+            vocabularies: Vec::new(),
+            exports,
+            edges,
+            fingerprint,
+        }
+    }
+
+    /// Constructs a complete snapshot with a separately supplied fingerprint.
+    #[must_use]
+    pub const fn from_parts_with_vocabularies(
+        vocabularies: Vec<ProjectPublicVocabulary>,
+        exports: Vec<ProjectPublicExport>,
+        edges: Vec<ProjectPublicEdge>,
+        fingerprint: SemanticDigest,
+    ) -> Self {
+        Self {
+            vocabularies,
             exports,
             edges,
             fingerprint,
@@ -306,12 +380,32 @@ impl ProjectInterface {
         exports: Vec<ProjectPublicExport>,
         edges: Vec<ProjectPublicEdge>,
     ) -> Result<Self, CoreError> {
-        let fingerprint = Self::fingerprint_for(&exports, &edges)?;
+        Self::with_vocabularies(Vec::new(), exports, edges)
+    }
+
+    /// Constructs a complete public snapshot with canonical locked vocabularies.
+    ///
+    /// # Errors
+    ///
+    /// Returns transcript framing failures for unrepresentable payloads.
+    pub fn with_vocabularies(
+        vocabularies: Vec<ProjectPublicVocabulary>,
+        exports: Vec<ProjectPublicExport>,
+        edges: Vec<ProjectPublicEdge>,
+    ) -> Result<Self, CoreError> {
+        let fingerprint = Self::fingerprint_for(&vocabularies, &exports, &edges)?;
         Ok(Self {
+            vocabularies,
             exports,
             edges,
             fingerprint,
         })
+    }
+
+    /// Returns canonical locked vocabulary facts without aliases or metadata.
+    #[must_use]
+    pub fn vocabularies(&self) -> &[ProjectPublicVocabulary] {
+        &self.vocabularies
     }
 
     /// Returns public exports in canonical order.
@@ -338,15 +432,19 @@ impl ProjectInterface {
     ///
     /// Returns transcript framing failures for unrepresentable payloads.
     pub fn recompute_fingerprint(&self) -> Result<SemanticDigest, CoreError> {
-        Self::fingerprint_for(&self.exports, &self.edges)
+        Self::fingerprint_for(&self.vocabularies, &self.exports, &self.edges)
     }
 
     /// Hashes exports and public edges with one domain-separated transcript.
     fn fingerprint_for(
+        vocabularies: &[ProjectPublicVocabulary],
         exports: &[ProjectPublicExport],
         edges: &[ProjectPublicEdge],
     ) -> Result<SemanticDigest, CoreError> {
         let mut payload = nht_frame("profile", V1_SOURCE_PROFILE.as_bytes())?;
+        for vocabulary in vocabularies {
+            payload.extend(vocabulary.transcript()?);
+        }
         for export in exports {
             payload.extend(export.transcript()?);
         }

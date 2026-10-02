@@ -7,7 +7,7 @@ use neutral_ir::{
     LogicalModuleIdentity, ModuleSymbolIdentity,
     project_interface::{
         ProjectInterface, ProjectPublicEdge, ProjectPublicEdgeKind, ProjectPublicExport,
-        ProjectPublicSignature, ProjectPublicType,
+        ProjectPublicSignature, ProjectPublicType, ProjectPublicVocabulary,
     },
 };
 use neutral_reader::{ProjectInterfaceError, ValidatedProjectInterface};
@@ -38,6 +38,115 @@ fn valid_interface() -> ProjectInterface {
         )],
     )
     .expect("reader fixture transcript")
+}
+
+/// Builds a compiler-independent catalogue and one public vocabulary signature.
+fn vocabulary_interface() -> ProjectInterface {
+    ProjectInterface::with_vocabularies(
+        vec![ProjectPublicVocabulary::new(
+            "Alpha",
+            "1.0.0",
+            vec!["Visible".to_owned()],
+        )],
+        vec![ProjectPublicExport::new(
+            identity("api", "item"),
+            ProjectPublicSignature::Binding(ProjectPublicType::VocabularyNominal {
+                identity: "Alpha".to_owned(),
+                version: "1.0.0".to_owned(),
+                name: "Visible".to_owned(),
+            }),
+        )],
+        Vec::new(),
+    )
+    .expect("canonical vocabulary transcript")
+}
+
+#[test]
+/// Reader exposes the locked catalogue without any source alias or metadata.
+fn exposes_canonical_vocabulary_facts() {
+    let view = ValidatedProjectInterface::from_interface(Arc::new(vocabulary_interface()))
+        .expect("valid catalogue");
+    assert_eq!(view.vocabularies().len(), 1);
+    assert_eq!(view.vocabularies()[0].identity(), "Alpha");
+    assert_eq!(view.vocabularies()[0].version(), "1.0.0");
+    assert_eq!(view.vocabularies()[0].public_types(), ["Visible"]);
+}
+
+#[test]
+/// Reader rejects missing locks, release mismatches, and inaccessible types.
+fn rejects_unlocked_or_private_vocabulary_signatures() {
+    let valid = vocabulary_interface();
+    let missing = ProjectInterface::with_computed_fingerprint(valid.exports().to_vec(), Vec::new())
+        .expect("framed missing catalogue");
+    assert_eq!(
+        ValidatedProjectInterface::from_interface(Arc::new(missing)).expect_err("missing lock"),
+        ProjectInterfaceError::InvalidSignature
+    );
+    for vocabulary in [
+        ProjectPublicVocabulary::new("Alpha", "2.0.0", vec!["Visible".to_owned()]),
+        ProjectPublicVocabulary::new("Alpha", "1.0.0", vec!["Other".to_owned()]),
+    ] {
+        let invalid = ProjectInterface::with_vocabularies(
+            vec![vocabulary],
+            valid.exports().to_vec(),
+            Vec::new(),
+        )
+        .expect("framed invalid catalogue");
+        assert_eq!(
+            ValidatedProjectInterface::from_interface(Arc::new(invalid))
+                .expect_err("unmatched signature"),
+            ProjectInterfaceError::InvalidSignature
+        );
+    }
+}
+
+#[test]
+/// Reader rejects noncanonical catalogue order even with a valid digest.
+fn rejects_duplicate_or_unordered_vocabulary_catalogue() {
+    let valid = vocabulary_interface();
+    for vocabularies in [
+        vec![
+            ProjectPublicVocabulary::new("Alpha", "1.0.0", vec!["Visible".to_owned()]),
+            ProjectPublicVocabulary::new("Alpha", "1.0.0", vec!["Visible".to_owned()]),
+        ],
+        vec![
+            ProjectPublicVocabulary::new("Beta", "1.0.0", Vec::new()),
+            ProjectPublicVocabulary::new("Alpha", "1.0.0", vec!["Visible".to_owned()]),
+        ],
+        vec![ProjectPublicVocabulary::new(
+            "Alpha",
+            "1.0.0",
+            vec!["Visible".to_owned(), "Visible".to_owned()],
+        )],
+    ] {
+        let invalid =
+            ProjectInterface::with_vocabularies(vocabularies, valid.exports().to_vec(), Vec::new())
+                .expect("framed invalid order");
+        assert_eq!(
+            ValidatedProjectInterface::from_interface(Arc::new(invalid))
+                .expect_err("noncanonical catalogue"),
+            ProjectInterfaceError::InvalidVocabulary
+        );
+    }
+}
+
+#[test]
+/// Altering a canonical revision without updating its digest is detected.
+fn rejects_stale_vocabulary_fingerprint() {
+    let valid = vocabulary_interface();
+    let stale = ProjectInterface::from_parts_with_vocabularies(
+        vec![
+            ProjectPublicVocabulary::new("Alpha", "1.0.0", vec!["Visible".to_owned()]),
+            ProjectPublicVocabulary::new("Beta", "2.0.0", Vec::new()),
+        ],
+        valid.exports().to_vec(),
+        valid.edges().to_vec(),
+        valid.fingerprint(),
+    );
+    assert_eq!(
+        ValidatedProjectInterface::from_interface(Arc::new(stale)).expect_err("forged revision"),
+        ProjectInterfaceError::InvalidFingerprint
+    );
 }
 
 #[test]
