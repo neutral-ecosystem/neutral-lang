@@ -204,16 +204,16 @@ Target transition: `v0.5.0 -> v0.6.0`.
 
 ### `v0.5.1` — contract and fixture gate
 
-- [ ] Freeze repeated aliased `use`, exact lock coverage, public vocabulary
+- [x] Freeze repeated aliased `use`, exact lock coverage, public vocabulary
   types, metadata separation, and `url`/`path` behavior.
-- [ ] Register multiple-alias, missing/extra/conflicting lock, private type,
+- [x] Register multiple-alias, missing/extra/conflicting lock, private type,
   executable payload, and location-value fixtures.
 
 ### `v0.5.2` — core implementation gate
 
-- [ ] Implement exact multi-vocabulary validation and canonical identities.
-- [ ] Implement public vocabulary type enforcement.
-- [ ] Implement distinct inert `url` and `path` source/IR values.
+- [x] Implement exact multi-vocabulary validation and canonical identities.
+- [x] Implement public vocabulary type enforcement.
+- [x] Implement distinct inert `url` and `path` source/IR values.
 
 ### `v0.5.3` — public integration gate
 

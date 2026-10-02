@@ -14,6 +14,10 @@ pub const NUM: &str = "num";
 pub const STRING: &str = "string";
 /// Exact Boolean core-type spelling.
 pub const BOOL: &str = "bool";
+/// Inert URL scalar spelling in the v1 project profile.
+pub const URL: &str = "url";
+/// Inert path scalar spelling in the v1 project profile.
+pub const PATH: &str = "path";
 /// Exact list core-type spelling.
 pub const LIST: &str = "List";
 /// Exact identity-reference core-type spelling.

@@ -16,6 +16,7 @@ mod lexer;
 mod parser;
 mod project_semantics;
 
+pub use project_semantics::diagnostics as project_semantics_diagnostics;
 pub use project_semantics::{
     ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic, ProjectSemanticFailure,
     ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind, analyze_project_semantics,

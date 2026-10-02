@@ -19,6 +19,19 @@ pub enum ProjectPublicType {
     String,
     /// Boolean type.
     Bool,
+    /// Inert URL text, distinct from a string or path.
+    Url,
+    /// Inert path text, distinct from a string or URL.
+    Path,
+    /// Public nominal vocabulary type under its exact canonical lock.
+    VocabularyNominal {
+        /// Canonical vocabulary identity, not a source alias.
+        identity: String,
+        /// Exact semantic release from the captured lock.
+        version: String,
+        /// Public nominal type name.
+        name: String,
+    },
     /// Public nominal record owned by one logical module.
     Nominal(ModuleSymbolIdentity),
     /// Invariant ordered list type.
@@ -39,10 +52,44 @@ impl ProjectPublicType {
             Self::Num => nht_frame("num", &[]),
             Self::String => nht_frame("string", &[]),
             Self::Bool => nht_frame("bool", &[]),
+            Self::Url => nht_frame("url", &[]),
+            Self::Path => nht_frame("path", &[]),
+            Self::VocabularyNominal {
+                identity,
+                version,
+                name,
+            } => {
+                let mut payload = nht_frame("identity", identity.as_bytes())?;
+                payload.extend(nht_frame("version", version.as_bytes())?);
+                payload.extend(nht_frame("name", name.as_bytes())?);
+                nht_frame("vocabulary-nominal", &payload)
+            }
             Self::Nominal(identity) => nht_frame("nominal", &identity_transcript(identity)?),
             Self::List(inner) => nht_frame("list", &inner.transcript(depth + 1)?),
             Self::Ref(inner) => nht_frame("ref", &inner.transcript(depth + 1)?),
             Self::Nullable(inner) => nht_frame("nullable", &inner.transcript(depth + 1)?),
+        }
+    }
+}
+
+/// A source-authored inert location scalar retained as exact decoded text.
+///
+/// This value carries no resolver, filesystem handle, URL client, permission,
+/// or normalization policy. Its variants are intentionally not interchangeable.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ProjectLocationValue {
+    /// Exact decoded text of a `url` value.
+    Url(String),
+    /// Exact decoded text of a `path` value.
+    Path(String),
+}
+
+impl ProjectLocationValue {
+    /// Returns the exact decoded text without interpretation.
+    #[must_use]
+    pub fn text(&self) -> &str {
+        match self {
+            Self::Url(text) | Self::Path(text) => text,
         }
     }
 }

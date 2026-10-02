@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "stage4-active"
+status = "stage5-active"
 profile = "1.0"
 
 # v1 fixture bytes and expected outcomes are added by their owning stage.
@@ -91,3 +91,17 @@ fixture_families = [
 ]
 oracle_directory = "portable/conformance/oracles/stage4"
 review_date = "2026-09-29"
+
+[[suite]]
+id = "stage5-vocabulary-and-locations"
+status = "reviewed-active"
+requirements = ["V1-VOC-001", "V1-VOC-002", "V1-VOC-003", "V1-LOC-001"]
+fixture_families = [
+  "multiple-alias",
+  "missing-extra-conflicting-lock-reused-from-stage2",
+  "private-vocabulary-type",
+  "executable-payload",
+  "inert-location-values",
+]
+oracle_directory = "portable/conformance/oracles/stage5"
+review_date = "2026-10-02"

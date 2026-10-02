@@ -18,6 +18,10 @@ scripts, callbacks, validators, bytecode, native modules, and unknown shapes are
 rejected rather than interpreted.
 The compiler maps this validated contract into public IR; source syntax never
 calls this crate to search a registry, path, cache, or network.
+The separate v1 project-bundle validator checks exact multi-vocabulary locks,
+closed public/private nominal type declarations, transitive public type
+closure, inert location field types, and embedded cycles. It publishes
+canonical contracts without source-local aliases or authoring metadata.
 
 ## Command
 

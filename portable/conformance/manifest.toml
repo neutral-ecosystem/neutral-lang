@@ -321,6 +321,40 @@ oracle = "portable/conformance/oracles/stage4/semantics.toml"
 oracle_sha256 = "389e4f2a19ef03a172c8d1512d731669c576f230bbc9055a9a86dc104c3d8e70"
 
 [[suite]]
+id = "stage5-vocabulary-and-locations"
+profile = "1.0"
+active_from_stage = 5
+status = "required"
+
+[[case]]
+id = "V1-VOC-001-MULTIPLE-ALIASES"
+fixture = "portable/specs/fixtures/stage5/positive/multiple-alias.toml"
+fixture_sha256 = "6abcfbd8b324df18bd54227da34b37c31fe39d589bc79851cbf34eece06821bf"
+oracle = "portable/conformance/oracles/stage5/vocabulary-and-locations.toml"
+oracle_sha256 = "18b9a1683b7f96bb75dec403334cdf529cf3d450ed15ad70ee4e90bd28508108"
+
+[[case]]
+id = "V1-LOC-001-DISTINCT-VALUES"
+fixture = "portable/specs/fixtures/stage5/positive/location-values.toml"
+fixture_sha256 = "b4e67cc91913bfa468f104ac244f9df12348d1a27f4731a920a9b37121a4ca7c"
+oracle = "portable/conformance/oracles/stage5/vocabulary-and-locations.toml"
+oracle_sha256 = "18b9a1683b7f96bb75dec403334cdf529cf3d450ed15ad70ee4e90bd28508108"
+
+[[case]]
+id = "V1-VOC-003-PRIVATE-TYPE"
+fixture = "portable/specs/fixtures/stage5/negative/private-type.toml"
+fixture_sha256 = "d03806aa9a36deb2152cb7cbd2656b2764d00df2057c6e2a91c4366db41cb6e7"
+oracle = "portable/conformance/oracles/stage5/vocabulary-and-locations.toml"
+oracle_sha256 = "18b9a1683b7f96bb75dec403334cdf529cf3d450ed15ad70ee4e90bd28508108"
+
+[[case]]
+id = "V1-VOC-001-EXECUTABLE-PAYLOAD"
+fixture = "portable/specs/fixtures/stage5/negative/executable-payload.toml"
+fixture_sha256 = "2e05af412dfb92161fa8d408a0f27de4a2996a245b29265c93c372ae38e60205"
+oracle = "portable/conformance/oracles/stage5/vocabulary-and-locations.toml"
+oracle_sha256 = "18b9a1683b7f96bb75dec403334cdf529cf3d450ed15ad70ee4e90bd28508108"
+
+[[suite]]
 id = "project-ir-and-identities"
 profile = "1.0"
 active_from_stage = 6

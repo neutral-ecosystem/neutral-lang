@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.capture-fixture/1"
+case_id = "V1-LOC-001-DISTINCT-VALUES"
+request_version = "neutral.capture/v1"
+profile = "1.0"
+
+[controls]
+cancelled = false
+total_source_bytes = 4096
+source_bytes_per_unit = 4096
+source_units = 1
+source_id_bytes = 64
+module_id_bytes = 64
+vocabulary_units = 1
+vocabulary_bytes_per_unit = 4096
+total_vocabulary_bytes = 4096
+imports_per_module = 4
+import_edges = 4
+scc_units = 1
+declarations = 16
+diagnostics = 8
+output_bytes = 16384
+
+[[sources]]
+source_id = "source:api"
+module_id = "api"
+source_utf8 = "neu \"1.0\"\nmodule api\npublic url endpoint = \"HTTPS://Example.invalid/A%2fb\"\npublic path file = \"../A/../b\"\n"

@@ -24,6 +24,10 @@ in-process interface snapshot without compiler linkage. It exposes public
 exports, checked signature fingerprints, and cross-module value/reference
 enumeration; no source IDs, private declarations, or raw provenance are part
 of that view. It is not the future complete project-IR reader.
+The project-interface reader recognizes the new URL/path and canonical
+vocabulary-nominal signature variants. Cross-checking those nominal entries
+against complete captured project locks is reserved for the Stage 5 public
+integration gate; the current narrow snapshot does not claim that proof.
 
 ## Command
 

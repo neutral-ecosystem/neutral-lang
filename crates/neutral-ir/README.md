@@ -25,6 +25,9 @@ edges. Its source-profile version comes from `neutral-core`; the Cargo package
 version comes from the workspace manifest. Neither is duplicated in this
 interface. The domain-separated fingerprint covers that signature surface,
 not private values or the future complete project identity.
+Project signatures now distinguish canonical locked vocabulary nominals and
+inert `url`/`path` types. `ProjectLocationValue` retains decoded source text in
+separate URL and path variants without interpretation or host authority.
 
 ## Command
 

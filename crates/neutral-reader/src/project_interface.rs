@@ -5,7 +5,7 @@
 use neutral_core::profile::V1_SOURCE_PROFILE;
 use neutral_ir::{
     ModuleSymbolIdentity,
-    language::{is_snake_name, is_upper_name},
+    language::{is_exact_release_version, is_snake_name, is_upper_name},
     project_interface::{
         MAX_PROJECT_INTERFACE_TYPE_DEPTH, ProjectInterface, ProjectPublicEdge,
         ProjectPublicEdgeKind, ProjectPublicExport, ProjectPublicSignature, ProjectPublicType,
@@ -181,7 +181,12 @@ fn collect_type_edges(
             collect_type_edges(from, inner, under_ref, edges);
         }
         ProjectPublicType::Ref(inner) => collect_type_edges(from, inner, true, edges),
-        ProjectPublicType::Num | ProjectPublicType::String | ProjectPublicType::Bool => {}
+        ProjectPublicType::Num
+        | ProjectPublicType::String
+        | ProjectPublicType::Bool
+        | ProjectPublicType::Url
+        | ProjectPublicType::Path
+        | ProjectPublicType::VocabularyNominal { .. } => {}
     }
 }
 
@@ -237,7 +242,16 @@ fn valid_type(
         return false;
     }
     match ty {
-        ProjectPublicType::Num | ProjectPublicType::String | ProjectPublicType::Bool => true,
+        ProjectPublicType::Num
+        | ProjectPublicType::String
+        | ProjectPublicType::Bool
+        | ProjectPublicType::Url
+        | ProjectPublicType::Path => true,
+        ProjectPublicType::VocabularyNominal {
+            identity,
+            version,
+            name,
+        } => is_upper_name(identity) && is_exact_release_version(version) && is_upper_name(name),
         ProjectPublicType::Nominal(identity) => index.get(identity).is_some_and(|position| {
             matches!(
                 exports[*position].signature(),

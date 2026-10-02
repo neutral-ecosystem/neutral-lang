@@ -8,6 +8,10 @@ pub(crate) const BUNDLE_FORMAT: &str = "neutral-vocabulary-bundle";
 pub(crate) const ENCODING_VERSION: &str = "0.1";
 /// Exact v0 logical vocabulary schema version.
 pub(crate) const SCHEMA_VERSION: &str = "0.1";
+/// Exact v1 project vocabulary bundle encoding.
+pub(crate) const PROJECT_ENCODING_VERSION: &str = "1.0";
+/// Exact v1 project vocabulary schema.
+pub(crate) const PROJECT_SCHEMA_VERSION: &str = "1.0";
 
 pub(crate) use neutral_ir::language::{
     is_exact_release_version, is_feature_id, is_protected_name, is_snake_name, is_upper_name,

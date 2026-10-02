@@ -28,6 +28,11 @@ The project analyzer resolves public/private roots and cross-module
 type, value, and reference edges over that graph. It can produce a narrow
 public-only interface snapshot with a signature fingerprint; this is not yet
 the complete project IR or activation of the v1 standalone compiler profile.
+For Stage 5 project work, it validates every captured v1 vocabulary bundle as
+one exact canonical set, resolves module-local `use` aliases to locked public
+types, and retains direct `url`/`path` scalar bindings as distinct inert values.
+The full contextual value graph and externally encoded project artifact remain
+later-stage work.
 Its private frontend recognizes the supported source, identifier, comment, exact-number,
 bounded-string, Boolean, nullable-scalar, null, nominal-record, and
 contextual-record behavior.

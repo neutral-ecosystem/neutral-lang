@@ -3,14 +3,18 @@
 //! Effect-free declaration and cross-module semantic analysis.
 
 use super::{Token, TokenKind, lexer};
-use crate::{CapturedProject, ModuleGraph, language::graph_names};
+use crate::{
+    CapturedProject, ModuleGraph, ProjectVocabularySet, language::graph_names,
+    validate_project_vocabularies,
+};
 use neutral_core::{
     ByteSpan, CancellationToken, CoreError, SourceContentDigest, SourceLocation,
     profile::V1_SOURCE_PROFILE,
 };
 use neutral_ir::project_interface::{
-    MAX_PROJECT_INTERFACE_TYPE_DEPTH, ProjectInterface, ProjectPublicEdge, ProjectPublicEdgeKind,
-    ProjectPublicExport, ProjectPublicField, ProjectPublicSignature, ProjectPublicType,
+    MAX_PROJECT_INTERFACE_TYPE_DEPTH, ProjectInterface, ProjectLocationValue, ProjectPublicEdge,
+    ProjectPublicEdgeKind, ProjectPublicExport, ProjectPublicField, ProjectPublicSignature,
+    ProjectPublicType,
 };
 use neutral_ir::{LogicalModuleIdentity, ModuleSymbolIdentity};
 use std::{
@@ -46,6 +50,10 @@ pub mod diagnostics {
     pub const GRAPH_MISMATCH: &str = "NEU-XMOD-010";
     /// A project declaration or value violates the inherited source grammar.
     pub const INVALID_SOURCE: &str = "NEU-XMOD-011";
+    /// An exact captured vocabulary bundle failed closed-schema validation.
+    pub const INVALID_VOCABULARY: &str = "NEU-XMOD-012";
+    /// A vocabulary type is absent or not source-authorable/public.
+    pub const PRIVATE_VOCABULARY_TYPE: &str = "NEU-XMOD-013";
 }
 
 /// Root declaration category in the analyzed project.
@@ -159,6 +167,8 @@ pub struct ProjectSemanticModel {
     value_order: Arc<[ModuleSymbolIdentity]>,
     /// Public-only interface with private source/provenance omitted.
     public_interface: Arc<ProjectInterface>,
+    /// Source-authored inert location scalars in canonical binding order.
+    locations: Arc<[(ModuleSymbolIdentity, ProjectLocationValue)]>,
 }
 
 impl ProjectSemanticModel {
@@ -184,6 +194,12 @@ impl ProjectSemanticModel {
     #[must_use]
     pub const fn public_interface(&self) -> &Arc<ProjectInterface> {
         &self.public_interface
+    }
+
+    /// Returns exact inert location values, distinct from ordinary strings.
+    #[must_use]
+    pub fn locations(&self) -> &[(ModuleSymbolIdentity, ProjectLocationValue)] {
+        &self.locations
     }
 }
 
@@ -242,6 +258,10 @@ enum TypeExpr {
     String,
     /// Exact core Boolean type.
     Bool,
+    /// Inert URL text type.
+    Url,
+    /// Inert path text type.
+    Path,
     /// Local or alias-qualified nominal type and its source occurrence.
     Nominal(Option<String>, String, ByteSpan),
     /// Invariant ordered-list type.
@@ -263,6 +283,8 @@ struct Root {
     fields: Vec<(String, TypeExpr)>,
     /// Exact binding initializer tokens.
     value: Vec<Token>,
+    /// Exact typed inert scalar for a direct location binding.
+    location: Option<ProjectLocationValue>,
 }
 
 /// An exact source occurrence of one resolved name.
@@ -322,6 +344,30 @@ pub fn analyze_project_semantics(
             zero_span(),
         )));
     }
+    if cancellation.is_cancelled() {
+        let source = captured.sources().first();
+        return Err(single(diagnostic(
+            diagnostics::CANCELLED,
+            source.map_or("", |source| source.module_id()),
+            source.map_or_else(
+                || SourceContentDigest::from_bytes(&[]),
+                crate::CapturedProjectSource::digest,
+            ),
+            zero_span(),
+        )));
+    }
+    let vocabularies = validate_project_vocabularies(captured).map_err(|_| {
+        let source = captured.sources().first();
+        single(diagnostic(
+            diagnostics::INVALID_VOCABULARY,
+            source.map_or("", |source| source.module_id()),
+            source.map_or_else(
+                || SourceContentDigest::from_bytes(&[]),
+                crate::CapturedProjectSource::digest,
+            ),
+            zero_span(),
+        ))
+    })?;
     let mut roots = BTreeMap::new();
     let mut modules = BTreeMap::new();
     let limits = captured.limits().values();
@@ -395,6 +441,7 @@ pub fn analyze_project_semantics(
                 root,
                 module,
                 &roots,
+                &vocabularies,
                 &mut edges,
                 &mut errors,
                 false,
@@ -407,6 +454,7 @@ pub fn analyze_project_semantics(
                 root,
                 module,
                 &roots,
+                &vocabularies,
                 &mut edges,
                 &mut errors,
                 false,
@@ -419,6 +467,7 @@ pub fn analyze_project_semantics(
                 module,
                 &modules,
                 &roots,
+                &vocabularies,
                 &mut edges,
                 &mut errors,
             );
@@ -446,18 +495,19 @@ pub fn analyze_project_semantics(
         )));
     }
     let value_order = dependency_first_values(&roots, &edges);
-    let public_interface = build_public_interface(&roots, &modules, &edges).map_err(|_| {
-        let source = captured.sources().first();
-        single(diagnostic(
-            diagnostics::LIMIT_EXCEEDED,
-            source.map_or("", |source| source.module_id()),
-            source.map_or_else(
-                || SourceContentDigest::from_bytes(&[]),
-                crate::CapturedProjectSource::digest,
-            ),
-            zero_span(),
-        ))
-    })?;
+    let public_interface = build_public_interface(&roots, &modules, &vocabularies, &edges)
+        .map_err(|_| {
+            let source = captured.sources().first();
+            single(diagnostic(
+                diagnostics::LIMIT_EXCEEDED,
+                source.map_or("", |source| source.module_id()),
+                source.map_or_else(
+                    || SourceContentDigest::from_bytes(&[]),
+                    crate::CapturedProjectSource::digest,
+                ),
+                zero_span(),
+            ))
+        })?;
     edges.sort_by(|a, b| {
         (a.from(), a.kind(), a.to(), a.source.span().start()).cmp(&(
             b.from(),
@@ -466,6 +516,14 @@ pub fn analyze_project_semantics(
             b.source.span().start(),
         ))
     });
+    let locations = roots
+        .values()
+        .filter_map(|root| {
+            root.location
+                .as_ref()
+                .map(|value| (root.symbol.identity.clone(), value.clone()))
+        })
+        .collect::<Vec<_>>();
     let symbols = roots
         .into_values()
         .map(|root| root.symbol)
@@ -475,6 +533,7 @@ pub fn analyze_project_semantics(
         dependencies: Arc::from(edges),
         value_order: Arc::from(value_order),
         public_interface: Arc::new(public_interface),
+        locations: Arc::from(locations),
     })
 }
 
@@ -518,6 +577,7 @@ fn dependency_first_values(
 fn build_public_interface(
     roots: &BTreeMap<(String, String), Root>,
     modules: &BTreeMap<String, ModuleContext>,
+    vocabularies: &ProjectVocabularySet,
     edges: &[ProjectDependency],
 ) -> Result<ProjectInterface, CoreError> {
     let mut exports = Vec::new();
@@ -537,13 +597,17 @@ fn build_public_interface(
                     .expect("bindings have a declared type"),
                 &owner.0,
                 modules,
+                vocabularies,
             )),
             ProjectSymbolKind::Record => {
                 let mut fields = root
                     .fields
                     .iter()
                     .map(|(name, ty)| {
-                        ProjectPublicField::new(name, public_type(ty, &owner.0, modules))
+                        ProjectPublicField::new(
+                            name,
+                            public_type(ty, &owner.0, modules, vocabularies),
+                        )
                     })
                     .collect::<Vec<_>>();
                 fields.sort_by(|left, right| left.name().cmp(right.name()));
@@ -585,12 +649,25 @@ fn public_type(
     ty: &TypeExpr,
     module_id: &str,
     modules: &BTreeMap<String, ModuleContext>,
+    vocabularies: &ProjectVocabularySet,
 ) -> ProjectPublicType {
     match ty {
         TypeExpr::Num => ProjectPublicType::Num,
         TypeExpr::String => ProjectPublicType::String,
         TypeExpr::Bool => ProjectPublicType::Bool,
+        TypeExpr::Url => ProjectPublicType::Url,
+        TypeExpr::Path => ProjectPublicType::Path,
         TypeExpr::Nominal(alias, name, _) => {
+            if let Some(vocabulary) = alias
+                .as_ref()
+                .and_then(|alias| vocabularies.resolve(module_id, alias))
+            {
+                return ProjectPublicType::VocabularyNominal {
+                    identity: vocabulary.identity().to_owned(),
+                    version: vocabulary.version().to_owned(),
+                    name: name.clone(),
+                };
+            }
             let owner = alias.as_ref().map_or(module_id, |alias| {
                 modules[module_id]
                     .aliases
@@ -603,15 +680,24 @@ fn public_type(
                 name,
             ))
         }
-        TypeExpr::List(inner) => {
-            ProjectPublicType::List(Box::new(public_type(inner, module_id, modules)))
-        }
-        TypeExpr::Ref(inner) => {
-            ProjectPublicType::Ref(Box::new(public_type(inner, module_id, modules)))
-        }
-        TypeExpr::Nullable(inner) => {
-            ProjectPublicType::Nullable(Box::new(public_type(inner, module_id, modules)))
-        }
+        TypeExpr::List(inner) => ProjectPublicType::List(Box::new(public_type(
+            inner,
+            module_id,
+            modules,
+            vocabularies,
+        ))),
+        TypeExpr::Ref(inner) => ProjectPublicType::Ref(Box::new(public_type(
+            inner,
+            module_id,
+            modules,
+            vocabularies,
+        ))),
+        TypeExpr::Nullable(inner) => ProjectPublicType::Nullable(Box::new(public_type(
+            inner,
+            module_id,
+            modules,
+            vocabularies,
+        ))),
     }
 }
 
@@ -682,6 +768,10 @@ fn is_requirement_or_import(tokens: &[Token]) -> bool {
 }
 
 /// Parses one complete declaration, preserving exact source locations.
+#[expect(
+    clippy::too_many_lines,
+    reason = "one declaration parser retains the exact source span and failure boundary"
+)]
 fn parse_root(
     module: &str,
     digest: SourceContentDigest,
@@ -744,6 +834,7 @@ fn parse_root(
             declared_type: None,
             fields,
             value: Vec::new(),
+            location: None,
         });
     }
     let Some(eq) = tokens
@@ -762,6 +853,28 @@ fn parse_root(
     if !validate_value(&tokens[eq + 1..]) {
         return Err(invalid());
     }
+    let location = match (&ty, &tokens[eq + 1..]) {
+        (
+            TypeExpr::Url,
+            [
+                Token {
+                    kind: TokenKind::StringLiteral(value),
+                    ..
+                },
+            ],
+        ) => Some(ProjectLocationValue::Url(value.value.clone())),
+        (
+            TypeExpr::Path,
+            [
+                Token {
+                    kind: TokenKind::StringLiteral(value),
+                    ..
+                },
+            ],
+        ) => Some(ProjectLocationValue::Path(value.value.clone())),
+        (TypeExpr::Url | TypeExpr::Path, _) => return Err(invalid()),
+        _ => None,
+    };
     Ok(Root {
         symbol: symbol(
             module,
@@ -774,6 +887,7 @@ fn parse_root(
         declared_type: Some(ty),
         fields: Vec::new(),
         value: tokens[eq + 1..].to_vec(),
+        location,
     })
 }
 
@@ -874,6 +988,8 @@ fn parse_type(tokens: &[Token], index: &mut usize, depth: usize) -> Option<TypeE
         TokenKind::Num => TypeExpr::Num,
         TokenKind::StringType => TypeExpr::String,
         TokenKind::BoolType => TypeExpr::Bool,
+        TokenKind::Identifier(name) if name == graph_names::URL => TypeExpr::Url,
+        TokenKind::Identifier(name) if name == graph_names::PATH => TypeExpr::Path,
         TokenKind::Identifier(name) | TokenKind::ProtectedName(name) => {
             if matches!(
                 tokens.get(*index).map(|token| &token.kind),
@@ -1020,12 +1136,27 @@ fn resolve_type(
     root: &Root,
     module: &ModuleContext,
     roots: &BTreeMap<(String, String), Root>,
+    vocabularies: &ProjectVocabularySet,
     edges: &mut Vec<ProjectDependency>,
     errors: &mut Vec<ProjectSemanticDiagnostic>,
     under_ref: bool,
 ) {
     match ty {
         TypeExpr::Nominal(alias, name, span) => {
+            if let Some(vocabulary) = alias
+                .as_ref()
+                .and_then(|alias| vocabularies.resolve(&owner.0, alias))
+            {
+                if vocabulary.public_type(name).is_none() {
+                    errors.push(diagnostic(
+                        diagnostics::PRIVATE_VOCABULARY_TYPE,
+                        &owner.0,
+                        module.digest,
+                        *span,
+                    ));
+                }
+                return;
+            }
             let occurrence = NameOccurrence {
                 alias: alias.clone(),
                 name: name.clone(),
@@ -1059,10 +1190,30 @@ fn resolve_type(
             }
         }
         TypeExpr::List(inner) | TypeExpr::Nullable(inner) => {
-            resolve_type(inner, owner, root, module, roots, edges, errors, under_ref);
+            resolve_type(
+                inner,
+                owner,
+                root,
+                module,
+                roots,
+                vocabularies,
+                edges,
+                errors,
+                under_ref,
+            );
         }
         TypeExpr::Ref(inner) => {
-            resolve_type(inner, owner, root, module, roots, edges, errors, true);
+            resolve_type(
+                inner,
+                owner,
+                root,
+                module,
+                roots,
+                vocabularies,
+                edges,
+                errors,
+                true,
+            );
         }
         _ => {}
     }
@@ -1073,12 +1224,17 @@ fn resolve_type(
     clippy::too_many_lines,
     reason = "value and identity references share one ordered token walk"
 )]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "explicit context prevents ambient resolution"
+)]
 fn resolve_value(
     root: &Root,
     owner: &(String, String),
     module: &ModuleContext,
     modules: &BTreeMap<String, ModuleContext>,
     roots: &BTreeMap<(String, String), Root>,
+    vocabularies: &ProjectVocabularySet,
     edges: &mut Vec<ProjectDependency>,
     errors: &mut Vec<ProjectSemanticDiagnostic>,
 ) {
@@ -1113,7 +1269,14 @@ fn resolve_value(
                                 .declared_type
                                 .as_ref()
                                 .is_some_and(|target_type| {
-                                    same_type(inner, &owner.0, target_type, &target.0, modules)
+                                    same_type(
+                                        inner,
+                                        &owner.0,
+                                        target_type,
+                                        &target.0,
+                                        modules,
+                                        vocabularies,
+                                    )
                                 })
                             {
                                 errors.push(diagnostic(
@@ -1166,7 +1329,7 @@ fn resolve_value(
                             .as_ref()
                             .zip(target_root.declared_type.as_ref())
                             .is_some_and(|(left, right)| {
-                                same_type(left, &owner.0, right, &target.0, modules)
+                                same_type(left, &owner.0, right, &target.0, modules, vocabularies)
                             })
                     {
                         errors.push(diagnostic(
@@ -1206,15 +1369,33 @@ fn same_type(
     right: &TypeExpr,
     right_module: &str,
     modules: &BTreeMap<String, ModuleContext>,
+    vocabularies: &ProjectVocabularySet,
 ) -> bool {
     match (left, right) {
         (TypeExpr::Num, TypeExpr::Num)
         | (TypeExpr::String, TypeExpr::String)
-        | (TypeExpr::Bool, TypeExpr::Bool) => true,
+        | (TypeExpr::Bool, TypeExpr::Bool)
+        | (TypeExpr::Url, TypeExpr::Url)
+        | (TypeExpr::Path, TypeExpr::Path) => true,
         (
             TypeExpr::Nominal(left_alias, left_name, _),
             TypeExpr::Nominal(right_alias, right_name, _),
         ) => {
+            let left_vocabulary = left_alias
+                .as_ref()
+                .and_then(|alias| vocabularies.resolve(left_module, alias));
+            let right_vocabulary = right_alias
+                .as_ref()
+                .and_then(|alias| vocabularies.resolve(right_module, alias));
+            if left_vocabulary.is_some() || right_vocabulary.is_some() {
+                return left_vocabulary
+                    .zip(right_vocabulary)
+                    .is_some_and(|(left, right)| {
+                        left.identity() == right.identity()
+                            && left.version() == right.version()
+                            && left_name == right_name
+                    });
+            }
             let left_owner = left_alias
                 .as_ref()
                 .and_then(|alias| modules[left_module].aliases.get(alias))
@@ -1227,9 +1408,14 @@ fn same_type(
         }
         (TypeExpr::List(left), TypeExpr::List(right))
         | (TypeExpr::Ref(left), TypeExpr::Ref(right))
-        | (TypeExpr::Nullable(left), TypeExpr::Nullable(right)) => {
-            same_type(left, left_module, right, right_module, modules)
-        }
+        | (TypeExpr::Nullable(left), TypeExpr::Nullable(right)) => same_type(
+            left,
+            left_module,
+            right,
+            right_module,
+            modules,
+            vocabularies,
+        ),
         _ => false,
     }
 }

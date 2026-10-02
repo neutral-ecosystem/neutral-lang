@@ -124,6 +124,63 @@ fn accepts_an_exact_vocabulary_cover_and_freezes_bytes() {
 }
 
 #[test]
+/// The same canonical lock covers requirements in several modules with local aliases.
+fn one_lock_covers_repeated_aliased_requirements_across_modules() {
+    let captured = capture_project(request(
+        vec![
+            CapturedSourceInput::new(
+                "source:first",
+                "project::first",
+                b"neu \"1.0\"\nmodule project::first\nuse ExampleDomain as first_alias\n".to_vec(),
+            ),
+            CapturedSourceInput::new(
+                "source:second",
+                "project::second",
+                b"neu \"1.0\"\nmodule project::second\nuse ExampleDomain as second_alias\n"
+                    .to_vec(),
+            ),
+        ],
+        vec![vocabulary("ExampleDomain", "1.0.0")],
+    ))
+    .expect("one canonical lock covers both module-local aliases");
+    assert_eq!(captured.vocabularies().len(), 1);
+    assert_eq!(captured.vocabularies()[0].identity(), "ExampleDomain");
+}
+
+#[test]
+/// Requiring one identity twice inside a module is not a second semantic lock.
+fn duplicate_vocabulary_requirement_in_one_module_is_rejected() {
+    let source = CapturedSourceInput::new(
+        "source:duplicate",
+        "project::duplicate",
+        b"neu \"1.0\"\nmodule project::duplicate\nuse ExampleDomain as first\nuse ExampleDomain as second\n".to_vec(),
+    );
+    assert_eq!(
+        capture_project(request(
+            vec![source],
+            vec![vocabulary("ExampleDomain", "1.0.0")]
+        )),
+        Err(ProjectCaptureError::InvalidHeader),
+    );
+}
+
+#[test]
+/// A `use` spelling inside a block comment does not require a semantic lock.
+fn commented_use_does_not_expand_exact_lock_cover() {
+    let source = CapturedSourceInput::new(
+        "source:commented",
+        "project::commented",
+        b"neu \"1.0\"\nmodule project::commented\n/*\nuse Decoy as decoy\n*/\nuse ExampleDomain as domain\n".to_vec(),
+    );
+    let captured = capture_project(request(
+        vec![source],
+        vec![vocabulary("ExampleDomain", "1.0.0")],
+    ))
+    .expect("commented requirement is nonsemantic");
+    assert_eq!(captured.vocabularies().len(), 1);
+}
+
+#[test]
 fn rejects_missing_extra_duplicate_and_mismatched_vocabulary_locks() {
     let using = || {
         CapturedSourceInput::new(

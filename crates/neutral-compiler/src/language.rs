@@ -22,4 +22,5 @@ pub(crate) mod graph_names {
     pub(crate) const AS: &str = "as";
     /// Public declaration prefix; imports cannot be re-exported.
     pub(crate) const PUBLIC: &str = "public";
+    pub(crate) use neutral_ir::language::{PATH, URL};
 }

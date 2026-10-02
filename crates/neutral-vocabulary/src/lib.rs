@@ -7,7 +7,14 @@
 //! network, dynamic-code, or other host acquisition.
 
 mod json;
+mod project;
 mod schema;
+
+pub use project::{
+    PROJECT_VOCABULARY_ENCODING_VERSION, PROJECT_VOCABULARY_SCHEMA_VERSION, ProjectVocabulary,
+    ProjectVocabularyField, ProjectVocabularyType, ProjectVocabularyTypeDefinition,
+    validate_project_bundle,
+};
 
 use json::JsonValue;
 use neutral_core::{StructuralLimits, VocabularyContentDigest};
@@ -558,6 +565,8 @@ pub enum VocabularyError {
     UnknownTypeTarget,
     /// Embedded nominal records formed a cycle outside `ref`.
     InvalidTypeRecursion,
+    /// A public v1 vocabulary signature transitively names a private type.
+    PrivateTypeExposed,
     /// A closed default was malformed, incompatible, incomplete, or contained `ref`.
     InvalidDefault,
 }

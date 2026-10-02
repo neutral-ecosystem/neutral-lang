@@ -839,12 +839,35 @@ fn scan_headers(bytes: &[u8]) -> Result<HeaderFacts<'_>, ProjectCaptureError> {
         .strip_prefix("module ")
         .filter(|value| valid_module_id(value))
         .ok_or(ProjectCaptureError::InvalidHeader)?;
-    let mut vocabularies = BTreeSet::new();
-    for line in lines {
-        if line.starts_with("neu ") || line.starts_with("module ") {
+    let vocabularies = scan_vocabulary_requirements(source)?
+        .into_iter()
+        .map(|(identity, _)| identity)
+        .collect();
+    Ok(HeaderFacts {
+        profile,
+        module_id,
+        vocabularies,
+    })
+}
+
+/// Scans exact vocabulary requirements once for capture and later alias resolution.
+pub(crate) fn scan_vocabulary_requirements(
+    source: &str,
+) -> Result<Vec<(String, String)>, ProjectCaptureError> {
+    let mut requirements = Vec::new();
+    let mut identities = BTreeSet::new();
+    let mut in_block_comment = false;
+    for line in source.lines().skip(2) {
+        let active = !in_block_comment;
+        scan_comment_state(line.as_bytes(), &mut in_block_comment);
+        if active && (line.starts_with("neu ") || line.starts_with("module ")) {
             return Err(ProjectCaptureError::InvalidHeader);
         }
-        let Some(requirement) = line.strip_prefix("use ") else {
+        let Some(requirement) = (if active {
+            line.strip_prefix("use ")
+        } else {
+            None
+        }) else {
             continue;
         };
         let mut words = requirement.split_ascii_whitespace();
@@ -855,16 +878,53 @@ fn scan_headers(bytes: &[u8]) -> Result<HeaderFacts<'_>, ProjectCaptureError> {
             || as_keyword != "as"
             || !valid_vocabulary_identity(identity)
             || !valid_name_segment(alias)
-            || !vocabularies.insert(identity.to_owned())
+            || !identities.insert(identity.to_owned())
         {
             return Err(ProjectCaptureError::InvalidHeader);
         }
+        requirements.push((identity.to_owned(), alias.to_owned()));
     }
-    Ok(HeaderFacts {
-        profile,
-        module_id,
-        vocabularies,
-    })
+    Ok(requirements)
+}
+
+/// Tracks block-comment boundaries without interpreting quoted source text.
+fn scan_comment_state(line: &[u8], in_block: &mut bool) {
+    let mut index = 0;
+    let mut in_string = false;
+    while index < line.len() {
+        if *in_block {
+            if line[index..].starts_with(b"*/") {
+                *in_block = false;
+                index += 2;
+            } else {
+                index += 1;
+            }
+            continue;
+        }
+        if in_string {
+            match line[index] {
+                b'\\' => index += 2,
+                b'"' => {
+                    in_string = false;
+                    index += 1;
+                }
+                _ => index += 1,
+            }
+            continue;
+        }
+        if line[index..].starts_with(b"//") {
+            break;
+        }
+        if line[index..].starts_with(b"/*") {
+            *in_block = true;
+            index += 2;
+        } else if line[index] == b'"' {
+            in_string = true;
+            index += 1;
+        } else {
+            index += 1;
+        }
+    }
 }
 
 /// Converts a platform length into a saturating contract value.

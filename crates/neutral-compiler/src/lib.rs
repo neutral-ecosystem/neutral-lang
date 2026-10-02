@@ -22,11 +22,13 @@ mod frontend;
 mod language;
 mod module_graph;
 mod project_capture;
+mod project_vocabulary;
 mod semantics;
 
 pub use frontend::{
     ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic, ProjectSemanticFailure,
     ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind, analyze_project_semantics,
+    project_semantics_diagnostics,
 };
 
 pub use module_graph::diagnostics as module_graph_diagnostics;
@@ -40,6 +42,9 @@ pub use project_capture::{
     CapturedSourceInput, CapturedVocabularyInput, ProjectCaptureControls, ProjectCaptureError,
     ProjectCaptureLimitValues, ProjectCaptureLimits, ProjectCaptureResourceFacts, ProjectHostError,
     capture_project,
+};
+pub use project_vocabulary::{
+    ProjectVocabularySet, ProjectVocabularyValidationError, validate_project_vocabularies,
 };
 
 /// Stable diagnostic identifiers emitted by compiler validation.

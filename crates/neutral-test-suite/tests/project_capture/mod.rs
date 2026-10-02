@@ -220,11 +220,11 @@ pub(super) fn request_fixture(text: &str) -> CapturedProjectRequest {
         .into_iter()
         .flatten()
         .map(|vocabulary| {
-            let bytes = hexadecimal(
-                vocabulary
-                    .get("bundle_hex")
-                    .expect("vocabulary bytes must exist"),
-            );
+            let bytes = if let Some(hex) = vocabulary.get("bundle_hex") {
+                hexadecimal(hex)
+            } else {
+                required_string(vocabulary, "bundle_utf8").into_bytes()
+            };
             let lock = VocabularyLock::new(
                 required_string(vocabulary, "canonical_identity"),
                 required_string(vocabulary, "semantic_version"),
