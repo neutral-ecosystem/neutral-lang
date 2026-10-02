@@ -452,14 +452,30 @@ fn fuzz(mode: FuzzMode) -> Result<(), String> {
 fn coverage_guided_fuzz_campaign() -> Result<(), String> {
     let targets = quality_array("fuzz", "targets")?;
     let seconds = quality_value("fuzz", "minimum_seconds_per_target")?;
+    let root = workspace_root()?;
+    let corpus_root = PathBuf::from(quality_value("fuzz", "corpus_root")?);
+    let seed_root = PathBuf::from(quality_value("fuzz", "seed_root")?);
+    if !is_safe_relative_path(&corpus_root) || !is_safe_relative_path(&seed_root) {
+        return Err("fuzz corpus and seed roots must be safe workspace-relative paths".to_owned());
+    }
     for target in targets {
-        run_cargo(&[
-            "fuzz",
-            "run",
-            &target,
-            "--",
-            &format!("-max_total_time={seconds}"),
-        ])?;
+        if !is_safe_relative_path(Path::new(&target)) {
+            return Err(format!("unsafe fuzz target name: {target}"));
+        }
+        let seed_directory = root.join(&seed_root).join(&target);
+        let corpus_directory = corpus_root.join(&target);
+        let corpus = corpus_directory
+            .to_str()
+            .ok_or_else(|| "fuzz corpus path is not UTF-8".to_owned())?;
+        let budget = format!("-max_total_time={seconds}");
+        if seed_directory.is_dir() {
+            let seed = seed_directory
+                .to_str()
+                .ok_or_else(|| "fuzz seed path is not UTF-8".to_owned())?;
+            run_cargo(&["fuzz", "run", &target, corpus, seed, "--", &budget])?;
+        } else {
+            run_cargo(&["fuzz", "run", &target, "--", &budget])?;
+        }
     }
     Ok(())
 }

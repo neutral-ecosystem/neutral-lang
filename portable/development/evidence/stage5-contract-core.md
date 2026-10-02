@@ -4,8 +4,9 @@
 
 Status: `v0.5.1` contract/fixture gate and `v0.5.2` core gate implemented;
 two of three `v0.5.3` integration checks implemented. The authoring metadata
-presentation check awaits the separate Stage 8 input/schema. Hostile-input
-validation and release promotion remain separate Stage 5 work.
+presentation check awaits the separate Stage 8 input/schema. Stage 5.4 schema,
+fixture, inert-location, limit, and vocabulary-fuzz checks pass. Release
+promotion remains separate.
 
 The [vocabulary contract](../../specs/contracts/VOCABULARY.md) freezes repeated
 aliased requirements, exact lock cover, closed v1 project-bundle schema,
@@ -36,8 +37,26 @@ membership, signature-to-lock closure, and fingerprint. Alias renaming yields
 an identical complete interface. Inline metadata still fails the closed
 semantic bundle schema. There is no separate authoring metadata input or
 presentation projection yet, so a presentation-only effect cannot be tested
-until Stage 8 defines that input. Stage 5.4 must run the full executable
-fixture suite, hostile decoder limits/fuzzing, and negative effect audit.
+until Stage 8 defines that input. Stage 5.4 executes crate-owned copies of
+all four pinned vocabulary/location requests against their oracle outcomes;
+their SHA-256 values match the reviewed fixture manifest, while `portable/`
+remains removable. The crate-owned oracle changes only fixture paths. Strict
+v1 tests reject duplicate, unknown,
+and executable members, all truncation boundaries, invalid UTF-8, BOM,
+oversized strings, and over-limit structural input. Location tests accept an
+invalid URL and a nonexistent opaque path without lookup or normalization.
+Static source and normal-dependency inspection found no filesystem or network
+acquisition path in the vocabulary, compiler semantic, IR, or reader boundary.
+
+A seeded address-sanitized vocabulary fuzz run exposed stack exhaustion in the
+recursive JSON parser when the host supplied an extremely large depth. The
+effective vocabulary nesting limit is now capped at the named stack-safe
+ceiling, and the saved crash input replays successfully after the fix. The
+seeded v1 vocabulary target then completed its full configured 900-second
+address-sanitized rerun with 22,329,752 executions, no new crash, and 682 MiB
+peak RSS. This runner is ptraced, so LeakSanitizer cannot run; the rerun used
+`LSAN_OPTIONS=detect_leaks=0` while retaining AddressSanitizer. Leak checking
+on an untraced runner remains a separate review item.
 
 Verified on 2026-10-02:
 
@@ -47,6 +66,9 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo xtask fixtures check
 cargo xtask portable verify
 cargo xtask ci pr
+cargo xtask test conformance
+cargo xtask test security
+cargo xtask fuzz smoke
 ```
 
 The Stage 5 TOML requests were also parsed and each `bundle_utf8` SHA-256
@@ -57,4 +79,4 @@ and distinct inert locations. Independent reader tests cover missing,
 misversioned, inaccessible, duplicate, and unordered vocabulary facts, plus
 fingerprint tampering. Inline authoring metadata is rejected by the semantic
 bundle schema. The composed CI profile passed with its ignored workflow log
-at `test-results/workflows/ci/pr/run-2-23`.
+at `test-results/workflows/ci/pr/run-2-31`.

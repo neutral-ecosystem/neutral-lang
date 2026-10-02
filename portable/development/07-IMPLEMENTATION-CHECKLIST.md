@@ -225,10 +225,10 @@ Target transition: `v0.5.0 -> v0.6.0`.
 
 ### `v0.5.4` — validation gate
 
-- [ ] Run strict schema, duplicate/unknown field, executable-content,
+- [x] Run strict schema, duplicate/unknown field, executable-content,
   lock-cover, alias, and location-value suites.
-- [ ] Prove location values cannot fetch/open/normalize/authorize anything.
-- [ ] Run hostile vocabulary decoder limits and fuzz tests.
+- [x] Prove location values cannot fetch/open/normalize/authorize anything.
+- [x] Run hostile vocabulary decoder limits and fuzz tests.
 
 ### Promote to `v0.6.0`
 

@@ -228,6 +228,26 @@ fn locations_are_inert_distinct_values() {
 }
 
 #[test]
+/// Malformed host locations remain exact data and require no host resource.
+fn security_locations_do_not_require_url_or_path_resolution() {
+    let captured = captured(
+        "neu \"1.0\"\nmodule api\npublic url endpoint = \"not a URL %zz\"\npublic path file = \"/neutral/absent/../opaque\"\n",
+        Vec::new(),
+    );
+    let graph = build_module_graph(&captured, &CancellationToken::new()).expect("valid graph");
+    let model = analyze_project_semantics(&captured, &graph, &CancellationToken::new())
+        .expect("locations are inert scalars");
+    assert_eq!(
+        model.locations()[0].1,
+        ProjectLocationValue::Url("not a URL %zz".to_owned())
+    );
+    assert_eq!(
+        model.locations()[1].1,
+        ProjectLocationValue::Path("/neutral/absent/../opaque".to_owned())
+    );
+}
+
+#[test]
 /// Alias spelling cannot perturb the complete canonical public interface.
 fn alias_renaming_preserves_public_fingerprint() {
     let types = "{\"name\":\"Visible\",\"public\":true,\"fields\":[]}";

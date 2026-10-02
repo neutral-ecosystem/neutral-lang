@@ -2,5 +2,7 @@
 
 # Public semantics test oracle
 
-This is an exact test-owned copy of the portable public-semantics oracle,
-including the public-interface signature fingerprint vector.
+These are test-owned copies of the public-semantics and Stage 5
+vocabulary/location oracles. The Stage 5 fixture paths point to crate-owned
+copies; expected outcomes remain unchanged. Tests stay independent of the
+active portable plan, including its public-interface fingerprint vector.

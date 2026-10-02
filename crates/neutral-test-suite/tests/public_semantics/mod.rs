@@ -4,19 +4,21 @@
 
 use crate::project_capture::{Table, parse_fixture, request_fixture, required_string};
 use neutral_compiler::{
-    ProjectDependencyKind, ProjectSemanticModel, analyze_project_semantics, build_module_graph,
-    capture_project,
+    ProjectDependencyKind, ProjectSemanticModel, ProjectVocabularyValidationError,
+    analyze_project_semantics, build_module_graph, capture_project, validate_project_vocabularies,
 };
 use neutral_core::{CancellationToken, SemanticDigest, profile::V1_SOURCE_PROFILE};
 use neutral_ir::{
     LogicalModuleIdentity, ModuleSymbolIdentity,
     project_interface::{
-        ProjectInterface, ProjectPublicEdge, ProjectPublicEdgeKind, ProjectPublicExport,
-        ProjectPublicField, ProjectPublicSignature, ProjectPublicType,
+        ProjectInterface, ProjectLocationValue, ProjectPublicEdge, ProjectPublicEdgeKind,
+        ProjectPublicExport, ProjectPublicField, ProjectPublicSignature, ProjectPublicType,
+        ProjectPublicVocabulary,
     },
 };
 use neutral_probe::summarize_project_interface;
 use neutral_reader::{ProjectInterfaceError, ValidatedProjectInterface};
+use neutral_vocabulary::VocabularyError;
 use std::{sync::Arc, thread};
 
 /// Exact crate-owned copies of the reviewed portable public-semantics fixtures.
@@ -27,6 +29,118 @@ const CASES: &[&str] = &[
     include_str!("fixtures/positive/reuse-provenance.toml"),
     include_str!("fixtures/negative/cross-scc-value-cycle.toml"),
 ];
+
+/// Reviewed Stage 5 requests whose exact hashes are pinned by the manifest.
+const STAGE5_CASES: &[(&str, &str)] = &[
+    (
+        "fixtures/positive/vocabulary-multiple-alias.toml",
+        include_str!("fixtures/positive/vocabulary-multiple-alias.toml"),
+    ),
+    (
+        "fixtures/positive/location-values.toml",
+        include_str!("fixtures/positive/location-values.toml"),
+    ),
+    (
+        "fixtures/negative/vocabulary-private-type.toml",
+        include_str!("fixtures/negative/vocabulary-private-type.toml"),
+    ),
+    (
+        "fixtures/negative/vocabulary-executable-payload.toml",
+        include_str!("fixtures/negative/vocabulary-executable-payload.toml"),
+    ),
+];
+
+#[test]
+/// Executes every pinned Stage 5 request against its reviewed outcome.
+fn conformance_stage5_vocabulary_and_location_cases_match_oracles() {
+    let oracle = parse_fixture(include_str!("oracles/vocabulary-and-locations.toml"));
+    let cases = oracle.arrays.get("case").expect("Stage 5 oracle cases");
+    assert_eq!(cases.len(), STAGE5_CASES.len());
+    for (path, text) in STAGE5_CASES {
+        let fixture = parse_fixture(text);
+        let id = required_string(&fixture.root, "case_id");
+        let expected = cases
+            .iter()
+            .find(|case| required_string(case, "id") == id)
+            .expect("registered Stage 5 oracle");
+        assert_eq!(required_string(expected, "fixture"), *path, "{id}");
+        let captured = capture_project(request_fixture(text)).expect("Stage 5 capture");
+        if id == "V1-VOC-001-EXECUTABLE-PAYLOAD" {
+            assert_eq!(
+                required_string(expected, "expected_outcome"),
+                "reject-vocabulary"
+            );
+            assert_eq!(
+                required_string(expected, "error"),
+                "ExecutableShapeForbidden"
+            );
+            assert_eq!(
+                validate_project_vocabularies(&captured),
+                Err(ProjectVocabularyValidationError::InvalidBundle(
+                    VocabularyError::ExecutableShapeForbidden
+                )),
+                "{id}"
+            );
+            continue;
+        }
+        let graph =
+            build_module_graph(&captured, &CancellationToken::new()).expect("Stage 5 graph");
+        let model = analyze_project_semantics(&captured, &graph, &CancellationToken::new());
+        if id == "V1-VOC-003-PRIVATE-TYPE" {
+            assert_eq!(
+                required_string(expected, "expected_outcome"),
+                "reject-semantics"
+            );
+            assert_eq!(
+                model.expect_err("private type must fail").diagnostics()[0].code(),
+                required_string(expected, "diagnostic_code"),
+                "{id}"
+            );
+            continue;
+        }
+        let model = model.expect("positive Stage 5 case");
+        assert_eq!(
+            required_string(expected, "expected_outcome"),
+            "accept-resolution"
+        );
+        let view = ValidatedProjectInterface::from_interface(Arc::clone(model.public_interface()))
+            .expect("canonical reader interface");
+        match id.as_str() {
+            "V1-VOC-001-MULTIPLE-ALIASES" => {
+                let identities = view
+                    .vocabularies()
+                    .iter()
+                    .map(ProjectPublicVocabulary::identity)
+                    .collect::<Vec<_>>();
+                assert_eq!(
+                    format!("{identities:?}"),
+                    expected["ordered_vocabulary_identities"]
+                );
+                let types = view
+                    .vocabularies()
+                    .iter()
+                    .flat_map(|vocabulary| {
+                        vocabulary.public_types().iter().map(move |name| {
+                            format!("{}@{}::{name}", vocabulary.identity(), vocabulary.version())
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                assert_eq!(format!("{types:?}"), expected["public_types"]);
+            }
+            "V1-LOC-001-DISTINCT-VALUES" => {
+                assert_eq!(
+                    model.locations()[0].1,
+                    ProjectLocationValue::Url(required_string(expected, "url_text"))
+                );
+                assert_eq!(
+                    model.locations()[1].1,
+                    ProjectLocationValue::Path(required_string(expected, "path_text"))
+                );
+            }
+            _ => panic!("unexpected Stage 5 case {id}"),
+        }
+    }
+}
 
 #[test]
 /// Every registered public-semantics fixture matches its reviewed outcome.

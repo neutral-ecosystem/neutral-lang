@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.capture-fixture/1"
+case_id = "V1-VOC-003-PRIVATE-TYPE"
+request_version = "neutral.capture/v1"
+profile = "1.0"
+
+[controls]
+cancelled = false
+total_source_bytes = 4096
+source_bytes_per_unit = 4096
+source_units = 1
+source_id_bytes = 64
+module_id_bytes = 64
+vocabulary_units = 1
+vocabulary_bytes_per_unit = 4096
+total_vocabulary_bytes = 4096
+imports_per_module = 4
+import_edges = 4
+scc_units = 1
+declarations = 16
+diagnostics = 8
+output_bytes = 16384
+
+[[sources]]
+source_id = "source:api"
+module_id = "api"
+source_utf8 = "neu \"1.0\"\nmodule api\nuse Alpha as alpha\nalpha::Hidden item = {}\n"
+
+[[vocabularies]]
+canonical_identity = "Alpha"
+semantic_version = "1.0.0"
+encoding_version = "1.0"
+schema_version = "1.0"
+content_sha256 = "sha256:e42c3e19a348cf408006c38aa5ea0d3587211657400f35c71a39828ba631e86d"
+required_features = []
+bundle_utf8 = "{\"format\":\"neutral-vocabulary-bundle\",\"encoding_version\":\"1.0\",\"schema_version\":\"1.0\",\"identity\":\"Alpha\",\"version\":\"1.0.0\",\"required_features\":[],\"types\":[{\"name\":\"Hidden\",\"public\":false,\"fields\":[]}]}"

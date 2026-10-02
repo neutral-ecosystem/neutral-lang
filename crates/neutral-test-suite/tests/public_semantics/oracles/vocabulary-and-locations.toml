@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+requirements = ["V1-VOC-001", "V1-VOC-002", "V1-VOC-003", "V1-LOC-001"]
+
+[[case]]
+id = "V1-VOC-001-MULTIPLE-ALIASES"
+fixture = "fixtures/positive/vocabulary-multiple-alias.toml"
+expected_outcome = "accept-resolution"
+ordered_vocabulary_identities = ["Alpha", "Beta"]
+public_types = ["Alpha@1.0.0::Visible", "Beta@1.0.0::Visible"]
+
+[[case]]
+id = "V1-LOC-001-DISTINCT-VALUES"
+fixture = "fixtures/positive/location-values.toml"
+expected_outcome = "accept-resolution"
+url_text = "HTTPS://Example.invalid/A%2fb"
+path_text = "../A/../b"
+
+[[case]]
+id = "V1-VOC-003-PRIVATE-TYPE"
+fixture = "fixtures/negative/vocabulary-private-type.toml"
+expected_outcome = "reject-semantics"
+diagnostic_code = "NEU-XMOD-013"
+partial_model = "absent"
+
+[[case]]
+id = "V1-VOC-001-EXECUTABLE-PAYLOAD"
+fixture = "fixtures/negative/vocabulary-executable-payload.toml"
+expected_outcome = "reject-vocabulary"
+error = "ExecutableShapeForbidden"
+partial_model = "absent"

@@ -28,6 +28,8 @@ status = "pass"
 [fuzz]
 tool = "cargo-fuzz"
 targets = ["source", "vocabulary", "ir", "formatter", "probe"]
+corpus_root = "fuzz/corpus"
+seed_root = "fuzz/seeds"
 source_owner = "neutral-compiler source capture/frontend"
 vocabulary_owner = "neutral-vocabulary strict bundle decoder"
 ir_owner = "neutral-encoding external artifact decoder"

@@ -26,3 +26,13 @@ Harnesses and seed documentation are tracked. Mutable state under
 separate from the immutable released fixtures under `conformance/`. A confirmed
 finding is minimized first, then retained in the owning crate's deterministic
 regression suite when it represents a real defect.
+
+The vocabulary target exercises both the released bundle decoder and the v1
+project-bundle decoder. The campaign command supplies tracked v1 seeds from
+`fuzz/seeds/vocabulary/` alongside the ignored mutable corpus. Run
+`cargo xtask fuzz smoke` for deterministic mutations, or select a nightly
+toolchain for `cargo xtask fuzz campaign` to run the configured per-target
+budget. An untraced runner is needed for LeakSanitizer; in a ptraced sandbox,
+set `LSAN_OPTIONS=detect_leaks=0` for the address-sanitized campaign and record
+that leak checking was unavailable there. If a system `ccache` wrapper points
+at a read-only cache, set `CCACHE_DISABLE=1` for that run.

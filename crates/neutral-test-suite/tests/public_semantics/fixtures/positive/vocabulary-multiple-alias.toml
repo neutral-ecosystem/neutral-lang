@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.capture-fixture/1"
+case_id = "V1-VOC-001-MULTIPLE-ALIASES"
+request_version = "neutral.capture/v1"
+profile = "1.0"
+
+[controls]
+cancelled = false
+total_source_bytes = 4096
+source_bytes_per_unit = 4096
+source_units = 1
+source_id_bytes = 64
+module_id_bytes = 64
+vocabulary_units = 2
+vocabulary_bytes_per_unit = 4096
+total_vocabulary_bytes = 8192
+imports_per_module = 4
+import_edges = 4
+scc_units = 1
+declarations = 16
+diagnostics = 8
+output_bytes = 16384
+
+[[sources]]
+source_id = "source:api"
+module_id = "api"
+source_utf8 = "neu \"1.0\"\nmodule api\nuse Beta as beta\nuse Alpha as alpha\npublic alpha::Visible first = {}\npublic beta::Visible second = {}\n"
+
+[[vocabularies]]
+canonical_identity = "Beta"
+semantic_version = "1.0.0"
+encoding_version = "1.0"
+schema_version = "1.0"
+content_sha256 = "sha256:67416e6cceb60580feeb8f77d7d0264d5894d1070ed933f7979961557ff99c0d"
+required_features = []
+bundle_utf8 = "{\"format\":\"neutral-vocabulary-bundle\",\"encoding_version\":\"1.0\",\"schema_version\":\"1.0\",\"identity\":\"Beta\",\"version\":\"1.0.0\",\"required_features\":[],\"types\":[{\"name\":\"Visible\",\"public\":true,\"fields\":[]}]}"
+
+[[vocabularies]]
+canonical_identity = "Alpha"
+semantic_version = "1.0.0"
+encoding_version = "1.0"
+schema_version = "1.0"
+content_sha256 = "sha256:f342b165ee19fea32bf0af7ddb91ae7778e7ed72ddc6bdf0ccef0e456975dc77"
+required_features = []
+bundle_utf8 = "{\"format\":\"neutral-vocabulary-bundle\",\"encoding_version\":\"1.0\",\"schema_version\":\"1.0\",\"identity\":\"Alpha\",\"version\":\"1.0.0\",\"required_features\":[],\"types\":[{\"name\":\"Visible\",\"public\":true,\"fields\":[]}]}"

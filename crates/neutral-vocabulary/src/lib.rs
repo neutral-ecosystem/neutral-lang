@@ -25,6 +25,8 @@ use std::collections::{BTreeMap, BTreeSet};
 pub const VOCABULARY_ENCODING_VERSION: &str = schema::ENCODING_VERSION;
 /// Frozen logical vocabulary schema version.
 pub const VOCABULARY_SCHEMA_VERSION: &str = schema::SCHEMA_VERSION;
+/// Stack-safe ceiling for recursively decoded vocabulary JSON and defaults.
+pub const MAX_VOCABULARY_NESTING_DEPTH: u64 = 64;
 
 /// Explicit resource limits for strict vocabulary decoding and validation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -58,14 +60,21 @@ impl VocabularyLimits {
     ///
     /// The captured byte bound also bounds JSON members, arrays, types, and
     /// features until a host supplies narrower values through the builder API.
+    /// Recursive decoding depth is additionally capped at the stack-safe
+    /// [`MAX_VOCABULARY_NESTING_DEPTH`] even when the host permits more.
     #[must_use]
     pub const fn from_structural(limits: StructuralLimits) -> Self {
+        let nesting_depth = if limits.nesting_depth() < MAX_VOCABULARY_NESTING_DEPTH {
+            limits.nesting_depth()
+        } else {
+            MAX_VOCABULARY_NESTING_DEPTH
+        };
         Self {
             bundle_bytes: limits.source_bytes(),
             string_bytes: limits.string_bytes(),
             object_members: limits.record_fields(),
             array_items: limits.list_items(),
-            nesting_depth: limits.nesting_depth(),
+            nesting_depth,
             total_nodes: limits.traversal_nodes(),
             types: limits.declarations(),
             fields: limits.record_fields(),

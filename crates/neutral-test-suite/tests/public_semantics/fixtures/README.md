@@ -2,5 +2,6 @@
 
 # Public semantics test assets
 
-These exact copies of the portable public-semantics request fixtures keep the owning
-cross-package tests runnable after an active portable plan is archived.
+These exact copies of reviewed public-semantics and Stage 5 vocabulary/location
+requests keep cross-package tests runnable after an active portable plan is
+archived or removed.
