@@ -10,3 +10,7 @@ rustc = "rustc"
 
 [output]
 results_root = "test-results"
+
+[quality]
+evidence_root = "analysis/quality-gates"
+advisory_max_age_seconds = 86400

@@ -233,7 +233,7 @@ Target transition: `v0.5.0 -> v0.6.0`.
 ### Promote to `v0.6.0`
 
 - [x] Confirm Stage 5 checklist, manifest, and traceability are complete.
-- [ ] Release `v0.6.0`; update the ledger to `released`.
+- [x] Release `v0.6.0`; update the ledger to `released`.
 
 ## Stage 6 — project IR, reader, and views
 

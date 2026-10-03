@@ -5,7 +5,8 @@
 This directory contains durable quality governance and reviewed conclusions.
 It is deliberately separate from generated measurements: coverage reports,
 fuzz corpora, mutation output, benchmark samples, and profiler captures remain
-under ignored `test-results/`.
+under ignored `test-results/` until verified release measurements are retained
+automatically beside the release approval.
 
 ## Structure
 
@@ -45,7 +46,12 @@ ignored generated quality results. `approve` records that a clean `main` HEAD
 with the matching release version passed release evaluation. It creates one
 `record.toml` bound to the commit, evaluation, and gate-configuration digest.
 Evidence files remain editable without recomputing a release-wide evidence
-hash.
+hash. Machine measurement snapshots are different: their exact report bytes and
+code/test/fixture/configuration input fingerprints are verified. Altering either
+invalidates the snapshot; handwritten status labels cannot satisfy these gates.
+See [quality commands](../docs/quality-and-analysis.md#release-measurements) for
+the measurement sequence. Approval retains these reports automatically, including
+for a previously approved version, without changing its historical `record.toml`.
 
 Release preparation accepts later `main` commits descending from the recorded
 candidate under the same quality-gate configuration. It reruns the full release

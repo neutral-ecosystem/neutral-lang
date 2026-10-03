@@ -67,6 +67,7 @@ Stable commands:\n\
   test unit|smoke|integration|system|conformance|property|security|all\n\
   test performance --profile pr|release|soak     run a controlled performance profile\n\
   coverage                                       enforce configured LLVM coverage\n\
+  mutate                                         measure the configured mutation target\n\
   fuzz smoke|campaign                            run bounded or full fuzzing\n\
   quality [--profile pr|release]                 run the documented quality composition\n\
   quality status|render|verify                   inspect or synchronize the quality ledger\n\

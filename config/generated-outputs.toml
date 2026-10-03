@@ -20,26 +20,10 @@ validate = "cargo xtask quality --profile release"
 tracking = "ignored"
 
 [[output]]
-name = "fuzz"
-path = "test-results/analysis/fuzz"
+name = "quality-measurements"
+path = "test-results/analysis/quality-gates"
 owner = "xtask"
-generate = "RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign"
-validate = "cargo xtask quality --profile release"
-tracking = "ignored"
-
-[[output]]
-name = "mutation"
-path = "test-results/analysis/mutation"
-owner = "xtask"
-generate = "cargo xtask mutate"
-validate = "cargo xtask quality --profile release"
-tracking = "ignored"
-
-[[output]]
-name = "benchmark"
-path = "test-results/performance"
-owner = "neutral-bench"
-generate = "cargo xtask test performance --profile release"
+generate = "cargo xtask coverage, mutate, fuzz campaign, or test performance --profile release|soak"
 validate = "cargo xtask quality --profile release"
 tracking = "ignored"
 
@@ -49,14 +33,6 @@ path = "test-results/release/package"
 owner = "xtask"
 generate = "cargo xtask package"
 validate = "cargo xtask validate binaries"
-tracking = "ignored"
-
-[[output]]
-name = "release"
-path = "test-results/release/preparation"
-owner = "xtask"
-generate = "cargo xtask release prepare"
-validate = "cargo xtask quality --profile release"
 tracking = "ignored"
 
 [[output]]

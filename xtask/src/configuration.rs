@@ -172,14 +172,14 @@ pub(super) fn quality_array(section: &str, key: &str) -> Result<Vec<String>, Str
     configuration_array_from(&configuration, section, key)
 }
 
-/// Reads one nonempty quoted-string array from a named configuration section.
+/// Reads a nonempty quoted-string array; an empty section selects root settings.
 pub(super) fn configuration_array_from(
     configuration: &str,
     section: &str,
     key: &str,
 ) -> Result<Vec<String>, String> {
     let heading = format!("[{section}]");
-    let mut selected = false;
+    let mut selected = section.is_empty();
     let mut collecting = false;
     let mut value = String::new();
     for line in configuration.lines().map(str::trim) {

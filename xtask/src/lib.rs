@@ -24,11 +24,13 @@ mod environment;
 mod fixtures;
 mod interface;
 mod portable_stage;
+mod quality_evidence;
 mod release;
 mod release_metadata;
 mod released_conformance;
 mod results;
 mod versioning;
+mod workspace;
 
 use configuration::{
     active_test_profile, automation_value, cargo_command, cargo_target_directory,
@@ -451,6 +453,7 @@ fn fuzz(mode: FuzzMode) -> Result<(), String> {
 
 /// Runs every configured coverage-guided fuzz target for its approved budget.
 fn coverage_guided_fuzz_campaign() -> Result<(), String> {
+    let mut measurement = quality_evidence::Measurement::begin("fuzz")?;
     let targets = quality_array("fuzz", "targets")?;
     let seconds = quality_value("fuzz", "minimum_seconds_per_target")?;
     let root = workspace_root()?;
@@ -473,16 +476,20 @@ fn coverage_guided_fuzz_campaign() -> Result<(), String> {
             let seed = seed_directory
                 .to_str()
                 .ok_or_else(|| "fuzz seed path is not UTF-8".to_owned())?;
-            run_cargo(&["fuzz", "run", &target, corpus, seed, "--", &budget])?;
+            measurement.cargo(
+                &["fuzz", "run", &target, corpus, seed, "--", &budget],
+                &target,
+            )?;
         } else {
-            run_cargo(&["fuzz", "run", &target, "--", &budget])?;
+            measurement.cargo(&["fuzz", "run", &target, "--", &budget], &target)?;
         }
     }
-    Ok(())
+    measurement.finish()
 }
 
 /// Runs workspace coverage and enforces every configured percentage threshold.
 fn coverage() -> Result<(), String> {
+    let mut measurement = quality_evidence::Measurement::begin("coverage")?;
     let lines = quality_value("coverage", "minimum_line_percent")?;
     let functions = quality_value("coverage", "minimum_function_percent")?;
     let regions = quality_value("coverage", "minimum_region_percent")?;
@@ -504,51 +511,69 @@ fn coverage() -> Result<(), String> {
     let json = json
         .to_str()
         .ok_or_else(|| "coverage JSON path is not valid UTF-8".to_owned())?;
-    run_cargo(&["llvm-cov", "--workspace", "--all-targets", "--no-report"])?;
-    run_cargo(&[
-        "llvm-cov",
-        "report",
-        "--html",
-        "--output-dir",
-        html,
-        "--ignore-filename-regex",
-        &exclusions,
-        "--fail-under-lines",
-        &lines,
-        "--fail-under-functions",
-        &functions,
-        "--fail-under-regions",
-        &regions,
-    ])?;
-    run_cargo(&[
-        "llvm-cov",
-        "report",
-        "--json",
-        "--summary-only",
-        "--output-path",
-        json,
-        "--ignore-filename-regex",
-        &exclusions,
-        "--fail-under-lines",
-        &lines,
-        "--fail-under-functions",
-        &functions,
-        "--fail-under-regions",
-        &regions,
-    ])?;
+    measurement.cargo(
+        &["llvm-cov", "--workspace", "--all-targets", "--no-report"],
+        "tests",
+    )?;
+    measurement.cargo(
+        &[
+            "llvm-cov",
+            "report",
+            "--html",
+            "--output-dir",
+            html,
+            "--ignore-filename-regex",
+            &exclusions,
+            "--fail-under-lines",
+            &lines,
+            "--fail-under-functions",
+            &functions,
+            "--fail-under-regions",
+            &regions,
+        ],
+        "html",
+    )?;
+    measurement.cargo(
+        &[
+            "llvm-cov",
+            "report",
+            "--json",
+            "--summary-only",
+            "--output-path",
+            json,
+            "--ignore-filename-regex",
+            &exclusions,
+            "--fail-under-lines",
+            &lines,
+            "--fail-under-functions",
+            &functions,
+            "--fail-under-regions",
+            &regions,
+        ],
+        "json",
+    )?;
     println!(
         "{} coverage HTML: {}",
         constants::INFO,
         html_index.display()
     );
     println!("{} coverage JSON: {json}", constants::INFO);
-    Ok(())
+    measurement.copy_report(Path::new(json), "coverage.json")?;
+    measurement.finish()
 }
 
 /// Runs mutation analysis for the configured critical production target.
 fn mutate() -> Result<(), String> {
     let target = quality_value("mutation", "critical_target")?;
-    run_cargo(&["mutants", "--file", &target])
+    let mut measurement = quality_evidence::Measurement::begin("mutation")?;
+    let output = measurement.directory.to_string_lossy().into_owned();
+    measurement.cargo(
+        &["mutants", "--file", &target, "--output", &output],
+        "mutation",
+    )?;
+    let outcomes = measurement.directory.join("mutants.out/outcomes.json");
+    measurement.copy_report(&outcomes, "outcomes.json")?;
+    measurement.finish()
 }
 
 /// Dispatches one managed quality workflow action.
@@ -580,6 +605,11 @@ fn quality(profile: QualityProfile) -> Result<(), String> {
     ];
     if profile == QualityProfile::Release {
         steps.extend([
+            (
+                "dependency-advisories",
+                Box::new(quality_evidence::advisory_scan)
+                    as Box<dyn FnOnce() -> Result<(), String>>,
+            ),
             (
                 "recorded-quality-gates",
                 Box::new(verify_recorded_quality_gates) as Box<dyn FnOnce() -> Result<(), String>>,
@@ -703,11 +733,16 @@ fn approve_quality_release(release: &str) -> Result<(), String> {
         .as_secs();
     let record = evidence_directory.join("record.toml");
     if record.exists() {
-        return Err(format!(
-            "quality approval already exists and is immutable: {}",
+        verify_release_approval()?;
+        quality_evidence::retain()?;
+        println!(
+            "{} retained current measurement evidence; existing approval remains immutable: {}",
+            constants::INFO,
             record.display()
-        ));
+        );
+        return Ok(());
     }
+    quality_evidence::retain()?;
     let quality_gates_sha256 = evaluated_gates;
     let license_marker = line_spdx_marker(&project_license(&root)?);
     fs::write(
@@ -947,20 +982,7 @@ fn quality_approval_date(value: &str) -> Result<String, String> {
 
 /// Verifies that every configured expensive quality gate has retained pass evidence.
 fn verify_recorded_quality_gates() -> Result<(), String> {
-    for (section, accepted) in [
-        ("coverage", "pass"),
-        ("mutation", "pass"),
-        ("fuzz", "full-campaign-pass"),
-        ("performance", "pass-local-profiled-runner"),
-    ] {
-        let actual = quality_value(section, "status")?;
-        if actual != accepted {
-            return Err(format!(
-                "quality [{section}] status must be {accepted}; found {actual}"
-            ));
-        }
-    }
-    Ok(())
+    quality_evidence::verify_all()
 }
 
 /// Validates either built release binaries or one encoded artifact.
@@ -2132,11 +2154,8 @@ fn check_generated_outputs() -> Result<(), String> {
     for name in [
         "rustdoc",
         "coverage",
-        "fuzz",
-        "mutation",
-        "benchmark",
+        "quality-measurements",
         "package",
-        "release",
         "workflow-runs",
         "portable-snapshot",
         "portable-rejected",
@@ -2390,21 +2409,16 @@ fn verify_coverage_policy() -> Result<(), String> {
     if json.extension().and_then(std::ffi::OsStr::to_str) != Some("json") {
         return Err("coverage JSON output must have a .json extension".to_owned());
     }
-    for (minimum_key, observed_key) in [
-        ("minimum_line_percent", "observed_line_percent"),
-        ("minimum_function_percent", "observed_function_percent"),
-        ("minimum_region_percent", "observed_region_percent"),
+    for minimum_key in [
+        "minimum_line_percent",
+        "minimum_function_percent",
+        "minimum_region_percent",
     ] {
         let minimum = quality_value("coverage", minimum_key)?
             .parse::<f64>()
             .map_err(|error| format!("invalid coverage {minimum_key}: {error}"))?;
-        let observed = quality_value("coverage", observed_key)?
-            .parse::<f64>()
-            .map_err(|error| format!("invalid coverage {observed_key}: {error}"))?;
-        if !(minimum > 0.0 && minimum <= 100.0 && observed >= minimum && observed <= 100.0) {
-            return Err(format!(
-                "coverage {observed_key} does not satisfy {minimum_key}"
-            ));
+        if !(minimum > 0.0 && minimum <= 100.0) {
+            return Err(format!("coverage {minimum_key} must be within (0, 100]"));
         }
     }
     if quality_value("coverage", "exclusion_regex")?.is_empty() {
@@ -2507,13 +2521,19 @@ fn verify_generated_file_hygiene(root: &Path) -> Result<(), String> {
 
 /// Runs one controlled benchmark, stress, or soak profile.
 fn performance(profile: PerformanceProfile) -> Result<(), String> {
+    let measured = !matches!(profile, PerformanceProfile::Pr);
+    let gate = if matches!(profile, PerformanceProfile::Soak) {
+        "performance-soak"
+    } else {
+        "performance-release"
+    };
     let profile = match profile {
         PerformanceProfile::Pr => "pr",
         PerformanceProfile::Release => "release",
-        PerformanceProfile::Soak => "soak",
+        PerformanceProfile::Soak => "extended-soak",
     };
     match profile {
-        "pr" | "release" | "soak" => {
+        "pr" | "release" | "extended-soak" => {
             let harness = quality_value("performance", "harness")?;
             let (package, target) = harness
                 .split_once('/')
@@ -2526,7 +2546,7 @@ fn performance(profile: PerformanceProfile) -> Result<(), String> {
             {
                 return Err(format!("invalid quality performance harness: {harness}"));
             }
-            run_cargo(&[
+            let arguments = [
                 "bench",
                 "--package",
                 package,
@@ -2534,7 +2554,57 @@ fn performance(profile: PerformanceProfile) -> Result<(), String> {
                 target,
                 "--",
                 profile,
-            ])
+            ];
+            if !measured {
+                return run_cargo(&arguments);
+            }
+            let mut measurement = quality_evidence::Measurement::begin(gate)?;
+            measurement.cargo(&arguments, "benchmark")?;
+            measurement.cargo(
+                &[
+                    "bench",
+                    "--package",
+                    package,
+                    "--bench",
+                    target,
+                    "--no-run",
+                    "--message-format=json",
+                ],
+                "build",
+            )?;
+            let build = fs::read_to_string(measurement.directory.join("build.stdout"))
+                .map_err(|error| format!("could not read benchmark build: {error}"))?;
+            let executable = build
+                .lines()
+                .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+                .find_map(|message| {
+                    (message["reason"] == "compiler-artifact"
+                        && message["target"]["name"] == target)
+                        .then(|| message["executable"].as_str().map(str::to_owned))
+                        .flatten()
+                })
+                .ok_or("Cargo did not identify the benchmark executable")?;
+            let heap_report = measurement.directory.join("massif.out");
+            let heap_argument = format!("--massif-out-file={}", heap_report.display());
+            measurement.run(
+                constants::VALGRIND_COMMAND,
+                &["--tool=massif", &heap_argument, &executable, profile],
+                "massif",
+            )?;
+            measurement.copy_report(&heap_report, "massif.out")?;
+            measurement.run(
+                constants::VALGRIND_COMMAND,
+                &[
+                    "--tool=memcheck",
+                    "--leak-check=full",
+                    "--errors-for-leak-kinds=definite,indirect,possible",
+                    "--error-exitcode=1",
+                    &executable,
+                    profile,
+                ],
+                "memcheck",
+            )?;
+            measurement.finish()
         }
         _ => unreachable!("performance profile is closed by command parsing"),
     }
@@ -3239,19 +3309,9 @@ fn ensure_registered_paths_exist(root: &Path, manifest: &str) -> Result<(), Stri
 
 /// Finds the owning Cargo workspace even if the automation crate moves.
 fn workspace_root() -> Result<PathBuf, String> {
-    let manifest_directory = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    for directory in manifest_directory.ancestors() {
-        let manifest = directory.join(constants::WORKSPACE_MANIFEST_FILE);
-        if !manifest.is_file() {
-            continue;
-        }
-        let content = fs::read_to_string(&manifest)
-            .map_err(|error| format!("could not read {}: {error}", manifest.display()))?;
-        if content.lines().any(|line| line.trim() == "[workspace]") {
-            return Ok(directory.to_path_buf());
-        }
-    }
-    Err("automation package is not inside a Cargo workspace".to_owned())
+    let current = env::current_dir()
+        .map_err(|error| format!("could not locate the current directory: {error}"))?;
+    workspace::discover(&current)
 }
 
 /// Returns the exact normal-dependency policy for every workspace package.

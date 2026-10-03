@@ -180,6 +180,19 @@ fn automation_keeps_root_configuration_scoped() {
         super::configuration_value("[other]\nname = \"x\"", "name"),
         None
     );
+    assert_eq!(
+        super::configuration_array_from(
+            "locks = [\"root.lock\"]\n[other]\nlocks = [\"other.lock\"]\n",
+            "",
+            "locks"
+        )
+        .unwrap(),
+        ["root.lock"]
+    );
+    assert!(
+        super::configuration_array_from("[other]\nlocks = [\"other.lock\"]\n", "", "locks")
+            .is_err()
+    );
 }
 
 #[test]

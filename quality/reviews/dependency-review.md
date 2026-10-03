@@ -2,9 +2,10 @@
 
 # Dependency and executable-build review
 
-Review date: 2026-09-06. Owner: maintainer. Result: pass for the current lockfile.
+Review date: 2026-09-06. Owner: maintainer. Result: historical reviewed snapshot;
+current lockfiles require automated advisory scans during release qualification.
 
-Stage 10 Step 3 revalidated locked offline Cargo metadata and the declared
+The release-engineering review revalidated locked offline Cargo metadata and the declared
 registry/checksum source policy on 2026-09-08. Automation now reuses the same
 locked `sha2` version for digest-addressed portable snapshots; this introduces
 no new third-party package or version. The root lock remains the release lock,
@@ -13,7 +14,7 @@ while `fuzz/Cargo.lock` remains an isolated, non-release cargo-fuzz tool lock.
 The production graph contains one third-party direct dependency, `sha2`, owned
 by `neutral-core`; its small transitive cryptographic utility closure is pinned
 by `Cargo.lock`. All other normal edges are workspace contracts and are checked
-by `cargo xtask boundary check`. `neutral-bench` and `neutral-test-suite` use
+by `cargo xtask check`. `neutral-bench` and `neutral-test-suite` use
 only development edges and cannot enter production package closures.
 
 Repository production/workspace inspection found no `build.rs`, proc-macro

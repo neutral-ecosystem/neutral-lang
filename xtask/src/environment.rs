@@ -112,6 +112,17 @@ pub(super) struct ToolSpec {
     pub(super) install_hint: &'static str,
 }
 
+/// Describes the advisory checker shared by release qualification and workstation checks.
+fn advisory_tool_spec(cargo: &str) -> ToolSpec {
+    ToolSpec {
+        key: "cargo_audit",
+        label: "dependency advisory checker",
+        command: cargo.to_owned(),
+        arguments: &["audit", "--version"],
+        install_hint: "run `cargo install cargo-audit --locked`",
+    }
+}
+
 /// Returns the complete release-workstation tool inventory.
 pub(super) fn required_tool_specs() -> Result<Vec<ToolSpec>, String> {
     let cargo = cargo_command()?;
@@ -161,10 +172,11 @@ pub(super) fn required_tool_specs() -> Result<Vec<ToolSpec>, String> {
         ToolSpec {
             key: "cargo_mutants",
             label: "mutation testing tools",
-            command: cargo,
+            command: cargo.clone(),
             arguments: &["mutants", "--version"],
             install_hint: "run `cargo install cargo-mutants`",
         },
+        advisory_tool_spec(&cargo),
         ToolSpec {
             key: "valgrind",
             label: "Valgrind",

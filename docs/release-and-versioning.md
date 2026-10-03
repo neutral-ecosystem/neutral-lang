@@ -85,6 +85,10 @@ version.
 
 ### 2. Evaluate the committed release candidate
 
+First run the [release measurements](quality-and-analysis.md#release-measurements)
+against the final code, tests, fixtures, locks, and configuration. Their reports
+are generated automatically; do not write Markdown files to claim tool success.
+
 ```sh
 cargo xtask quality evaluate --profile release
 ```
@@ -106,6 +110,9 @@ git push origin main
 Approval checks that the supplied version equals `workspace.package.version` and
 that a passing release evaluation exists for the candidate commit. It then writes
 the immutable `record.toml` approval record and regenerates `quality/STATUS.md`.
+It also retains checksum-bound machine reports under the release's `gates/`
+directory. Approving an already recorded version retains fresh measurements
+without rewriting the historical approval record.
 Those tracked evidence changes must be committed so the repository, rather than a
 local machine, retains the decision.
 

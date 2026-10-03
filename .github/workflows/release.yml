@@ -35,6 +35,8 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: test "$(cargo xtask release tag)" = "$RELEASE_TAG"
+      - name: Install current dependency advisory checker
+        run: cargo install cargo-audit --locked
       - run: cargo xtask release prepare
       - name: Resolve package directory
         id: package

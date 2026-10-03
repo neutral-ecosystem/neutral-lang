@@ -272,10 +272,12 @@ pub(super) fn verify_dependency_lock(root: &Path, package_version: &str) -> Resu
     if !is_safe_relative_path(Path::new(&review_path)) {
         return Err("dependency-source review path must stay within the workspace".to_owned());
     }
-    let review = read_workspace_text(root, &review_path)?;
-    if !review.contains("Result: pass for the current lockfile") || !review.contains("cargo audit")
-    {
-        return Err("dependency and advisory review is absent or not passing".to_owned());
+    read_workspace_text(root, &review_path)?;
+    if !matches!(
+        quality_document_status(root, &review_path)?.as_str(),
+        "approved" | "approved-with-limitation"
+    ) {
+        return Err("dependency review is not approved in the quality manifest".to_owned());
     }
     let lock = read_workspace_text(root, constants::CARGO_LOCK_FILE)?;
     for package in lock.split("[[package]]").skip(1) {

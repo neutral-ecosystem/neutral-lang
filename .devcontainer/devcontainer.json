@@ -10,8 +10,5 @@
     "source=neutral-lang-target,target=/workspaces/neutral-lang/target,type=volume",
     "source=neutral-lang-results,target=/workspaces/neutral-lang/test-results,type=volume"
   ],
-  "containerEnv": {
-    "CARGO_NET_OFFLINE": "true"
-  },
-  "postCreateCommand": "cargo xtask bootstrap"
+  "postCreateCommand": "cargo fetch --locked && cargo xtask bootstrap"
 }
