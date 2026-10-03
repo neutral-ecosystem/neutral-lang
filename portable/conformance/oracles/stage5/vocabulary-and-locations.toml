@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-requirements = ["V1-VOC-001", "V1-VOC-002", "V1-VOC-003", "V1-LOC-001"]
+requirements = ["V1-VOC-001", "V1-VOC-002", "V1-VOC-003", "V1-VOC-004", "V1-LOC-001", "V1-LOC-002"]
 
 [[case]]
 id = "V1-VOC-001-MULTIPLE-ALIASES"

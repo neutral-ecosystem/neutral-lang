@@ -57,8 +57,8 @@ here.
 - [x] V1-VOC-002 — One canonical vocabulary identity has one project revision.
 - [x] V1-VOC-003 — Only source-authorable/public vocabulary types can surface.
 - [x] V1-LOC-001 — `url` and `path` are typed inert data values.
-- [ ] V1-LOC-002 — Location values cannot resolve/import/fetch/open/authorize.
-- [ ] V1-VOC-004 — Vocabulary remains closed and data-only.
+- [x] V1-LOC-002 — Location values cannot resolve/import/fetch/open/authorize.
+- [x] V1-VOC-004 — Vocabulary remains closed and data-only.
 
 ## Stage 6 — IR, reader, and views (`v0.6.0 -> v0.7.0`)
 
@@ -85,7 +85,8 @@ here.
 
 - [ ] V1-AUTH-001 — Exact core/authoring profile compatibility discovery.
 - [ ] V1-AUTH-002 — Deterministic core/vocabulary descriptor catalogue.
-- [ ] V1-AUTH-003 — Revision-bound project descriptor overlay.
+- [ ] V1-AUTH-003 — Revision-bound project descriptor overlay; separate
+  vocabulary metadata changes presentation only, never semantics or identity.
 - [ ] V1-AUTH-004 — Closed bounded editable model and one edge representation.
 - [ ] V1-AUTH-005 — Deterministic projection, mappings, formatting, and no-op
   round trip.

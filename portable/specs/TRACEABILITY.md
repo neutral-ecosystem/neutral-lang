@@ -28,10 +28,10 @@ are added to the manifest when their stage activates.
 | V1-MOD-005 — SCC behavior | [MODULE-GRAPH](contracts/MODULE-GRAPH.md) | 01 | valid cycle, disconnected member, and SCC exact/one-over oracles |
 | V1-MOD-006 — invalid imports | [MODULE-GRAPH](contracts/MODULE-GRAPH.md) | 01 | missing/self/duplicate/forbidden-form negative oracles |
 | V1-VIS-001..003, V1-XMOD-001..004 — public semantics | [PUBLIC-SEMANTICS](contracts/PUBLIC-SEMANTICS.md), [SOURCE](contracts/SOURCE.md), [MODULE-GRAPH](contracts/MODULE-GRAPH.md) | 04 | [Stage 4 fixtures/oracles](../conformance/manifest.toml), [public integration and validation](../development/evidence/stage4-validation.md), reader-only probe; import SCC accepted independently of semantic cycles |
-| V1-VOC-001..003, V1-LOC-001 — vocabulary/location values | [VOCABULARY](contracts/VOCABULARY.md), [CAPTURE-REQUEST](contracts/CAPTURE-REQUEST.md) | 05 | [Stage 5 fixtures/oracles](../conformance/manifest.toml), inherited Stage 2 missing/extra/conflicting lock oracles, canonical-identity/public-type/inert-value tests |
+| V1-VOC-001..004, V1-LOC-001..002 — vocabulary/location values | [VOCABULARY](contracts/VOCABULARY.md), [CAPTURE-REQUEST](contracts/CAPTURE-REQUEST.md) | 05 | [Stage 5 fixtures/oracles](../conformance/manifest.toml), inherited Stage 2 missing/extra/conflicting lock oracles, canonical-identity/public-type/inert-value tests, executable/unknown-member rejection, and malformed-location/no-acquisition checks |
 | Project IR and reader | [PROJECT](contracts/PROJECT.md) | 02 | validated IR, public view, independent reader probe |
 | Identity/artifacts | [PROJECT](contracts/PROJECT.md) | 03 | canonical transcript and SHA-256 vectors |
-| Authoring | [AUTHORING](contracts/AUTHORING.md) | 03 | catalogue/overlay/projection/no-op Editor probe |
+| Authoring, including presentation-only vocabulary metadata | [AUTHORING](contracts/AUTHORING.md), [VOCABULARY](contracts/VOCABULARY.md) | 08 | separate metadata input, catalogue/overlay/projection evidence, unchanged semantic IR/identity, and no-op Editor probe |
 | Release assurance | [conformance manifest](../conformance/manifest.toml) | 04/05 | deterministic, hostile-input, limits, Flow-boundary, retained CI evidence |
 
 The `v1.0.0` release is blocked if a v1 contract rule lacks an active fixture

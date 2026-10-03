@@ -2,11 +2,10 @@
 
 # Stage 5 contract, core, and public integration
 
-Status: `v0.5.1` contract/fixture gate and `v0.5.2` core gate implemented;
-two of three `v0.5.3` integration checks implemented. The authoring metadata
-presentation check awaits the separate Stage 8 input/schema. Stage 5.4 schema,
-fixture, inert-location, limit, and vocabulary-fuzz checks pass. Release
-promotion remains separate.
+Status: Stage 5 contract, core, public integration, and validation gates pass.
+Semantic bundles reject authoring metadata; the separate presentation-only
+projection is explicitly assigned to Stage 8. Release promotion remains
+separate.
 
 The [vocabulary contract](../../specs/contracts/VOCABULARY.md) freezes repeated
 aliased requirements, exact lock cover, closed v1 project-bundle schema,
@@ -37,7 +36,9 @@ membership, signature-to-lock closure, and fingerprint. Alias renaming yields
 an identical complete interface. Inline metadata still fails the closed
 semantic bundle schema. There is no separate authoring metadata input or
 presentation projection yet, so a presentation-only effect cannot be tested
-until Stage 8 defines that input. Stage 5.4 executes crate-owned copies of
+until Stage 8 defines that input. This Stage 5 gate verifies semantic
+exclusion, not a presentation effect that cannot yet exist. Stage 5.4 executes
+crate-owned copies of
 all four pinned vocabulary/location requests against their oracle outcomes;
 their SHA-256 values match the reviewed fixture manifest, while `portable/`
 remains removable. The crate-owned oracle changes only fixture paths. Strict
@@ -80,3 +81,9 @@ misversioned, inaccessible, duplicate, and unordered vocabulary facts, plus
 fingerprint tampering. Inline authoring metadata is rejected by the semantic
 bundle schema. The composed CI profile passed with its ignored workflow log
 at `test-results/workflows/ci/pr/run-2-31`.
+
+The existing malformed-location/no-acquisition and closed-bundle rejection
+evidence also closes `V1-LOC-002` and `V1-VOC-004`; both are now named in the
+Stage 5 oracle requirements and traceability matrix. Presentation-only
+authoring metadata remains a required Stage 8 validation under `V1-AUTH-003`;
+it has not been claimed as implemented in Stage 5.

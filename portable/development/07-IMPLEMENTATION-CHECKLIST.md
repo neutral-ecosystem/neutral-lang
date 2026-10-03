@@ -219,9 +219,9 @@ Target transition: `v0.5.0 -> v0.6.0`.
 
 - [x] Expose canonical vocabulary identities/revisions through IR and reader.
 - [x] Verify aliases remain source-local and non-semantic.
-- [ ] Verify vocabulary metadata affects authoring presentation only.
-  The semantic exclusion is verified; the separate authoring input and
-  presentation projection are specified for Stage 8 and do not exist yet.
+- [x] Verify authoring metadata cannot enter semantic vocabulary bundles or
+  alter the canonical vocabulary catalogue. The separate presentation-only
+  effect is a Stage 8 authoring validation, not a Stage 5 semantic input.
 
 ### `v0.5.4` — validation gate
 
@@ -232,7 +232,7 @@ Target transition: `v0.5.0 -> v0.6.0`.
 
 ### Promote to `v0.6.0`
 
-- [ ] Confirm Stage 5 checklist, manifest, and traceability are complete.
+- [x] Confirm Stage 5 checklist, manifest, and traceability are complete.
 - [ ] Release `v0.6.0`; update the ledger to `released`.
 
 ## Stage 6 — project IR, reader, and views
@@ -335,6 +335,8 @@ Target transition: `v0.8.0 -> v0.9.0`.
 
 - [ ] Run catalogue identity, overlay revision, limits, stale/cancelled request,
   formatting, diagnostic, and round-trip suites.
+- [ ] Verify separate vocabulary authoring metadata affects presentation only;
+  semantic contracts, project IR, and identity stay unchanged.
 - [ ] Audit that no adapter or descriptor contains executable callbacks.
 - [ ] Review authoring/core independent version compatibility.
 
