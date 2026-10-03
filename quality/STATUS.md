@@ -9,5 +9,6 @@
 | `v0.3.0` | approved | `1790500916` |
 | `v0.4.0` | approved | `1790591310` |
 | `v0.5.0` | approved | `1790689986` |
+| `v0.6.0` | approved | `1791057134` |
 
 Release records are verified by `cargo xtask quality verify`.
