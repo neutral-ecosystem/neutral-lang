@@ -3,12 +3,12 @@
 
 # Release quality status
 
-| Release | Status | Recorded at |
+| Release | Status | Approved on (UTC, DD-MM-YYYY) |
 | --- | --- | --- |
-| `v0.1.0` | approved | `2026-09-11` |
-| `v0.3.0` | approved | `1790500916` |
-| `v0.4.0` | approved | `1790591310` |
-| `v0.5.0` | approved | `1790689986` |
-| `v0.6.0` | approved | `1791057134` |
+| `v0.1.0` | approved | `11-09-2026` |
+| `v0.3.0` | approved | `27-09-2026` |
+| `v0.4.0` | approved | `28-09-2026` |
+| `v0.5.0` | approved | `29-09-2026` |
+| `v0.6.0` | approved | `03-10-2026` |
 
 Release records are verified by `cargo xtask quality verify`.

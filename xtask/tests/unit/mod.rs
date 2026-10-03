@@ -297,16 +297,36 @@ fn automation_renders_quality_approval_status() {
         release: "v1.0.0".to_owned(),
         commit: "0123456789012345678901234567890123456789".to_owned(),
         status: "approved".to_owned(),
-        approved_at: "123".to_owned(),
+        approved_at: "1791057134".to_owned(),
         evaluation: "quality/evaluations/example/release.toml".to_owned(),
         quality_gates_sha256: "b".repeat(64),
     };
-    let rendered = super::quality_status_markdown(&[approval], "LicenseRef-Neutral-Test");
+    let rendered = super::quality_status_markdown(&[approval], "LicenseRef-Neutral-Test")
+        .expect("approval timestamps are valid");
     assert!(rendered.starts_with("<!-- SPDX-License-Identifier: LicenseRef-Neutral-Test -->"));
     assert!(rendered.contains("`v1.0.0`"));
-    assert!(rendered.contains("| approved | `123` |"));
+    assert!(rendered.contains("| approved | `03-10-2026` |"));
     assert!(super::is_sha256(&"a".repeat(64)));
     assert!(!super::is_sha256(&"A".repeat(64)));
+}
+
+#[test]
+/// Quality approval dates format historical records and UTC leap days consistently.
+fn automation_formats_quality_approval_dates() {
+    assert_eq!(
+        super::quality_approval_date("2026-09-11"),
+        Ok("11-09-2026".to_owned())
+    );
+    assert_eq!(
+        super::quality_approval_date("0"),
+        Ok("01-01-1970".to_owned())
+    );
+    assert_eq!(
+        super::quality_approval_date("951782400"),
+        Ok("29-02-2000".to_owned())
+    );
+    assert!(super::quality_approval_date("not-a-date").is_err());
+    assert!(super::quality_approval_date(&u64::MAX.to_string()).is_err());
 }
 
 #[test]
