@@ -125,7 +125,7 @@ fn encoder_emits_fixed_frame_and_sections() {
         SectionKind::Provenance,
         SectionKind::Derivation,
     ] {
-        assert!(!encoded.section_bytes(kind).is_empty());
+        assert_ne!(encoded.section_bytes(kind).len(), 0);
     }
 }
 
@@ -450,7 +450,7 @@ fn every_positive_fixture_encodes_within_limits() {
     let positive = workspace.join("conformance/releases/v0.1.0/specs/fixtures/positive");
     let mut fixtures = Vec::new();
     collect_neu_files(&positive, &mut fixtures);
-    assert!(!fixtures.is_empty());
+    assert_ne!(fixtures.len(), 0);
     let vocabulary_bundle = fs::read(workspace.join(
         "conformance/releases/v0.1.0/specs/fixtures/vocabulary/bundles/positive/comprehensive.json",
     ))

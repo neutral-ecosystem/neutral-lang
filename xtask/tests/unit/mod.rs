@@ -216,7 +216,7 @@ fn automation_resolves_workspace_members_from_cargo() {
     assert_eq!(manifests.len(), members.len());
     assert!(manifests.iter().all(|path| path.is_file()));
     let slug = super::project_slug(&root).expect("safe project name");
-    assert!(!slug.is_empty());
+    assert_ne!(slug, "");
 }
 
 #[test]
@@ -811,7 +811,7 @@ fn xtask_commands_and_helpers() {
 
     let mut files = Vec::new();
     assert!(super::collect_regular_files(&root.join("config"), &mut files).is_ok());
-    assert!(!files.is_empty());
+    assert_ne!(files.len(), 0);
 
     let bundle = super::ReleasedBundle::load(&root).expect("configured inherited bundle");
     assert!(
@@ -828,7 +828,7 @@ fn xtask_commands_and_helpers() {
     assert!(super::print_environment_manifest().is_ok());
     assert_eq!(super::active_test_profile(), "current");
     let min_map = super::test_minimums("current").expect("test minimums");
-    assert!(!min_map.is_empty());
+    assert_ne!(min_map.len(), 0);
 }
 
 #[test]

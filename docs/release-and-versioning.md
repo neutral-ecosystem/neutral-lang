@@ -121,6 +121,13 @@ consistency, quality evidence, approval, and distribution scope. It assembles
 candidate binaries, checksums, manifests, and supporting evidence beneath
 `test-results/release/`.
 
+The current `main` commit must descend from the candidate recorded in the
+approval, with the same quality-gate configuration. Additional commits are
+allowed: preparation reruns the full release-quality composition on the current
+`HEAD` before packaging it. The original approval record retains its evaluated
+candidate, while generated workflow logs and package manifests identify the
+commit actually qualified and assembled.
+
 Inspect the generated package before publication. `prepare` does not push
 commits, create tags, upload artifacts, or create a GitHub release. The exact
 package directory is
@@ -156,9 +163,12 @@ replaces the human approval step.
 - **`release evidence directory is not prepared`** — run and commit `cargo
   xtask version prepare <version>` before approving quality.
 - **A new implementation, dependency, contract, or release-configuration change
-  after evaluation** — rerun release evaluation. Evaluations are bound to one
-  exact source candidate. The approval-evidence commit produced immediately by
-  a valid `quality approve` command is the documented exception.
+  before approval** — commit the change and rerun release evaluation before
+  approving. Evaluations are bound to one exact source candidate.
+- **Additional commits after approval** — run `cargo xtask release prepare` on
+  clean `main`. Preparation verifies approval ancestry and reruns release
+  quality on the current `HEAD`. A changed quality-gate policy or unrelated Git
+  history requires a new evaluation and approval for a new release version.
 - **`release prepare` rejects the branch or worktree** — check out `main`, push
   the relevant commits, and ensure `git status --short` has no output.
 - **The derived tag already exists** — release tags are immutable. Do not

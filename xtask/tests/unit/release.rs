@@ -2,8 +2,75 @@
 
 //! Unit tests for fail-closed release-selection parsing.
 
-use super::{DistributionChannel, ReleasePlan};
-use std::fs;
+use super::{DistributionChannel, ReleasePlan, verify_approval_lineage};
+use std::{fs, path::Path, process::Command};
+
+#[test]
+/// Approval accepts later fixes in the same history and rejects unrelated or missing commits.
+fn release_approval_follows_the_approved_lineage() {
+    let root = temporary_plan_path("approval-lineage");
+    fs::create_dir(&root).expect("temporary repository must be new");
+    repository_git(&root, &["init", "--initial-branch=main"]);
+    repository_git(
+        &root,
+        &["commit", "--allow-empty", "-m", "evaluated candidate"],
+    );
+    let approved = repository_git(&root, &["rev-parse", "HEAD"]);
+    assert!(verify_approval_lineage(&root, &approved, &approved).is_ok());
+
+    repository_git(
+        &root,
+        &["commit", "--allow-empty", "-m", "approval evidence"],
+    );
+    let evidence = repository_git(&root, &["rev-parse", "HEAD"]);
+    assert!(verify_approval_lineage(&root, &approved, &evidence).is_ok());
+    repository_git(
+        &root,
+        &["commit", "--allow-empty", "-m", "subsequent lint fix"],
+    );
+    let corrected = repository_git(&root, &["rev-parse", "HEAD"]);
+    assert!(verify_approval_lineage(&root, &approved, &corrected).is_ok());
+    assert!(verify_approval_lineage(&root, &corrected, &approved).is_err());
+
+    repository_git(&root, &["checkout", "--orphan", "unrelated"]);
+    repository_git(
+        &root,
+        &["commit", "--allow-empty", "-m", "unrelated candidate"],
+    );
+    let unrelated = repository_git(&root, &["rev-parse", "HEAD"]);
+    let error = verify_approval_lineage(&root, &approved, &unrelated)
+        .expect_err("an unrelated candidate must not reuse approval");
+    assert!(error.contains("does not descend from approved candidate"));
+    assert!(verify_approval_lineage(&root, "missing-commit", &corrected).is_err());
+    assert!(verify_approval_lineage(&root, &approved, "missing-commit").is_err());
+    fs::remove_dir_all(root).expect("owned temporary repository must be removable");
+}
+
+/// Executes Git with repository-local test identity and signing disabled.
+fn repository_git(root: &Path, arguments: &[&str]) -> String {
+    let output = Command::new(super::constants::GIT_COMMAND)
+        .current_dir(root)
+        .args([
+            "-c",
+            "user.name=Neutral release test",
+            "-c",
+            "user.email=release-test@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+        ])
+        .args(arguments)
+        .output()
+        .expect("Git must execute in the temporary repository");
+    assert!(
+        output.status.success(),
+        "Git {arguments:?} failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8(output.stdout)
+        .expect("Git test output must be UTF-8")
+        .trim()
+        .to_owned()
+}
 
 #[test]
 /// A complete explicit distribution selection is accepted.

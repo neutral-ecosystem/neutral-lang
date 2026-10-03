@@ -71,7 +71,7 @@ fn editor_request(sources: &[EditorSource<'_>]) -> Result<CapturedProject, Proje
     let mut request = builder(u64::try_from(sources.len()).expect("test source count must fit"))
         .with_project_key("editor-session");
     for source in sources {
-        assert!(!source.location.is_empty());
+        assert_ne!(source.location, "");
         request.add_source(CapturedSourceInput::new(
             source.source_id,
             source.module_id,

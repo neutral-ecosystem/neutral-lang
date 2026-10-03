@@ -311,8 +311,8 @@ fn public_api_fingerprint_excludes_private_implementation() {
     let first = ValidatedProjectInterface::from_interface(first).expect("first public view");
     let second = ValidatedProjectInterface::from_interface(second).expect("second public view");
     assert_eq!(first.fingerprint(), second.fingerprint());
-    assert!(first.public_edges().is_empty());
-    assert!(second.public_edges().is_empty());
+    assert_eq!(first.public_edges().len(), 0);
+    assert_eq!(second.public_edges().len(), 0);
     assert_eq!(first.exports().len(), 1);
 }
 

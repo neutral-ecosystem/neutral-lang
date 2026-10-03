@@ -79,18 +79,18 @@ fn probe_summary_exposes_every_projection() {
     let document = reader_fixture();
     let summary = summarize(&document);
     assert_eq!(summary.module(), "sample");
-    assert!(!summary.metadata().is_empty());
+    assert_ne!(summary.metadata().len(), 0);
     assert_eq!(summary.vocabulary(), None);
-    assert!(summary.vocabulary_types().is_empty());
+    assert_eq!(summary.vocabulary_types().len(), 0);
     assert_eq!(summary.record_types(), Vec::<String>::new());
     assert_eq!(summary.declarations().len(), 1);
     assert_eq!(summary.source_mappings().len(), 1);
     assert_eq!(summary.value_provenance().len(), 1);
-    assert!(summary.field_provenance().is_empty());
-    assert!(summary.reuse_provenance().is_empty());
-    assert!(summary.reference_provenance().is_empty());
-    assert!(summary.diagnostics().is_empty());
-    assert!(!render_summary(&summary).is_empty());
+    assert_eq!(summary.field_provenance().len(), 0);
+    assert_eq!(summary.reuse_provenance().len(), 0);
+    assert_eq!(summary.reference_provenance().len(), 0);
+    assert_eq!(summary.diagnostics().len(), 0);
+    assert_ne!(render_summary(&summary).len(), 0);
 
     let diagnostic = source_linked_diagnostic(&document, ElementId::new(1))
         .expect("known element should map to source");
@@ -173,7 +173,7 @@ fn inspection_schema_has_unique_complete_fields() {
         .iter()
         .map(|field| field.json_key)
         .collect::<Vec<_>>();
-    assert!(!names.is_empty());
+    assert_ne!(names.len(), 0);
     assert_eq!(
         names
             .iter()

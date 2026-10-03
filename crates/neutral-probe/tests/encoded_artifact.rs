@@ -128,7 +128,7 @@ fn system_standalone_probe_inspects_encoded_artifact_without_compiler() {
             .expect("writing into an owned string must succeed");
     }
     assert_eq!(stdout, expected);
-    assert!(stderr.is_empty());
+    assert_eq!(stderr, "");
 }
 
 #[test]
@@ -149,7 +149,7 @@ fn system_standalone_probe_renders_indented_json() {
     let stdout = String::from_utf8(output.stdout).expect("probe stdout must be UTF-8");
     assert_eq!(stdout, render_summary_json(&summarize(&document)));
     assert!(stdout.contains("\n  \"declarations\": [\n"));
-    assert!(output.stderr.is_empty());
+    assert_eq!(output.stderr, []);
 }
 
 #[test]

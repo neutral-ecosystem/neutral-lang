@@ -47,5 +47,10 @@ with the matching release version passed release evaluation. It creates one
 Evidence files remain editable without recomputing a release-wide evidence
 hash.
 
+Release preparation accepts later `main` commits descending from the recorded
+candidate under the same quality-gate configuration. It reruns the full release
+quality profile on the current commit before packaging; generated workflow logs
+and package manifests retain that commit's identity.
+
 `render` derives `STATUS.md` from release records. Do not edit `STATUS.md`
 manually; `verify` rejects generated-status drift.

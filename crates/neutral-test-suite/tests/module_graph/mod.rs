@@ -153,7 +153,7 @@ fn assert_graph(case: &Table, graph: &ModuleGraph, id: &str) {
 /// Compares a rejected graph against all applicable frozen diagnostic fields.
 fn assert_failure(case: &Table, failure: &ModuleGraphFailure, id: &str) {
     let diagnostics = failure.diagnostics();
-    assert!(!diagnostics.is_empty(), "{id} must report a failure");
+    assert_ne!(diagnostics.len(), 0, "{id} must report a failure");
     if let Some(codes) = case.get("ordered_diagnostic_codes") {
         assert_eq!(
             diagnostics

@@ -341,7 +341,7 @@ fn conformance_host_mapping_fixtures_use_the_shared_builder() {
             .tables
             .get(name)
             .expect("equivalent mapping table must exist");
-        assert!(!required_string(mapping, "host_location").is_empty());
+        assert_ne!(required_string(mapping, "host_location"), "");
         builder
             .add_source(CapturedSourceInput::new(
                 required_string(mapping, "source_id"),

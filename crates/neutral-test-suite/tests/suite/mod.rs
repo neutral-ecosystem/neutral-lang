@@ -1519,7 +1519,7 @@ fn system_minimal_reader_to_probe() {
     let summary = summarize(&document);
     assert_eq!(summary.module(), "minimal");
     assert_eq!(summary.declarations(), ["answer: num = 42/1"]);
-    assert!(summary.diagnostics().is_empty());
+    assert_eq!(summary.diagnostics().len(), 0);
 
     let element = document.declarations()[0].element_id();
     let diagnostic = source_linked_diagnostic(&document, element)
@@ -2485,7 +2485,7 @@ fn integration_encoder_emits_complete_fixed_frame() {
         SectionKind::Provenance,
         SectionKind::Derivation,
     ] {
-        assert!(!encoded.section_bytes(kind).is_empty());
+        assert_ne!(encoded.section_bytes(kind).len(), 0);
     }
 }
 
@@ -2556,7 +2556,7 @@ fn conformance_every_positive_fixture_encodes() {
         &workspace.join("conformance/releases/v0.1.0/specs/fixtures/positive"),
         &mut fixtures,
     );
-    assert!(!fixtures.is_empty());
+    assert_ne!(fixtures.len(), 0);
     for fixture in fixtures {
         let source = fs::read(&fixture).expect("positive source should be readable");
         let document = if fixture
@@ -2623,7 +2623,7 @@ fn property_formatter_is_idempotent_across_positive_corpus() {
         &workspace.join("conformance/releases/v0.1.0/specs/fixtures/positive"),
         &mut fixtures,
     );
-    assert!(!fixtures.is_empty());
+    assert_ne!(fixtures.len(), 0);
     for fixture in fixtures {
         let source = fs::read(&fixture).expect("positive source should be readable");
         let uses_vocabulary = fixture
@@ -2761,7 +2761,7 @@ fn fuzz_smoke_single_byte_mutations_terminate() {
         let mut mutation = encoded.as_bytes().to_vec();
         mutation[index] ^= 1;
         if let Ok(decoded) = decode(&mutation, DecodeLimits::hard(), &CancellationToken::new()) {
-            assert!(!decoded.module_name().is_empty());
+            assert_ne!(decoded.module_name(), "");
         }
     }
 }
@@ -2806,7 +2806,7 @@ fn fuzz_decoder_structured_mutation_campaign_terminates() {
             mutation[index] ^= fuzz_nonzero_byte(&mut state);
         }
         if let Ok(decoded) = decode(&mutation, DecodeLimits::hard(), &CancellationToken::new()) {
-            assert!(!decoded.module_name().is_empty());
+            assert_ne!(decoded.module_name(), "");
         }
     }
 }
@@ -2822,7 +2822,7 @@ fn fuzz_decoder_arbitrary_byte_campaign_terminates() {
             *byte = fuzz_word(&mut state).to_le_bytes()[0];
         }
         if let Ok(decoded) = decode(&bytes, DecodeLimits::hard(), &CancellationToken::new()) {
-            assert!(!decoded.module_name().is_empty());
+            assert_ne!(decoded.module_name(), "");
         }
     }
 }

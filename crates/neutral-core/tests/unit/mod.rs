@@ -40,11 +40,7 @@ fn profile_catalogue_is_explicit_complete_and_deterministic() {
         language_profile(LanguageProfile::V1_0).availability(),
         ProfileAvailability::Unavailable
     );
-    assert!(
-        language_profile(LanguageProfile::V1_0)
-            .capabilities()
-            .is_empty()
-    );
+    assert_eq!(language_profile(LanguageProfile::V1_0).capabilities(), &[]);
     assert!(PROFILE_UNAVAILABLE_DIAGNOSTIC.starts_with(PROFILE_DIAGNOSTIC_FAMILY));
 }
 

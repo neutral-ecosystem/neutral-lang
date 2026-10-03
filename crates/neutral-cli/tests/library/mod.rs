@@ -48,7 +48,7 @@ fn cli_library_executes_complete_host_paths() {
     ])
     .expect_err("existing output should fail without overwrite");
     assert_eq!(failure.class().code(), constants::EXIT_OUTPUT);
-    assert!(!failure.messages().is_empty());
+    assert_ne!(failure.messages().len(), 0);
     execute([
         constants::FORMAT.to_owned(),
         constants::OVERWRITE.to_owned(),

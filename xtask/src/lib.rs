@@ -1091,7 +1091,7 @@ fn require_main_head_checkout() -> Result<String, String> {
     Ok(head)
 }
 
-/// Requires an approved release candidate followed only by its evidence commit.
+/// Requires current main to descend from the approved candidate under the same quality policy.
 fn verify_release_approval() -> Result<(), String> {
     let plan = release_plan()?;
     let approvals = read_quality_approvals()?;
@@ -1114,29 +1114,8 @@ fn verify_release_approval() -> Result<(), String> {
     if approval.quality_gates_sha256 != sha256_file(&root.join(constants::QUALITY_GATES_FILE))? {
         return Err("quality gates changed after release approval".to_owned());
     }
-    let parent = command_output("git", &["rev-parse", "HEAD^"])?;
-    if parent != approval.commit {
-        return Err(format!(
-            "release {} must use the approval-evidence commit immediately after its evaluated candidate {}",
-            plan.release_tag, approval.commit
-        ));
-    }
-    let changed = command_output("git", &["diff", "--name-only", &approval.commit, "HEAD"])?;
-    let expected = BTreeSet::from([
-        format!(
-            "{}/{}/record.toml",
-            constants::QUALITY_EVIDENCE_DIRECTORY,
-            plan.release_tag
-        ),
-        constants::QUALITY_STATUS_FILE.to_owned(),
-    ]);
-    let actual = changed.lines().map(str::to_owned).collect::<BTreeSet<_>>();
-    if actual != expected {
-        return Err(format!(
-            "approval commit must change only {expected:?}; found {actual:?}"
-        ));
-    }
-    Ok(())
+    let head = require_main_head_checkout()?;
+    release::verify_approval_lineage(&root, &approval.commit, &head)
 }
 
 /// One immutable generated distribution file.

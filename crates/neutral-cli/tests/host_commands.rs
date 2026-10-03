@@ -102,7 +102,7 @@ fn system_cli_usage_and_command_help_are_stable() {
         let help = run(&[command, constants::HELP]);
         assert_eq!(help.status.code(), Some(0), "{}", stderr(&help));
         assert!(stderr(&help).contains(usage));
-        assert!(help.stdout.is_empty());
+        assert_eq!(help.stdout, []);
     }
 }
 

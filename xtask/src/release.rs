@@ -3,7 +3,38 @@
 //! Typed, fail-closed parsing for the explicit release-authority selection.
 
 use super::configuration::{configuration_value, quality_value_from};
-use std::{collections::BTreeSet, fs, path::Path};
+use super::constants;
+use std::{collections::BTreeSet, fs, path::Path, process::Command};
+
+/// Requires the release candidate to contain its approved baseline in Git history.
+///
+/// Later commits are qualified by the full release-quality workflow before packaging.
+pub(crate) fn verify_approval_lineage(
+    root: &Path,
+    approved_commit: &str,
+    candidate_commit: &str,
+) -> Result<(), String> {
+    let output = Command::new(constants::GIT_COMMAND)
+        .current_dir(root)
+        .args([
+            "merge-base",
+            "--is-ancestor",
+            approved_commit,
+            candidate_commit,
+        ])
+        .output()
+        .map_err(|error| format!("could not verify release approval ancestry: {error}"))?;
+    match output.status.code() {
+        Some(0) => Ok(()),
+        Some(1) => Err(format!(
+            "release main HEAD {candidate_commit} does not descend from approved candidate {approved_commit}; evaluate and approve the intended release lineage"
+        )),
+        _ => Err(format!(
+            "could not verify release approval ancestry: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        )),
+    }
+}
 
 /// One explicitly selected release distribution channel.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]

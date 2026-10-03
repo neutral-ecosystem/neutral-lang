@@ -88,7 +88,7 @@ fn cancellation_at_every_compiler_checkpoint_fails_closed() {
             panic!("checkpoint cancellation must not publish authoritative IR");
         };
         assert_eq!(failure.detail(), CompilationFailureDetail::Cancelled);
-        assert!(failure.diagnostics().is_empty());
+        assert_eq!(failure.diagnostics().len(), 0);
     }
 }
 
