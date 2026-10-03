@@ -1,1 +1,15 @@
-{"format":"neutral-vocabulary-bundle","encoding_version":"1.0","schema_version":"1.0","identity":"Fuzz","version":"0.1.0","required_features":[],"types":[{"name":"Visible","public":true,"fields":[]}]}
+{
+  "format": "neutral-vocabulary-bundle",
+  "encoding_version": "1.0",
+  "schema_version": "1.0",
+  "identity": "Fuzz",
+  "version": "0.1.0",
+  "required_features": [],
+  "types": [
+    {
+      "name": "Visible",
+      "public": true,
+      "fields": []
+    }
+  ]
+}

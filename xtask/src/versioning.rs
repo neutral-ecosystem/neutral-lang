@@ -172,7 +172,7 @@ pub(super) fn prepare_version(requested: &str) -> Result<(), String> {
     fs::write(
         &output,
         format!(
-            "{{\"schema_version\":1,\"current\":\"{}\",\"requested\":\"{}\",\"derived_updates\":[],\"contract_freeze_sha256\":\"{}\",\"frozen_contracts_changed\":false,\"actions\":[\"edit-workspace-package-version\",\"run-version-check\",\"review\"],\"status\":\"review-required\"}}\n",
+            "{{\n  \"schema_version\": 1,\n  \"current\": \"{}\",\n  \"requested\": \"{}\",\n  \"derived_updates\": [],\n  \"contract_freeze_sha256\": \"{}\",\n  \"frozen_contracts_changed\": false,\n  \"actions\": [\n    \"edit-workspace-package-version\",\n    \"run-version-check\",\n    \"review\"\n  ],\n  \"status\": \"review-required\"\n}}\n",
             json_string(&current),
             json_string(requested),
             freeze_digest

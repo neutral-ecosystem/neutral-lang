@@ -166,6 +166,10 @@ pub const NEUTRAL_VOCABULARY: &str = "neutral-vocabulary";
 pub const XTASK: &str = "xtask";
 /// Relative root for generated release preparation and packages.
 pub const RELEASE_RESULT_DIRECTORY: &str = "release";
+/// Binary package subtree beneath the generated release root.
+pub const RELEASE_PACKAGE_DIRECTORY: &str = "package";
+/// Generated package summary filename.
+pub const RELEASE_PACKAGE_SUMMARY_FILE: &str = "package-summary.json";
 /// Generated aggregate workflow-log directory relative to the result root.
 pub const WORKFLOW_RESULT_DIRECTORY: &str = "workflows";
 /// Append-only event-log filename within one workflow run.

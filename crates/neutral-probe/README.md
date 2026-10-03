@@ -19,7 +19,8 @@ diagnostic mapped through the public reader source map. Its traversal remains
 generic and contains no fixture-specific interpretation. The standalone binary
 accepts one encoded artifact path, validates it under the hard decoder limits,
 and emits the same shared-renderer `[info]` observations as the in-process
-library, or one bounded `[error]`.
+library, or one bounded `[error]`. With `--json`, stdout is a JSON document
+without log prefixes so it can be parsed by other tools.
 The library also summarizes validated public-interface snapshots via
 the reader alone; this in-process path has no compiler dependency and does not
 claim that the standalone encoded-project format is active yet.
@@ -27,6 +28,18 @@ claim that the standalone encoded-project format is active yet.
 ```console
 cargo run --package neutral-probe -- path/to/artifact.nir
 ```
+
+For a formatted JSON inspection view of the decoded artifact, run:
+
+```console
+cargo run --package neutral-probe -- --json path/to/artifact.nir
+```
+
+The JSON view is a readable, versioned projection of the probe summary. Its
+field names, value shapes, and text labels are shared through
+`neutral_probe::inspection_schema`, so consumers and both renderers use one
+definition. The `.nir` file remains the canonical binary NIR-CBOR artifact;
+JSON whitespace does not change its encoding or identity.
 
 Verify the reader-only library and binary boundary with:
 

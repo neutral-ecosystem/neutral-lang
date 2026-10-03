@@ -97,9 +97,13 @@ Check profile availability first with `cargo run --package neutral-cli -- profil
 ```sh
 cargo run --package neutral-cli -- compile --output target/minimal.nir conformance/releases/v0.1.0/specs/fixtures/positive/syntax/minimal-core.neu
 cargo run --package neutral-probe -- target/minimal.nir
+cargo run --package neutral-probe -- --json target/minimal.nir
 ```
 
 </details>
+
+The optional `--json` probe output is an indented inspection view; the `.nir`
+artifact itself remains binary NIR-CBOR.
 
 The bootstrap adapters verify prerequisites and record ignored environment
 evidence. They do not install software, elevate privileges, modify shell

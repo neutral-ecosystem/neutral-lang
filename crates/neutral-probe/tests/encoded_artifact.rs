@@ -10,7 +10,10 @@ use neutral_ir::{
     LogicalModuleIdentity, LogicalValue, ModuleSymbolIdentity, Normalization, ProvenanceRecord,
     ResolvedType, ResourceFacts, SourceMap, SourceMapEntry, ValueOrigin,
 };
-use neutral_probe::{inspect_encoded, output, render_summary, source_linked_diagnostic, summarize};
+use neutral_probe::{
+    inspect_encoded, output, render_summary, render_summary_json, source_linked_diagnostic,
+    summarize,
+};
 use neutral_reader::ValidatedDocument;
 use std::{fmt::Write as _, fs, path::PathBuf, process::Command, sync::Arc};
 
@@ -93,14 +96,17 @@ fn encoded_fixture(document: &ValidatedDocument) -> Vec<u8> {
 }
 
 /// Returns a process-unique path for the encoded fixture.
-fn temporary_artifact_path() -> PathBuf {
-    std::env::temp_dir().join(format!("neutral-probe-system-{}.nir", std::process::id()))
+fn temporary_artifact_path(label: &str) -> PathBuf {
+    std::env::temp_dir().join(format!(
+        "neutral-probe-system-{}-{label}.nir",
+        std::process::id()
+    ))
 }
 
 #[test]
 /// Proves the standalone executable inspects an artifact without compiler linkage.
 fn system_standalone_probe_inspects_encoded_artifact_without_compiler() {
-    let path = temporary_artifact_path();
+    let path = temporary_artifact_path("text");
     let document = reader_fixture();
     let encoded = encoded_fixture(&document);
     fs::write(&path, &encoded).expect("fixture artifact must be writable");
@@ -123,6 +129,27 @@ fn system_standalone_probe_inspects_encoded_artifact_without_compiler() {
     }
     assert_eq!(stdout, expected);
     assert!(stderr.is_empty());
+}
+
+#[test]
+/// The standalone JSON view decodes the same artifact without altering its bytes.
+fn system_standalone_probe_renders_indented_json() {
+    let path = temporary_artifact_path("json");
+    let document = reader_fixture();
+    let encoded = encoded_fixture(&document);
+    fs::write(&path, &encoded).expect("fixture artifact must be writable");
+    let output = Command::new(env!("CARGO_BIN_EXE_neutral-probe"))
+        .arg("--json")
+        .arg(&path)
+        .output()
+        .expect("standalone probe must execute");
+    fs::remove_file(&path).expect("fixture artifact must be removable");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).expect("probe stdout must be UTF-8");
+    assert_eq!(stdout, render_summary_json(&summarize(&document)));
+    assert!(stdout.contains("\n  \"declarations\": [\n"));
+    assert!(output.stderr.is_empty());
 }
 
 #[test]

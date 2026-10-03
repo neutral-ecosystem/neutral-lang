@@ -25,6 +25,7 @@ mod fixtures;
 mod interface;
 mod portable_stage;
 mod release;
+mod release_metadata;
 mod released_conformance;
 mod results;
 mod versioning;
@@ -1127,18 +1128,14 @@ fn package() -> Result<(), String> {
     let host = rust_host()?;
     let source_directory = cargo_target_directory()?.join("release");
     validate_release_binaries(&source_directory, &plan.binaries)?;
-    let output_directory = result_root()?
-        .join(constants::RELEASE_RESULT_DIRECTORY)
-        .join("package")
-        .join(&plan.release_tag)
-        .join(&candidate_commit)
-        .join(&host);
-    let summary = format!(
-        "{{\"release_tag\":\"{}\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"host\":\"{}\",\"channel\":\"github-binaries\",\"status\":\"assembled\"}}\n",
-        json_string(&plan.release_tag),
-        json_string(&candidate_commit),
-        json_string(&host)
+    let output_directory = release_metadata::package_output_directory(
+        &result_root()?,
+        &plan.release_tag,
+        &candidate_commit,
+        &host,
     );
+    let summary =
+        release_metadata::package_summary_json(&plan.release_tag, &candidate_commit, &host)?;
     let assets = release_distribution_assets(
         &root,
         &source_directory,
@@ -1205,7 +1202,7 @@ fn release_distribution_assets(
         },
         DistributionAsset {
             filename: constants::RELEASE_PROVENANCE_FILE.to_owned(),
-            bytes: format!("{{\"schema_version\":1,\"builder\":\"cargo xtask package\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"release_tag\":\"{}\",\"target\":\"{}\",\"rustc\":\"{}\",\"cargo_lock_sha256\":\"{}\",\"reproducible_command\":\"cargo xtask package\"}}\n", json_string(candidate_commit), json_string(&plan.release_tag), json_string(host), json_string(&command_output(&rustc_command()?, &["--version"])?), sha256_hex(&lock_bytes)).into_bytes(),
+            bytes: format!("{{\n  \"schema_version\": 1,\n  \"builder\": \"cargo xtask package\",\n  \"candidate_ref\": \"main\",\n  \"candidate_commit\": \"{}\",\n  \"release_tag\": \"{}\",\n  \"target\": \"{}\",\n  \"rustc\": \"{}\",\n  \"cargo_lock_sha256\": \"{}\",\n  \"reproducible_command\": \"cargo xtask package\"\n}}\n", json_string(candidate_commit), json_string(&plan.release_tag), json_string(host), json_string(&command_output(&rustc_command()?, &["--version"])?), sha256_hex(&lock_bytes)).into_bytes(),
         },
     ];
     let mut entries = Vec::new();
@@ -1232,6 +1229,7 @@ fn release_distribution_assets(
             &entry_context,
         );
     }
+    let summary_name = constants::RELEASE_PACKAGE_SUMMARY_FILE;
     for (filename, bytes) in [
         (
             constants::LICENSE_FILE,
@@ -1243,7 +1241,7 @@ fn release_distribution_assets(
             fs::read(root.join(constants::ROOT_README_FILE))
                 .map_err(|error| format!("could not hash README: {error}"))?,
         ),
-        ("package-summary.json", package_summary.as_bytes().to_vec()),
+        (summary_name, package_summary.as_bytes().to_vec()),
     ] {
         append_release_entry(
             &mut entries,
@@ -1328,11 +1326,16 @@ fn release_manifest_bytes(
         .channels
         .contains(&release::DistributionChannel::CratesIo);
     let deferred = if crates_io_selected {
-        "[\"additional host targets\"]"
+        "[\n    \"additional host targets\"\n  ]"
     } else {
-        "[\"additional host targets\",\"crates.io publication\"]"
+        "[\n    \"additional host targets\",\n    \"crates.io publication\"\n  ]"
     };
-    format!("{{\"schema_version\":1,\"release_tag\":\"{}\",\"candidate_ref\":\"main\",\"candidate_commit\":\"{}\",\"license\":\"{}\",\"supported_targets\":[\"{}\"],\"crates_io_selected\":{crates_io_selected},\"known_limitations\":[\"single-host binary package\",\"no runtime or application semantics\"],\"deferred\":{deferred},\"artifacts\":[{}]}}\n", json_string(&plan.release_tag), json_string(context.candidate_commit), json_string(context.license), json_string(host), entries.join(",")).into_bytes()
+    let artifacts = if entries.is_empty() {
+        String::new()
+    } else {
+        format!("\n{}\n  ", entries.join(",\n"))
+    };
+    format!("{{\n  \"schema_version\": 1,\n  \"release_tag\": \"{}\",\n  \"candidate_ref\": \"main\",\n  \"candidate_commit\": \"{}\",\n  \"license\": \"{}\",\n  \"supported_targets\": [\n    \"{}\"\n  ],\n  \"crates_io_selected\": {crates_io_selected},\n  \"known_limitations\": [\n    \"single-host binary package\",\n    \"no runtime or application semantics\"\n  ],\n  \"deferred\": {deferred},\n  \"artifacts\": [{artifacts}]\n}}\n", json_string(&plan.release_tag), json_string(context.candidate_commit), json_string(context.license), json_string(host)).into_bytes()
 }
 
 /// Produces deterministic tracked source bytes for one exact candidate commit.
@@ -1373,7 +1376,7 @@ fn append_release_entry(
 ) {
     let digest = sha256_hex(bytes);
     checksums.push(format!("{digest}  {filename}\n"));
-    entries.push(format!("{{\"filename\":\"{}\",\"sha256\":\"{}\",\"license\":\"{}\",\"producer_version\":\"{}\",\"source_commit\":\"{}\",\"channel\":\"{}\"}}", json_string(filename), digest, json_string(context.license), json_string(context.version), json_string(context.candidate_commit), json_string(channel)));
+    entries.push(format!("    {{\n      \"filename\": \"{}\",\n      \"sha256\": \"{}\",\n      \"license\": \"{}\",\n      \"producer_version\": \"{}\",\n      \"source_commit\": \"{}\",\n      \"channel\": \"{}\"\n    }}", json_string(filename), digest, json_string(context.license), json_string(context.version), json_string(context.candidate_commit), json_string(channel)));
 }
 
 /// Atomically stages selected binaries, license material, and package metadata.
@@ -1428,8 +1431,11 @@ fn stage_binary_package(
         fs::write(partial_directory.join(&asset.filename), &asset.bytes)
             .map_err(|error| format!("could not stage {}: {error}", asset.filename))?;
     }
-    fs::write(partial_directory.join("package-summary.json"), summary)
-        .map_err(|error| format!("could not write package summary: {error}"))?;
+    fs::write(
+        partial_directory.join(constants::RELEASE_PACKAGE_SUMMARY_FILE),
+        summary,
+    )
+    .map_err(|error| format!("could not write package summary: {error}"))?;
     fs::rename(&partial_directory, output_directory).map_err(|error| {
         format!(
             "could not publish staged package {} as {}: {error}",
@@ -1483,7 +1489,7 @@ fn verify_existing_binary_package(
         }
     }
     expected.insert(
-        "package-summary.json".to_owned(),
+        constants::RELEASE_PACKAGE_SUMMARY_FILE.to_owned(),
         summary.as_bytes().to_vec(),
     );
 
@@ -2047,7 +2053,7 @@ fn snapshot_portable() -> Result<(), String> {
         .map_err(|error| format!("could not write portable snapshot manifest: {error}"))?;
     let lifecycle = read_workspace_text(&root, constants::PORTABLE_LIFECYCLE_FILE)?;
     let report = format!(
-        "{{\"schema_version\":1,\"tree_sha256\":\"{tree_digest}\",\"file_count\":{},\"next_series\":\"{}\",\"status\":\"review-required\"}}\n",
+        "{{\n  \"schema_version\": 1,\n  \"tree_sha256\": \"{tree_digest}\",\n  \"file_count\": {},\n  \"next_series\": \"{}\",\n  \"status\": \"review-required\"\n}}\n",
         files.len(),
         json_string(&configuration_value(&lifecycle, "next_series").unwrap_or_default())
     );
@@ -2798,7 +2804,7 @@ fn write_workflow_summary(
     fs::write(
         path,
         format!(
-            "{{\"schema_version\":1,\"workflow\":\"{}\",\"profile\":\"{}\",\"status\":\"{}\",\"completed_steps\":{completed_steps},\"total_steps\":{total_steps},\"started_at_unix_ms\":{started_at_unix_ms},\"updated_at_unix_ms\":{},\"source_commit\":\"{}\",\"worktree_clean\":{worktree_clean},\"package_version\":\"{}\",\"license\":\"{}\",\"rustc\":\"{}\",\"error\":{}}}\n",
+            "{{\n  \"schema_version\": 1,\n  \"workflow\": \"{}\",\n  \"profile\": \"{}\",\n  \"status\": \"{}\",\n  \"completed_steps\": {completed_steps},\n  \"total_steps\": {total_steps},\n  \"started_at_unix_ms\": {started_at_unix_ms},\n  \"updated_at_unix_ms\": {},\n  \"source_commit\": \"{}\",\n  \"worktree_clean\": {worktree_clean},\n  \"package_version\": \"{}\",\n  \"license\": \"{}\",\n  \"rustc\": \"{}\",\n  \"error\": {}\n}}\n",
             json_string(workflow),
             json_string(profile),
             json_string(status),
@@ -3278,7 +3284,7 @@ fn direct_dependency_policy() -> BTreeMap<&'static str, BTreeSet<&'static str>> 
             constants::NEUTRAL_VOCABULARY,
             set([constants::NEUTRAL_CORE, constants::NEUTRAL_IR]),
         ),
-        (constants::XTASK, set(["sha2"])),
+        (constants::XTASK, set(["sha2", "serde", "serde_json"])),
     ])
 }
 

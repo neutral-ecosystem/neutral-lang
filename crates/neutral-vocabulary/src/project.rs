@@ -2,7 +2,9 @@
 
 //! Strict v1 project vocabulary validation, independent of v0 bundle decoding.
 
-use crate::{JsonValue, VocabularyError, VocabularyLimits, VocabularyLock, json, schema};
+use crate::{
+    JsonValue, VocabularyError, VocabularyLimits, VocabularyLock, json, schema, validation,
+};
 use neutral_core::VocabularyContentDigest;
 use neutral_ir::language;
 use std::collections::{BTreeMap, BTreeSet};
@@ -154,8 +156,8 @@ pub fn validate_project_bundle(
     }
     let text = std::str::from_utf8(bytes).map_err(|_| VocabularyError::InvalidUtf8)?;
     let parsed = json::parse(text, limits)?;
-    let root = object(&parsed)?;
-    exact_members(
+    let root = validation::object(&parsed)?;
+    validation::exact_members(
         root,
         &[
             "format",
@@ -167,23 +169,25 @@ pub fn validate_project_bundle(
             "types",
         ],
     )?;
-    if string(root, "format")? != schema::BUNDLE_FORMAT {
+    if validation::string(root, "format")? != schema::BUNDLE_FORMAT {
         return Err(VocabularyError::UnsupportedFormat);
     }
-    if string(root, "encoding_version")? != PROJECT_VOCABULARY_ENCODING_VERSION
+    if validation::string(root, "encoding_version")? != PROJECT_VOCABULARY_ENCODING_VERSION
         || lock.encoding_version() != PROJECT_VOCABULARY_ENCODING_VERSION
     {
         return Err(VocabularyError::UnsupportedEncodingVersion);
     }
-    if string(root, "schema_version")? != PROJECT_VOCABULARY_SCHEMA_VERSION
+    if validation::string(root, "schema_version")? != PROJECT_VOCABULARY_SCHEMA_VERSION
         || lock.schema_version() != PROJECT_VOCABULARY_SCHEMA_VERSION
     {
         return Err(VocabularyError::UnsupportedSchemaVersion);
     }
-    if string(root, "identity")? != lock.identity() || string(root, "version")? != lock.version() {
+    if validation::string(root, "identity")? != lock.identity()
+        || validation::string(root, "version")? != lock.version()
+    {
         return Err(VocabularyError::LockMismatch);
     }
-    let features = array(member(root, "required_features")?)?;
+    let features = validation::array(validation::member(root, "required_features")?)?;
     if u64::try_from(features.len()).unwrap_or(u64::MAX) > limits.features() {
         return Err(VocabularyError::JsonLimitExceeded);
     }
@@ -205,47 +209,47 @@ pub fn validate_project_bundle(
     {
         return Err(VocabularyError::LockMismatch);
     }
-    let definitions = array(member(root, "types")?)?;
+    let definitions = validation::array(validation::member(root, "types")?)?;
     if u64::try_from(definitions.len()).unwrap_or(u64::MAX) > limits.types() {
         return Err(VocabularyError::JsonLimitExceeded);
     }
     let mut visibility = BTreeMap::new();
     for definition in definitions {
-        let fields = object(definition)?;
-        exact_members(fields, &["name", "public", "fields"])?;
-        let name = string(fields, "name")?;
+        let fields = validation::object(definition)?;
+        validation::exact_members(fields, &["name", "public", "fields"])?;
+        let name = validation::string(fields, "name")?;
         if !schema::is_upper_name(name) || schema::is_protected_name(name) {
             return Err(VocabularyError::InvalidTypeName);
         }
-        let JsonValue::Bool(public) = member(fields, "public")? else {
-            return Err(VocabularyError::InvalidMemberType);
-        };
-        if visibility.insert(name.to_owned(), *public).is_some() {
+        if visibility
+            .insert(name.to_owned(), validation::boolean(fields, "public")?)
+            .is_some()
+        {
             return Err(VocabularyError::DuplicateType);
         }
     }
     let mut types = Vec::with_capacity(definitions.len());
     for definition in definitions {
-        let fields = object(definition)?;
-        let name = string(fields, "name")?;
+        let fields = validation::object(definition)?;
+        let name = validation::string(fields, "name")?;
         let public = visibility[name];
-        let raw_fields = array(member(fields, "fields")?)?;
+        let raw_fields = validation::array(validation::member(fields, "fields")?)?;
         if u64::try_from(raw_fields.len()).unwrap_or(u64::MAX) > limits.fields() {
             return Err(VocabularyError::JsonLimitExceeded);
         }
         let mut seen = BTreeSet::new();
         let mut decoded = Vec::with_capacity(raw_fields.len());
         for raw in raw_fields {
-            let field = object(raw)?;
-            exact_members(field, &["name", "type"])?;
-            let field_name = string(field, "name")?;
+            let field = validation::object(raw)?;
+            validation::exact_members(field, &["name", "type"])?;
+            let field_name = validation::string(field, "name")?;
             if !schema::is_snake_name(field_name) || schema::is_protected_name(field_name) {
                 return Err(VocabularyError::InvalidFieldName);
             }
             if !seen.insert(field_name) {
                 return Err(VocabularyError::DuplicateField);
             }
-            let spelling = string(field, "type")?;
+            let spelling = validation::string(field, "type")?;
             let ty = match spelling {
                 "num" => ProjectVocabularyType::Num,
                 "string" => ProjectVocabularyType::String,
@@ -334,58 +338,4 @@ fn validate_embedding_graph(
         }
     }
     Ok(())
-}
-
-/// Requires a JSON object while retaining the decoder's duplicate-key check.
-fn object(value: &JsonValue) -> Result<&[(String, JsonValue)], VocabularyError> {
-    match value {
-        JsonValue::Object(members) => Ok(members),
-        _ => Err(VocabularyError::InvalidMemberType),
-    }
-}
-
-/// Requires one JSON array.
-fn array(value: &JsonValue) -> Result<&[JsonValue], VocabularyError> {
-    match value {
-        JsonValue::Array(items) => Ok(items),
-        _ => Err(VocabularyError::InvalidMemberType),
-    }
-}
-
-/// Requires one known member without silently accepting omissions.
-fn member<'a>(
-    object: &'a [(String, JsonValue)],
-    name: &str,
-) -> Result<&'a JsonValue, VocabularyError> {
-    object
-        .iter()
-        .find(|(key, _)| key == name)
-        .map(|(_, value)| value)
-        .ok_or(VocabularyError::MissingMember)
-}
-
-/// Requires one string member.
-fn string<'a>(object: &'a [(String, JsonValue)], name: &str) -> Result<&'a str, VocabularyError> {
-    match member(object, name)? {
-        JsonValue::String(value) => Ok(value),
-        _ => Err(VocabularyError::InvalidMemberType),
-    }
-}
-
-/// Rejects unknown and executable members, then requires the complete shape.
-fn exact_members(object: &[(String, JsonValue)], allowed: &[&str]) -> Result<(), VocabularyError> {
-    for (name, _) in object {
-        if !allowed.contains(&name.as_str()) {
-            return if schema::is_executable_member(name) {
-                Err(VocabularyError::ExecutableShapeForbidden)
-            } else {
-                Err(VocabularyError::UnknownMember)
-            };
-        }
-    }
-    if object.len() == allowed.len() {
-        Ok(())
-    } else {
-        Err(VocabularyError::MissingMember)
-    }
 }

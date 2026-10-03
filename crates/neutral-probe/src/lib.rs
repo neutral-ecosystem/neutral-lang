@@ -15,6 +15,10 @@ use neutral_reader::{
     ValidatedProjectInterface,
 };
 
+/// Shared field schema and JSON rendering for validated artifact inspection.
+pub mod inspection_schema;
+pub use inspection_schema::render_summary_json;
+
 /// Public-only interface observations made without compiler linkage.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectInterfaceSummary {
@@ -407,70 +411,21 @@ fn summarize_source_mappings(document: &ValidatedDocument) -> Vec<String> {
 /// Renders a summary as deterministic, categorized consumer observations.
 #[must_use]
 pub fn render_summary(summary: &ProbeSummary) -> Vec<String> {
-    let mut lines = vec![format!("module {}", summary.module())];
-    lines.extend(
-        summary
-            .metadata()
-            .iter()
-            .map(|value| format!("metadata {value}")),
-    );
-    if let Some(vocabulary) = summary.vocabulary() {
-        lines.push(format!("vocabulary {vocabulary}"));
+    let mut lines = Vec::new();
+    for field in inspection_schema::fields(summary) {
+        match field.value {
+            inspection_schema::FieldValue::Text(value)
+            | inspection_schema::FieldValue::OptionalText(Some(value)) => {
+                lines.push(format!("{} {value}", field.text_prefix));
+            }
+            inspection_schema::FieldValue::OptionalText(None) => {}
+            inspection_schema::FieldValue::TextList(values) => lines.extend(
+                values
+                    .iter()
+                    .map(|value| format!("{} {value}", field.text_prefix)),
+            ),
+        }
     }
-    lines.extend(
-        summary
-            .record_types()
-            .iter()
-            .map(|record| format!("record {record}")),
-    );
-    lines.extend(
-        summary
-            .vocabulary_types()
-            .iter()
-            .map(|record| format!("vocabulary-type {record}")),
-    );
-    lines.extend(
-        summary
-            .declarations()
-            .iter()
-            .map(|declaration| format!("declaration {declaration}")),
-    );
-    lines.extend(
-        summary
-            .source_mappings()
-            .iter()
-            .map(|record| format!("source-map {record}")),
-    );
-    lines.extend(
-        summary
-            .value_provenance()
-            .iter()
-            .map(|record| format!("value-provenance {record}")),
-    );
-    lines.extend(
-        summary
-            .field_provenance()
-            .iter()
-            .map(|record| format!("field-provenance {record}")),
-    );
-    lines.extend(
-        summary
-            .reuse_provenance()
-            .iter()
-            .map(|record| format!("reuse-provenance {record}")),
-    );
-    lines.extend(
-        summary
-            .reference_provenance()
-            .iter()
-            .map(|record| format!("reference-provenance {record}")),
-    );
-    lines.extend(
-        summary
-            .diagnostics()
-            .iter()
-            .map(|diagnostic| format!("diagnostic {diagnostic}")),
-    );
     lines
 }
 

@@ -136,3 +136,54 @@ fn renderer_preserves_all_summary_categories() {
         ]
     );
 }
+
+#[test]
+/// JSON inspection is multiline and escapes hostile observation text.
+fn json_renderer_preserves_categories_and_escapes_strings() {
+    let summary = ProbeSummary {
+        module: "sample\"\nmodule".into(),
+        metadata: vec!["slash\\ and tab\t".into()],
+        vocabulary: None,
+        vocabulary_types: vec![],
+        record_types: vec![],
+        declarations: vec!["answer".into()],
+        source_mappings: vec![],
+        value_provenance: vec![],
+        field_provenance: vec![],
+        reuse_provenance: vec![],
+        reference_provenance: vec![],
+        diagnostics: vec![],
+    };
+    let json = render_summary_json(&summary);
+    assert!(json.starts_with(&format!(
+        "{{\n  \"schema_version\": {},\n  \"module\": \"sample\\\"\\nmodule\",\n",
+        inspection_schema::SCHEMA_VERSION
+    )));
+    assert!(json.contains("\n  \"metadata\": [\n    \"slash\\\\ and tab\\t\"\n  ],\n"));
+    assert!(json.contains("\n  \"declarations\": [\n    \"answer\"\n  ],\n"));
+    assert!(json.ends_with("\n}\n"));
+}
+
+#[test]
+/// The shared schema names every observation once for both output formats.
+fn inspection_schema_has_unique_complete_fields() {
+    let summary = summarize(&reader_fixture());
+    let fields = inspection_schema::fields(&summary);
+    let names = fields
+        .iter()
+        .map(|field| field.json_key)
+        .collect::<Vec<_>>();
+    assert!(!names.is_empty());
+    assert_eq!(
+        names
+            .iter()
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
+        names.len()
+    );
+    let json = render_summary_json(&summary);
+    for name in names {
+        assert!(json.contains(&format!("\"{name}\": ")));
+    }
+}

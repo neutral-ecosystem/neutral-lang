@@ -462,8 +462,8 @@ fn automation_records_failed_workflow_steps() {
     let events = std::fs::read_to_string(directory.join("events.jsonl"))
         .expect("failed workflow events should exist");
 
-    assert!(summary.contains("\"status\":\"fail\""));
-    assert!(summary.contains("\"worktree_clean\":"));
+    assert!(summary.contains("\n  \"status\": \"fail\","));
+    assert!(summary.contains("\n  \"worktree_clean\": "));
     assert!(summary.contains("line one\\n\\\"line two\\\""));
     assert!(events.contains("\"step\":\"synthetic\""));
     assert!(events.contains("\"status\":\"fail\""));
@@ -670,7 +670,11 @@ fn automation_stages_the_selected_binary_package() {
     assert!(
         super::stage_binary_package(&root, &source, &output, &binaries, &assets, "{}\n").is_ok()
     );
-    assert!(output.join("package-summary.json").is_file());
+    assert!(
+        output
+            .join(constants::RELEASE_PACKAGE_SUMMARY_FILE)
+            .is_file()
+    );
     assert!(output.join(constants::LICENSE_FILE).is_file());
     assert!(output.join(constants::ROOT_README_FILE).is_file());
     assert!(output.join(constants::RELEASE_CHECKSUM_FILE).is_file());
@@ -697,6 +701,40 @@ fn automation_stages_the_selected_binary_package() {
         super::stage_binary_package(&root, &source, &output, &binaries, &assets, "{}\n").is_err()
     );
     std::fs::remove_dir_all(root).expect("temporary package tree should be removable");
+}
+
+#[test]
+/// Release package metadata is escaped by the serializer and follows one layout.
+fn automation_uses_typed_release_package_metadata() {
+    let root = std::path::Path::new("generated-results");
+    let directory = super::release_metadata::package_output_directory(
+        root,
+        "v0.5.0",
+        "candidate-commit",
+        "example-host",
+    );
+    assert_eq!(
+        directory,
+        root.join(constants::RELEASE_RESULT_DIRECTORY)
+            .join(constants::RELEASE_PACKAGE_DIRECTORY)
+            .join("v0.5.0")
+            .join("candidate-commit")
+            .join("example-host")
+    );
+
+    let summary = super::release_metadata::package_summary_json(
+        "v0.5.0",
+        "commit\"with-quote",
+        "example-host",
+    )
+    .expect("package summary should serialize");
+    let value: serde_json::Value =
+        serde_json::from_str(&summary).expect("package summary should be valid JSON");
+    assert_eq!(value["candidate_commit"], "commit\"with-quote");
+    assert_eq!(value["release_tag"], "v0.5.0");
+    assert_eq!(value["channel"], "github-binaries");
+    assert!(summary.contains("\n  \"release_tag\": "));
+    assert!(summary.ends_with('\n'));
 }
 
 #[test]

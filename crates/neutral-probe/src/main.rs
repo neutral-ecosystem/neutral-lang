@@ -4,7 +4,7 @@
 
 use neutral_core::CancellationToken;
 use neutral_encoding::{DecodeError, DecodeLimits};
-use neutral_probe::{inspect_encoded, output, render_summary};
+use neutral_probe::{inspect_encoded, output, render_summary, render_summary_json};
 use std::{fs, path::Path};
 
 /// Starts the standalone Neutral artifact probe.
@@ -20,7 +20,7 @@ fn run(arguments: impl IntoIterator<Item = String>) -> Result<(), String> {
     match arguments.into_iter().collect::<Vec<_>>().as_slice() {
         [argument] if argument == "--help" => {
             println!(
-                "{} usage: {} <artifact>",
+                "{} usage: {} [--json] <artifact>",
                 output::INFO,
                 env!("CARGO_PKG_NAME")
             );
@@ -36,19 +36,26 @@ fn run(arguments: impl IntoIterator<Item = String>) -> Result<(), String> {
             Ok(())
         }
         [] => Err("an artifact is required; run neutral-probe --help".to_owned()),
-        [artifact] => inspect_path(Path::new(artifact)),
-        _ => Err("exactly one encoded artifact path is required".to_owned()),
+        [artifact] => inspect_path(Path::new(artifact), false),
+        [flag, artifact] if flag == "--json" => inspect_path(Path::new(artifact), true),
+        _ => {
+            Err("exactly one encoded artifact path is required (optionally with --json)".to_owned())
+        }
     }
 }
 
 /// Reads, validates, and renders one external artifact path.
-fn inspect_path(path: &Path) -> Result<(), String> {
+fn inspect_path(path: &Path, json: bool) -> Result<(), String> {
     let bytes = fs::read(path)
         .map_err(|error| format!("could not read artifact {}: {error}", path.display()))?;
     let summary = inspect_encoded(&bytes, DecodeLimits::hard(), &CancellationToken::new())
         .map_err(render_decode_error)?;
-    for line in render_summary(&summary) {
-        println!("{} {line}", output::INFO);
+    if json {
+        print!("{}", render_summary_json(&summary));
+    } else {
+        for line in render_summary(&summary) {
+            println!("{} {line}", output::INFO);
+        }
     }
     Ok(())
 }

@@ -9,6 +9,7 @@
 mod json;
 mod project;
 mod schema;
+mod validation;
 
 pub use project::{
     PROJECT_VOCABULARY_ENCODING_VERSION, PROJECT_VOCABULARY_SCHEMA_VERSION, ProjectVocabulary,
@@ -20,6 +21,7 @@ use json::JsonValue;
 use neutral_core::{StructuralLimits, VocabularyContentDigest};
 use neutral_ir::ExactNumber;
 use std::collections::{BTreeMap, BTreeSet};
+use validation::{array, boolean, exact_members, member, object as json_object, string};
 
 /// Frozen captured vocabulary bundle encoding version.
 pub const VOCABULARY_ENCODING_VERSION: &str = schema::ENCODING_VERSION;
@@ -612,10 +614,8 @@ fn decode_bundle(
     limits: VocabularyLimits,
     content_digest: VocabularyContentDigest,
 ) -> Result<ValidatedVocabularyBundle, VocabularyError> {
-    let JsonValue::Object(object) = root else {
-        return Err(VocabularyError::InvalidEnvelope);
-    };
-    validate_members(
+    let object = json_object(root).map_err(|_| VocabularyError::InvalidEnvelope)?;
+    exact_members(
         object,
         &[
             "format",
@@ -627,12 +627,11 @@ fn decode_bundle(
             "types",
         ],
     )?;
-    require_member_count(object, 7)?;
-    let format = required_string(object, "format")?;
-    let encoding_version = required_string(object, "encoding_version")?;
-    let schema_version = required_string(object, "schema_version")?;
-    let identity = required_string(object, "identity")?;
-    let version = required_string(object, "version")?;
+    let format = string(object, "format")?;
+    let encoding_version = string(object, "encoding_version")?;
+    let schema_version = string(object, "schema_version")?;
+    let identity = string(object, "identity")?;
+    let version = string(object, "version")?;
     if format != schema::BUNDLE_FORMAT {
         return Err(VocabularyError::UnsupportedFormat);
     }
@@ -651,9 +650,8 @@ fn decode_bundle(
     if identity != lock.identity || version != lock.version {
         return Err(VocabularyError::LockMismatch);
     }
-    let required_features =
-        decode_features(required_member(object, "required_features")?, lock, limits)?;
-    let pending = decode_pending_types(required_member(object, "types")?, limits)?;
+    let required_features = decode_features(member(object, "required_features")?, lock, limits)?;
+    let pending = decode_pending_types(member(object, "types")?, limits)?;
     validate_type_recursion(&pending, limits)?;
     let mut budget = ValidationBudget::new(limits);
     let mut types = pending
@@ -680,9 +678,7 @@ fn decode_features(
     lock: &VocabularyLock,
     limits: VocabularyLimits,
 ) -> Result<Vec<String>, VocabularyError> {
-    let JsonValue::Array(values) = value else {
-        return Err(VocabularyError::InvalidMemberType);
-    };
+    let values = array(value)?;
     if u64::try_from(values.len()).unwrap_or(u64::MAX) > limits.features() {
         return Err(VocabularyError::JsonLimitExceeded);
     }
@@ -732,18 +728,15 @@ fn decode_pending_types(
     value: &JsonValue,
     limits: VocabularyLimits,
 ) -> Result<Vec<PendingType<'_>>, VocabularyError> {
-    let JsonValue::Array(values) = value else {
-        return Err(VocabularyError::InvalidMemberType);
-    };
+    let values = array(value)?;
     if u64::try_from(values.len()).unwrap_or(u64::MAX) > limits.types() {
         return Err(VocabularyError::JsonLimitExceeded);
     }
     let mut names = BTreeSet::new();
     for value in values {
-        let object = expected_object(value)?;
-        validate_members(object, &["name", "fields"])?;
-        require_member_count(object, 2)?;
-        let name = required_string(object, "name")?;
+        let object = json_object(value)?;
+        exact_members(object, &["name", "fields"])?;
+        let name = string(object, "name")?;
         if !schema::is_upper_name(name) || schema::is_protected_name(name) {
             return Err(VocabularyError::InvalidTypeName);
         }
@@ -763,21 +756,18 @@ fn decode_pending_type<'a>(
     type_names: &BTreeSet<&str>,
     limits: VocabularyLimits,
 ) -> Result<PendingType<'a>, VocabularyError> {
-    let object = expected_object(value)?;
-    let name = required_string(object, "name")?.to_owned();
-    let JsonValue::Array(fields) = required_member(object, "fields")? else {
-        return Err(VocabularyError::InvalidMemberType);
-    };
+    let object = json_object(value)?;
+    let name = string(object, "name")?.to_owned();
+    let fields = array(member(object, "fields")?)?;
     if u64::try_from(fields.len()).unwrap_or(u64::MAX) > limits.fields() {
         return Err(VocabularyError::JsonLimitExceeded);
     }
     let mut names = BTreeSet::new();
     let mut decoded = Vec::new();
     for field in fields {
-        let field = expected_object(field)?;
-        validate_members(field, &["name", "type", "default"])?;
-        require_member_count(field, 3)?;
-        let field_name = required_string(field, "name")?;
+        let field = json_object(field)?;
+        exact_members(field, &["name", "type", "default"])?;
+        let field_name = string(field, "name")?;
         if !schema::is_snake_name(field_name) || schema::is_protected_name(field_name) {
             return Err(VocabularyError::InvalidFieldName);
         }
@@ -786,8 +776,8 @@ fn decode_pending_type<'a>(
         }
         decoded.push(PendingField {
             name: field_name.to_owned(),
-            field_type: decode_type(required_member(field, "type")?, type_names, 1, limits)?,
-            default: required_member(field, "default")?,
+            field_type: decode_type(member(field, "type")?, type_names, 1, limits)?,
+            default: member(field, "default")?,
         });
     }
     decoded.sort_by(|left, right| left.name.cmp(&right.name));
@@ -807,44 +797,34 @@ fn decode_type(
     if depth > limits.nesting_depth() {
         return Err(VocabularyError::JsonLimitExceeded);
     }
-    let object = expected_object(value)?;
-    let kind = required_string(object, "kind")?;
+    let object = json_object(value)?;
+    let kind = string(object, "kind")?;
     match kind {
         "num" => {
-            validate_exact_members(object, &["kind"])?;
+            exact_members(object, &["kind"])?;
             Ok(VocabularyType::Num)
         }
         "string" => {
-            validate_exact_members(object, &["kind"])?;
+            exact_members(object, &["kind"])?;
             Ok(VocabularyType::String)
         }
         "bool" => {
-            validate_exact_members(object, &["kind"])?;
+            exact_members(object, &["kind"])?;
             Ok(VocabularyType::Bool)
         }
         "nullable" => {
-            validate_exact_members(object, &["kind", "inner"])?;
-            decode_type(
-                required_member(object, "inner")?,
-                type_names,
-                depth + 1,
-                limits,
-            )
-            .map(|inner| VocabularyType::Nullable(Box::new(inner)))
+            exact_members(object, &["kind", "inner"])?;
+            decode_type(member(object, "inner")?, type_names, depth + 1, limits)
+                .map(|inner| VocabularyType::Nullable(Box::new(inner)))
         }
         "list" => {
-            validate_exact_members(object, &["kind", "element"])?;
-            decode_type(
-                required_member(object, "element")?,
-                type_names,
-                depth + 1,
-                limits,
-            )
-            .map(|element| VocabularyType::List(Box::new(element)))
+            exact_members(object, &["kind", "element"])?;
+            decode_type(member(object, "element")?, type_names, depth + 1, limits)
+                .map(|element| VocabularyType::List(Box::new(element)))
         }
         "ref" | "record" => {
-            validate_exact_members(object, &["kind", "target"])?;
-            let target = required_string(object, "target")?;
+            exact_members(object, &["kind", "target"])?;
+            let target = string(object, "target")?;
             if !type_names.contains(target) {
                 return Err(VocabularyError::UnknownTypeTarget);
             }
@@ -991,10 +971,10 @@ fn decode_default(
     if depth > budget.limits.nesting_depth() {
         return Err(VocabularyError::JsonLimitExceeded);
     }
-    let object = expected_object(value).map_err(|_| VocabularyError::InvalidDefault)?;
-    let kind = required_string(object, "kind").map_err(|_| VocabularyError::InvalidDefault)?;
+    let object = json_object(value).map_err(|_| VocabularyError::InvalidDefault)?;
+    let kind = string(object, "kind").map_err(|_| VocabularyError::InvalidDefault)?;
     if kind == "null" {
-        validate_exact_members(object, &["kind"]).map_err(|_| VocabularyError::InvalidDefault)?;
+        exact_members(object, &["kind"]).map_err(|_| VocabularyError::InvalidDefault)?;
         return matches!(expected, VocabularyType::Nullable(_))
             .then_some(VocabularyValue::Null)
             .ok_or(VocabularyError::InvalidDefault);
@@ -1005,10 +985,9 @@ fn decode_default(
     };
     match (kind, expected) {
         ("num", VocabularyType::Num) => {
-            validate_exact_members(object, &["kind", "value"])
+            exact_members(object, &["kind", "value"])
                 .map_err(|_| VocabularyError::InvalidDefault)?;
-            let source =
-                required_string(object, "value").map_err(|_| VocabularyError::InvalidDefault)?;
+            let source = string(object, "value").map_err(|_| VocabularyError::InvalidDefault)?;
             ExactNumber::from_source(
                 source,
                 budget.limits.numeric_digits,
@@ -1018,27 +997,24 @@ fn decode_default(
             .map_err(|_| VocabularyError::InvalidDefault)
         }
         ("string", VocabularyType::String) => {
-            validate_exact_members(object, &["kind", "value"])
+            exact_members(object, &["kind", "value"])
                 .map_err(|_| VocabularyError::InvalidDefault)?;
-            required_string(object, "value")
+            string(object, "value")
                 .map(|value| VocabularyValue::String(value.to_owned()))
                 .map_err(|_| VocabularyError::InvalidDefault)
         }
         ("bool", VocabularyType::Bool) => {
-            validate_exact_members(object, &["kind", "value"])
+            exact_members(object, &["kind", "value"])
                 .map_err(|_| VocabularyError::InvalidDefault)?;
-            required_bool(object, "value")
+            boolean(object, "value")
                 .map(VocabularyValue::Boolean)
                 .map_err(|_| VocabularyError::InvalidDefault)
         }
         ("list", VocabularyType::List(element)) => {
-            validate_exact_members(object, &["kind", "items"])
+            exact_members(object, &["kind", "items"])
                 .map_err(|_| VocabularyError::InvalidDefault)?;
-            let JsonValue::Array(items) =
-                required_member(object, "items").map_err(|_| VocabularyError::InvalidDefault)?
-            else {
-                return Err(VocabularyError::InvalidDefault);
-            };
+            let items =
+                array(member(object, "items")?).map_err(|_| VocabularyError::InvalidDefault)?;
             if u64::try_from(items.len()).unwrap_or(u64::MAX) > budget.limits.array_items() {
                 return Err(VocabularyError::JsonLimitExceeded);
             }
@@ -1063,13 +1039,8 @@ fn decode_record_default(
     depth: u64,
     budget: &mut ValidationBudget,
 ) -> Result<VocabularyValue, VocabularyError> {
-    validate_exact_members(object, &["kind", "fields"])
-        .map_err(|_| VocabularyError::InvalidDefault)?;
-    let JsonValue::Array(fields) =
-        required_member(object, "fields").map_err(|_| VocabularyError::InvalidDefault)?
-    else {
-        return Err(VocabularyError::InvalidDefault);
-    };
+    exact_members(object, &["kind", "fields"]).map_err(|_| VocabularyError::InvalidDefault)?;
+    let fields = array(member(object, "fields")?).map_err(|_| VocabularyError::InvalidDefault)?;
     if u64::try_from(fields.len()).unwrap_or(u64::MAX) > budget.limits.fields() {
         return Err(VocabularyError::JsonLimitExceeded);
     }
@@ -1079,11 +1050,10 @@ fn decode_record_default(
         .ok_or(VocabularyError::UnknownTypeTarget)?;
     let mut supplied = BTreeMap::new();
     for field in fields {
-        let field = expected_object(field).map_err(|_| VocabularyError::InvalidDefault)?;
-        validate_exact_members(field, &["name", "value"])
-            .map_err(|_| VocabularyError::InvalidDefault)?;
-        let name = required_string(field, "name").map_err(|_| VocabularyError::InvalidDefault)?;
-        let value = required_member(field, "value").map_err(|_| VocabularyError::InvalidDefault)?;
+        let field = json_object(field).map_err(|_| VocabularyError::InvalidDefault)?;
+        exact_members(field, &["name", "value"]).map_err(|_| VocabularyError::InvalidDefault)?;
+        let name = string(field, "name").map_err(|_| VocabularyError::InvalidDefault)?;
+        let value = member(field, "value").map_err(|_| VocabularyError::InvalidDefault)?;
         if supplied.insert(name, value).is_some() {
             return Err(VocabularyError::InvalidDefault);
         }
@@ -1110,83 +1080,6 @@ fn decode_record_default(
         type_name: target.to_owned(),
         fields: final_fields,
     })
-}
-
-/// Returns one JSON object or a closed-schema type error.
-fn expected_object(value: &JsonValue) -> Result<&[(String, JsonValue)], VocabularyError> {
-    match value {
-        JsonValue::Object(object) => Ok(object),
-        _ => Err(VocabularyError::InvalidMemberType),
-    }
-}
-
-/// Rejects unknown or executable members in one closed-schema object.
-fn validate_members(
-    object: &[(String, JsonValue)],
-    allowed: &[&str],
-) -> Result<(), VocabularyError> {
-    for (name, _) in object {
-        if !allowed.contains(&name.as_str()) {
-            return if schema::is_executable_member(name) {
-                Err(VocabularyError::ExecutableShapeForbidden)
-            } else {
-                Err(VocabularyError::UnknownMember)
-            };
-        }
-    }
-    Ok(())
-}
-
-/// Requires an object to contain exactly the complete allowed member set.
-fn validate_exact_members(
-    object: &[(String, JsonValue)],
-    allowed: &[&str],
-) -> Result<(), VocabularyError> {
-    validate_members(object, allowed)?;
-    require_member_count(object, allowed.len())
-}
-
-/// Requires one exact closed-schema object member count.
-fn require_member_count(
-    object: &[(String, JsonValue)],
-    expected: usize,
-) -> Result<(), VocabularyError> {
-    if object.len() == expected {
-        Ok(())
-    } else {
-        Err(VocabularyError::MissingMember)
-    }
-}
-
-/// Returns one required object member without map allocation.
-fn required_member<'a>(
-    object: &'a [(String, JsonValue)],
-    name: &str,
-) -> Result<&'a JsonValue, VocabularyError> {
-    object
-        .iter()
-        .find(|(candidate, _)| candidate == name)
-        .map(|(_, value)| value)
-        .ok_or(VocabularyError::MissingMember)
-}
-
-/// Returns one required string member.
-fn required_string<'a>(
-    object: &'a [(String, JsonValue)],
-    name: &str,
-) -> Result<&'a str, VocabularyError> {
-    match required_member(object, name)? {
-        JsonValue::String(value) => Ok(value),
-        _ => Err(VocabularyError::InvalidMemberType),
-    }
-}
-
-/// Returns one required Boolean member.
-fn required_bool(object: &[(String, JsonValue)], name: &str) -> Result<bool, VocabularyError> {
-    match required_member(object, name)? {
-        JsonValue::Bool(value) => Ok(*value),
-        _ => Err(VocabularyError::InvalidMemberType),
-    }
 }
 
 #[cfg(test)]
