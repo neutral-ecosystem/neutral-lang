@@ -17,8 +17,10 @@ use std::{
     sync::Arc,
 };
 
+mod project;
 mod project_interface;
 
+pub use project::{ProjectReadError, ProjectView, ValidatedProject};
 pub use project_interface::{ProjectInterfaceError, ValidatedProjectInterface};
 
 pub use neutral_core::profile::{

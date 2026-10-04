@@ -22,6 +22,11 @@ use std::{
     sync::Arc,
 };
 
+#[path = "project_lowering.rs"]
+mod lowering;
+pub use lowering::codes as project_lowering_diagnostics;
+pub use lowering::{ProjectCompileFailure, compile_project};
+
 #[cfg(test)]
 #[path = "../../tests/project_semantics/mod.rs"]
 mod tests;
@@ -281,7 +286,7 @@ struct Root {
     declared_type: Option<TypeExpr>,
     /// Record field types in source order.
     fields: Vec<(String, TypeExpr)>,
-    /// Exact binding initializer tokens.
+    /// Exact binding initializer or record field/default tokens.
     value: Vec<Token>,
     /// Exact typed inert scalar for a direct location binding.
     location: Option<ProjectLocationValue>,
@@ -849,7 +854,7 @@ fn parse_root(
             ),
             declared_type: None,
             fields,
-            value: Vec::new(),
+            value: tokens[start + 3..tokens.len() - 1].to_vec(),
             location: None,
         });
     }

@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.project-artifact-fixture/1"
+case_id = "V1-VIEW-002-PUBLIC-CLOSURE"
+base_fixture = "complete.toml"
+root_module = "app::consumer"
+root_name = "pointer"
+expected_exports = "pointer,Service,api"
+outcome = "public-view"

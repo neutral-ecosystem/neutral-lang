@@ -29,6 +29,15 @@ Project signatures now distinguish canonical locked vocabulary nominals and
 inert `url`/`path` types. `ProjectLocationValue` retains decoded source text in
 separate URL and path variants without interpretation or host authority.
 
+The `project` module owns complete project IR separately from that narrow
+signature snapshot. It retains every public/private declaration and supplied
+module, canonical locked vocabulary schemas, typed contextual values and closed
+defaults, plus separate original-byte source maps, dependency provenance, exact
+captured input evidence, explicit limits, and resource facts. `logical_eq`
+excludes host/source and processing evidence. `ViewRequest` is a distinct
+post-compilation selection contract; it cannot change complete project meaning.
+Canonical project identity transcripts and encoded transport are separate gates.
+
 ## Command
 
 This is a library crate. Verify its public logical-model contracts with:

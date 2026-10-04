@@ -62,13 +62,18 @@ here.
 
 ## Stage 6 — IR, reader, and views (`v0.6.0 -> v0.7.0`)
 
-- [ ] V1-IR-001 — Complete project-level IR and module/export index.
-- [ ] V1-IR-002 — Private validation content, source maps, and provenance.
-- [ ] V1-IR-003 — Validated public reader without source/private AST access.
-- [ ] V1-VIEW-001 — Roots are post-compilation view inputs only.
-- [ ] V1-VIEW-002 — Views include required public interpretive dependencies.
+- [x] V1-IR-001 — Complete project-level IR and module/export index.
+- [x] V1-IR-002 — Private validation content, source maps, and provenance.
+- [x] V1-IR-003 — Validated public reader without source/private AST access.
+- [x] V1-VIEW-001 — Roots are post-compilation view inputs only.
+- [x] V1-VIEW-002 — Views include required public interpretive dependencies.
 - [ ] V1-API-001 — Capture, compile, validate-reader, and derive-view outcomes
   are bounded, versioned, and deterministic.
+
+The in-process contract/core boundary is verified in
+[Stage 6 evidence](../../development/evidence/stage6-contract-core.md).
+Standalone encoded integration and the final cross-boundary envelope review
+remain open in the Stage 6 integration/validation gates.
 
 ## Stage 7 — identity (`v0.7.0 -> v0.8.0`)
 

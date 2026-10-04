@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.project-artifact-fixture/1"
+case_id = "V1-IR-003-MALFORMED"
+base_fixture = "complete.toml"
+
+[[mutations]]
+selector = "resource-count"
+outcome = "Resources"
+
+[[mutations]]
+selector = "missing-map"
+outcome = "Companion"
+
+[[mutations]]
+selector = "out-of-range-map"
+outcome = "Companion"
+
+[[mutations]]
+selector = "incompatible-value"
+outcome = "Declaration"
+
+[[mutations]]
+selector = "unknown-schema"
+outcome = "Schema"

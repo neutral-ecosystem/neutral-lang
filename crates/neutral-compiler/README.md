@@ -26,12 +26,18 @@ retain exact source IDs and typed original-byte locations. Graph construction
 cannot acquire source units or resolve paths and URLs.
 The project analyzer resolves public/private roots and cross-module
 type, value, and reference edges over that graph. It can produce a narrow
-public-only interface snapshot with a signature fingerprint; this is not yet
-the complete project IR or activation of the v1 standalone compiler profile.
+public-only interface snapshot with a signature fingerprint. The separate
+`compile_project` boundary validates all contextual values and closed defaults
+before publishing complete `neutral-ir::project::ProjectIr`, including private
+and disconnected modules, materialized reuse, identity-only references, exact
+source/vocabulary companions, and resource facts. Failures never publish partial
+IR. This library API does not activate the standalone v1 compiler profile.
 For captured projects, it validates every supplied vocabulary bundle as
 one exact canonical set, resolves module-local `use` aliases to locked public
 types, and retains direct `url`/`path` scalar bindings as distinct inert values.
-The full contextual value graph and externally encoded project artifact remain
+The independently validated reader derives public views only after complete
+compilation; selected roots never prune input or change complete logical meaning.
+Externally encoded project transport and standalone project probing remain
 later-stage work.
 Its private frontend recognizes the supported source, identifier, comment, exact-number,
 bounded-string, Boolean, nullable-scalar, null, nominal-record, and

@@ -26,8 +26,9 @@ mod project_vocabulary;
 mod semantics;
 
 pub use frontend::{
-    ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic, ProjectSemanticFailure,
-    ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind, analyze_project_semantics,
+    ProjectCompileFailure, ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic,
+    ProjectSemanticFailure, ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind,
+    analyze_project_semantics, compile_project, project_lowering_diagnostics,
     project_semantics_diagnostics,
 };
 

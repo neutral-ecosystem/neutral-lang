@@ -34,6 +34,10 @@ and uses the captured request's existing graph controls.
 
 ## IR and reader
 
+The exact complete in-process boundary is frozen in
+[PROJECT-IR](PROJECT-IR.md), including schema/result classification, companions,
+resource accounting, independent reader checks, and post-compilation selection.
+
 Successful compilation produces complete project IR: modules/import graph,
 types, symbols, values, identity edges, public export index, vocabulary facts,
 source-map/provenance companions, derivation/resource facts, and diagnostics.

@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.capture-fixture/1"
+case_id = "V1-IR-001-COMPLETE"
+request_version = "neutral.capture/v1"
+profile = "1.0"
+
+[controls]
+cancelled = false
+total_source_bytes = 16384
+source_bytes_per_unit = 4096
+source_units = 8
+source_id_bytes = 64
+module_id_bytes = 64
+vocabulary_units = 8
+vocabulary_bytes_per_unit = 4096
+total_vocabulary_bytes = 16384
+imports_per_module = 8
+import_edges = 16
+scc_units = 8
+declarations = 128
+diagnostics = 16
+output_bytes = 32768
+
+[[sources]]
+source_id = "unit:consumer"
+module_id = "app::consumer"
+source_utf8 = "neu \"1.0\"\nmodule app::consumer\nimport app::shared as shared\npublic shared::Service copied = shared::api\npublic Ref<shared::Service> pointer = ref(shared::api)\n"
+
+[[sources]]
+source_id = "unit:orphan"
+module_id = "app::orphan"
+source_utf8 = "neu \"1.0\"\nmodule app::orphan\nstring unused = \"private disconnected\"\n"
+
+[[sources]]
+source_id = "unit:shared"
+module_id = "app::shared"
+source_utf8 = "neu \"1.0\"\nmodule app::shared\npublic record Service { string label, List<num> ports = [80, 443], }\nstring hidden = \"materialized private value\"\npublic Service api = { label: hidden, }\n"

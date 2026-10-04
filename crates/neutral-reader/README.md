@@ -23,12 +23,23 @@ The separate `ValidatedProjectInterface` checks a public-only,
 in-process interface snapshot without compiler linkage. It exposes public
 exports, checked signature fingerprints, and cross-module value/reference
 enumeration; no source IDs, private declarations, or raw provenance are part
-of that view. It is not the future complete project-IR reader.
+of that view. It is not a complete project-IR reader.
 The project-interface reader validates URL/path and canonical vocabulary-nominal
 signature variants against the public vocabulary catalogue retained in the
 snapshot. It checks canonical ordering, identity/revision, public type membership,
 and fingerprints independently of the compiler. The catalogue exposes canonical
 identities and revisions; source-local aliases and authoring metadata are excluded.
+
+`ValidatedProject::from_ir` is the complete in-process project boundary. It
+independently checks every module/declaration/type/value/default, locked schemas,
+source-map and provenance coverage, dependency cycles, resource accounting,
+and the exact public export index. Caller and producer bounds intersect;
+cancellation and malformed content fail before publication. It depends on no
+compiler-private parser or AST. `derive_view` selects public roots and their
+type/value/reference/vocabulary closure without exposing private identities or
+source accounting, or mutating complete IR. Source evidence is not a proof that
+an arbitrary producer faithfully compiled the supplied bytes. Encoded project
+decoding and a standalone project probe remain subsequent integration work.
 
 ## Command
 

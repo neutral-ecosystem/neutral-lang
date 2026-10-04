@@ -241,16 +241,20 @@ Target transition: `v0.6.0 -> v0.7.0`.
 
 ### `v0.6.1` — contract and fixture gate
 
-- [ ] Freeze project IR, companions, reader validation, result envelopes,
+- [x] Freeze project IR, companions, reader validation, result envelopes,
   resource facts, view request, and dependency-closure rules.
-- [ ] Register complete/private/public/view/malformed artifact fixtures.
+- [x] Register complete/private/public/view/malformed artifact fixtures.
 
 ### `v0.6.2` — core implementation gate
 
-- [ ] Lower only fully valid projects to complete project IR.
-- [ ] Implement source maps, provenance, derivation/resource facts, and public
+- [x] Lower only fully valid projects to complete project IR.
+- [x] Implement source maps, provenance, derivation/resource facts, and public
   reader validation.
-- [ ] Implement post-compilation view derivation without changing project IR.
+- [x] Implement post-compilation view derivation without changing project IR.
+
+Evidence: [Stage 6 contract and core](evidence/stage6-contract-core.md).
+These gates publish an in-process library boundary, not a standalone encoded
+project artifact. Project identity transcripts remain Stage 7 work.
 
 ### `v0.6.3` — public integration gate
 

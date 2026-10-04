@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.capture-fixture/1"
+case_id = "V1-IR-002-PRIVATE-ONLY"
+request_version = "neutral.capture/v1"
+profile = "1.0"
+
+[controls]
+cancelled = false
+total_source_bytes = 16384
+source_bytes_per_unit = 4096
+source_units = 8
+source_id_bytes = 64
+module_id_bytes = 64
+vocabulary_units = 8
+vocabulary_bytes_per_unit = 4096
+total_vocabulary_bytes = 16384
+imports_per_module = 8
+import_edges = 16
+scc_units = 8
+declarations = 128
+diagnostics = 16
+output_bytes = 32768
+
+[[sources]]
+source_id = "unit:private"
+module_id = "private_only"
+source_utf8 = "neu \"1.0\"\nmodule private_only\nrecord Item { num count = 7, }\nItem hidden = {}\n"

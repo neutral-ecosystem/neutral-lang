@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.project-oracle/1"
+modules = 3
+outcome = "complete-project"
+private_disconnected_retained = true
+public_reference_view = "app::consumer::pointer,app::shared::Service,app::shared::api"
+malformed_artifacts = "reject-before-publication"
+invalid_values = "NEU-PIR-001"
+view_private_or_duplicate_roots = "reject"

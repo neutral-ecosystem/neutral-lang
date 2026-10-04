@@ -25,3 +25,7 @@ mod module_graph;
 #[cfg(test)]
 #[path = "../tests/public_semantics/mod.rs"]
 mod public_semantics;
+
+#[cfg(test)]
+#[path = "../tests/project_ir/mod.rs"]
+mod project_ir;

@@ -355,10 +355,45 @@ oracle = "portable/conformance/oracles/stage5/vocabulary-and-locations.toml"
 oracle_sha256 = "ed7ba528ad2028f86f565f0acf360fed7a12ce3e6c8b0099a977fc0669395ddb"
 
 [[suite]]
-id = "project-ir-and-identities"
+id = "stage6-project-ir-and-views"
 profile = "1.0"
 active_from_stage = 6
-status = "planned"
+status = "required"
+
+[[case]]
+id = "V1-IR-001-COMPLETE"
+fixture = "portable/specs/fixtures/stage6/complete.toml"
+fixture_sha256 = "9aff1db04f196b447b87df3418e06516db88ca31388bf6bcafaa9e47b839d6d8"
+oracle = "portable/conformance/oracles/stage6/project.toml"
+oracle_sha256 = "304e622b848c6ae5eb4bb24417490629d0207c7743f4f53ce867f1ad4871a536"
+
+[[case]]
+id = "V1-IR-002-PRIVATE-ONLY"
+fixture = "portable/specs/fixtures/stage6/private-only.toml"
+fixture_sha256 = "19b6edd659fd77db30a9c9b43f29094aabc6e2a25a381f8f42a658facdf894df"
+oracle = "portable/conformance/oracles/stage6/project.toml"
+oracle_sha256 = "304e622b848c6ae5eb4bb24417490629d0207c7743f4f53ce867f1ad4871a536"
+
+[[case]]
+id = "V1-VIEW-002-PUBLIC-CLOSURE"
+fixture = "portable/specs/fixtures/stage6/public-view.toml"
+fixture_sha256 = "6babc956c03242dcb1658665a620b134f1607fc4c5fb03c492368458fadcfbae"
+oracle = "portable/conformance/oracles/stage6/project.toml"
+oracle_sha256 = "304e622b848c6ae5eb4bb24417490629d0207c7743f4f53ce867f1ad4871a536"
+
+[[case]]
+id = "V1-VIEW-001-PRIVATE-ROOT"
+fixture = "portable/specs/fixtures/stage6/private-view.toml"
+fixture_sha256 = "cb5a6b0a0a183177927b4d0f09e7caae51abd7470fc6c8532bdbb7113fb3d899"
+oracle = "portable/conformance/oracles/stage6/project.toml"
+oracle_sha256 = "304e622b848c6ae5eb4bb24417490629d0207c7743f4f53ce867f1ad4871a536"
+
+[[case]]
+id = "V1-IR-003-MALFORMED"
+fixture = "portable/specs/fixtures/stage6/malformed.toml"
+fixture_sha256 = "d7ab990567ea058177caa2bf71a455b7e0b46e8ef9a57cc1fcbd5279919b3d15"
+oracle = "portable/conformance/oracles/stage6/project.toml"
+oracle_sha256 = "304e622b848c6ae5eb4bb24417490629d0207c7743f4f53ce867f1ad4871a536"
 
 [[suite]]
 id = "authoring-and-public-probes"

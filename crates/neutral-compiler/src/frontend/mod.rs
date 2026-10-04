@@ -18,8 +18,9 @@ mod project_semantics;
 
 pub use project_semantics::diagnostics as project_semantics_diagnostics;
 pub use project_semantics::{
-    ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic, ProjectSemanticFailure,
-    ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind, analyze_project_semantics,
+    ProjectCompileFailure, ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic,
+    ProjectSemanticFailure, ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind,
+    analyze_project_semantics, compile_project, project_lowering_diagnostics,
 };
 
 pub(crate) use graph_syntax::{GraphImport, GraphSyntaxErrorKind, scan_graph_source};
