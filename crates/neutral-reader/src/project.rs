@@ -235,6 +235,7 @@ impl ValidatedProject {
             })
             .collect();
         let vocabulary_records = view_vocabularies(&exports, &self.ir, cancellation)?;
+        check_cancel(cancellation)?;
         Ok(ProjectView {
             roots: roots.into_iter().collect(),
             exports,
@@ -952,6 +953,7 @@ fn check_companions(
     for (source, module) in ir.sources.iter().zip(&ir.modules) {
         if source.module != module.identity.module_name()
             || source.source_id.is_empty()
+            || source.source_id.len() as u64 > limits.text_bytes
             || !ids.insert(&source.source_id)
         {
             return Err(ProjectReadError::Companion);

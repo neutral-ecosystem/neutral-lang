@@ -8,3 +8,5 @@ public_reference_view = "app::consumer::pointer,app::shared::Service,app::shared
 malformed_artifacts = "reject-before-publication"
 invalid_values = "NEU-PIR-001"
 view_private_or_duplicate_roots = "reject"
+encoding = "NIR-PROJECT-CBOR/1"
+encoded_artifacts = "reject-before-publication"

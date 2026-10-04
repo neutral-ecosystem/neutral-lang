@@ -12,3 +12,7 @@ original-source diagnostic mapping, and enforcement of hostile traversal limits.
 Within the ecosystem, these are consumer-boundary tests: they protect the
 independent inspection path and prevent compiler linkage from becoming a hidden
 runtime requirement.
+
+`encoded_project.rs` separately proves complete project inspection, cross-module
+public values/references, selection closure, private-provenance redaction, empty
+views, and fail-closed executable/JSON behavior without a compiler dependency.

@@ -8,6 +8,10 @@ use neutral_compiler::{
     compile_project,
 };
 use neutral_core::{ByteSpan, CancellationToken, SourceLocation};
+use neutral_encoding::{
+    DecodeLimits,
+    project::{decode_project, encode_project},
+};
 use neutral_ir::{
     LogicalModuleIdentity, ModuleSymbolIdentity,
     project::*,
@@ -518,5 +522,230 @@ fn property_project_ir_capture_and_host_order_are_nonsemantic() {
         .collect::<Vec<_>>();
     for handle in handles {
         assert_eq!(first, handle.join().unwrap());
+    }
+}
+
+/// Round-trips a complete project and all companions through the independent codec.
+fn round_trip(ir: &Arc<ProjectIr>) -> ValidatedProject {
+    let token = CancellationToken::new();
+    let reader = ValidatedProject::from_ir(Arc::clone(ir), ir.limits, &token).unwrap();
+    let bytes = encode_project(&reader, &token).unwrap();
+    let decoded = decode_project(&bytes, DecodeLimits::hard(), ir.limits, &token).unwrap();
+    assert_eq!(decoded.complete_ir(), ir);
+    assert!(decoded.complete_ir().logical_eq(ir));
+    assert_eq!(bytes, encode_project(&decoded, &token).unwrap());
+    decoded
+}
+
+/// Every complete/private/contextual/vocabulary shape retains exact interpretation.
+#[test]
+fn integration_project_ir_encoded_round_trip_corpus() {
+    round_trip(&complete());
+    let private = capture_project(request_fixture(include_str!("private-only.toml"))).unwrap();
+    round_trip(&compile_project(&private, &CancellationToken::new()).unwrap());
+    round_trip(&single("record Item { num count = -1.25e2, string? note = null, }\npublic num? absent = null\npublic List<List<num>> values = [[1,2], []]\npublic bool active = true\npublic url site = \"https://example.invalid\"\npublic path location = \"../inert\"\nItem item = {}\n").unwrap());
+    let fixture =
+        include_str!("../public_semantics/fixtures/positive/vocabulary-multiple-alias.toml");
+    for text in [
+        fixture.to_owned(),
+        fixture
+            .replace(" as alpha", " as renamed")
+            .replace("alpha::", "renamed::"),
+    ] {
+        let captured = capture_project(request_fixture(&text)).unwrap();
+        round_trip(&compile_project(&captured, &CancellationToken::new()).unwrap());
+    }
+}
+
+/// Empty, one-root, and permuted selections never prune complete IR or change identity inputs.
+#[test]
+fn property_project_ir_encoded_roots_and_order_are_nonsemantic() {
+    let ir = complete();
+    let reader = round_trip(&ir);
+    let token = CancellationToken::new();
+    let before = encode_project(&reader, &token).unwrap();
+    let a = symbol("app::consumer", "pointer");
+    let b = symbol("app::consumer", "copied");
+    let request = |roots| ViewRequest {
+        schema: PROJECT_VIEW_SCHEMA.to_owned(),
+        roots,
+    };
+    let first = reader
+        .derive_view(&request(vec![a.clone(), b.clone()]), &token)
+        .unwrap();
+    assert_eq!(
+        first,
+        reader.derive_view(&request(vec![b, a]), &token).unwrap()
+    );
+    assert_eq!(
+        reader
+            .derive_view(&request(Vec::new()), &token)
+            .unwrap()
+            .exports(),
+        []
+    );
+    assert_eq!(before, encode_project(&reader, &token).unwrap());
+    assert_eq!(reader.complete_ir(), &ir);
+}
+
+/// Replayed immutable capture and a clean recapture produce identical serialized authority.
+#[test]
+fn property_project_ir_clean_replay_and_serialization_order_equivalence() {
+    let captured = capture_project(request()).unwrap();
+    let token = CancellationToken::new();
+    let first = compile_project(&captured, &token).unwrap();
+    let replayed = capture_project(captured.replay_request(CancellationToken::new())).unwrap();
+    let second = compile_project(&replayed, &token).unwrap();
+    assert_eq!(captured.sources(), replayed.sources());
+    let left = round_trip(&first);
+    let right = round_trip(&second);
+    assert_eq!(
+        encode_project(&left, &token).unwrap(),
+        encode_project(&right, &token).unwrap()
+    );
+    let mut sources = captured
+        .sources()
+        .iter()
+        .map(|s| CapturedSourceInput::new(s.source_id(), s.module_id(), s.bytes().to_vec()))
+        .collect::<Vec<_>>();
+    sources.reverse();
+    let reordered = capture_project(CapturedProjectRequest::new(
+        neutral_compiler::CAPTURE_REQUEST_VERSION,
+        captured.profile(),
+        sources,
+        Vec::new(),
+        neutral_compiler::ProjectCaptureControls::new(captured.limits(), CancellationToken::new()),
+    ))
+    .unwrap();
+    let third = round_trip(&compile_project(&reordered, &token).unwrap());
+    assert_eq!(
+        encode_project(&left, &token).unwrap(),
+        encode_project(&third, &token).unwrap()
+    );
+}
+
+/// Editing one supplied unit keeps the old capture frozen and matches clean reconstruction.
+#[test]
+fn property_project_ir_changed_unit_replay_does_not_reuse_stale_facts() {
+    let captured = capture_project(request()).unwrap();
+    let token = CancellationToken::new();
+    let original = compile_project(&captured, &token).unwrap();
+    let sources = captured
+        .sources()
+        .iter()
+        .map(|s| {
+            let mut bytes = s.bytes().to_vec();
+            if s.module_id() == "app::orphan" {
+                bytes.extend(b"num changed = 7\n");
+            }
+            CapturedSourceInput::new(s.source_id(), s.module_id(), bytes)
+        })
+        .collect::<Vec<_>>();
+    let build = |sources| {
+        CapturedProjectRequest::new(
+            neutral_compiler::CAPTURE_REQUEST_VERSION,
+            captured.profile(),
+            sources,
+            Vec::new(),
+            neutral_compiler::ProjectCaptureControls::new(
+                captured.limits(),
+                CancellationToken::new(),
+            ),
+        )
+    };
+    let changed = capture_project(build(sources.clone())).unwrap();
+    let clean = capture_project(build(sources)).unwrap();
+    let changed = round_trip(&compile_project(&changed, &token).unwrap());
+    let clean = round_trip(&compile_project(&clean, &token).unwrap());
+    assert_eq!(changed.complete_ir(), clean.complete_ir());
+    assert!(!original.logical_eq(changed.complete_ir()));
+    assert_ne!(original.sources, changed.complete_ir().sources);
+    assert_eq!(original, compile_project(&captured, &token).unwrap());
+}
+
+/// Public envelopes distinguish capture/compile/read/view failures and publish no partial success.
+#[test]
+fn integration_project_ir_failure_envelope_review() {
+    let ir = complete();
+    let token = CancellationToken::new();
+    let reader = round_trip(&ir);
+    let bad = ViewRequest {
+        schema: "unknown-view".to_owned(),
+        roots: Vec::new(),
+    };
+    let error = reader.derive_view(&bad, &token).unwrap_err();
+    assert_eq!(error, ProjectReadError::Schema);
+    assert_eq!(error.schema(), PROJECT_RESULT_SCHEMA);
+    assert!(matches!(
+        single("public num invalid = false\n"),
+        Err(ProjectCompileFailure::Lowering { .. })
+    ));
+    let mut resources = ir.as_ref().clone();
+    resources.resources.source_bytes += 1;
+    assert_eq!(
+        ValidatedProject::from_ir(Arc::new(resources), ir.limits, &token)
+            .unwrap_err()
+            .schema(),
+        PROJECT_RESULT_SCHEMA
+    );
+    token.cancel();
+    assert_eq!(
+        reader.derive_view(
+            &ViewRequest {
+                schema: PROJECT_VIEW_SCHEMA.to_owned(),
+                roots: Vec::new()
+            },
+            &token
+        ),
+        Err(ProjectReadError::Cancelled)
+    );
+    assert!(compile_project(&capture_project(request()).unwrap(), &token).is_err());
+}
+
+/// Registered wire mutations have stable bounded failures and no partial reader.
+#[test]
+fn conformance_project_ir_encoded_descriptor() {
+    let fixture = parse_fixture(include_str!("encoded.toml"));
+    let oracle = parse_fixture(include_str!("oracle.toml"));
+    assert_eq!(
+        required_string(&fixture.root, "format"),
+        neutral_encoding::project::ENCODING
+    );
+    assert_eq!(
+        required_string(&oracle.root, "encoding"),
+        neutral_encoding::project::ENCODING
+    );
+    let ir = complete();
+    let reader = round_trip(&ir);
+    let token = CancellationToken::new();
+    let bytes = encode_project(&reader, &token).unwrap();
+    for mutation in &fixture.arrays["mutations"] {
+        let mut corrupt = bytes.clone();
+        let mut limits = DecodeLimits::hard();
+        match required_string(mutation, "selector").as_str() {
+            "truncated" => {
+                corrupt.pop();
+            }
+            "trailing" => corrupt.push(0),
+            "unknown-schema" => {
+                let position = corrupt
+                    .windows(PROJECT_IR_SCHEMA.len())
+                    .position(|part| part == PROJECT_IR_SCHEMA.as_bytes())
+                    .unwrap();
+                corrupt[position + PROJECT_IR_SCHEMA.len() - 1] = b'9';
+            }
+            "wrong-cardinality" => corrupt[neutral_encoding::project::MAGIC.len()] = 0x8b,
+            "caller-output" => limits = limits.with_artifact_bytes(bytes.len() - 1),
+            "indefinite-container" => {
+                corrupt = neutral_encoding::project::MAGIC.to_vec();
+                corrupt.push(0x9f);
+            }
+            unknown => panic!("unreviewed wire mutation {unknown}"),
+        }
+        let failure = decode_project(&corrupt, limits, ir.limits, &token).unwrap_err();
+        assert_eq!(
+            format!("{:?}", failure.class()),
+            required_string(mutation, "outcome")
+        );
     }
 }

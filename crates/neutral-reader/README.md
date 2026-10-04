@@ -38,8 +38,11 @@ cancellation and malformed content fail before publication. It depends on no
 compiler-private parser or AST. `derive_view` selects public roots and their
 type/value/reference/vocabulary closure without exposing private identities or
 source accounting, or mutating complete IR. Source evidence is not a proof that
-an arbitrary producer faithfully compiled the supplied bytes. Encoded project
-decoding and a standalone project probe remain subsequent integration work.
+an arbitrary producer faithfully compiled the supplied bytes. The separate
+`neutral-encoding::project` codec returns this validated boundary after hostile
+wire/schema checks; the standalone project probe then exposes a selected public
+view without compiler linkage. Captured artifact-byte limits are independent
+of in-process value work and are enforced by the codec.
 
 ## Command
 

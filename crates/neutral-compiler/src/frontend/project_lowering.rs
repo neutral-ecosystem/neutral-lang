@@ -99,6 +99,7 @@ pub fn compile_project(
         import_edges: controls.import_edges,
         nodes: controls.output_bytes,
         text_bytes: controls.total_source_bytes.max(controls.output_bytes),
+        artifact_bytes: controls.output_bytes,
     };
     let mut lowering = Lowering {
         roots: &roots,

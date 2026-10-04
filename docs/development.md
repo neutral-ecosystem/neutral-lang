@@ -56,6 +56,19 @@ run with `cargo xtask test security`, `test unit`, or another documented level.
 The runner/config/profile selection lives in `config/automation.toml`; a missing
 runner produces installation guidance rather than silently skipping tests.
 
+For project IR and public-view changes, run the focused boundaries first:
+
+```sh
+cargo test --package neutral-encoding project
+cargo test --package neutral-probe --test encoded_project
+cargo test --package neutral-test-suite project_ir
+cargo xtask fixtures check
+cargo xtask ci pr
+```
+
+The standalone probe supports both document and complete project artifacts;
+see its [commands and selection rules](../crates/neutral-probe/README.md).
+
 ## Documentation
 
 Generate workspace Rustdoc and the searchable package landing page with:

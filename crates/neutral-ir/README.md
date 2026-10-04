@@ -36,7 +36,9 @@ defaults, plus separate original-byte source maps, dependency provenance, exact
 captured input evidence, explicit limits, and resource facts. `logical_eq`
 excludes host/source and processing evidence. `ViewRequest` is a distinct
 post-compilation selection contract; it cannot change complete project meaning.
-Canonical project identity transcripts and encoded transport are separate gates.
+Canonical project identity transcripts remain a separate gate. Complete encoded
+transport is owned by `neutral-encoding`, which retains explicit artifact-byte
+limits separately from logical content and materialized-value work.
 
 ## Command
 

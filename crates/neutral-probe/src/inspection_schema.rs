@@ -102,8 +102,12 @@ pub fn fields(summary: &ProbeSummary) -> [Field<'_>; 12] {
 /// Renders the shared inspection fields as indented JSON.
 #[must_use]
 pub fn render_summary_json(summary: &ProbeSummary) -> String {
+    render_fields_json(&fields(summary))
+}
+
+/// Renders a validated inspection field projection using the shared JSON rules.
+pub(crate) fn render_fields_json(fields: &[Field<'_>]) -> String {
     let mut output = format!("{{\n  \"schema_version\": {SCHEMA_VERSION},\n");
-    let fields = fields(summary);
     for (index, field) in fields.iter().enumerate() {
         write!(output, "  \"{}\": ", field.json_key).expect("writing to a String cannot fail");
         match field.value {

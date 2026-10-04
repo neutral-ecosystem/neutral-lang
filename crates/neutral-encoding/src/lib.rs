@@ -13,6 +13,8 @@ pub mod constants;
 mod decode;
 mod decoder;
 pub mod diagnostics;
+/// Complete project transport and independent bounded decoding.
+pub mod project;
 
 use cbor::CborWriter;
 use neutral_core::{ByteSpan, EncodedSectionDigest};
@@ -341,6 +343,8 @@ impl EncodedArtifact {
 pub enum EncodingError {
     /// An immutable external encoding ceiling was exceeded.
     EncodedSizeLimit,
+    /// Cooperative cancellation prevented complete project encoding.
+    Cancelled,
     /// Validated input contradicted an encoder-only structural invariant.
     InternalDefect,
 }

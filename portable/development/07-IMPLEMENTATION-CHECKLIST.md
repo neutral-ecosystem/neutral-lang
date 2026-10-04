@@ -258,17 +258,26 @@ project artifact. Project identity transcripts remain Stage 7 work.
 
 ### `v0.6.3` — public integration gate
 
-- [ ] Implement standalone reader-only project probe.
-- [ ] Verify views preserve all interpretive dependencies while redacting
+- [x] Implement standalone reader-only project probe.
+- [x] Verify views preserve all interpretive dependencies while redacting
   private implementation provenance.
 - [ ] Verify roots never affect capture, logical equality, or project identity.
 
+Capture, logical equality, complete serialized IR, and public-interface
+fingerprint inputs are verified invariant under root selection. Complete
+project identity and its digest assertion are Stage 7 work; that part remains
+unclaimed. Evidence: [Stage 6 integration and validation](evidence/stage6-integration-validation.md).
+
 ### `v0.6.4` — validation gate
 
-- [ ] Run IR round-trip, hostile decoder, source-map, provenance, view, bounds,
+- [x] Run IR round-trip, hostile decoder, source-map, provenance, view, bounds,
   and independent reader-probe suites.
 - [ ] Run clean/incremental and serialization-order equivalence tests.
-- [ ] Review all public result and failure envelopes.
+- [x] Review all public result and failure envelopes.
+
+Clean capture, immutable captured replay, changed-unit reconstruction, shuffled
+serialization, and concurrent compilation are verified. There is no project
+incremental cache yet; actual cached/clean equivalence is not claimed.
 
 ### Promote to `v0.7.0`
 

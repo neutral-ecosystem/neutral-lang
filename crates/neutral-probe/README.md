@@ -21,9 +21,12 @@ accepts one encoded artifact path, validates it under the hard decoder limits,
 and emits the same shared-renderer `[info]` observations as the in-process
 library, or one bounded `[error]`. With `--json`, stdout is a JSON document
 without log prefixes so it can be parsed by other tools.
-The library also summarizes validated public-interface snapshots via
-the reader alone; this in-process path has no compiler dependency and does not
-claim that the standalone encoded-project format is active yet.
+The binary also detects complete `NIR-PROJECT-CBOR/1` artifacts. It validates all
+modules, private declarations, and companions before exposing complete counts
+and a redacted public view. No private identities, source IDs, spans, or raw
+provenance appear in that projection. An omitted selection includes all public
+exports; `--root` can be repeated to select a smaller public dependency closure.
+Selection never changes complete IR. Artifact file reads obey the hard byte cap.
 
 ```console
 cargo run --package neutral-probe -- path/to/artifact.nir
@@ -34,6 +37,18 @@ For a formatted JSON inspection view of the decoded artifact, run:
 ```console
 cargo run --package neutral-probe -- --json path/to/artifact.nir
 ```
+
+For a complete project artifact produced by `neutral_encoding::project`, run:
+
+```console
+cargo run --package neutral-probe -- --json --root example::api target/project.nir
+```
+
+The single-file compiler CLI does not yet produce complete-project artifacts.
+The library's `inspect_project_encoded` accepts explicit consumer limits and
+optional selections; `Some(&[])` yields an empty view, while `None` selects all
+public exports. Its typed failure contains either a bounded decode error or a
+reader view error and no partial summary.
 
 The JSON view is a readable, versioned projection of the probe summary. Its
 field names, value shapes, and text labels are shared through

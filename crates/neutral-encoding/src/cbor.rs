@@ -3,21 +3,36 @@
 //! Minimal deterministic writer for the restricted Neutral CBOR subset.
 
 use crate::{EncodingError, constants};
+use neutral_core::CancellationToken;
 
 /// One bounded restricted-CBOR section writer.
 pub(crate) struct CborWriter {
     /// Accumulated section bytes.
     bytes: Vec<u8>,
+    /// Optional shared signal used by cancellable complete-project encoding.
+    cancellation: Option<CancellationToken>,
 }
 
 impl CborWriter {
     /// Creates an empty section writer.
     pub(crate) const fn new() -> Self {
-        Self { bytes: Vec::new() }
+        Self {
+            bytes: Vec::new(),
+            cancellation: None,
+        }
+    }
+
+    /// Creates a writer that polls the caller signal before every emitted primitive.
+    pub(crate) fn with_cancellation(cancellation: &CancellationToken) -> Self {
+        Self {
+            bytes: Vec::new(),
+            cancellation: Some(cancellation.clone()),
+        }
     }
 
     /// Finishes the nonempty bounded section.
     pub(crate) fn finish(self) -> Result<Vec<u8>, EncodingError> {
+        self.check_size()?;
         if self.bytes.is_empty() || self.bytes.len() > constants::MAXIMUM_SECTION_BYTES {
             return Err(EncodingError::EncodedSizeLimit);
         }
@@ -123,12 +138,14 @@ impl CborWriter {
 
     /// Appends one byte under the section ceiling.
     fn push(&mut self, value: u8) -> Result<(), EncodingError> {
+        self.check_size()?;
         self.bytes.push(value);
         self.check_size()
     }
 
     /// Appends bytes under the section ceiling.
     fn extend(&mut self, value: &[u8]) -> Result<(), EncodingError> {
+        self.check_size()?;
         let new_length = self
             .bytes
             .len()
@@ -143,7 +160,13 @@ impl CborWriter {
 
     /// Checks the current section size.
     fn check_size(&self) -> Result<(), EncodingError> {
-        if self.bytes.len() > constants::MAXIMUM_SECTION_BYTES {
+        if self
+            .cancellation
+            .as_ref()
+            .is_some_and(CancellationToken::is_cancelled)
+        {
+            Err(EncodingError::Cancelled)
+        } else if self.bytes.len() > constants::MAXIMUM_SECTION_BYTES {
             Err(EncodingError::EncodedSizeLimit)
         } else {
             Ok(())

@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.project-wire-fixture/1"
+case_id = "V1-IR-003-ENCODED"
+format = "NIR-PROJECT-CBOR/1"
+base_fixture = "complete.toml"
+
+[[mutations]]
+selector = "truncated"
+outcome = "MalformedCbor"
+
+[[mutations]]
+selector = "trailing"
+outcome = "MalformedCbor"
+
+[[mutations]]
+selector = "unknown-schema"
+outcome = "UnsupportedVersion"
+
+[[mutations]]
+selector = "wrong-cardinality"
+outcome = "MalformedCbor"
+
+[[mutations]]
+selector = "caller-output"
+outcome = "EncodedSizeLimit"
+
+[[mutations]]
+selector = "indefinite-container"
+outcome = "MalformedCbor"

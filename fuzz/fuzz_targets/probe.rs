@@ -13,4 +13,11 @@ fuzz_target!(|bytes: &[u8]| {
     if let Ok(document) = decode(bytes, DecodeLimits::hard(), &CancellationToken::new()) {
         let _ = summarize(&document);
     }
+    let _ = neutral_probe::project::inspect_project_encoded(
+        bytes,
+        DecodeLimits::hard(),
+        neutral_encoding::project::hard_project_limits(),
+        None,
+        &CancellationToken::new(),
+    );
 });

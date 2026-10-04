@@ -48,5 +48,5 @@ status = "v0.5.1-contract-and-fixture-gate"
 
 [stage6_contract_gate]
 project_ir_path = "portable/specs/contracts/PROJECT-IR.md"
-project_ir_sha256 = "31d35e0b4c9be7c2804eb897537bffd680a5bccb9e7f5994a4914a807a3306b5"
-status = "contract-and-core-implemented; encoded-integration-and-validation-pending"
+project_ir_sha256 = "7795648425a69ac245d5781889180d0a41bcd1a2d0bc40e96e753683524a8974"
+status = "encoded-integration-validated; project-identity-and-incremental-assertions-pending"

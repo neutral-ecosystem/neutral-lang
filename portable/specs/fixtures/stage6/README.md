@@ -12,4 +12,6 @@ Crate-owned copies under `neutral-test-suite/tests/project_ir` remain executable
 after this portable plan is archived. Run
 `cargo test --package neutral-test-suite project_ir` to exercise their reader,
 value/default, source/provenance, bounds, cancellation, and view-closure checks.
-Encoded transport and standalone project probing remain later gates.
+The encoded descriptor also pins complete-project wire mutation classifications.
+Owning codec tests exercise truncation, closed tuples, bounds, and companion
+forgeries; compiler-free probe tests verify executable inspection and redaction.

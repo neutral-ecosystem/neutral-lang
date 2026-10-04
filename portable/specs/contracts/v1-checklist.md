@@ -67,13 +67,15 @@ here.
 - [x] V1-IR-003 — Validated public reader without source/private AST access.
 - [x] V1-VIEW-001 — Roots are post-compilation view inputs only.
 - [x] V1-VIEW-002 — Views include required public interpretive dependencies.
-- [ ] V1-API-001 — Capture, compile, validate-reader, and derive-view outcomes
+- [x] V1-API-001 — Capture, compile, validate-reader, and derive-view outcomes
   are bounded, versioned, and deterministic.
 
 The in-process contract/core boundary is verified in
 [Stage 6 evidence](../../development/evidence/stage6-contract-core.md).
-Standalone encoded integration and the final cross-boundary envelope review
-remain open in the Stage 6 integration/validation gates.
+Encoded integration and the cross-boundary envelope review are recorded in
+[Stage 6 integration evidence](../../development/evidence/stage6-integration-validation.md).
+Complete project identity/root digest proof and true incremental cache
+equivalence remain pending their implementation; replay is not labelled caching.
 
 ## Stage 7 — identity (`v0.7.0 -> v0.8.0`)
 

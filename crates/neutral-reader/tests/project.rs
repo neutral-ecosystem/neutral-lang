@@ -34,6 +34,7 @@ fn artifact() -> ProjectIr {
             import_edges: 1,
             nodes: 32,
             text_bytes: 128,
+            artifact_bytes: 4096,
         },
         resources: ProjectResourceFacts {
             source_units: 1,

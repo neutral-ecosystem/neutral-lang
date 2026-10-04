@@ -2,7 +2,7 @@
 
 # Complete project IR, reader, and view contract
 
-Status: accepted Stage 6 contract and core boundary
+Status: accepted Stage 6 contract, encoded integration, and reader boundary
 
 This refines [PROJECT](PROJECT.md), [PUBLIC-SEMANTICS](PUBLIC-SEMANTICS.md),
 [VOCABULARY](VOCABULARY.md), and the inherited closed-default/value rules.
@@ -48,8 +48,11 @@ The reader recomputes facts and rejects discrepancies. Caller bounds intersect
 producer bounds: neither can relax the other. Lowering checks a deterministic
 aggregate work/text retention budget derived from the request's output bound
 before copying reused/default values. Value/type recursion has the shared hard
-ceiling. This is an in-process IR boundary, not a claim about an encoded wire
-byte count; later encoding must separately enforce the captured output-byte cap.
+ceiling. `ProjectLimits::artifact_bytes` retains the captured output-byte cap
+independently of materialized-value work. Encoding and decoding enforce that
+producer cap as well as independent caller and hard wire limits. Source IDs
+also obey the reader's text bound. No in-process node count substitutes for an
+encoded byte count.
 
 ## Independent reader — V1-IR-003, V1-API-001
 
@@ -84,10 +87,60 @@ value reuse and transitive locked vocabulary interpretation schemas. It
 contains materialized public values and signatures, not private identities,
 source IDs, source maps, private defaults, or raw provenance. Public data may
 contain values intentionally reused from private bindings; this does not expose
-the private binding's identity or source. Format/encoding options belong to
-later transport adapters and cannot affect complete IR.
+the private binding's identity or source. Transport options cannot affect
+complete IR.
 
-Standalone reader-only project probing and hostile encoded project decoding
-remain the subsequent Stage 6 integration/validation gates. The single-file
-CLI still rejects the unavailable complete v1 profile; this library boundary
-does not silently activate an incomplete command path.
+## Complete project transport
+
+`NIR-PROJECT-CBOR/1` starts with the eight bytes `NEUPR\r\n\x1a`, followed by
+exactly one restricted-CBOR array with twelve positions in this order:
+
+| Position | Content |
+| --- | --- |
+| 0 | Exact complete IR schema string |
+| 1 | Modules: `[module_identity, import_targets]` |
+| 2 | Declarations: `[symbol, public, signature, value_or_null, defaults]` |
+| 3 | Vocabulary records: `[identity, version, name, public, fields]` |
+| 4 | Vocabulary catalogues: `[identity, version, public_type_names]` |
+| 5 | Declared public-interface fingerprint, exactly 32 bytes |
+| 6 | Sources: `[module, source_id, digest_bytes, byte_length]` |
+| 7 | Source maps: `[symbol, location]` |
+| 8 | Provenance: `[from_symbol, to_symbol, edge_kind, location]` |
+| 9 | Limits: `[modules, declarations, import_edges, nodes, text_bytes, artifact_bytes]` |
+| 10 | Facts: `[source_units, source_bytes, vocabulary_units, vocabulary_bytes, declarations, import_edges, value_nodes]` |
+| 11 | Vocabulary sources: `[identity, version, digest_bytes, byte_length]` |
+
+Every collection is a definite array; every tuple has exact cardinality.
+Module identities are `[profile, module_name]`, symbols are
+`[module_identity, declaration_name]`, locations are
+`[source_digest_bytes, span_start, span_end]`, and fields are `[name, type_or_value]`.
+Signatures are `[false, binding_type]` or `[true, record_fields]`.
+Scalar types are one-element tuples tagged `num`, `string`, `bool`, `url`, or
+`path`; wrappers are `[List|Ref|nullable, inner_type]`; nominal types are
+`[nominal, symbol]` or `[vocabulary, identity, version, type_name]`.
+Values are `[null]`, `[num, negative, coefficient, signed_scale]`,
+`[string|url|path|bool, scalar]`, `[Ref, symbol]`, `[List, values]`, or
+`[record, fields]`. Edge ordinals are 0 type, 1 reference-type, 2 value,
+3 reference. Unknown tags/ordinals, duplicate identities/fields, unordered
+canonical collections, extra/missing positions, and trailing bytes fail closed.
+
+The shared restricted-CBOR parser enforces bytes, strings, container items,
+depth, traversal, and cancellation before allocation. Equivalent integer-width
+encodings are accepted; the writer emits shortest widths. Export signatures
+and public edges are recomputed from complete declarations and provenance,
+then independently validated against the declared fingerprint and full IR.
+No duplicated export index can override complete content. This transport does
+not claim an integrity signature or a Stage 7 captured/logical/artifact identity.
+The legacy document `NIR-CBOR/0.1` format remains unchanged and distinct.
+
+`neutral-probe [--json] [--root module::declaration ...] <artifact>` recognizes
+both formats without compiler linkage. Project inspection validates the complete
+artifact before selection, exposes complete counts plus the public view, and
+never prints private declaration identities, source IDs, spans, or provenance.
+Omitted roots select all public exports; the library's explicit empty selection
+produces an empty view. Text logs use category prefixes; JSON stdout contains
+only an indented inspection document. Any failure exits unsuccessfully and
+emits no partial summary. Host file reads are bounded before decoding.
+
+The single-file compiler CLI still rejects the unavailable complete v1 profile;
+the library and probe integration do not silently enable incomplete acquisition.

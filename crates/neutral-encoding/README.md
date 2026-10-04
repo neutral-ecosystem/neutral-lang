@@ -26,3 +26,14 @@ This is a library crate. Verify its encoder and hostile-input decoder with:
 ```sh
 cargo test --package neutral-encoding
 ```
+
+## Complete projects
+
+`project::encode_project` accepts only a `ValidatedProject` and explicit
+cancellation. `project::decode_project` independently validates complete IR,
+source/provenance companions, resources, and the derived public export index
+under explicit wire and project bounds. The separate `NIR-PROJECT-CBOR/1`
+transport retains private validation content but never root-prunes a project.
+It enforces captured artifact-byte limits independently of value work.
+Package versions, byte order, and public-interface fingerprints are not complete
+project identity. Neither codec links compiler-private models or performs I/O.

@@ -10,4 +10,10 @@ use neutral_encoding::{DecodeLimits, decode};
 
 fuzz_target!(|bytes: &[u8]| {
     let _ = decode(bytes, DecodeLimits::hard(), &CancellationToken::new());
+    let _ = neutral_encoding::project::decode_project(
+        bytes,
+        DecodeLimits::hard(),
+        neutral_encoding::project::hard_project_limits(),
+        &CancellationToken::new(),
+    );
 });

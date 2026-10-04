@@ -149,6 +149,8 @@ pub struct ProjectLimits {
     pub nodes: u64,
     /// Maximum aggregate value/source bytes and individual schema-name bytes.
     pub text_bytes: u64,
+    /// Complete encoded artifact bytes, independent of materialized value work.
+    pub artifact_bytes: u64,
 }
 
 impl ProjectLimits {
@@ -161,6 +163,7 @@ impl ProjectLimits {
             import_edges: self.import_edges.min(other.import_edges),
             nodes: self.nodes.min(other.nodes),
             text_bytes: self.text_bytes.min(other.text_bytes),
+            artifact_bytes: self.artifact_bytes.min(other.artifact_bytes),
         }
     }
 }

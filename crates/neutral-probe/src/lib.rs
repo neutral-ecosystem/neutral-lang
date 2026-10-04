@@ -17,6 +17,8 @@ use neutral_reader::{
 
 /// Shared field schema and JSON rendering for validated artifact inspection.
 pub mod inspection_schema;
+/// Reader-only inspection of complete encoded projects and redacted public views.
+pub mod project;
 pub use inspection_schema::render_summary_json;
 
 /// Public-only interface observations made without compiler linkage.
