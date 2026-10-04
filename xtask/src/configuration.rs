@@ -3,19 +3,77 @@
 //! Repository configuration access and active test-minimum selection.
 
 use super::{
-    BTreeMap, Component, Path, PathBuf, constants, env, fs, read_workspace_text, workspace_root,
+    BTreeMap, Component, Path, PathBuf, constants, env, read_workspace_text, workspace_root,
 };
 
-/// One declared top-level responsibility boundary in the repository layout.
-pub(super) struct RepositoryDirectory {
-    /// Relative root of the owned directory.
-    pub(super) path: String,
-    /// Tracked ownership README inside that directory.
-    pub(super) readme: String,
-    /// Human owner classification used by repository policy.
-    pub(super) owner: String,
-    /// Declared lifecycle for the directory contents.
-    pub(super) lifecycle: String,
+pub(super) use crate::configuration_models::{Automation, RepositoryDirectory, TestRunner};
+use crate::configuration_models::{Layout, TestMinimumProfile};
+use serde::de::DeserializeOwned;
+
+/// Deserializes TOML with its owning file/context in parser diagnostics.
+pub(super) fn parse<T: DeserializeOwned>(content: &str, label: &str) -> Result<T, String> {
+    toml::from_str(content).map_err(|error| format!("invalid {label}: {error}"))
+}
+
+/// Reads a workspace-owned typed configuration.
+pub(super) fn read<T: DeserializeOwned>(root: &Path, relative: &str) -> Result<T, String> {
+    parse(&read_workspace_text(root, relative)?, relative)
+}
+
+/// Checks a configuration schema independently of package and language versions.
+pub(super) fn require_schema(schema: u32, context: &str) -> Result<(), String> {
+    if schema != constants::CONFIG_SCHEMA_VERSION {
+        return Err(format!("unsupported {context} schema: {schema}"));
+    }
+    Ok(())
+}
+
+/// Loads the closed automation settings with fail-closed execution defaults.
+pub(super) fn automation() -> Result<Automation, String> {
+    let config: Automation = read(&workspace_root()?, constants::AUTOMATION_CONFIG_FILE)?;
+    require_schema(config.schema_version, "automation configuration")?;
+    if !is_safe_relative_path(Path::new(&config.output.results_root))
+        || !is_safe_relative_path(Path::new(&config.quality.evidence_root))
+        || config.quality.advisory_max_age_seconds == 0
+        || [&config.tools.cargo, &config.tools.rustc]
+            .iter()
+            .any(|command| command.trim().is_empty() || command.chars().any(char::is_control))
+    {
+        return Err("automation settings require safe relative output paths, nonempty executables, and positive advisory freshness".to_owned());
+    }
+    if !is_safe_relative_path(Path::new(&config.testing.config))
+        || config.testing.profile.is_empty()
+        || config.testing.ci_profile.is_empty()
+    {
+        return Err(
+            "test configuration requires a safe relative path and nonempty profiles".to_owned(),
+        );
+    }
+    Ok(config)
+}
+
+/// Selects an exact dotted section from a parsed document.
+fn section<'a>(document: &'a toml::Table, name: &str) -> Option<&'a toml::Table> {
+    let mut table = document;
+    if !name.is_empty() {
+        for component in name.split('.') {
+            table = table.get(component)?.as_table()?;
+        }
+    }
+    Some(table)
+}
+
+/// Converts parsed scalar values to the existing policy accessor representation.
+fn scalar(value: &toml::Value) -> Option<String> {
+    match value {
+        toml::Value::String(text) => Some(text.clone()),
+        toml::Value::Integer(_)
+        | toml::Value::Float(_)
+        | toml::Value::Boolean(_)
+        | toml::Value::Datetime(_) => Some(value.to_string()),
+        toml::Value::Array(_) => serde_json::to_string(value).ok(),
+        toml::Value::Table(_) => None,
+    }
 }
 
 /// Accepts only nonempty paths composed of normal workspace-relative components.
@@ -26,78 +84,69 @@ pub(super) fn is_safe_relative_path(path: &Path) -> bool {
             .all(|component| matches!(component, Component::Normal(_)))
 }
 
-/// Reads every declared top-level directory from the layout inventory.
+/// Reads the closed ownership inventory through typed TOML.
 pub(super) fn repository_directories(root: &Path) -> Result<Vec<RepositoryDirectory>, String> {
-    let layout = read_workspace_text(root, constants::REPOSITORY_LAYOUT_FILE)?;
-    let mut directories = Vec::new();
-    for entry in layout.split("[[directory]]").skip(1) {
-        let field = |key: &str| {
-            configuration_value(entry, key)
-                .filter(|value| !value.is_empty())
-                .ok_or_else(|| format!("repository directory has no {key}"))
-        };
-        directories.push(RepositoryDirectory {
-            path: field("path")?,
-            readme: field("readme")?,
-            owner: field("owner")?,
-            lifecycle: field("lifecycle")?,
-        });
-    }
-    if directories.is_empty() {
+    let layout: Layout = read(root, constants::REPOSITORY_LAYOUT_FILE)?;
+    require_schema(layout.schema_version, "repository layout")?;
+    if layout.directory.is_empty() {
         return Err("repository layout has no directory entries".to_owned());
     }
-    Ok(directories)
+    for entry in &layout.directory {
+        if [&entry.path, &entry.readme, &entry.owner, &entry.lifecycle]
+            .iter()
+            .any(|value| value.is_empty())
+        {
+            return Err("repository directory has an empty required field".to_owned());
+        }
+    }
+    Ok(layout.directory)
 }
 
-/// Reads scalar key/value pairs from one exact TOML section.
+/// Reads section values through the standard TOML parser, not line splitting.
 pub(super) fn configuration_section(
     content: &str,
-    section: &str,
+    name: &str,
 ) -> Result<Vec<(String, String)>, String> {
-    let heading = format!("[{section}]");
-    let mut selected = false;
-    let mut values = Vec::new();
-    for line in content.lines().map(str::trim) {
-        if line.starts_with('[') {
-            selected = line == heading;
-            continue;
-        }
-        if !selected || line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let (name, value) = line
-            .split_once('=')
-            .ok_or_else(|| format!("invalid [{section}] entry: {line}"))?;
-        values.push((
-            name.trim().to_owned(),
-            value.trim().trim_matches('"').to_owned(),
-        ));
-    }
-    Ok(values)
-}
-
-/// Reads one unsectioned scalar from constrained TOML-like configuration.
-pub(super) fn configuration_value(content: &str, key: &str) -> Option<String> {
-    content
-        .lines()
-        .map(str::trim)
-        .take_while(|line| !line.starts_with('['))
-        .find_map(|line| {
-            let (candidate, value) = line.split_once('=')?;
-            (candidate.trim() == key).then(|| value.trim().trim_matches('"').to_owned())
+    let document: toml::Table = parse(content, "configuration")?;
+    let Some(table) = section(&document, name) else {
+        return Ok(Vec::new());
+    };
+    table
+        .iter()
+        .map(|(key, value)| {
+            scalar(value)
+                .map(|value| (key.clone(), value))
+                .ok_or_else(|| format!("configuration [{name}] {key} is not a scalar"))
         })
+        .collect()
 }
 
-/// Reads one required local automation default from its declared section.
-pub(super) fn automation_value(section: &str, key: &str) -> Result<String, String> {
-    let root = workspace_root()?;
-    let configuration = read_workspace_text(&root, constants::AUTOMATION_CONFIG_FILE)?;
-    if configuration_value(&configuration, "schema_version").as_deref() != Some("1") {
-        return Err("unsupported automation configuration schema".to_owned());
+/// Reads a root scalar without inheriting values from nested sections.
+pub(super) fn configuration_value(content: &str, key: &str) -> Option<String> {
+    quality_value_from(content, "", key)
+}
+
+/// Reads a typed automation setting through its owning structure.
+pub(super) fn automation_value(name: &str, key: &str) -> Result<String, String> {
+    let config = automation()?;
+    let value = match (name, key) {
+        ("tools", "cargo") => config.tools.cargo,
+        ("tools", "rustc") => config.tools.rustc,
+        ("output", "results_root") => config.output.results_root,
+        ("quality", "evidence_root") => config.quality.evidence_root,
+        ("quality", "advisory_max_age_seconds") => {
+            config.quality.advisory_max_age_seconds.to_string()
+        }
+        _ => {
+            return Err(format!(
+                "automation configuration has no [{name}] {key} value"
+            ));
+        }
+    };
+    if value.is_empty() {
+        return Err(format!("automation configuration [{name}] {key} is empty"));
     }
-    quality_value_from(&configuration, section, key)
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| format!("automation configuration has no [{section}] {key} value"))
+    Ok(value)
 }
 
 /// Selects a configured executable with an optional per-invocation override.
@@ -123,47 +172,27 @@ pub(super) fn rustc_command() -> Result<String, String> {
     configured_command(constants::RUSTC_COMMAND_ENV, "rustc")
 }
 
-/// Resolves Cargo's standard target directory, including its native override.
+/// Resolves Cargo's actual target directory, including configuration-file overrides.
 pub(super) fn cargo_target_directory() -> Result<PathBuf, String> {
-    let configured =
-        env::var_os("CARGO_TARGET_DIR").map_or_else(|| PathBuf::from("target"), PathBuf::from);
-    if configured.as_os_str().is_empty() {
-        return Err("CARGO_TARGET_DIR must not be empty".to_owned());
-    }
-    if configured.is_absolute() {
-        Ok(configured)
-    } else {
-        Ok(workspace_root()?.join(configured))
-    }
+    Ok(crate::cargo_discovery::metadata(&workspace_root()?, false)?
+        .target_directory
+        .into_std_path_buf())
 }
 
-/// Reads one scalar value from a section of the quality configuration.
-pub(super) fn quality_value(section: &str, key: &str) -> Result<String, String> {
-    let configuration_path = workspace_root()?.join(constants::QUALITY_GATES_FILE);
-    let configuration = fs::read_to_string(&configuration_path)
-        .map_err(|error| format!("could not read {}: {error}", configuration_path.display()))?;
-    quality_value_from(&configuration, section, key)
-        .ok_or_else(|| format!("quality configuration has no [{section}] {key} value"))
+/// Reads one required quality setting with parser errors retained.
+pub(super) fn quality_value(name: &str, key: &str) -> Result<String, String> {
+    let content = read_workspace_text(&workspace_root()?, constants::QUALITY_GATES_FILE)?;
+    let document: toml::Table = parse(&content, constants::QUALITY_GATES_FILE)?;
+    section(&document, name)
+        .and_then(|table| table.get(key))
+        .and_then(scalar)
+        .ok_or_else(|| format!("quality configuration [{name}] has no scalar {key}"))
 }
 
-/// Extracts one scalar value from a simple TOML section without interpreting it.
-pub(super) fn quality_value_from(configuration: &str, section: &str, key: &str) -> Option<String> {
-    let heading = format!("[{section}]");
-    let mut selected = false;
-    for line in configuration.lines().map(str::trim) {
-        if line.starts_with('[') {
-            selected = line == heading;
-            continue;
-        }
-        if !selected || line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let (candidate, value) = line.split_once('=')?;
-        if candidate.trim() == key {
-            return Some(value.trim().trim_matches('"').to_owned());
-        }
-    }
-    None
+/// Compatibility accessor backed by parsed TOML rather than raw text.
+pub(super) fn quality_value_from(content: &str, name: &str, key: &str) -> Option<String> {
+    let document = toml::from_str::<toml::Table>(content).ok()?;
+    scalar(section(&document, name)?.get(key)?)
 }
 
 /// Reads one quoted-string array from the quality configuration.
@@ -172,65 +201,31 @@ pub(super) fn quality_array(section: &str, key: &str) -> Result<Vec<String>, Str
     configuration_array_from(&configuration, section, key)
 }
 
-/// Reads a nonempty quoted-string array; an empty section selects root settings.
+/// Reads escaped/commented/multiline string arrays without splitting comma-containing values.
 pub(super) fn configuration_array_from(
-    configuration: &str,
-    section: &str,
+    content: &str,
+    name: &str,
     key: &str,
 ) -> Result<Vec<String>, String> {
-    let heading = format!("[{section}]");
-    let mut selected = section.is_empty();
-    let mut collecting = false;
-    let mut value = String::new();
-    for line in configuration.lines().map(str::trim) {
-        if !collecting && line.starts_with('[') {
-            selected = line == heading;
-            continue;
-        }
-        if !selected || line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        if collecting {
-            value.push_str(line);
-        } else {
-            let Some((candidate, first)) = line.split_once('=') else {
-                continue;
-            };
-            if candidate.trim() != key {
-                continue;
-            }
-            value.push_str(first.trim());
-            collecting = true;
-        }
-        if value.ends_with(']') {
-            break;
-        }
-    }
-    if !collecting {
-        return Err(format!("configuration [{section}] has no {key} value"));
-    }
-    let inner = value
-        .strip_prefix('[')
-        .and_then(|value| value.strip_suffix(']'))
-        .ok_or_else(|| format!("configuration [{section}] {key} must be an array"))?;
-    let values = inner
-        .split(',')
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
+    let document: toml::Table = parse(content, "configuration")?;
+    let values = section(&document, name)
+        .and_then(|table| table.get(key))
+        .and_then(toml::Value::as_array)
+        .ok_or_else(|| format!("configuration [{name}] {key} must be an array"))?;
+    let values = values
+        .iter()
         .map(|value| {
             value
-                .strip_prefix('"')
-                .and_then(|value| value.strip_suffix('"'))
+                .as_str()
                 .filter(|value| !value.is_empty())
                 .map(str::to_owned)
-                .ok_or_else(|| format!("configuration [{section}] {key} has an invalid item"))
+                .ok_or_else(|| format!("configuration [{name}] {key} has an invalid item"))
         })
         .collect::<Result<Vec<_>, _>>()?;
     if values.is_empty() {
-        Err(format!("configuration [{section}] {key} array is empty"))
-    } else {
-        Ok(values)
+        return Err(format!("configuration [{name}] {key} array is empty"));
     }
+    Ok(values)
 }
 
 /// Returns the durable current test-minimum profile.
@@ -238,22 +233,19 @@ pub(super) fn active_test_profile() -> &'static str {
     constants::CURRENT_TEST_PROFILE
 }
 
-/// Reads one test-minimum configuration owned by the workspace.
+/// Reads typed test counts with extensible named category profiles.
 pub(super) fn test_minimums(profile: &str) -> Result<BTreeMap<String, usize>, String> {
-    let configuration_path = workspace_root()?.join(constants::TEST_SUITES_FILE);
-    let configuration = fs::read_to_string(&configuration_path)
-        .map_err(|error| format!("could not read {}: {error}", configuration_path.display()))?;
-    let mut minimums = BTreeMap::new();
-    for (name, value) in configuration_section(&configuration, &format!("{profile}.minimum"))? {
-        let minimum = value
-            .parse::<usize>()
-            .map_err(|error| format!("invalid test minimum for {name}: {error}"))?;
-        minimums.insert(name, minimum);
+    let profiles: BTreeMap<String, TestMinimumProfile> =
+        read(&workspace_root()?, constants::TEST_SUITES_FILE)?;
+    let profile = profiles
+        .get(profile)
+        .ok_or_else(|| format!("missing {profile} test-minimum configuration"))?;
+    if profile.minimum.is_empty() {
+        return Err("test-minimum configuration is empty".to_owned());
     }
-
-    if minimums.is_empty() {
-        Err(format!("{profile} test-minimum configuration is empty"))
-    } else {
-        Ok(minimums)
-    }
+    Ok(profile.minimum.clone())
 }
+
+#[cfg(test)]
+#[path = "../tests/unit/configuration.rs"]
+mod tests;

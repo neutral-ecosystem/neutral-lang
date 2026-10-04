@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Local defaults for repository automation. Environment overrides are optional:
-# NEUTRAL_CARGO_COMMAND, NEUTRAL_RUSTC_COMMAND, and NEUTRAL_TEST_RESULTS.
+# NEUTRAL_CARGO_COMMAND, NEUTRAL_RUSTC_COMMAND, NEUTRAL_TEST_RESULTS,
+# and NEUTRAL_TEST_RUNNER (nextest or cargo).
 schema_version = 1
 
 [tools]
@@ -14,3 +15,9 @@ results_root = "test-results"
 [quality]
 evidence_root = "analysis/quality-gates"
 advisory_max_age_seconds = 86400
+
+[testing]
+runner = "nextest"
+config = "config/nextest.toml"
+profile = "default"
+ci_profile = "ci"

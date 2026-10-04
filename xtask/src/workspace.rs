@@ -19,7 +19,8 @@ pub(crate) fn discover(start: &Path) -> Result<PathBuf, String> {
         let manifest = directory.join(constants::WORKSPACE_MANIFEST_FILE);
         let content = fs::read_to_string(&manifest)
             .map_err(|error| format!("could not read {}: {error}", manifest.display()))?;
-        if content.lines().any(|line| line.trim() == "[workspace]") {
+        let parsed: toml::Table = crate::configuration::parse(&content, "workspace manifest")?;
+        if parsed.get("workspace").is_some_and(toml::Value::is_table) {
             return Ok(directory.to_path_buf());
         }
     }

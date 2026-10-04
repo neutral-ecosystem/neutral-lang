@@ -13,6 +13,18 @@ dependency and the expected installation command without modifying the system.
 
 Run `cargo xtask fmt --write`, then repeat the original command.
 
+## Nextest is missing
+
+Run `cargo install cargo-nextest --locked`, then retry. For an explicit Cargo
+compatibility run use `NEUTRAL_TEST_RUNNER=cargo cargo xtask test all`.
+The repository never silently switches runners. Full quality gates run doctests
+separately, since nextest executes test binaries rather than Rustdoc tests.
+
+## Cargo discovery reports missing offline dependencies
+
+Run `cargo fetch --locked`. Workspace discovery is read-only and does not update
+the lockfile or download dependencies behind a check command.
+
 ## CI fails locally
 
 Run the failed `cargo xtask` subcommand directly. Hosted CI delegates to the

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-name: Release qualification
+name: Release Draft
 
 on:
   push:
@@ -37,6 +37,7 @@ jobs:
         run: test "$(cargo xtask release tag)" = "$RELEASE_TAG"
       - name: Install current dependency advisory checker
         run: cargo install cargo-audit --locked
+      - uses: taiki-e/install-action@nextest
       - run: cargo xtask release prepare
       - name: Resolve package directory
         id: package
@@ -72,7 +73,7 @@ jobs:
       - name: Verify downloaded checksums
         working-directory: release-assets
         run: sha256sum --check SHA256SUMS
-      - name: Publish immutable GitHub release
+      - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}

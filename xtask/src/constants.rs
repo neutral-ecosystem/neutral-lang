@@ -2,6 +2,11 @@
 
 //! Shared names for Neutral automation commands, packages, and output.
 
+/// Repository configuration schema, unrelated to package release versions.
+pub const CONFIG_SCHEMA_VERSION: u32 = 1;
+/// Explicit test-runner override; no silent fallback is permitted.
+pub const TEST_RUNNER_ENV: &str = "NEUTRAL_TEST_RUNNER";
+
 /// Rust formatter executable used for environment verification.
 pub const RUSTFMT_COMMAND: &str = "rustfmt";
 /// Rust toolchain manager used to isolate analysis-only nightly tools.

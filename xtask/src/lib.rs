@@ -18,24 +18,28 @@ use std::{
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
+mod cargo_discovery;
 mod configuration;
+mod configuration_models;
 pub mod constants;
 mod environment;
 mod fixtures;
 mod interface;
+mod manifest_updates;
 mod portable_stage;
 mod quality_evidence;
 mod release;
 mod release_metadata;
 mod released_conformance;
 mod results;
+mod test_execution;
 mod versioning;
 mod workspace;
 
 use configuration::{
-    active_test_profile, automation_value, cargo_command, cargo_target_directory,
-    configuration_array_from, configuration_section, configuration_value, is_safe_relative_path,
-    quality_array, quality_value, repository_directories, rustc_command, test_minimums,
+    automation_value, cargo_command, cargo_target_directory, configuration_array_from,
+    configuration_section, configuration_value, is_safe_relative_path, quality_array,
+    quality_value, repository_directories, rustc_command,
 };
 use environment::{
     bootstrap, json_string, print_environment_manifest, verify_complete_environment,
@@ -111,7 +115,7 @@ fn execute(task: Task) -> Result<(), String> {
     }
 }
 
-/// Runs the complete auto-formatting workflow intended before ordinary commits.
+/// Runs the local auto-formatting and test loop without generating the documentation site.
 fn develop() -> Result<(), String> {
     run_recorded_workflow(
         "dev",
@@ -123,7 +127,6 @@ fn develop() -> Result<(), String> {
             ("lint", Box::new(lint)),
             ("tests", Box::new(|| test_suite(TestLevel::All))),
             ("smoke", Box::new(|| test_suite(TestLevel::Smoke))),
-            ("docs", Box::new(documentation)),
         ],
     )
 }
@@ -222,10 +225,7 @@ fn check_workflow_contract() -> Result<(), String> {
     if !ci.contains("cargo xtask ci pr") {
         return Err("ci.yml does not delegate to `cargo xtask ci pr`".to_owned());
     }
-    let retained_workflows = format!(
-        "path: {}/workflows",
-        automation_value("output", "results_root")?
-    );
+    let retained_workflows = format!("{}/workflows", automation_value("output", "results_root")?);
     for retention_requirement in [
         "if: always()",
         "actions/upload-artifact@",
@@ -294,10 +294,8 @@ fn build(profile: BuildProfile) -> Result<(), String> {
 /// Builds every workspace crate's local API documentation.
 fn documentation() -> Result<(), String> {
     run_rustdoc()?;
-    let metadata = command_output(
-        &cargo_command()?,
-        &["metadata", "--format-version", "1", "--no-deps"],
-    )?;
+    let metadata = serde_json::to_string(&cargo_discovery::metadata(&workspace_root()?, false)?)
+        .map_err(|error| format!("could not serialize Cargo metadata: {error}"))?;
     let index = render_rustdoc_index(&metadata)?;
     let output_directory = cargo_target_directory()?.join("doc");
     fs::create_dir_all(&output_directory).map_err(|error| {
@@ -415,32 +413,12 @@ fn render_rustdoc_index(metadata: &str) -> Result<String, String> {
 
 /// Runs one independently selectable, stage-free test level.
 fn test_suite(level: TestLevel) -> Result<(), String> {
-    match level {
-        TestLevel::All => {
-            run_cargo(&["test", "--workspace", "--lib", "--bins", "--tests"])?;
-            verify_test_counts(active_test_profile())
-        }
-        TestLevel::Unit => run_cargo(&["test", "--workspace", "--lib", "--bins"]),
-        TestLevel::Smoke => run_shell_smoke(),
-        TestLevel::Integration => run_active_test_filter("integration"),
-        TestLevel::System => run_active_test_filter("system"),
-        TestLevel::Conformance => run_active_test_filter("conformance"),
-        TestLevel::Property => run_active_test_filter("property"),
-        TestLevel::Security => run_active_test_filter("security"),
-    }
+    test_execution::run(level, false)
 }
 
 /// Runs one active cross-package suite by stable test-name prefix.
 fn run_active_test_filter(suite: &str) -> Result<(), String> {
-    run_cargo(&[
-        "test",
-        "--workspace",
-        "--lib",
-        "--bins",
-        "--tests",
-        "--",
-        &format!("{suite}_"),
-    ])
+    test_execution::run_filter(suite)
 }
 
 /// Runs the selected durable fuzz mode.
@@ -595,7 +573,10 @@ fn quality(profile: QualityProfile) -> Result<(), String> {
         ("format", Box::new(|| format_workspace(false))),
         ("check", Box::new(check)),
         ("lint", Box::new(lint)),
-        ("tests", Box::new(|| test_suite(TestLevel::All))),
+        (
+            "tests",
+            Box::new(|| test_execution::run(TestLevel::All, true)),
+        ),
         ("smoke", Box::new(|| test_suite(TestLevel::Smoke))),
         (
             "probe-build",
@@ -2574,16 +2555,7 @@ fn performance(profile: PerformanceProfile) -> Result<(), String> {
             )?;
             let build = fs::read_to_string(measurement.directory.join("build.stdout"))
                 .map_err(|error| format!("could not read benchmark build: {error}"))?;
-            let executable = build
-                .lines()
-                .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
-                .find_map(|message| {
-                    (message["reason"] == "compiler-artifact"
-                        && message["target"]["name"] == target)
-                        .then(|| message["executable"].as_str().map(str::to_owned))
-                        .flatten()
-                })
-                .ok_or("Cargo did not identify the benchmark executable")?;
+            let executable = cargo_discovery::benchmark_executable(&build, target)?;
             let heap_report = measurement.directory.join("massif.out");
             let heap_argument = format!("--massif-out-file={}", heap_report.display());
             measurement.run(
@@ -2628,33 +2600,6 @@ fn run_shell_smoke() -> Result<(), String> {
         "--",
         "--help",
     ])
-}
-
-/// Verifies that every current test category has its configured minimum.
-fn verify_test_counts(profile: &str) -> Result<(), String> {
-    let test_list = command_output(
-        &cargo_command()?,
-        &[
-            "test",
-            "--workspace",
-            "--lib",
-            "--bins",
-            "--tests",
-            "--",
-            "--list",
-        ],
-    )?;
-    let minimums = test_minimums(profile)?;
-    let discovered = minimums
-        .keys()
-        .map(|category| {
-            (
-                category.clone(),
-                test_list.matches(&format!("{category}_")).count(),
-            )
-        })
-        .collect();
-    validate_test_minimums(&minimums, &discovered)
 }
 
 /// Rejects an active test category whose discovered count is below its minimum.
@@ -2936,18 +2881,14 @@ fn check_boundaries() -> Result<(), String> {
     verify_pure_source_effects(&workspace_root)?;
     verify_release_path_independence(&workspace_root)?;
     let policy = direct_dependency_policy();
+    let metadata = cargo_discovery::metadata(&workspace_root, true)?;
 
     for (package, allowed_dependencies) in &policy {
-        let dependencies = direct_dependencies(&workspace_root, package)?;
+        let dependencies = cargo_discovery::direct_dependencies(&metadata, package)?;
         validate_direct_dependencies(package, &dependencies, allowed_dependencies)?;
     }
 
-    let compiler_closure = package_names(&tree_output(
-        &workspace_root,
-        constants::NEUTRAL_COMPILER,
-        "normal",
-        None,
-    )?);
+    let compiler_closure = cargo_discovery::closure(&metadata, constants::NEUTRAL_COMPILER, false)?;
     validate_allowed_packages(
         &format!("{} pure compilation closure", constants::NEUTRAL_COMPILER),
         &compiler_closure,
@@ -2968,12 +2909,7 @@ fn check_boundaries() -> Result<(), String> {
         ]),
     )?;
 
-    let probe_closure = package_names(&tree_output(
-        &workspace_root,
-        constants::NEUTRAL_PROBE,
-        "all",
-        None,
-    )?);
+    let probe_closure = cargo_discovery::closure(&metadata, constants::NEUTRAL_PROBE, true)?;
     validate_allowed_packages(
         "neutral-probe dependency tree",
         &probe_closure,
@@ -3369,68 +3305,19 @@ fn direct_dependency_policy() -> BTreeMap<&'static str, BTreeSet<&'static str>> 
             constants::NEUTRAL_VOCABULARY,
             set([constants::NEUTRAL_CORE, constants::NEUTRAL_IR]),
         ),
-        (constants::XTASK, set(["sha2", "serde", "serde_json"])),
+        (
+            constants::XTASK,
+            set([
+                "sha2",
+                "serde",
+                "serde_json",
+                "toml",
+                "toml_edit",
+                "cargo_metadata",
+                "nextest-metadata",
+            ]),
+        ),
     ])
-}
-
-/// Resolves the direct normal dependencies of one workspace package.
-fn direct_dependencies(
-    workspace_root: &PathBuf,
-    package: &str,
-) -> Result<BTreeSet<String>, String> {
-    let output = tree_output(workspace_root, package, "normal", Some(1))?;
-    let mut packages = package_names(&output);
-    packages.remove(package);
-    Ok(packages)
-}
-
-/// Runs `cargo tree` and returns its UTF-8 output for one package.
-fn tree_output(
-    workspace_root: &PathBuf,
-    package: &str,
-    edges: &str,
-    depth: Option<u8>,
-) -> Result<String, String> {
-    let mut command = Command::new(cargo_command()?);
-    command.current_dir(workspace_root).args([
-        "tree",
-        "--locked",
-        "--package",
-        package,
-        "--edges",
-        edges,
-        "--prefix",
-        "none",
-    ]);
-
-    if let Some(depth) = depth {
-        command.args(["--depth", &depth.to_string()]);
-    }
-
-    let output = command
-        .output()
-        .map_err(|error| format!("could not run cargo tree for {package}: {error}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "cargo tree failed for {package}: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
-    }
-
-    String::from_utf8(output.stdout)
-        .map_err(|error| format!("cargo tree emitted non-UTF-8 output for {package}: {error}"))
-}
-
-/// Extracts package names from Cargo's no-prefix tree output.
-fn package_names(tree: &str) -> BTreeSet<String> {
-    tree.lines()
-        .filter_map(|line| {
-            let mut words = line.split_whitespace();
-            let name = words.next()?;
-            let version_or_kind = words.next()?;
-            version_or_kind.starts_with('v').then(|| name.to_owned())
-        })
-        .collect()
 }
 
 /// Rejects direct dependencies that differ from the package's exact policy.

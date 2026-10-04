@@ -53,7 +53,10 @@ publish, mutate frozen contracts, or write into another repository.
 | Path | Ownership |
 | --- | --- |
 | `src/interface.rs` | Stable stage-free command grammar and help |
-| `src/configuration.rs` | Reads repository policy and local automation defaults |
+| `src/configuration.rs`, `src/configuration_models.rs` | Standard TOML access, typed schemas, and local automation defaults |
+| `src/cargo_discovery.rs` | Typed Cargo workspace/target/graph and build-message discovery |
+| `src/manifest_updates.rs`, `src/fixtures.rs` | Formatting-preserving version/lock and preflighted fixture/hash edits |
+| `src/test_execution.rs` | Configured nextest/Cargo execution, exact inventory counts, and full-gate doctests |
 | `src/environment.rs` | Toolchain and host checks; environment evidence |
 | `src/results.rs` | Ignored generated-result paths and safe cleanup |
 | `src/versioning.rs` | Package version, dependency lock, and inherited-contract checks |
@@ -70,6 +73,11 @@ Windows scripts are thin adapters that delegate here.
 Local defaults live in [`config/automation.toml`](../config/automation.toml).
 The [developer command guide](../docs/workflow-optimization.md) maps other
 changeable policies to their owning configuration files.
+
+Install the latest normal test runner with `cargo install cargo-nextest --locked`.
+`dev` runs the local loop without site generation; `ci pr` adds doctests and the
+documentation build. `NEUTRAL_TEST_RUNNER=cargo` explicitly selects the standard
+Cargo compatibility backend. Missing nextest never silently changes the backend.
 
 Full coverage-guided fuzzing, LLVM coverage, and mutation analysis require their
 documented external Cargo tools. Missing tools fail their command; bounded fuzz

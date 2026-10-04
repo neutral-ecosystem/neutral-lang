@@ -5,6 +5,15 @@
 Review date: 2026-09-06. Owner: maintainer. Result: historical reviewed snapshot;
 current lockfiles require automated advisory scans during release qualification.
 
+Repository-tooling update (2026-10-04): typed TOML parsing, formatting-preserving
+edits, Cargo discovery, and test inventory use `toml`, `toml_edit`,
+`cargo_metadata`, and `nextest-metadata` in the non-published `xtask` package
+only. Their locked dependency graph is outside shipped compiler/reader/probe
+closures and remains subject to dependency-source and release advisory checks.
+The separately installed nextest executable is a development/CI tool, not a
+language dependency. This update does not renew the historical advisory scan
+below or approve a new release measurement.
+
 The release-engineering review revalidated locked offline Cargo metadata and the declared
 registry/checksum source policy on 2026-09-08. Automation now reuses the same
 locked `sha2` version for digest-addressed portable snapshots; this introduces

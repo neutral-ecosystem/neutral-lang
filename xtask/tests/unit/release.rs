@@ -171,3 +171,21 @@ fn temporary_plan_path(label: &str) -> std::path::PathBuf {
         std::process::id()
     ))
 }
+
+/// Release scope supports TOML comments and multiline arrays but rejects misspelled authority.
+#[test]
+fn automation_release_scope_uses_typed_toml() {
+    let path = temporary_plan_path("typed-config");
+    let content = "schema_version=1\n[distribution]\nsource_tag=true # authority\ngithub_binaries=true\ncrates_io=false\nbinaries=[\n 'neutral-cli', # first\n 'neutral-probe',\n]\n";
+    fs::write(&path, content).expect("release settings");
+    assert!(ReleasePlan::read(&path, env!("CARGO_PKG_VERSION")).is_ok());
+    fs::write(&path, content.replace("source_tag", "source_tga")).expect("misspelled settings");
+    assert!(ReleasePlan::read(&path, env!("CARGO_PKG_VERSION")).is_err());
+    fs::write(
+        &path,
+        content.replace("crates_io=false", "crates_io='false'"),
+    )
+    .expect("wrong type");
+    assert!(ReleasePlan::read(&path, env!("CARGO_PKG_VERSION")).is_err());
+    fs::remove_file(path).expect("remove owned settings");
+}

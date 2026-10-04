@@ -41,19 +41,18 @@ pub(super) fn check_versions() -> Result<(), String> {
     for manifest in workspace_package_manifests(&root)? {
         let content = fs::read_to_string(&manifest)
             .map_err(|error| format!("could not read {}: {error}", manifest.display()))?;
-        if !content
-            .lines()
-            .any(|line| line.trim() == "version.workspace = true")
-        {
-            return Err(format!(
-                "workspace package must inherit version.workspace: {}",
-                manifest.display()
-            ));
-        }
-        for inherited in ["license.workspace = true", "repository.workspace = true"] {
-            if !content.lines().any(|line| line.trim() == inherited) {
+        let document: toml::Table =
+            configuration::parse(&content, &manifest.display().to_string())?;
+        for inherited in ["version", "license", "repository"] {
+            if document
+                .get("package")
+                .and_then(|package| package.get(inherited))
+                .and_then(|value| value.get("workspace"))
+                .and_then(toml::Value::as_bool)
+                != Some(true)
+            {
                 return Err(format!(
-                    "workspace package must inherit {inherited}: {}",
+                    "workspace package must inherit {inherited}.workspace: {}",
                     manifest.display()
                 ));
             }
@@ -203,29 +202,7 @@ pub(super) fn replace_workspace_package_version(
     current: &str,
     requested: &str,
 ) -> Result<String, String> {
-    let mut selected = false;
-    let mut replaced = false;
-    let expected = format!("version = \"{current}\"");
-    let replacement = format!("version = \"{requested}\"");
-    let mut lines = Vec::new();
-
-    for line in manifest.lines() {
-        let trimmed = line.trim();
-        if trimmed.starts_with('[') {
-            selected = trimmed == "[workspace.package]";
-        }
-        if selected && trimmed == expected {
-            let indentation = line.len() - line.trim_start().len();
-            lines.push(format!("{}{}", &line[..indentation], replacement));
-            replaced = true;
-        } else {
-            lines.push(line.to_owned());
-        }
-    }
-    if !replaced {
-        return Err("root Cargo.toml has no matching workspace package version".to_owned());
-    }
-    Ok(format!("{}\n", lines.join("\n")))
+    manifest_updates::package_version(manifest, current, requested)
 }
 
 /// Replaces each workspace package version in Cargo's lockfile without touching dependencies.
@@ -235,18 +212,7 @@ pub(super) fn replace_workspace_lock_versions(
     current: &str,
     requested: &str,
 ) -> Result<String, String> {
-    let mut updated = lock.to_owned();
-    for package_name in package_names {
-        let expected = format!("name = \"{package_name}\"\nversion = \"{current}\"");
-        let replacement = format!("name = \"{package_name}\"\nversion = \"{requested}\"");
-        if !updated.contains(&expected) {
-            return Err(format!(
-                "Cargo.lock is stale for workspace package {package_name} {current}"
-            ));
-        }
-        updated = updated.replacen(&expected, &replacement, 1);
-    }
-    Ok(updated)
+    manifest_updates::lock_versions(lock, package_names, current, requested)
 }
 
 /// Renders the durable release-evidence scaffold required before quality approval.
@@ -280,14 +246,26 @@ pub(super) fn verify_dependency_lock(root: &Path, package_version: &str) -> Resu
         return Err("dependency review is not approved in the quality manifest".to_owned());
     }
     let lock = read_workspace_text(root, constants::CARGO_LOCK_FILE)?;
-    for package in lock.split("[[package]]").skip(1) {
-        if package.contains("source = \"git+") {
-            return Err("Cargo.lock contains a forbidden Git dependency".to_owned());
+    let lock_document: toml::Table = configuration::parse(&lock, "Cargo.lock")?;
+    let locked_packages = lock_document
+        .get("package")
+        .and_then(toml::Value::as_array)
+        .ok_or("Cargo.lock has no package records")?;
+    for package in locked_packages {
+        let source = package.get("source").and_then(toml::Value::as_str);
+        if source.is_some_and(|source| !source.starts_with("registry+")) {
+            return Err("Cargo.lock contains a forbidden non-registry dependency".to_owned());
         }
-        if package.contains("source = \"registry+") && !package.contains("checksum = \"") {
+        if source.is_some()
+            && package
+                .get("checksum")
+                .and_then(toml::Value::as_str)
+                .is_none()
+        {
             return Err("Cargo.lock contains a registry package without a checksum".to_owned());
         }
     }
+    verify_manifest_dependency_paths(root, &root.join(constants::WORKSPACE_MANIFEST_FILE))?;
     for manifest in workspace_package_manifests(root)? {
         verify_manifest_dependency_paths(root, &manifest)?;
         let package_content = fs::read_to_string(&manifest)
@@ -299,8 +277,11 @@ pub(super) fn verify_dependency_lock(root: &Path, package_version: &str) -> Resu
                 manifest.display()
             )
         })?;
-        let expected = format!("name = \"{package_name}\"\nversion = \"{package_version}\"");
-        if !lock.contains(&expected) {
+        if !locked_packages.iter().any(|package| {
+            package.get("name").and_then(toml::Value::as_str) == Some(&package_name)
+                && package.get("version").and_then(toml::Value::as_str) == Some(package_version)
+                && package.get("source").is_none()
+        }) {
             return Err(format!(
                 "Cargo.lock is stale for workspace package {package_name} {package_version}"
             ));
@@ -338,25 +319,53 @@ pub(super) fn verify_dependency_lock(root: &Path, package_version: &str) -> Resu
 pub(super) fn verify_manifest_dependency_paths(root: &Path, manifest: &Path) -> Result<(), String> {
     let content = fs::read_to_string(manifest)
         .map_err(|error| format!("could not read {}: {error}", manifest.display()))?;
+    let document: toml::Table = configuration::parse(&content, &manifest.display().to_string())?;
     let canonical_root = fs::canonicalize(root)
         .map_err(|error| format!("could not canonicalize workspace root: {error}"))?;
-    for tail in content.split("path = \"").skip(1) {
-        let dependency = tail
-            .split_once('"')
-            .map(|(value, _)| value)
-            .ok_or_else(|| format!("malformed path dependency in {}", manifest.display()))?;
-        let path = manifest.parent().unwrap_or(root).join(dependency);
-        let canonical = fs::canonicalize(&path).map_err(|error| {
-            format!(
-                "could not resolve path dependency {}: {error}",
-                path.display()
-            )
-        })?;
-        if !canonical.starts_with(&canonical_root) {
-            return Err(format!(
-                "manifest path dependency escapes the workspace: {}",
-                path.display()
-            ));
+    verify_dependency_sections(&canonical_root, manifest, &document)?;
+    if let Some(workspace) = document.get("workspace").and_then(toml::Value::as_table) {
+        verify_dependency_sections(&canonical_root, manifest, workspace)?;
+    }
+    if let Some(targets) = document.get("target").and_then(toml::Value::as_table) {
+        for target in targets.values() {
+            let table = target.as_table().ok_or("manifest target must be a table")?;
+            verify_dependency_sections(&canonical_root, manifest, table)?;
+        }
+    }
+    Ok(())
+}
+
+/// Checks actual dependency tables, ignoring incidental comments and unrelated path metadata.
+fn verify_dependency_sections(
+    root: &Path,
+    manifest: &Path,
+    table: &toml::Table,
+) -> Result<(), String> {
+    for kind in ["dependencies", "build-dependencies", "dev-dependencies"] {
+        let Some(dependencies) = table.get(kind) else {
+            continue;
+        };
+        let dependencies = dependencies
+            .as_table()
+            .ok_or_else(|| format!("manifest {kind} must be a table"))?;
+        for dependency in dependencies.values() {
+            let Some(path) = dependency.as_table().and_then(|table| table.get("path")) else {
+                continue;
+            };
+            let path = path.as_str().ok_or("dependency path must be a string")?;
+            let path = manifest.parent().unwrap_or(root).join(path);
+            let canonical = fs::canonicalize(&path).map_err(|error| {
+                format!(
+                    "could not resolve path dependency {}: {error}",
+                    path.display()
+                )
+            })?;
+            if !canonical.starts_with(root) {
+                return Err(format!(
+                    "manifest path dependency escapes the workspace: {}",
+                    path.display()
+                ));
+            }
         }
     }
     Ok(())
@@ -380,22 +389,14 @@ pub(super) fn workspace_package_license(manifest: &str) -> Result<String, String
 
 /// Reads one quoted value from the root workspace package section.
 pub(super) fn workspace_package_value(manifest: &str, key: &str) -> Result<String, String> {
-    let mut selected = false;
-    let prefix = format!("{key} = \"");
-    for line in manifest.lines().map(str::trim) {
-        if line.starts_with('[') {
-            selected = line == "[workspace.package]";
-            continue;
-        }
-        if selected
-            && let Some(value) = line
-                .strip_prefix(&prefix)
-                .and_then(|line| line.strip_suffix('"'))
-        {
-            return Ok(value.to_owned());
-        }
-    }
-    Err(format!("root Cargo.toml has no [workspace.package] {key}"))
+    let document: toml::Table = configuration::parse(manifest, "Cargo.toml")?;
+    document
+        .get("workspace")
+        .and_then(|workspace| workspace.get("package"))
+        .and_then(|package| package.get(key))
+        .and_then(toml::Value::as_str)
+        .map(str::to_owned)
+        .ok_or_else(|| format!("root Cargo.toml has no [workspace.package] string {key}"))
 }
 
 /// Reads the project license identifier from the root workspace manifest.
@@ -436,60 +437,29 @@ pub(super) fn html_spdx_marker(license: &str) -> String {
     format!("<!-- SPDX-License-Identifier: {license} -->")
 }
 
-/// Returns every non-root workspace package manifest.
+/// Returns Cargo's workspace member manifests, including a root package when present.
 pub(super) fn workspace_package_manifests(root: &Path) -> Result<Vec<PathBuf>, String> {
-    let workspace = read_workspace_text(root, constants::WORKSPACE_MANIFEST_FILE)?;
-    let members = configuration_array_from(&workspace, "workspace", "members")?;
-    let canonical_root = fs::canonicalize(root)
-        .map_err(|error| format!("could not canonicalize workspace root: {error}"))?;
-    let mut manifests = BTreeSet::new();
-    for member in members {
-        let relative = Path::new(&member);
-        if !is_safe_relative_path(relative) {
-            return Err(format!("workspace member path is unsafe: {member}"));
-        }
-        let manifest = root.join(relative).join("Cargo.toml");
-        let canonical = fs::canonicalize(&manifest)
-            .map_err(|error| format!("could not resolve workspace member {member}: {error}"))?;
-        if !canonical.starts_with(&canonical_root) || !manifests.insert(canonical) {
-            return Err(format!(
-                "workspace member is external or repeated: {member}"
-            ));
-        }
-    }
-    Ok(manifests.into_iter().collect())
+    cargo_discovery::manifests(root)
 }
 
 /// Returns package names declared by the selected workspace member manifests.
 pub(super) fn workspace_package_names(root: &Path) -> Result<BTreeSet<String>, String> {
-    workspace_package_manifests(root)?
+    Ok(cargo_discovery::metadata(root, false)?
+        .workspace_packages()
         .into_iter()
-        .map(|manifest| {
-            let content = fs::read_to_string(&manifest)
-                .map_err(|error| format!("could not read {}: {error}", manifest.display()))?;
-            configuration::quality_value_from(&content, "package", "name").ok_or_else(|| {
-                format!(
-                    "package manifest has no package name: {}",
-                    manifest.display()
-                )
-            })
-        })
-        .collect()
+        .map(|package| package.name.to_string())
+        .collect())
 }
 
 /// Resolves a workspace package directory by its declared Cargo package name.
 pub(super) fn workspace_package_directory(root: &Path, name: &str) -> Result<PathBuf, String> {
-    for manifest in workspace_package_manifests(root)? {
-        let content = fs::read_to_string(&manifest)
-            .map_err(|error| format!("could not read {}: {error}", manifest.display()))?;
-        if configuration::quality_value_from(&content, "package", "name").as_deref() == Some(name) {
-            return manifest
-                .parent()
-                .map(Path::to_path_buf)
-                .ok_or_else(|| format!("workspace package {name} has no directory"));
-        }
-    }
-    Err(format!("workspace has no package named {name}"))
+    let metadata = cargo_discovery::metadata(root, false)?;
+    let package = cargo_discovery::package(&metadata, name)?;
+    package
+        .manifest_path
+        .parent()
+        .map(|path| path.as_std_path().to_path_buf())
+        .ok_or_else(|| format!("workspace package {name} has no directory"))
 }
 
 /// Collects regular files with one exact filename below a directory.

@@ -77,6 +77,13 @@ Service api = {
 Install the latest stable Rust toolchain with Rustfmt and Clippy. Linux is the
 supported system-test host; Windows support is experimental.
 
+Install the latest test runner and fetch the locked dependencies:
+
+```sh
+cargo install cargo-nextest --locked
+cargo fetch --locked
+```
+
 Bootstrap the repository with the adapter for your host:
 
 ```sh
@@ -117,6 +124,9 @@ CI, quality checks, documentation, packaging, and release preparation.
 ### Everyday workflow
 
 Use these commands for the normal local development loop.
+
+`dev` skips site generation; `ci pr` runs the full gate, including doctests and
+documentation. Test execution uses the configured nextest runner.
 
 <details>
 <summary><strong>Commands</strong></summary>

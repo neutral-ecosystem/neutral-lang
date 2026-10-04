@@ -74,6 +74,7 @@ pub(super) fn verify_environment() -> Result<(), String> {
         ));
     }
 
+    test_execution::verify_runner()?;
     println!("{} environment verification: pass", constants::INFO);
     Ok(())
 }
@@ -123,10 +124,22 @@ fn advisory_tool_spec(cargo: &str) -> ToolSpec {
     }
 }
 
+/// Describes the optional compatibility backend's standard process-isolated runner.
+fn nextest_tool_spec(cargo: &str) -> ToolSpec {
+    ToolSpec {
+        key: "cargo_nextest",
+        label: "process-isolated test runner",
+        command: cargo.to_owned(),
+        arguments: &["nextest", "--version"],
+        install_hint: "run `cargo install cargo-nextest --locked`",
+    }
+}
+
 /// Returns the complete release-workstation tool inventory.
 pub(super) fn required_tool_specs() -> Result<Vec<ToolSpec>, String> {
     let cargo = cargo_command()?;
     Ok(vec![
+        nextest_tool_spec(&cargo),
         ToolSpec {
             key: "rustfmt",
             label: "Rustfmt",

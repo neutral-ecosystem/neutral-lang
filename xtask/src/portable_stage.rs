@@ -19,36 +19,16 @@ pub(crate) fn active_conformance_stage(root: &Path) -> Result<u8, String> {
 
 /// Parses only suite-level activation, never case-level future activation.
 fn parse_active_stage(manifest: &str) -> Result<u8, String> {
+    let manifest: crate::configuration_models::ConformanceActivation =
+        crate::configuration::parse(manifest, "conformance activation")?;
     let mut maximum = 0;
-    let mut in_suite = false;
-    let mut stage = None;
-    let mut required = false;
-    for line in manifest.lines().map(str::trim) {
-        if line == "[[suite]]" || line == "[[case]]" {
-            if in_suite && required {
-                maximum = maximum.max(stage.ok_or("required suite has no active_from_stage")?);
-            }
-            in_suite = line == "[[suite]]";
-            stage = None;
-            required = false;
-            continue;
+    for suite in manifest.suite {
+        if suite.status == "required" {
+            let stage = suite
+                .active_from_stage
+                .ok_or("required suite has no active_from_stage")?;
+            maximum = maximum.max(stage);
         }
-        if !in_suite {
-            continue;
-        }
-        if let Some(value) = line.strip_prefix("active_from_stage =") {
-            stage = Some(
-                value
-                    .trim()
-                    .parse::<u8>()
-                    .map_err(|error| format!("invalid active_from_stage: {error}"))?,
-            );
-        } else if line == "status = \"required\"" {
-            required = true;
-        }
-    }
-    if in_suite && required {
-        maximum = maximum.max(stage.ok_or("required suite has no active_from_stage")?);
     }
     Ok(maximum)
 }

@@ -9,6 +9,13 @@ The `cargo xtask` interface owns the order and policy used locally and in CI.
 
 ## First setup
 
+Install the latest test runner and fetch the locked workspace dependencies:
+
+```sh
+cargo install cargo-nextest --locked
+cargo fetch --locked
+```
+
 Run the platform bootstrap adapter after cloning or when the toolchain changes:
 
 ```sh
@@ -33,8 +40,9 @@ cargo xtask ci pr
 ```
 
 Developers select and review the next task in the active portable checklist.
-`dev` runs formatting, compilation, lint, tests, and documentation in their
-maintained order. `ci pr` is the non-mutating pre-push gate and retains its
+`dev` runs formatting, compilation, lint, binary tests, and command smoke in their
+maintained order, without building the documentation website. `ci pr` is the
+non-mutating full pre-push gate, including doctests and documentation, and retains its
 result under ignored `test-results/`; routine edits need no separate evidence
 Markdown file. Mark the single portable checklist item complete after review.
 
@@ -42,6 +50,11 @@ Run `cargo xtask --help` for the authoritative command list. The root
 [Development](../README.md#development) table provides the command-oriented
 index. For command order, local defaults, and optional environment overrides,
 see [developer command flow](workflow-optimization.md).
+
+Tests use nextest with the execution profiles in `config/nextest.toml`. Focus a
+run with `cargo xtask test security`, `test unit`, or another documented level.
+The runner/config/profile selection lives in `config/automation.toml`; a missing
+runner produces installation guidance rather than silently skipping tests.
 
 ## Documentation
 

@@ -2,8 +2,8 @@
 
 //! Typed, fail-closed parsing for the explicit release-authority selection.
 
-use super::configuration::{configuration_value, quality_value_from};
 use super::constants;
+use super::{configuration, configuration_models::Release};
 use std::{collections::BTreeSet, fs, path::Path, process::Command};
 
 /// Requires the release candidate to contain its approved baseline in Git history.
@@ -63,23 +63,22 @@ impl ReleasePlan {
     pub(crate) fn read(path: &Path, package_version: &str) -> Result<Self, String> {
         let content = fs::read_to_string(path)
             .map_err(|error| format!("could not read {}: {error}", path.display()))?;
-        if configuration_value(&content, "schema_version").as_deref() != Some("1") {
-            return Err("unsupported release configuration schema".to_owned());
-        }
+        let config: Release = configuration::parse(&content, "release configuration")?;
+        configuration::require_schema(config.schema_version, "release configuration")?;
         let mut channels = BTreeSet::new();
-        if required_bool(&content, "source_tag")? {
+        if config.distribution.source_tag {
             channels.insert(DistributionChannel::SourceTag);
         }
-        if required_bool(&content, "github_binaries")? {
+        if config.distribution.github_binaries {
             channels.insert(DistributionChannel::GithubBinaries);
         }
-        if required_bool(&content, "crates_io")? {
+        if config.distribution.crates_io {
             channels.insert(DistributionChannel::CratesIo);
         }
         let plan = Self {
             release_tag: format!("v{package_version}"),
             channels,
-            binaries: required_array(&content, "binaries")?,
+            binaries: config.distribution.binaries,
         };
         plan.validate()?;
         Ok(plan)
@@ -115,44 +114,6 @@ impl ReleasePlan {
         }
         Ok(())
     }
-}
-
-/// Reads one required Boolean from the constrained release TOML.
-fn required_bool(content: &str, key: &str) -> Result<bool, String> {
-    match required_value(content, key)?.as_str() {
-        "true" => Ok(true),
-        "false" => Ok(false),
-        _ => Err(format!("release {key} must be true or false")),
-    }
-}
-
-/// Reads one required quoted-string array from the constrained release TOML.
-fn required_array(content: &str, key: &str) -> Result<Vec<String>, String> {
-    let value = required_value(content, key)?;
-    let inner = value
-        .strip_prefix('[')
-        .and_then(|value| value.strip_suffix(']'))
-        .ok_or_else(|| format!("release {key} must be an array"))?;
-    if inner.trim().is_empty() {
-        return Ok(Vec::new());
-    }
-    inner
-        .split(',')
-        .map(str::trim)
-        .map(|entry| {
-            entry
-                .strip_prefix('"')
-                .and_then(|entry| entry.strip_suffix('"'))
-                .map(str::to_owned)
-                .ok_or_else(|| format!("release {key} entries must be quoted strings"))
-        })
-        .collect()
-}
-
-/// Finds one exact key in the constrained release TOML.
-fn required_value(content: &str, key: &str) -> Result<String, String> {
-    quality_value_from(content, "distribution", key)
-        .ok_or_else(|| format!("release [distribution] has no {key}"))
 }
 
 #[cfg(test)]

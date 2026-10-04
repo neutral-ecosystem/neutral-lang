@@ -139,7 +139,7 @@ fn automation_reports_io_failures() {
             .unwrap_err()
             .contains("failed with")
     );
-    assert!(super::test_minimums("missing").is_err());
+    assert!(super::configuration::test_minimums("missing").is_err());
 }
 
 #[cfg(unix)]
@@ -163,8 +163,8 @@ fn automation_reads_named_quality_values() {
         Some("85".to_owned())
     );
     assert_eq!(
-        quality_value_from(configuration, "fuzz", "targets"),
-        Some("[\"source\", \"ir\"]".to_owned())
+        super::configuration_array_from(configuration, "fuzz", "targets").expect("typed array"),
+        ["source", "ir"]
     );
 }
 
@@ -221,12 +221,9 @@ fn automation_reads_multiline_workspace_members() {
 /// Workspace package discovery follows Cargo members instead of directory names.
 fn automation_resolves_workspace_members_from_cargo() {
     let root = super::workspace_root().expect("workspace root");
-    let manifest = super::read_workspace_text(&root, constants::WORKSPACE_MANIFEST_FILE)
-        .expect("workspace manifest");
-    let members = super::configuration_array_from(&manifest, "workspace", "members")
-        .expect("workspace members");
+    let metadata = super::cargo_discovery::metadata(&root, false).expect("Cargo workspace");
     let manifests = super::workspace_package_manifests(&root).expect("package manifests");
-    assert_eq!(manifests.len(), members.len());
+    assert_eq!(manifests.len(), metadata.workspace_members.len());
     assert!(manifests.iter().all(|path| path.is_file()));
     let slug = super::project_slug(&root).expect("safe project name");
     assert_ne!(slug, "");
@@ -282,7 +279,7 @@ fn automation_reads_all_contract_version_domains() {
     )
     .expect("contract version section should parse");
     assert_eq!(values.len(), 2);
-    assert_eq!(values[1].0, "external_ir_encoding");
+    assert!(values.contains(&("external_ir_encoding".to_owned(), "NIR-CBOR/0.1".to_owned())));
 }
 
 #[test]
@@ -836,11 +833,22 @@ fn xtask_commands_and_helpers() {
         super::ensure_registered_paths_exist(&root, &bundle.member("specs/REQUIREMENTS.md"))
             .is_ok()
     );
-    assert!(super::ensure_inventory_registered(&root, "config", "config/automation.toml config/conformance.toml config/dependency-sources.toml config/generated-outputs.toml config/host-policy.toml config/ir-encoding.toml config/quality-gates.toml config/release.toml config/repository-layout.toml config/test-levels.toml config/test-suites.toml").is_ok());
+    let inventory = files
+        .iter()
+        .map(|path| {
+            path.strip_prefix(&root)
+                .expect("workspace file")
+                .to_string_lossy()
+                .replace('\\', "/")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(super::ensure_inventory_registered(&root, "config", &inventory).is_ok());
+    assert!(super::ensure_inventory_registered(&root, "config", "").is_err());
 
     assert!(super::print_environment_manifest().is_ok());
-    assert_eq!(super::active_test_profile(), "current");
-    let min_map = super::test_minimums("current").expect("test minimums");
+    assert_eq!(super::configuration::active_test_profile(), "current");
+    let min_map = super::configuration::test_minimums("current").expect("test minimums");
     assert_ne!(min_map.len(), 0);
 }
 

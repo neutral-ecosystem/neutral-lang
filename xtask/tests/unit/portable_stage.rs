@@ -16,3 +16,13 @@ fn planned_suites_do_not_advance_stage() {
 fn required_suite_needs_stage() {
     assert!(parse_active_stage("[[suite]]\nstatus = \"required\"\n").is_err());
 }
+
+/// Suite activation uses standard TOML syntax and ignores extensible case metadata.
+#[test]
+fn automation_suite_activation_accepts_inline_comments_and_extensions() {
+    let manifest = "[[suite]]\nstatus='required' # ready\nactive_from_stage=4 # stage\ncustom_contract='future.md'\n[[case]]\nactive_from_stage=99\n";
+    assert_eq!(parse_active_stage(manifest), Ok(4));
+    assert!(
+        parse_active_stage("[[suite]]\nstatus='required'\nactive_from_stage='four'\n").is_err()
+    );
+}

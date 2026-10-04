@@ -58,7 +58,7 @@ pub(crate) const HELP: &str = "Neutral repository automation\n\n\
 Usage: cargo xtask <command> [options]\n\n\
 Stable commands:\n\
   bootstrap                                      verify the host workspace\n\
-  dev                                            format, check, lint, test, and document\n\
+  dev                                            format, check, lint, test, and smoke\n\
   fixtures [sync|check]                          synchronize or verify fixture SHA-256 digests\n\
   environment verify|manifest                    inspect the selected tools\n\
   fmt [--write]                                  check or apply Rust formatting\n\

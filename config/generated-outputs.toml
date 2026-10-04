@@ -4,6 +4,22 @@
 schema_version = 1
 
 [[output]]
+name = "test-inventory"
+path = "test-results/tests"
+owner = "xtask-nextest"
+generate = "cargo xtask test all"
+validate = "cargo xtask ci pr"
+tracking = "ignored"
+
+[[output]]
+name = "nextest-reports"
+path = "target/nextest"
+owner = "nextest"
+generate = "cargo xtask ci pr"
+validate = "inspect ci/junit.xml and the printed test result"
+tracking = "ignored"
+
+[[output]]
 name = "rustdoc"
 path = "target/doc"
 owner = "cargo-doc"
