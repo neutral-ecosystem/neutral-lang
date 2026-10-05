@@ -41,7 +41,7 @@ jobs:
       - name: Install release measurement tools
         run: |
           rustup toolchain install nightly --profile minimal --component llvm-tools-preview
-          cargo install cargo-llvm-cov cargo-fuzz cargo-mutants --locked
+          cargo install cargo-llvm-cov cargo-mutants --locked
           sudo apt-get update
           sudo apt-get install -y valgrind
       - run: cargo xtask release qualify
