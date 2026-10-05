@@ -46,7 +46,12 @@ RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz smoke
 RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign
 ```
 
-Full fuzz campaigns use the configured 900-second budget per subsystem. Mutable
+Full fuzz campaigns use the configured 300-second (five-minute) budget per
+subsystem in `config/quality-gates.toml`. A live progress bar shows each target's
+command elapsed time and estimated remaining budget; compilation/startup can
+extend the estimate, and only successful exit plus validated fuzzer reports
+confirm completion. Five targets take approximately 25 minutes plus overhead.
+Full stdout/stderr remain retained in the reported evidence directory. Mutable
 fuzz corpora, findings, and crash artifacts are not normative conformance data.
 
 Coverage HTML is written to

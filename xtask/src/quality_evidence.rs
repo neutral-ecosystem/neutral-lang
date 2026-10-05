@@ -105,6 +105,17 @@ impl Measurement {
         arguments: &[&str],
         report: &str,
     ) -> Result<(), String> {
+        self.run_with_progress(program, arguments, report, None)
+    }
+
+    /// Captures tool reports with optional estimated wall-clock progress.
+    fn run_with_progress(
+        &mut self,
+        program: &str,
+        arguments: &[&str],
+        report: &str,
+        budget_seconds: Option<u64>,
+    ) -> Result<(), String> {
         if !plain_filename(report) {
             return Err("tool report must be a plain filename".to_owned());
         }
@@ -120,13 +131,18 @@ impl Measurement {
             self.directory.display()
         );
         let start = Instant::now();
-        let status = Command::new(program)
+        let mut child = Command::new(program)
             .current_dir(workspace_root()?)
             .args(arguments)
             .stdout(Stdio::from(stdout))
             .stderr(Stdio::from(stderr))
-            .status()
+            .spawn()
             .map_err(|error| format!("could not run measured tool: {error}"))?;
+        let status = match budget_seconds {
+            Some(seconds) => progress::wait(&mut child, report, seconds),
+            None => child.wait(),
+        }
+        .map_err(|error| format!("could not wait for measured tool: {error}"))?;
         if !status.success() {
             return Err(format!(
                 "measurement {} failed with {status}; reports {}",
@@ -147,6 +163,16 @@ impl Measurement {
     /// Runs Cargo through the configured local executable.
     pub(super) fn cargo(&mut self, arguments: &[&str], report: &str) -> Result<(), String> {
         self.run(&cargo_command()?, arguments, report)
+    }
+
+    /// Runs a retained Cargo measurement with an approximate progress budget.
+    pub(super) fn cargo_with_progress(
+        &mut self,
+        arguments: &[&str],
+        report: &str,
+        budget_seconds: u64,
+    ) -> Result<(), String> {
+        self.run_with_progress(&cargo_command()?, arguments, report, Some(budget_seconds))
     }
 
     /// Copies and hashes a native tool report before retaining evidence.

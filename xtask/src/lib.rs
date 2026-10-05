@@ -27,6 +27,7 @@ mod fixtures;
 mod interface;
 mod manifest_updates;
 mod portable_stage;
+mod progress;
 mod quality_evidence;
 mod release;
 mod release_metadata;
@@ -433,7 +434,12 @@ fn fuzz(mode: FuzzMode) -> Result<(), String> {
 fn coverage_guided_fuzz_campaign() -> Result<(), String> {
     let mut measurement = quality_evidence::Measurement::begin("fuzz")?;
     let targets = quality_array("fuzz", "targets")?;
-    let seconds = quality_value("fuzz", "minimum_seconds_per_target")?;
+    let seconds = quality_value("fuzz", "minimum_seconds_per_target")?
+        .parse::<u64>()
+        .map_err(|error| format!("invalid fuzz budget: {error}"))?;
+    if seconds == 0 {
+        return Err("fuzz budget must be positive".to_owned());
+    }
     let root = workspace_root()?;
     let corpus_root = PathBuf::from(quality_value("fuzz", "corpus_root")?);
     let seed_root = PathBuf::from(quality_value("fuzz", "seed_root")?);
@@ -454,12 +460,17 @@ fn coverage_guided_fuzz_campaign() -> Result<(), String> {
             let seed = seed_directory
                 .to_str()
                 .ok_or_else(|| "fuzz seed path is not UTF-8".to_owned())?;
-            measurement.cargo(
+            measurement.cargo_with_progress(
                 &["fuzz", "run", &target, corpus, seed, "--", &budget],
                 &target,
+                seconds,
             )?;
         } else {
-            measurement.cargo(&["fuzz", "run", &target, "--", &budget], &target)?;
+            measurement.cargo_with_progress(
+                &["fuzz", "run", &target, "--", &budget],
+                &target,
+                seconds,
+            )?;
         }
     }
     measurement.finish()
