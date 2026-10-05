@@ -4,6 +4,37 @@
 
 use super::*;
 
+/// Analysis uses native Nextest integrations without changing coverage targets or fallback policy.
+#[test]
+fn analysis_commands_share_the_selected_test_backend() {
+    for backend in [TestRunner::Nextest, TestRunner::Cargo] {
+        let coverage = coverage_arguments(backend).expect("coverage command");
+        assert_eq!(coverage[0], "llvm-cov");
+        assert!(coverage.contains(&"--all-targets".to_owned()));
+        assert!(coverage.contains(&"--locked".to_owned()));
+        assert!(coverage.contains(&"--no-report".to_owned()));
+        assert!(!coverage.contains(&"--lib".to_owned()));
+        let mutation =
+            mutation_arguments(backend, "src/example.rs", "reports").expect("mutation command");
+        if backend == TestRunner::Nextest {
+            assert_eq!(coverage[1], "nextest");
+            assert!(coverage.contains(&"--ignore-default-filter".to_owned()));
+            assert_eq!(mutation[2], "nextest");
+            let settings = configuration::automation().expect("settings").testing;
+            assert!(mutation.contains(&settings.config));
+            assert!(mutation.contains(&settings.ci_profile));
+            assert!(mutation.contains(&"--ignore-default-filter".to_owned()));
+        } else {
+            assert!(!coverage.contains(&"nextest".to_owned()));
+            assert_eq!(mutation[2], "cargo");
+        }
+        assert_eq!(
+            &mutation[3..7],
+            ["--file", "src/example.rs", "--output", "reports"]
+        );
+    }
+}
+
 /// Counts prefixes on test names only, retaining distinct binaries' same-named tests.
 #[test]
 fn automation_test_counts_ignore_metadata_and_substrings() {

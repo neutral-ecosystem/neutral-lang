@@ -46,7 +46,7 @@ cargo xtask ci pr
 ```
 
 Developers select and review the next task in the active portable checklist.
-`dev` runs formatting, compilation, lint, binary tests, and command smoke in their
+`dev` runs formatting, compilation, lint, binary tests, doctests, and command smoke in their
 maintained order, without building the documentation website. `ci pr` is the
 non-mutating full pre-push gate, including doctests and documentation, and retains its
 result under ignored `test-results/`; routine edits need no separate evidence
@@ -57,7 +57,8 @@ Run `cargo xtask --help` for the authoritative command list. The root
 index. For command order, local defaults, and optional environment overrides,
 see [developer command flow](workflow-optimization.md).
 
-Tests use nextest with the execution profiles in `config/nextest.toml`. Focus a
+Use `cargo xtask test all` as the primary test command, including doctests.
+Test binaries use Nextest with the execution profiles in `config/nextest.toml`. Focus a
 run with `cargo xtask test security`, `test unit`, or another documented level.
 The runner/config/profile selection lives in `config/automation.toml`; a missing
 runner produces installation guidance rather than silently skipping tests.
@@ -65,11 +66,9 @@ runner produces installation guidance rather than silently skipping tests.
 For project IR and public-view changes, run the focused boundaries first:
 
 ```sh
-cargo test --package neutral-encoding project
-cargo test --package neutral-probe --test encoded_project
 cargo test --package neutral-test-suite project_ir
 cargo test --package neutral-test-suite project_identity
-cargo test --package neutral-compiler cache
+cargo xtask test all
 cargo xtask fixtures check
 cargo xtask ci pr
 ```

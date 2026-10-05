@@ -66,3 +66,5 @@ Verify the reader-only library and binary boundary with:
 ```sh
 cargo test --package neutral-probe
 ```
+
+Use `cargo xtask test all` for complete repository validation, including doctests.

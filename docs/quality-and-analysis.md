@@ -31,6 +31,11 @@ run directory in `test-results/workflows/`.
 
 ## Coverage and fuzzing
 
+`cargo xtask test all` is the primary test command. Coverage and mutation also
+use Nextest by default through their tools' native integrations; install it with
+`cargo install cargo-nextest --locked`. Doctests run separately through Cargo;
+fuzz campaigns and performance profiles use their dedicated runners.
+
 Coverage-guided fuzzing and LLVM coverage use an isolated nightly toolchain;
 stable remains the project default.
 

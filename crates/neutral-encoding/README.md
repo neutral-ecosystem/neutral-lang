@@ -21,6 +21,9 @@ validated documents, or make emitted byte ordering part of logical identity.
 
 ## Command
 
+Use `cargo xtask test all` for complete repository validation, including doctests.
+The focused Cargo command below runs this crate's test binaries only.
+
 This is a library crate. Verify its encoder and hostile-input decoder with:
 
 ```sh

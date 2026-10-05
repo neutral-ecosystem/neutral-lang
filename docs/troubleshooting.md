@@ -17,7 +17,7 @@ Run `cargo xtask fmt --write`, then repeat the original command.
 
 Run `cargo install cargo-nextest --locked`, then retry. For an explicit Cargo
 compatibility run use `NEUTRAL_TEST_RUNNER=cargo cargo xtask test all`.
-The repository never silently switches runners. Full quality gates run doctests
+The repository never silently switches runners. `cargo xtask test all` and full quality gates run doctests
 separately, since nextest executes test binaries rather than Rustdoc tests.
 
 ## Cargo discovery reports missing offline dependencies

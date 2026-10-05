@@ -74,8 +74,10 @@ The [developer command guide](../docs/workflow-optimization.md) maps other
 changeable policies to their owning configuration files.
 
 Install the latest normal test runner with `cargo install cargo-nextest --locked`.
-`dev` runs the local loop without site generation; `ci pr` adds doctests and the
-documentation build. `NEUTRAL_TEST_RUNNER=cargo` explicitly selects the standard
+`cargo xtask test all` is the primary test command: Nextest runs binaries, and
+Cargo runs doctests separately. `dev` includes both without site generation;
+`ci pr` adds the documentation build. Coverage and mutation use their native
+Nextest integrations. `NEUTRAL_TEST_RUNNER=cargo` explicitly selects the standard
 Cargo compatibility backend. Missing nextest never silently changes the backend.
 
 Full coverage-guided fuzzing, LLVM coverage, and mutation analysis require their

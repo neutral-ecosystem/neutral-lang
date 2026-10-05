@@ -91,6 +91,64 @@ fn arguments(
     Ok(arguments)
 }
 
+/// Instruments the complete target set while reusing the selected test runner's policy.
+pub(crate) fn coverage_arguments(backend: TestRunner) -> Result<Vec<String>, String> {
+    let tests = arguments(backend, "run", false, true, None)?;
+    let mut command = vec!["llvm-cov".to_owned()];
+    let prefix = if backend == TestRunner::Nextest {
+        command.push("nextest".to_owned());
+        2
+    } else {
+        1
+    };
+    command.extend(["--all-targets", "--no-report"].map(str::to_owned));
+    command.extend(
+        tests
+            .into_iter()
+            .skip(prefix)
+            .filter(|argument| !matches!(argument.as_str(), "--lib" | "--bins" | "--tests")),
+    );
+    Ok(command)
+}
+
+/// Selects cargo-mutants' native integration with the configured test backend.
+pub(crate) fn mutation_arguments(
+    backend: TestRunner,
+    target: &str,
+    output: &str,
+) -> Result<Vec<String>, String> {
+    let tool = match backend {
+        TestRunner::Nextest => "nextest",
+        TestRunner::Cargo => "cargo",
+    };
+    let mut command = [
+        "mutants",
+        "--test-tool",
+        tool,
+        "--file",
+        target,
+        "--output",
+        output,
+    ]
+    .map(str::to_owned)
+    .to_vec();
+    if backend == TestRunner::Nextest {
+        let testing = configuration::automation()?.testing;
+        // cargo-mutants tests copied workspaces: resolve config relative to that copy.
+        command.extend([
+            "--".to_owned(),
+            "--config-file".to_owned(),
+            testing.config,
+            "--profile".to_owned(),
+            testing.ci_profile,
+            "--ignore-default-filter".to_owned(),
+            "--no-tests".to_owned(),
+            "fail".to_owned(),
+        ]);
+    }
+    Ok(command)
+}
+
 /// Resolves explicit test verbosity without changing test selection or acceptance.
 fn verbose() -> Result<bool, String> {
     match env::var(constants::TEST_VERBOSE_ENV) {
@@ -152,10 +210,8 @@ pub(crate) fn run(level: TestLevel, full_gate: bool) -> Result<(), String> {
     execute(level == TestLevel::Unit, full_gate, filter)?;
     if level == TestLevel::All {
         verify_counts(configuration::active_test_profile(), full_gate)?;
-        // Nextest runs binaries, not doctests. Keep doctests in the full quality gate.
-        if full_gate {
-            crate::run_cargo(&["test", flags::WORKSPACE, "--doc", flags::LOCKED])?;
-        }
+        // Nextest cannot run Rustdoc tests; every complete run includes them separately.
+        crate::run_cargo(&["test", flags::WORKSPACE, "--doc", flags::LOCKED])?;
     }
     Ok(())
 }

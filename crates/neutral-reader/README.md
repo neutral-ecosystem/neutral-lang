@@ -55,6 +55,9 @@ transcripts; a public interface fingerprint is not a complete logical identity.
 
 ## Command
 
+Use `cargo xtask test all` for complete repository validation, including doctests.
+The focused Cargo command below runs this crate's test binaries only.
+
 This is a library crate. Verify its public artifact-reading contracts with:
 
 ```sh

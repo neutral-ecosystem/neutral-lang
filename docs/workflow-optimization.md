@@ -7,7 +7,7 @@
 The normal loop is deliberately short:
 
 1. Run `cargo xtask dev` while implementing. It formats source and runs the
-   ordinary compile, lint, nextest, and command-smoke checks. It does not build
+   ordinary compile, lint, Nextest, doctest, and command-smoke checks. It does not build
    the documentation site.
 2. Run `cargo xtask ci pr` before pushing. This read-only composition checks
    formatting and the same repository policies used in CI, then runs the full
@@ -66,15 +66,17 @@ never receive forced color. Machine-readable stdout remains unchanged.
 
 Install once with `cargo install cargo-nextest --locked`. Container rebuilds
 and CI install the latest runner automatically. Run a focused
-`cargo xtask test <level>` while editing, `cargo xtask dev` to validate the local
+`cargo xtask test <level>` while editing, `cargo xtask test all` for the complete
+test suite, `cargo xtask dev` to validate the local
 change, then `cargo xtask ci pr` before pushing. No additional tracking document
 is required for routine runs.
 
 The nextest backend runs each test in its own process, rejects empty runs, and
 retains a pretty-printed, structured inventory beneath `test-results/tests/`.
 Category minima count actual runnable test names, not occurrences in console
-output. Full gates ignore nextest default filters, use the configured CI profile,
-and run `cargo test --workspace --doc --locked` separately. They retain JUnit
+output. Every `cargo xtask test all` also runs doctests with
+`cargo test --workspace --doc --locked`, since Nextest cannot execute them.
+Full gates ignore nextest default filters and use the configured CI profile. They retain JUnit
 output under Cargo's nextest store (`target/nextest/ci/junit.xml` by default).
 Retries are disabled in the repository profiles; CI completes the run after
 failures to collect diagnostics. [Nextest configuration reference](https://nexte.st/docs/configuration/reference/).
@@ -87,8 +89,10 @@ NEUTRAL_TEST_RUNNER=cargo cargo xtask test all
 
 In PowerShell use `$env:NEUTRAL_TEST_RUNNER = 'cargo'` before the command;
 remove the override afterward with `Remove-Item Env:NEUTRAL_TEST_RUNNER`.
-There is no silent backend fallback. Coverage, fuzzing, and mutation continue
-to use their dedicated tools and unchanged thresholds.
+There is no silent backend fallback. Coverage uses `cargo llvm-cov nextest` and
+mutation uses `cargo mutants --test-tool nextest` by default; both respect the
+explicit Cargo backend override. Their acceptance thresholds are unchanged.
+Fuzz campaigns and benchmarks keep their dedicated runners, not Nextest.
 
 ## Configuration and manifest safety
 

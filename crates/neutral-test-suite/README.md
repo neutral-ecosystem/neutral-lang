@@ -35,4 +35,5 @@ Run the cross-package suite with:
 cargo test --package neutral-test-suite
 ```
 
-Use `cargo xtask test all` when validating the complete repository test graph.
+Use `cargo xtask test all` as the primary test command for the complete repository
+test graph and doctests. The focused Cargo command above runs this crate only.

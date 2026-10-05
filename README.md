@@ -148,13 +148,16 @@ documentation. Test execution uses the configured nextest runner.
 
 ### Test suites
 
-Use these commands to run focused or complete test suites.
+Use `cargo xtask test all` as the primary test command: it runs workspace test
+binaries through Nextest, verifies the test inventory, and runs doctests through
+Cargo (Nextest does not support doctests). Use focused suites while editing.
 
 <details>
 <summary><strong>Commands</strong></summary>
 
 | Test scope | Command |
 | --- | --- |
+| Run every test suite and doctests | `cargo xtask test all` |
 | Run unit tests | `cargo xtask test unit` |
 | Run smoke tests | `cargo xtask test smoke` |
 | Run integration tests | `cargo xtask test integration` |
@@ -162,7 +165,6 @@ Use these commands to run focused or complete test suites.
 | Run conformance tests | `cargo xtask test conformance` |
 | Run property tests | `cargo xtask test property` |
 | Run security tests | `cargo xtask test security` |
-| Run every test suite | `cargo xtask test all` |
 | Run performance tests | `cargo xtask test performance --profile pr\|release\|soak` |
 
 </details>

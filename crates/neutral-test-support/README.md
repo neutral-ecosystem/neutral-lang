@@ -17,3 +17,5 @@ This is test-only support infrastructure. Verify its shared helpers with:
 ```sh
 cargo test --package neutral-test-support
 ```
+
+Use `cargo xtask test all` for complete repository validation, including doctests.
