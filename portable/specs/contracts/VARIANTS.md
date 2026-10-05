@@ -95,6 +95,8 @@ record definitions. Its proposed variant member set is exactly `kind`, `name`,
 ```
 
 This is a proposed **type entry**, not a complete accepted bundle envelope.
+The [composition proposal](VOCABULARY-COMPOSITION.md) defines its complete
+envelope and the shared recursive type object shapes.
 The new composition schema/version and exact required-feature selection must
 be frozen with V1-VOC-005..011 before activation. The existing project schema
 `1.0` still accepts only its closed record definition; neither a `kind` nor an

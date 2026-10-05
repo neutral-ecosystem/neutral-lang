@@ -3,6 +3,7 @@
 //! Minimal strict bounded JSON decoder for untrusted vocabulary bundles.
 
 use crate::{VocabularyError, VocabularyLimits};
+use neutral_core::CancellationToken;
 
 #[cfg(test)]
 #[path = "../tests/json/mod.rs"]
@@ -25,15 +26,36 @@ pub(crate) enum JsonValue {
 
 /// Parses one complete strict JSON value under explicit allocation limits.
 pub(crate) fn parse(text: &str, limits: VocabularyLimits) -> Result<JsonValue, VocabularyError> {
+    parse_with_cancellation(text, limits, None)
+}
+
+/// Parses a composition input with cancellation checkpoints inside strings and node traversal.
+pub(crate) fn parse_cancellable(
+    text: &str,
+    limits: VocabularyLimits,
+    cancellation: &CancellationToken,
+) -> Result<JsonValue, VocabularyError> {
+    parse_with_cancellation(text, limits, Some(cancellation))
+}
+
+/// Preserves legacy parsing behavior while sharing the explicitly cancellable decoder.
+fn parse_with_cancellation(
+    text: &str,
+    limits: VocabularyLimits,
+    cancellation: Option<&CancellationToken>,
+) -> Result<JsonValue, VocabularyError> {
     let mut parser = Parser {
         text,
         index: 0,
         limits,
         nodes: 0,
+        cancellation,
     };
     parser.skip_whitespace();
+    parser.check_cancelled()?;
     let value = parser.parse_value(1)?;
     parser.skip_whitespace();
+    parser.check_cancelled()?;
     if parser.index == text.len() {
         Ok(value)
     } else {
@@ -51,11 +73,25 @@ struct Parser<'a> {
     limits: VocabularyLimits,
     /// Total parsed JSON value nodes.
     nodes: u64,
+    /// Optional composition-request cancellation; legacy callers supply none.
+    cancellation: Option<&'a CancellationToken>,
 }
 
 impl Parser<'_> {
+    /// Checks a cancellation signal without changing any frozen non-cancellable caller.
+    fn check_cancelled(&self) -> Result<(), VocabularyError> {
+        if self
+            .cancellation
+            .is_some_and(CancellationToken::is_cancelled)
+        {
+            Err(VocabularyError::Cancelled)
+        } else {
+            Ok(())
+        }
+    }
     /// Parses one JSON value and rejects raw numeric tokens.
     fn parse_value(&mut self, depth: u64) -> Result<JsonValue, VocabularyError> {
+        self.check_cancelled()?;
         if depth > self.limits.nesting_depth() {
             return Err(VocabularyError::JsonLimitExceeded);
         }
@@ -160,6 +196,7 @@ impl Parser<'_> {
         }
         let mut output = String::new();
         loop {
+            self.check_cancelled()?;
             let byte = self.peek_byte().ok_or(VocabularyError::MalformedJson)?;
             match byte {
                 b'"' => {

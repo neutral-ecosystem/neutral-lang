@@ -10,6 +10,25 @@ fn limits() -> VocabularyLimits {
     VocabularyLimits::from_structural(StructuralLimits::new(4096, 16).unwrap())
 }
 
+/// Explicitly cancellable parsing fails safely while frozen non-cancellable decoding remains unchanged.
+#[test]
+fn composition_json_cancellation_does_not_reinterpret_legacy_parsing() {
+    let cancelled = CancellationToken::new();
+    cancelled.cancel();
+    for text in ["null", "[]", r#""exact text""#, r#"{"label":"é🙂"}"#] {
+        assert_eq!(
+            parse_cancellable(text, limits(), &cancelled),
+            Err(VocabularyError::Cancelled)
+        );
+        assert!(parse(text, limits()).is_ok());
+    }
+    let running = CancellationToken::new();
+    assert_eq!(
+        parse_cancellable("[null,true]", limits(), &running),
+        parse("[null,true]", limits())
+    );
+}
+
 /// All permitted escapes and both Unicode hex cases decode to exact scalar values.
 #[test]
 fn unicode_and_every_escape_preserve_exact_text() {

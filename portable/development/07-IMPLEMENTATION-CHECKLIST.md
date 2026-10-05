@@ -345,6 +345,20 @@ Previously completed `.1`–`.4` identity gates remain historical evidence;
 this additional contract -> implementation -> integration -> validation gate
 must pass before the unreleased promotion. No frozen schema is amended in place.
 
+The [composition proposal](../specs/contracts/VOCABULARY-COMPOSITION.md) defines
+the candidate bundle shape and semantics; its remaining freeze work is explicit.
+The vocabulary crate's `compatibility_*` tests protect the old schema but do not
+count as implementation or validation of the extension.
+
+- [x] Implement and test the separate composition catalogue boundary and shared
+  raw IR model: composite vocabulary types, variants, exact dependency closure,
+  closed defaults/restrictions, presence distinctions, limits and cancellation.
+  This sub-step does not activate source syntax, project IR/wire/identities,
+  reader/probe integration, or full extension conformance.
+- [x] Expose public composition catalogue facts through compiler-independent
+  reader APIs, with exact revision lookup and private-type/debug redaction.
+  Complete project/wire/probe/view/provenance integration remains pending.
+
 - [ ] Freeze the new bundle schema, source-aligned list/nullable/reference
   composition, semantic defaults/restrictions, compatibility, diagnostic codes,
   public closure, recursive-type rules, and independent bounds.

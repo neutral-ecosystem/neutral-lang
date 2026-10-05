@@ -17,6 +17,7 @@ use std::{
     sync::Arc,
 };
 
+pub mod composition;
 mod project;
 mod project_identity;
 mod project_interface;

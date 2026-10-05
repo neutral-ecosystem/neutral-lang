@@ -23,6 +23,13 @@ closed public/private nominal type declarations, transitive public type
 closure, inert location field types, and embedded cycles. It publishes
 canonical contracts without source-local aliases or authoring metadata.
 
+The separate `composition` API validates explicitly selected composite bundles
+and their complete captured dependency closure. It checks variants, lists,
+nullable/nominal references, omission policies, closed defaults and declarative
+restrictions against shared `neutral-ir` contracts. It does not acquire inputs
+or activate these forms in the existing compiler, project wire, or identity
+profiles. Successful catalogue validation alone is not project acceptance.
+
 ## Command
 
 Use `cargo xtask test all` for complete repository validation, including doctests.

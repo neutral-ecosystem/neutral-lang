@@ -10,6 +10,9 @@ use neutral_vocabulary::{
     validate_project_bundle,
 };
 
+/// Proposed feature assertion used to test that locks never override a frozen schema.
+const COMPOSITION_PROPOSAL_FEATURE: &str = "vocabulary-composition-v2";
+
 /// Builds one exact locked v1 bundle from its closed-schema type entries.
 fn project_bundle(types: &str) -> Vec<u8> {
     format!(
@@ -142,6 +145,134 @@ fn project_vocabulary_nominal_schema_rejections_are_classified() {
             "{types}"
         );
     }
+}
+
+/// Composite JSON type objects cannot silently acquire meaning in the frozen project schema.
+#[test]
+fn compatibility_project_schema_rejects_composition_type_objects() {
+    for ty in [
+        r#"{ "kind": "num" }"#,
+        r#"{ "kind": "list", "element": { "kind": "string" } }"#,
+        r#"{ "kind": "nullable", "inner": { "kind": "string" } }"#,
+        r#"{ "kind": "ref", "target": { "kind": "nominal", "name": "Visible" } }"#,
+        r#"{ "kind": "external", "identity": "Other", "version": "1.0.0", "name": "Visible" }"#,
+    ] {
+        let bytes = project_bundle(&format!(
+            r#"
+            {{
+              "name": "Visible",
+              "public": true,
+              "fields": [{{ "name": "value", "type": {ty} }}]
+            }}
+            "#
+        ));
+        assert_eq!(
+            project_validate(&bytes, project_limits()),
+            Err(VocabularyError::InvalidMemberType),
+            "old schema must require its existing string type: {ty}"
+        );
+    }
+}
+
+/// New presence/default/restriction fields remain forbidden even when all values are benign.
+#[test]
+fn compatibility_project_schema_rejects_extended_field_contracts() {
+    for extra in [
+        r#""presence": "required""#,
+        r#""presence": "optional""#,
+        r#""presence": "defaulted""#,
+        r#""default": { "kind": "string", "value": "safe" }"#,
+        r#""default": { "kind": "null" }"#,
+        r#""restrictions": {}"#,
+        r#""restrictions": { "max_length": "32" }"#,
+        r#""restrictions": { "choices": [{ "kind": "string", "value": "safe" }] }"#,
+    ] {
+        let bytes = project_bundle(&format!(
+            r#"
+            {{
+              "name": "Visible",
+              "public": true,
+              "fields": [{{ "name": "value", "type": "string", {extra} }}]
+            }}
+            "#
+        ));
+        assert_eq!(
+            project_validate(&bytes, project_limits()),
+            Err(VocabularyError::UnknownMember),
+            "a new field contract needs explicit schema selection: {extra}"
+        );
+    }
+}
+
+/// Record-kind and variant declarations cannot reinterpret the old nominal catalogue.
+#[test]
+fn compatibility_project_schema_rejects_extended_nominal_definitions() {
+    for definition in [
+        r#"{
+          "kind": "record", "name": "Visible", "public": true, "fields": []
+        }"#,
+        r#"{
+          "kind": "variant", "name": "Visible", "public": true,
+          "alternatives": [{ "tag": "success", "type": { "kind": "string" } }]
+        }"#,
+        r#"{
+          "name": "Visible", "public": true, "fields": [], "alternatives": []
+        }"#,
+    ] {
+        assert_eq!(
+            project_validate(&project_bundle(definition), project_limits()),
+            Err(VocabularyError::UnknownMember),
+            "old type definitions keep their exact member set: {definition}"
+        );
+    }
+}
+
+/// Transitive dependency and presentation members do not expand old lock-cover semantics.
+#[test]
+fn compatibility_project_schema_rejects_extended_envelope_members() {
+    let valid = String::from_utf8(project_bundle("")).unwrap();
+    for extra in [
+        r#""dependencies": []"#,
+        r#""dependencies": [{ "identity": "Other", "version": "1.0.0" }]"#,
+        r#""metadata": {}"#,
+        r#""authoring": { "label": "safe" }"#,
+    ] {
+        let bytes = valid.replacen('{', &format!("{{{extra},"), 1);
+        assert_eq!(
+            project_validate(bytes.as_bytes(), project_limits()),
+            Err(VocabularyError::UnknownMember),
+            "empty or unused extension members are not an opt-in: {extra}"
+        );
+    }
+}
+
+/// A lock's feature assertion cannot authorize new syntax under the old schema version.
+#[test]
+fn compatibility_matching_feature_lock_cannot_override_project_schema() {
+    let bytes = String::from_utf8(project_bundle(
+        r#"{
+          "kind": "variant", "name": "Visible", "public": true,
+          "alternatives": [{ "tag": "success", "type": { "kind": "string" } }]
+        }"#,
+    ))
+    .unwrap()
+    .replace(
+        "\"required_features\":[]",
+        &format!("\"required_features\":[\"{COMPOSITION_PROPOSAL_FEATURE}\"]"),
+    );
+    let lock = VocabularyLock::new(
+        "Fixture",
+        "1.0.0",
+        PROJECT_VOCABULARY_ENCODING_VERSION,
+        PROJECT_VOCABULARY_SCHEMA_VERSION,
+        VocabularyContentDigest::from_bytes(bytes.as_bytes()),
+        vec![COMPOSITION_PROPOSAL_FEATURE.to_owned()],
+    )
+    .unwrap();
+    assert_eq!(
+        validate_project_bundle(bytes.as_bytes(), &lock, project_limits()),
+        Err(VocabularyError::UnknownMember)
+    );
 }
 
 /// Exact lock coverage includes revisions, identity, features, and content bytes independently.

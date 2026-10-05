@@ -30,5 +30,8 @@ rules for values, records, lists, source literals, or v0 vocabulary encoding.
 - [VARIANTS.md](VARIANTS.md): accepted source/vocabulary ownership decision and
   proposed shared variant grammar, typing, public closure, and fixture shapes;
   not active syntax or a replacement for the full composition schema freeze.
+- [VOCABULARY-COMPOSITION.md](VOCABULARY-COMPOSITION.md): concrete proposed
+  bundle member sets, composite types, presence/default/restriction semantics,
+  and exact dependency closure; identity/wire/limit/oracle freeze remains pending.
 - [v1-checklist.md](v1-checklist.md): implementation and conformance completion
   checklist, kept separate from design acceptance.

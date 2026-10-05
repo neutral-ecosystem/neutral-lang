@@ -37,8 +37,9 @@ separate from the immutable released fixtures under `conformance/`. A confirmed
 finding is minimized first, then retained in the owning crate's deterministic
 regression suite when it represents a real defect.
 
-The vocabulary target exercises both the released bundle decoder and the v1
-project-bundle decoder. The campaign command supplies tracked v1 seeds from
+The vocabulary target exercises the released bundle decoder, the project-bundle
+decoder, and the separate composition closure/default/restriction boundary.
+The campaign command supplies tracked seeds from
 `fuzz/seeds/vocabulary/` alongside the ignored mutable corpus. Run
 `cargo xtask fuzz smoke` for deterministic mutations, or select a nightly
 toolchain for `cargo xtask fuzz campaign` to run the configured per-target

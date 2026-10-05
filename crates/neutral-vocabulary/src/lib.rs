@@ -6,6 +6,7 @@
 //! logical contracts. It performs no filesystem, registry, environment,
 //! network, dynamic-code, or other host acquisition.
 
+pub mod composition;
 mod json;
 mod project;
 mod schema;
@@ -516,6 +517,8 @@ impl ValidatedVocabularyBundle {
 /// Bounded strict bundle validation failure.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum VocabularyError {
+    /// Cooperative cancellation of explicitly cancellable composition JSON decoding.
+    Cancelled,
     /// A limit builder received zero.
     InvalidLimits,
     /// Captured bytes exceeded the configured bound.

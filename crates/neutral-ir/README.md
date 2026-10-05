@@ -48,6 +48,10 @@ limits separately from logical content and materialized-value work.
 
 Start with [lib.rs](src/lib.rs) for value/identity distinctions and exact-number
 normalization, then [project.rs](src/project.rs) for meaning versus companions.
+The [composition model](src/composition.rs) shares raw composite vocabulary
+contracts and closed defaults with validators and future readers. It preserves
+absence/null distinctions and exact numeric comparison; construction does not
+establish validity or extend frozen project schemas.
 The [identity writer](src/project_identity/framing.rs) explains bounded in-place
 framing and why malformed canonical order is rejected instead of silently sorted.
 

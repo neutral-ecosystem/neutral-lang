@@ -53,6 +53,13 @@ compilation. `ProjectIdentities::artifact` checks public/existing view roots
 before publishing a typed artifact identity. Roots cannot mutate complete
 transcripts; a public interface fingerprint is not a complete logical identity.
 
+`composition::CompositionCatalogue` inspects a separately validated composite
+vocabulary catalogue without compiler linkage. Public lookup returns complete
+record/variant contracts, restrictions/defaults and exact dependencies; private
+and missing types are indistinguishable to callers, including diagnostic debug
+output. This component does not imply support in the existing project codec or
+compiled-project identity profiles.
+
 ## Command
 
 Use `cargo xtask test all` for complete repository validation, including doctests.

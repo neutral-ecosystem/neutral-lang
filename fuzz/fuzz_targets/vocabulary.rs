@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Coverage-guided target for both strict captured vocabulary bundle schemas.
+//! Coverage-guided target for all strict captured vocabulary bundle schemas.
 
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use neutral_core::{StructuralLimits, VocabularyContentDigest};
+use neutral_core::{CancellationToken, StructuralLimits, VocabularyContentDigest};
 use neutral_vocabulary::{
     PROJECT_VOCABULARY_ENCODING_VERSION, PROJECT_VOCABULARY_SCHEMA_VERSION,
     VOCABULARY_ENCODING_VERSION, VOCABULARY_SCHEMA_VERSION, VocabularyLimits, VocabularyLock,
+    composition::{self, CapturedCompositionBundle, CompositionLimits},
     validate_captured_bundle, validate_project_bundle,
 };
 
@@ -42,5 +43,23 @@ fuzz_target!(|bytes: &[u8]| {
         bytes,
         &project_lock,
         VocabularyLimits::from_structural(structural),
+    );
+    let composition_lock = VocabularyLock::new(
+        FUZZ_IDENTITY,
+        FUZZ_VERSION,
+        composition::ENCODING_VERSION,
+        composition::SCHEMA_VERSION,
+        VocabularyContentDigest::from_bytes(bytes),
+        vec![composition::REQUIRED_FEATURE.to_owned()],
+    )
+    .expect("fuzz composition lock constants must remain valid");
+    let _ = composition::validate_composition_closure(
+        &[CapturedCompositionBundle {
+            bytes,
+            lock: &composition_lock,
+        }],
+        &[(FUZZ_IDENTITY, FUZZ_VERSION)],
+        CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(structural)),
+        &CancellationToken::new(),
     );
 });

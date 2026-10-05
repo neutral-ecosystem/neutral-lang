@@ -25,6 +25,10 @@ Module SCC acceptance never implies acceptance of an execution or expression cyc
 
 The Stage 7 extension gate must close these requirements before promotion:
 
+The [composition proposal](VOCABULARY-COMPOSITION.md) specifies concrete JSON
+member sets, presence/default/restriction semantics, and dependency closure.
+Its remaining freeze work is explicit; it is not an activated schema.
+
 - **V1-VOC-005:** A newly versioned bundle schema supports bounded composition
   of scalar/nominal field types with lists, nullable values, and typed references.
   Freeze admissible nesting, recursive-type rules, public closure, target typing,

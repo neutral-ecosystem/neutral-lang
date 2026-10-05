@@ -17,6 +17,7 @@
 //! does not establish validity. The independent reader boundary is responsible
 //! for checking hostile artifacts before exposing authoritative traversal.
 
+pub mod composition;
 pub mod language;
 pub mod project;
 pub mod project_identity;

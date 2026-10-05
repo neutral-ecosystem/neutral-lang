@@ -1,0 +1,86 @@
+{
+  "format": "neutral-vocabulary-bundle",
+  "encoding_version": "1.0",
+  "schema_version": "2.0",
+  "identity": "Fuzz",
+  "version": "0.1.0",
+  "required_features": [
+    "vocabulary-composition-v2"
+  ],
+  "dependencies": [],
+  "types": [
+    {
+      "kind": "variant",
+      "name": "Outcome",
+      "public": true,
+      "alternatives": [
+        {
+          "tag": "success",
+          "type": { "kind": "string" }
+        },
+        {
+          "tag": "failure",
+          "type": { "kind": "num" }
+        }
+      ]
+    },
+    {
+      "kind": "record",
+      "name": "Request",
+      "public": true,
+      "fields": [
+        {
+          "name": "attempts",
+          "type": { "kind": "num" },
+          "presence": "defaulted",
+          "restrictions": {
+            "choices": [
+              { "kind": "num", "value": "1" },
+              { "kind": "num", "value": "3" }
+            ],
+            "minimum": "1",
+            "maximum": "3"
+          },
+          "default": { "kind": "num", "value": "3" }
+        },
+        {
+          "name": "label",
+          "type": {
+            "kind": "nullable",
+            "inner": { "kind": "string" }
+          },
+          "presence": "optional",
+          "restrictions": { "max_length": "32" }
+        },
+        {
+          "name": "outcomes",
+          "type": {
+            "kind": "list",
+            "element": { "kind": "nominal", "name": "Outcome" }
+          },
+          "presence": "defaulted",
+          "restrictions": { "max_length": "16" },
+          "default": {
+            "kind": "list",
+            "items": [
+              {
+                "kind": "variant",
+                "tag": "success",
+                "payload": { "kind": "string", "value": "complete" }
+              }
+            ]
+          }
+        },
+        {
+          "name": "selected",
+          "type": {
+            "kind": "ref",
+            "target": { "kind": "nominal", "name": "Outcome" }
+          },
+          "presence": "required",
+          "restrictions": {}
+        }
+      ]
+    }
+  ]
+}

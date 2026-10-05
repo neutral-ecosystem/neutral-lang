@@ -24,7 +24,7 @@ external_ir_encoding = "NIR-CBOR/1.0-plan"
 [fixture_corpus]
 manifest_path = "portable/conformance/manifest.toml"
 fixture_oracle_review_path = "portable/conformance/fixture-oracle-review.toml"
-status = "stage1 through stage7 contract/fixture suites active"
+status = "stage1 through stage7 identity suites active; vocabulary composition proposals not activated"
 
 [stage2_contract_gate]
 capture_request_path = "portable/specs/contracts/CAPTURE-REQUEST.md"
@@ -67,3 +67,8 @@ consumer_authoring_target = "v0.9.0"
 path = "portable/specs/contracts/VARIANTS.md"
 declaration_origins = ["source", "vocabulary"]
 status = "ownership-decision-accepted; full-extension-freeze-and-fixture-activation-pending"
+
+[composition_contract_proposal]
+path = "portable/specs/contracts/VOCABULARY-COMPOSITION.md"
+example_path = "portable/specs/decisions/composition/bundle.json"
+status = "standalone-catalogue-boundary-implemented-and-tested; project-identity-wire-oracle-freeze-and-integration-pending"
