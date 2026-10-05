@@ -44,6 +44,7 @@ website](https://neutral-lang-doc.younesrabeh.workers.dev/).
 ## Release preparation fails
 
 Confirm that `main` is checked out, `HEAD` is the intended release commit, the
-worktree is clean, the workspace version is consistent, release quality
-evaluation and approval are current, and distribution scope is valid. Then run
+worktree is clean, the workspace version is consistent, and distribution scope
+is valid. Preparation runs missing measurements and records its evaluation; no
+prior approval is needed. Then run
 `cargo xtask release prepare` again.

@@ -7,7 +7,10 @@ This directory owns release policy and approval validation. It supports the deve
 `plan.rs` parses the release scope, `approval.rs` validates version and approval
 requirements, and `release_metadata.rs` serializes artifact summaries and
 manifests. Artifact assembly lives in `commands/distribution.rs`. These modules
-prepare and validate releases without tagging, pushing, or publishing them.
+qualify approved releases without changing Git refs. `lifecycle.rs` owns the
+two-step developer flow: prepare tests/measurements/packages locally, then
+publish records approval and pushes main plus a signed tag atomically. CI uses
+qualification only; GitHub releases remain drafts.
 
 Release entries, manifests, and build provenance are typed Serde payloads.
 Generated JSON is pretty-printed; existing field names, types, and schema versions

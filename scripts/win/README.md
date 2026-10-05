@@ -10,7 +10,7 @@ has no authority over language behavior or release policy.
 | --- | --- | --- | --- | --- |
 | `bootstrap.ps1` | Verify PowerShell archive/checksum tools, Rust, and Cargo | Repository checkout and optional command overrides | Bootstrap environment evidence | `cargo xtask bootstrap` |
 | `environment.ps1` | Verify or print the resolved repository environment | Optional `verify` or `manifest` action | Terminal output only | `cargo xtask environment <action>` |
-| `release.ps1` | Enter the fail-closed release-preparation workflow | Approved candidate configuration and clean candidate checkout | Ignored package/release evidence | `cargo xtask release prepare` |
+| `release.ps1` | Test/prepare, then approve and atomically push main + signed tag | `prepare [version]` or `publish`; clean `main` | Local package/evidence; publication triggers a draft release | `cargo xtask release prepare`, `cargo xtask release publish` |
 
 Start a new checkout with:
 

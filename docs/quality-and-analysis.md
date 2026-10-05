@@ -82,7 +82,10 @@ Install the current analysis tools and the system's Valgrind package:
 cargo install cargo-mutants cargo-audit --locked
 ```
 
-After preparing the workspace version, run these on the final source inputs:
+For a release, `cargo xtask release prepare [version]` automatically runs missing
+or stale measurements and selects nightly where required. No separate measurement
+sequence is needed. Use the individual commands below to inspect a gate or diagnose
+a failure on the final source inputs:
 
 ```sh
 RUSTUP_TOOLCHAIN=nightly cargo xtask coverage
@@ -98,19 +101,19 @@ The release soak uses the benchmark's extended-soak profile. Use an otherwise
 idle controlled runner; comparing measurements from different machines is not a
 performance regression test.
 
-Commit source changes, then run `cargo xtask quality evaluate --profile release`.
-It runs fresh RustSec checks for every declared dependency lock and verifies the
+Release preparation evaluates the committed candidate automatically. Evaluation
+runs fresh RustSec checks for every declared dependency lock and verifies the
 measured gates. Missing, stale, modified, incomplete, or failing reports block
 release qualification; manual Markdown approval cannot substitute for them.
 
-`cargo xtask quality approve --release <version>` automatically retains verified
+`cargo xtask release publish` records approval and automatically retains verified
 reports under `quality/evidence/v<version>/gates/<input-fingerprint>/`. Commit
-only the compact approval record and maintained status, never these raw
+only the compact approval record and maintained status (publication does this for
+you), never these raw
 snapshots: they are ignored local evidence and may contain personal paths or
 other host details. Existing historical approval records remain unchanged.
-A fresh release runner must regenerate the required measurements or restore a
-trusted, privately stored exact snapshot before qualification. The current
-release workflow does not automatically transfer these snapshots; missing
-reports fail closed rather than treating an approval summary as measured proof.
+A fresh release runner regenerates missing measurements during `release qualify`;
+the workflow installs their tools first. It does not transfer private workstation
+reports or treat an approval summary as measured proof.
 Advisory scans expire according to `config/automation.toml` and are rerun during
 release qualification. No additional handwritten per-command evidence is needed.

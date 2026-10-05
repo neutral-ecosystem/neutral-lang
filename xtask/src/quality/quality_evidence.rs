@@ -302,28 +302,44 @@ pub(crate) fn verify_all() -> Result<(), String> {
 
 /// Verifies all gates against one policy snapshot, including retention callers.
 fn verify_all_with(root: &Path, settings: &QualitySettings) -> Result<(), String> {
+    for gate in QualityGate::ALL {
+        verify_gate_with(root, settings, gate)?;
+    }
+    Ok(())
+}
+
+/// Verifies one current gate so release preparation can reuse valid expensive measurements.
+pub(crate) fn verify_gate(gate: QualityGate) -> Result<(), String> {
+    let root = workspace_root()?;
+    verify_gate_with(&root, &QualitySettings::load(&root)?, gate)
+}
+
+/// Checks generated and locally retained evidence under the same acceptance policy.
+fn verify_gate_with(
+    root: &Path,
+    settings: &QualitySettings,
+    gate: QualityGate,
+) -> Result<(), String> {
     let digest = input_digest(root)?;
     let generated = generated_root(settings)?.join(&digest);
     let retained = retained_root(root)?.join(&digest);
-    for gate in QualityGate::ALL {
-        let mut errors = Vec::new();
-        let accepted = [generated.join(gate.as_str()), retained.join(gate.as_str())]
-            .iter()
-            .any(
-                |directory| match verify(directory, gate, &digest, settings) {
-                    Ok(()) => true,
-                    Err(error) => {
-                        errors.push(error);
-                        false
-                    }
-                },
-            );
-        if !accepted {
-            return Err(format!(
-                "missing or invalid {gate} evidence for current inputs: {}; run the documented quality measurements and retain them with `cargo xtask quality approve --release <version>`",
-                errors.join("; ")
-            ));
-        }
+    let mut errors = Vec::new();
+    let accepted = [generated.join(gate.as_str()), retained.join(gate.as_str())]
+        .iter()
+        .any(
+            |directory| match verify(directory, gate, &digest, settings) {
+                Ok(()) => true,
+                Err(error) => {
+                    errors.push(error);
+                    false
+                }
+            },
+        );
+    if !accepted {
+        return Err(format!(
+            "missing or invalid {gate} evidence for current inputs: {}; run the documented quality measurements and retain them with `cargo xtask quality approve --release <version>`",
+            errors.join("; ")
+        ));
     }
     Ok(())
 }

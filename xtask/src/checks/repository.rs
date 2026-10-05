@@ -80,8 +80,8 @@ pub(crate) fn check_workflow_contract() -> Result<(), String> {
         }
     }
     let release = read_workspace_text(&root, ".github/workflows/release.yml")?;
-    if !release.contains("cargo xtask release prepare") {
-        return Err("release.yml does not delegate to `cargo xtask release prepare`".to_owned());
+    if !release.contains("cargo xtask release qualify") {
+        return Err("release.yml does not delegate to `cargo xtask release qualify`".to_owned());
     }
     for requirement in [
         "tags: ['v*']",

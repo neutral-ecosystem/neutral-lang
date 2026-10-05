@@ -80,10 +80,10 @@ and public integration agree. The gate logs are generated, not copied into a
 new note for every step. Only a reviewer can mark the stage complete.
 
 For a release, follow [release and versioning](release-and-versioning.md):
-prepare the workspace version, evaluate the clean `main` commit, record the
-quality approval, assemble and inspect the package, then push the signed tag.
-Those actions intentionally remain separate because they change the release
-authority or publish an immutable ref.
+run `cargo xtask release prepare [version]`, inspect its package, then run
+`cargo xtask release publish`. Preparation automates versioning and quality checks;
+publication records the human approval and pushes main plus its signed tag
+atomically. GitHub assets remain in a draft release for review.
 
 Before replacing a completed active portable plan, promote the accepted
 contracts, fixtures, oracles, and manifest into an immutable

@@ -99,7 +99,13 @@ fn automation_parses_the_stable_command_surface() {
             Task::Validate(ValidationTarget::Artifact("artifact.nir".into())),
         ),
         (vec!["package"], Task::Package),
-        (vec!["release", "prepare"], Task::ReleasePrepare),
+        (vec!["release", "prepare"], Task::ReleasePrepare(None)),
+        (
+            vec!["release", "prepare", "0.8.0"],
+            Task::ReleasePrepare(Some("0.8.0".to_owned())),
+        ),
+        (vec!["release", "publish"], Task::ReleasePublish),
+        (vec!["release", "qualify"], Task::ReleaseQualify),
         (vec!["release", "tag"], Task::ReleaseTag),
         (
             vec!["version", "prepare", "0.2.0-rc.1"],

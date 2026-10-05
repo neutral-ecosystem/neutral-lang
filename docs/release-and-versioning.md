@@ -4,185 +4,106 @@
 
 [< Back to Neutral](../README.md) • [Documentation Hub](README.md)
 
-The root `Cargo.toml` workspace version is authoritative. Every package inherits
-that value, and the release tag is derived as `v<workspace-version>`. A release
-is deliberately a sequence of small, reviewable changes: first the version,
-then its quality approval, then the locally assembled distribution, and finally
-an explicit signed Git tag.
-
-Language and artifact contract versions are separate from the package-release
-version. Do not change frozen contract versions merely because the workspace
-package version advances.
-
-## Before starting
-
-Release preparation must begin with the intended completed implementation on
-`main`. If the work was developed on `dev`, fast-forward `main` only after its
-normal review and CI have passed:
+Release in two commands, from clean `main` with your implementation committed:
 
 ```sh
-git checkout main
-git merge --ff-only dev
-git push origin main
+cargo xtask release prepare <version>
+cargo xtask release publish
 ```
 
-Confirm that `main` is clean and that the current implementation passes the
-ordinary integration gate:
+Use plain SemVer for `<version>`, without a `v` prefix. If the root
+`Cargo.toml` already contains the intended version, omit the argument:
 
 ```sh
-git status --short --branch
-cargo xtask version check
-cargo xtask ci pr
+cargo xtask release prepare
+cargo xtask release publish
 ```
 
-`git status` must report no modified or untracked tracked files before a release
-command that requires a clean worktree can run.
+No separate setup, approval, package, tag, or `git push` command is needed for
+each release. Install the [analysis tools](quality-and-analysis.md#release-measurements)
+once; preparation does not install software or weaken checks when a tool is missing.
 
-## Version commands
+## 1. Test and prepare
 
-```sh
-cargo xtask version show
-cargo xtask version check
-cargo xtask version prepare <version>
-```
+`cargo xtask release prepare [version]` performs the local work:
 
-`cargo xtask version show` displays the package release version beside the
-independent frozen contract versions. `cargo xtask version check` verifies that
-every package and lockfile entry inherits the one workspace package version.
+- Checks clean `main` and rejects an already existing local release tag.
+- When a new version is supplied, updates the workspace version, inherited
+  lockfile entries, and compact evidence scaffold; commits only those files
+  with the message `[REL] v<version>`.
+- Runs the ordinary quality gate, then coverage, mutation, fuzzing, performance,
+  soak, and advisory checks. Valid evidence for the exact current inputs is
+  reused; missing or stale measurements are run automatically.
+- Selects nightly only for coverage/fuzz child commands, leaving the global
+  stable toolchain unchanged.
+- Records a passing evaluation for the exact candidate and assembles binaries,
+  source archive, manifests, and checksums under ignored `test-results/release/`.
 
-`cargo xtask version prepare <version>` accepts plain SemVer, without the `v`
-prefix. It requires a clean worktree and automatically updates:
+Preparation may take time when the expensive measurements need to run.
+Watch the labeled progress and inspect the package path printed at completion.
+It creates no approval, tag, remote push, or GitHub release.
 
-- root `Cargo.toml` (`workspace.package.version`);
-- matching workspace-package records in `Cargo.lock`; and
-- `quality/evidence/v<version>/README.md`, the durable approval-evidence
-  scaffold.
+Review the package before continuing. Do not edit source or release policy
+between the two commands; if you do, commit the change and rerun preparation.
 
-It does not tag, publish, upload, or approve a release. It changes tracked
-files, so those changes need their own reviewable commit before any quality
-evaluation.
+## 2. Publish to a draft
 
-## Full promotion procedure
+`cargo xtask release publish` is the explicit approval decision. It:
 
-Use the next approved package version for `<version>` below. Once prepared, the
-root `Cargo.toml` is authoritative; neither the shell script nor the workflow
-hardcodes a release version. `cargo xtask release tag` prints the corresponding
-`v<version>` directly from the workspace version and `config/release.toml`.
+- Checks that remote `main` is an ancestor of local `main`, and the derived
+  release tag does not already exist remotely.
+- Records approval of the passing candidate, retains raw evidence locally, and
+  commits only the compact approval record/status with `[REL] v<version>`.
+- Requalifies and assembles artifacts for the final release commit.
+- Creates and verifies a signed `v<workspace-version>` tag at that commit.
+- Pushes `main` and **only that release tag** in one atomic, non-force push.
 
-### 1. Prepare and commit the version
+You need your usual Git remote credentials and a working Git tag-signing setup.
+Local `main` does not need to be pushed separately first. If either ref is
+rejected, the atomic push changes neither remote ref; there is no fallback to
+separate pushes. This uses [Git's atomic push guarantee](https://git-scm.com/docs/git-push).
 
-```sh
-cargo xtask version prepare <version>
-cargo xtask version check
-git add Cargo.toml Cargo.lock quality/evidence/v<version>
-git commit -m "[REL] prepare <version>"
-git push origin main
-```
+The tag-triggered workflow rechecks that exact source, regenerates missing
+measurements on its runner, builds and verifies the assets, and creates a
+**draft** GitHub release titled `neutral-lang v<version>`. It does not publish
+a public release automatically. Review the draft and its assets separately;
+[GitHub recommends assembling release assets while the release is a draft](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases).
 
-This first commit is the exact source candidate evaluated by the release-quality
-gate. Do not manually edit individual crate manifests: they inherit the workspace
-version.
+## Version authority and advanced commands
 
-### 2. Evaluate the committed release candidate
+The root `Cargo.toml` workspace package version is authoritative; all packages
+inherit it. The tag is derived from that value, not supplied again to publication.
+Language and artifact contract versions are independent: a package release must
+not change frozen contracts merely to match its version.
 
-First run the [release measurements](quality-and-analysis.md#release-measurements)
-against the final code, tests, fixtures, locks, and configuration. Their reports
-are generated automatically; do not write Markdown files to claim tool success.
+These lower-level commands remain available for inspection or troubleshooting,
+not as extra required release steps:
 
-```sh
-cargo xtask quality evaluate --profile release
-```
+| Need | Command |
+| --- | --- |
+| Show package and frozen contract versions | `cargo xtask version show` |
+| Verify inherited versions | `cargo xtask version check` |
+| Print the derived tag | `cargo xtask release tag` |
+| Change version metadata without committing/testing | `cargo xtask version prepare <version>` |
+| Requalify an already approved release without changing Git refs | `cargo xtask release qualify` |
 
-This runs the full release-quality composition on clean `main` and retains a
-commit-bound, generated evaluation under `test-results/quality/evaluations/`.
-It does not alter tracked project files. If it fails, fix the cause, commit the
-fix, and run the evaluation again for the new `HEAD`.
+Linux `scripts/linux/release.sh prepare [version]` / `publish` and Windows
+`scripts/win/release.ps1 prepare [version]` / `publish` are optional adapters
+for the same commands. CI uses `release qualify`: it never records human approval,
+creates local release commits, or pushes source refs.
 
-### 3. Record the human release approval
+## If something fails
 
-```sh
-cargo xtask quality approve --release <version>
-git add quality/evidence/v<version> quality/STATUS.md
-git commit -m "[REL] v<version>"
-git push origin main
-```
-
-Approval checks that the supplied version equals `workspace.package.version` and
-that a passing release evaluation exists for the candidate commit. It then writes
-the immutable `record.toml` approval record and regenerates `quality/STATUS.md`.
-It also retains checksum-bound machine reports under the release's ignored
-local `gates/` directory. Never add these raw reports to Git: tool output may
-contain personal paths and host details. Approving an already recorded version retains fresh measurements
-without rewriting the historical approval record.
-Commit only the compact approval record and maintained status so Git retains
-the decision, not raw machine output. Fresh release runners still need the
-exact measurements, either regenerated there or restored from trusted private
-storage. The current workflow does not automatically restore them; missing
-measurement evidence blocks qualification without weakening any quality gate.
-
-### 4. Assemble and validate release files
-
-```sh
-scripts/linux/release.sh tag
-scripts/linux/release.sh prepare
-```
-
-Release preparation validates branch, `HEAD`, worktree cleanliness, version
-consistency, quality evidence, approval, and distribution scope. It assembles
-candidate binaries, checksums, manifests, and supporting evidence beneath
-`test-results/release/`.
-
-The current `main` commit must descend from the candidate recorded in the
-approval, with the same quality-gate configuration. Additional commits are
-allowed: preparation reruns the full release-quality composition on the current
-`HEAD` before packaging it. The original approval record retains its evaluated
-candidate, while generated workflow logs and package manifests identify the
-commit actually qualified and assembled.
-
-Inspect the generated package before publication. `prepare` does not push
-commits, create tags, upload artifacts, or create a GitHub release. The exact
-package directory is
-`test-results/release/package/<tag>/<main-commit>/<host-target>/`.
-
-### 5. Create the source tag and publish
-
-After reviewing the assembled files, run the explicit publication action from
-clean `main` whose `HEAD` has already been pushed to `origin/main`:
-
-```sh
-scripts/linux/release.sh publish
-```
-
-The script derives the tag from the release plan, re-runs release qualification,
-verifies and reuses an already assembled package only when every file matches
-the current build,
-creates and verifies a signed tag only if it does not already exist, and pushes
-that tag without force. It refuses to move an existing local or remote tag.
-The tag-triggered GitHub workflow checks out that exact tag commit, confirms it
-is still `main` HEAD, rebuilds and verifies the selected package, and creates
-a draft GitHub Release with the title `neutral-lang <tag>`. Review the draft
-and its assets before any separate publication decision. A manual
-workflow dispatch qualifies current `main` without publishing. Neither path
-replaces the human approval step.
-
-## Recovery and common mistakes
-
-- **`invalid package SemVer: v<version>`** — pass plain `<version>` to
-  `version prepare` and `quality approve`; only the Git tag has the `v` prefix.
-- **`quality evaluation requires a clean worktree`** — commit or intentionally
-  discard unrelated work, then rerun the evaluation for the new `HEAD`.
-- **`release evidence directory is not prepared`** — run and commit `cargo
-  xtask version prepare <version>` before approving quality.
-- **A new implementation, dependency, contract, or release-configuration change
-  before approval** — commit the change and rerun release evaluation before
-  approving. Evaluations are bound to one exact source candidate.
-- **Additional commits after approval** — run `cargo xtask release prepare` on
-  clean `main`. Preparation verifies approval ancestry and reruns release
-  quality on the current `HEAD`. A changed quality-gate policy or unrelated Git
-  history requires a new evaluation and approval for a new release version.
-- **`release prepare` rejects the branch or worktree** — check out `main`, push
-  the relevant commits, and ensure `git status --short` has no output.
-- **The derived tag already exists** — release tags are immutable. Do not
-  retarget or force-push it. Check whether the corresponding release already
-  contains the expected assets; use a new approved workspace version for a
-  new source candidate.
+- **Dirty worktree or wrong branch:** commit/review implementation changes and
+  check out `main`. Release commands never stage arbitrary implementation files.
+- **A test, measurement, or tool fails:** fix the cause, commit the fix if needed,
+  and rerun `release prepare`. Valid unchanged measurements are reused.
+- **Signing or pushing fails:** local release commits and any signed tag are
+  preserved. Retry `release publish` on the same clean source; do not move the tag.
+- **Remote main advanced:** integrate it, then rerun preparation. Publication
+  will not force-push or rewrite history.
+- **Tag already exists remotely:** inspect the GitHub draft/workflow. Never move
+  a released tag; select a new workspace version for different source.
+- **Raw evidence is missing on a fresh machine:** preparation/qualification
+  regenerates it using the installed tools. Do not add reports to Git; they may
+  contain personal paths. Only compact approval metadata is tracked.

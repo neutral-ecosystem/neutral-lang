@@ -78,7 +78,9 @@ Stable commands:\n\
   validate <artifact>|binaries                   validate a release artifact or binaries\n\
   package                                        assemble the selected distribution\n\
   release tag                                    print the tag derived from release TOML and Cargo.toml\n\
-  release prepare                                prepare, but never publish, a release\n\
+  release prepare [version]                      version, test, measure, and package locally\n\
+  release publish                                approve, sign, and atomically push main + tag\n\
+  release qualify                                CI: recheck approval and rebuild artifacts\n\
   version show|check|prepare <version>            inspect or prepare package versioning\n\
   portable install <directory>                   atomically install a reviewed portable\n\
   portable verify|snapshot                       verify or snapshot the active portable\n\
@@ -100,6 +102,7 @@ pub(crate) const DOCUMENTED_COMMANDS: &[&str] = &[
     "cargo xtask validate",
     "cargo xtask package",
     "cargo xtask release prepare",
+    "cargo xtask release publish",
     "cargo xtask version",
     "cargo xtask portable",
     "cargo xtask clean",
@@ -149,7 +152,11 @@ pub(crate) enum Task {
     /// Assemble the selected release distribution.
     Package,
     /// Prepare a release without publishing it.
-    ReleasePrepare,
+    ReleasePrepare(Option<String>),
+    /// Approve the prepared candidate and push its source and signed tag together.
+    ReleasePublish,
+    /// Read-only-to-Git qualification used by fresh release runners.
+    ReleaseQualify,
     /// Print the current release tag for automation without parsing human output.
     ReleaseTag,
     /// Inspect or prepare package versioning.
@@ -324,7 +331,12 @@ pub(crate) fn parse(arguments: &[String]) -> Result<Task, String> {
             PathBuf::from(artifact),
         ))),
         [PACKAGE_COMMAND] => Ok(Task::Package),
-        [RELEASE_COMMAND, "prepare"] => Ok(Task::ReleasePrepare),
+        [RELEASE_COMMAND, "prepare"] => Ok(Task::ReleasePrepare(None)),
+        [RELEASE_COMMAND, "prepare", version] => {
+            Ok(Task::ReleasePrepare(Some((*version).to_owned())))
+        }
+        [RELEASE_COMMAND, "publish"] => Ok(Task::ReleasePublish),
+        [RELEASE_COMMAND, "qualify"] => Ok(Task::ReleaseQualify),
         [RELEASE_COMMAND, "tag"] => Ok(Task::ReleaseTag),
         [VERSION_COMMAND, "show"] => Ok(Task::Version(VersionAction::Show)),
         [VERSION_COMMAND, "check"] => Ok(Task::Version(VersionAction::Check)),

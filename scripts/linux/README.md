@@ -10,7 +10,7 @@ over language behavior or release policy.
 | --- | --- | --- | --- | --- |
 | `bootstrap.sh` | Verify the Linux host, architecture, TLS/archive/checksum tools, Rust, and Cargo | Repository checkout and optional command overrides | Bootstrap environment evidence | `cargo xtask bootstrap` |
 | `environment.sh` | Verify or print the resolved repository environment | Optional `verify` or `manifest` action | Terminal output only | `cargo xtask environment <action>` |
-| `release.sh` | Show the derived tag, qualify the release, or explicitly push its signed tag | `tag`, `prepare` (default), or `publish`; clean approved `main` for publication | Ignored package evidence; `publish` also pushes an immutable tag that triggers a draft release | `cargo xtask release tag`, `cargo xtask release prepare` |
+| `release.sh` | Test/prepare, then approve and atomically push main + signed tag | `prepare [version]` (default), `publish`, or `tag`; clean `main` | Local evidence/packages; publication triggers a draft release | `cargo xtask release prepare`, `cargo xtask release publish` |
 
 Start a new checkout with:
 
@@ -39,9 +39,8 @@ The bootstrap manifest under `test-results/bootstrap/environment.json` records
 the host image, kernel, stable Rust/Cargo, isolated nightly, and tool versions
 without embedding the checkout's user-specific absolute path.
 
-`release.sh prepare` never tags or pushes. `release.sh publish` first checks that
-clean local `main` equals `origin/main` and that its TOML-derived tag does not
-already exist remotely; it then requalifies, signs, verifies, and pushes the
-tag. The tag-triggered workflow creates a draft release with verified assets.
-Missing approval, candidate identity, evidence, tools, or a clean checkout
-causes the process to fail before a new tag is pushed.
+`release.sh prepare [version]` automates version metadata, tests, measurements,
+evaluation, and packaging without tagging or pushing. `release.sh publish`
+records approval, requalifies, signs, and pushes main plus exactly the derived
+tag atomically. Remote main may be behind, but cannot diverge. The tag-triggered
+workflow creates a draft release. See the [two-command release procedure](../../docs/release-and-versioning.md).

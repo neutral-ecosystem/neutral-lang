@@ -533,7 +533,7 @@ pub(crate) fn verify_existing_binary_package(
 pub(crate) fn release_prepare() -> Result<(), String> {
     run_recorded_workflow(
         "release",
-        "prepare",
+        "qualify",
         vec![
             ("release-plan", Box::new(|| release_plan().map(drop))),
             (
@@ -541,6 +541,10 @@ pub(crate) fn release_prepare() -> Result<(), String> {
                 Box::new(|| require_main_head_checkout().map(drop)),
             ),
             ("approval", Box::new(verify_release_approval)),
+            (
+                "measurements",
+                Box::new(crate::release::lifecycle::ensure_measurements),
+            ),
             ("quality", Box::new(|| quality(QualityProfile::Release))),
             ("package", Box::new(package)),
         ],

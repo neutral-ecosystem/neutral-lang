@@ -3,6 +3,7 @@
 //! release boundary for repository automation.
 
 pub(crate) mod approval;
+pub(crate) mod lifecycle;
 pub(crate) mod plan;
 pub(crate) mod release_metadata;
 pub(crate) use plan::*;

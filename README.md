@@ -205,9 +205,9 @@ creates a draft GitHub Release.
 | Validate an artifact | `cargo xtask validate <artifact>` |
 | Validate repository binaries | `cargo xtask validate binaries` |
 | Assemble a distribution | `cargo xtask package` |
-| Prepare a release | `cargo xtask release prepare` |
+| Test and prepare a release | `cargo xtask release prepare [version]` |
 | Show the release tag | `cargo xtask release tag` |
-| Push the signed tag for a draft release | `scripts/linux/release.sh publish` |
+| Approve and push main + signed tag for a draft release | `cargo xtask release publish` |
 | Build the release profile | `cargo xtask build --profile release` |
 | Show the workspace version | `cargo xtask version show` |
 | Check version consistency | `cargo xtask version check` |

@@ -38,7 +38,13 @@ jobs:
       - name: Install current dependency advisory checker
         run: cargo install cargo-audit --locked
       - uses: taiki-e/install-action@nextest
-      - run: cargo xtask release prepare
+      - name: Install release measurement tools
+        run: |
+          rustup toolchain install nightly --profile minimal --component llvm-tools-preview
+          cargo install cargo-llvm-cov cargo-fuzz cargo-mutants --locked
+          sudo apt-get update
+          sudo apt-get install -y valgrind
+      - run: cargo xtask release qualify
       - name: Resolve package directory
         id: package
         run: |
