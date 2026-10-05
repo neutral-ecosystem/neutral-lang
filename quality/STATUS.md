@@ -10,5 +10,6 @@
 | `v0.4.0` | approved | `28-09-2026` |
 | `v0.5.0` | approved | `29-09-2026` |
 | `v0.6.0` | approved | `03-10-2026` |
+| `v0.7.0` | approved | `05-10-2026` |
 
 Release records are verified by `cargo xtask quality verify`.

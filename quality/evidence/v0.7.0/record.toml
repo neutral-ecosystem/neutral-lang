@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema_version = 1
+release = "v0.7.0"
+commit = "da1a7e8d385dbcc58ad33c10af36ef79e1ba221c"
+status = "approved"
+approved_at = "1791205278"
+evaluation = "quality/evaluations/da1a7e8d385dbcc58ad33c10af36ef79e1ba221c/release.toml"
+quality_gates_sha256 = "2df6a156613e916601a6ad148b45449b9d5c18c4a2a762672c52ef0a6b70ce6e"
