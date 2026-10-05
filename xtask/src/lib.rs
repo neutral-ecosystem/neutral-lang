@@ -68,7 +68,7 @@ use checks::test_layout::check_test_layout;
 use checks::traceability::{check_portable_traceability_at, check_traceability};
 use commands::analysis::{coverage, fuzz, mutate, performance};
 use commands::development::{build, check, ci, develop, format_workspace, lint};
-use commands::distribution::{package, release_prepare, validate};
+use commands::distribution::{package, release_qualify, validate};
 use commands::documentation::documentation;
 use commands::portable::{portable, verify_frozen_input_digests, verify_optional_portable};
 use commands::quality::{quality, quality_action, quality_profile_name};
@@ -140,7 +140,7 @@ fn execute(task: Task) -> Result<(), String> {
         Task::Package => package(),
         Task::ReleasePrepare(version) => release::lifecycle::prepare(version.as_deref()),
         Task::ReleasePublish => release::lifecycle::publish(),
-        Task::ReleaseQualify => release_prepare(),
+        Task::ReleaseQualify => release_qualify(),
         Task::ReleaseTag => output::machine(release_plan()?.release_tag),
         Task::Version(action) => version(action),
         Task::Portable(action) => portable(action),

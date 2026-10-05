@@ -160,7 +160,7 @@ pub(crate) fn publish() -> Result<(), String> {
         &format!("[REL] {}", plan.release_tag),
     )?;
     let release_head = require_main_head_checkout()?;
-    crate::release_prepare()?;
+    crate::release_qualify()?;
     if require_main_head_checkout()? != release_head {
         return Err("main changed during release qualification; rerun release prepare".to_owned());
     }

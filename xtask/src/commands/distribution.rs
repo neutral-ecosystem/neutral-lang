@@ -530,7 +530,7 @@ pub(crate) fn verify_existing_binary_package(
 }
 
 /// Runs release checks and assembles artifacts without tagging or publishing.
-pub(crate) fn release_prepare() -> Result<(), String> {
+pub(crate) fn release_qualify() -> Result<(), String> {
     run_recorded_workflow(
         "release",
         "qualify",
@@ -551,7 +551,7 @@ pub(crate) fn release_prepare() -> Result<(), String> {
     )?;
     let plan = release_plan()?;
     crate::output::pass(format!(
-        "release {} prepared; no publish action was performed",
+        "release {} qualified and packaged; no publish action was performed",
         plan.release_tag
     ));
     Ok(())

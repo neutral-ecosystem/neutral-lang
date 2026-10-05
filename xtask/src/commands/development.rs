@@ -6,7 +6,7 @@ use crate::constants::flags;
 use crate::{
     BuildProfile, CiProfile, QualityProfile, TestLevel, check_boundaries, check_generated_outputs,
     check_repository_structure, check_test_layout, check_traceability, check_versions,
-    check_workflow_contract, quality, release_prepare, run_cargo, run_recorded_workflow,
+    check_workflow_contract, quality, release_qualify, run_cargo, run_recorded_workflow,
     test_suite, verify_environment, verify_optional_portable, verify_quality_ledger,
     verify_repository_markdown_links,
 };
@@ -78,7 +78,7 @@ pub(crate) fn build(profile: BuildProfile) -> Result<(), String> {
 pub(crate) fn ci(profile: CiProfile) -> Result<(), String> {
     match profile {
         CiProfile::Pr => run_ci_gate("pr", QualityProfile::Pr),
-        CiProfile::Release => release_prepare(),
+        CiProfile::Release => release_qualify(),
     }
 }
 

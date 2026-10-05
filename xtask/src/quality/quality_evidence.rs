@@ -302,8 +302,11 @@ pub(crate) fn verify_all() -> Result<(), String> {
 
 /// Verifies all gates against one policy snapshot, including retention callers.
 fn verify_all_with(root: &Path, settings: &QualitySettings) -> Result<(), String> {
+    let digest = input_digest(root)?;
+    let generated = generated_root(settings)?.join(&digest);
+    let retained = retained_root(root)?.join(&digest);
     for gate in QualityGate::ALL {
-        verify_gate_with(root, settings, gate)?;
+        verify_gate_at(gate, &digest, &generated, &retained, settings)?;
     }
     Ok(())
 }
@@ -323,11 +326,22 @@ fn verify_gate_with(
     let digest = input_digest(root)?;
     let generated = generated_root(settings)?.join(&digest);
     let retained = retained_root(root)?.join(&digest);
+    verify_gate_at(gate, &digest, &generated, &retained, settings)
+}
+
+/// Checks one gate at precomputed roots, keeping aggregate input hashing request-local.
+fn verify_gate_at(
+    gate: QualityGate,
+    digest: &str,
+    generated: &Path,
+    retained: &Path,
+    settings: &QualitySettings,
+) -> Result<(), String> {
     let mut errors = Vec::new();
     let accepted = [generated.join(gate.as_str()), retained.join(gate.as_str())]
         .iter()
         .any(
-            |directory| match verify(directory, gate, &digest, settings) {
+            |directory| match verify(directory, gate, digest, settings) {
                 Ok(()) => true,
                 Err(error) => {
                     errors.push(error);
@@ -337,7 +351,7 @@ fn verify_gate_with(
         );
     if !accepted {
         return Err(format!(
-            "missing or invalid {gate} evidence for current inputs: {}; run the documented quality measurements and retain them with `cargo xtask quality approve --release <version>`",
+            "missing or invalid {gate} evidence for current inputs: {}; run `cargo xtask release prepare` to regenerate required measurements",
             errors.join("; ")
         ));
     }
