@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module pipeline_service
+
+record Service {
+    string label,
+    num replicas = 2,
+    List<num> ports = [80, 443],
+}
+
+Service api = { label: "web", }
+Service copied = api
+Ref<Service> pointer = ref(api)

@@ -1,0 +1,8 @@
+neu "1.0"
+module app::consumer
+// SPDX-License-Identifier: Apache-2.0
+
+import app::shared as shared
+public shared::Service copied = shared::api
+public Ref<shared::Service> pointer = ref(shared::api)
+public num answer = shared::answer

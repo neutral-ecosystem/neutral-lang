@@ -1,0 +1,9 @@
+neu "1.0"
+module api
+// SPDX-License-Identifier: Apache-2.0
+
+public num fraction = -1.25e2
+public num exponent = 4.2e1
+public bool enabled = true
+public bool disabled = false
+public string label = "neutral"

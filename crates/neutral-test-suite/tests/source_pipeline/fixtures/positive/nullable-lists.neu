@@ -1,0 +1,8 @@
+neu "1.0"
+module api
+// SPDX-License-Identifier: Apache-2.0
+
+public num? missing = null
+public string? present = "yes"
+public List<List<num>> matrix = [[1, 2], [], [3]]
+public List<string> empty = []

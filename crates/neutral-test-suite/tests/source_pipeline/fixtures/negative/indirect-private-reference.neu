@@ -1,0 +1,7 @@
+neu "1.0"
+module api
+// SPDX-License-Identifier: Apache-2.0
+
+num hidden = 42
+Ref<num> local = ref(hidden)
+public Ref<num> pointer = local

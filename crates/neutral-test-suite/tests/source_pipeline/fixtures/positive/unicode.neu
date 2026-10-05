@@ -1,0 +1,7 @@
+neu "1.0"
+module api
+// SPDX-License-Identifier: Apache-2.0
+
+// Braces and keywords inside strings are not tokens.
+/* record False { } */
+public string label = "café\n世界\t\"quoted\""

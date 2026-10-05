@@ -22,6 +22,11 @@ verify capture/logical/derivation/artifact exclusions, exact byte/node boundarie
 cancellation, canonical value equivalence, and artifact kind/format/selection.
 Crate-owned vector copies remain runnable when the active portable is archived.
 
+The [file-backed pipeline corpus](tests/source_pipeline/README.md) tests real
+`.neu` programs, expected materialized values, rejected phases, source maps,
+encoding/reader/public-view boundaries, cache updates and executable results.
+It also protects inherited field provenance for reused default-bearing records.
+
 ## Command
 
 Run the cross-package suite with:

@@ -1,0 +1,7 @@
+neu "1.0"
+module api
+// SPDX-License-Identifier: Apache-2.0
+
+public record Inner { num count = 42, }
+public record Outer { Inner child, List<num> ports = [80, 443], string? note = null, }
+public Outer service = { child: {}, }

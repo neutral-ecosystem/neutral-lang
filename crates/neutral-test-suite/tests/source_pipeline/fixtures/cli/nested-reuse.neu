@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: Apache-2.0
+
+neu "0.1"
+module pipeline_reuse
+
+record Item {
+    num count = 42,
+    string label = "closed",
+}
+record Container {
+    Item item,
+    List<Item> items,
+}
+
+Item original = {}
+Item copied = original
+List<Item> items = [original, copied]
+List<Item> reused_items = items
+Container holder = { item: copied, items: reused_items, }
+Container copied_holder = holder
+Item? widened = original

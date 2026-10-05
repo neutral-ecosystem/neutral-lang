@@ -1,0 +1,8 @@
+neu "1.0"
+module api
+// SPDX-License-Identifier: Apache-2.0
+
+public record First { string label, }
+public record Second { string label, }
+First original = { label: "same", }
+public Second copied = original

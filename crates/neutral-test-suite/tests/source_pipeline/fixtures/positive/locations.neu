@@ -1,0 +1,6 @@
+neu "1.0"
+module api
+// SPDX-License-Identifier: Apache-2.0
+
+public url endpoint = "HTTPS://Example.invalid/A%2fb"
+public path file = "../A/../b"

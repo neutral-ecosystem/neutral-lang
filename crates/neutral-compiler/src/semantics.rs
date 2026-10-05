@@ -1339,6 +1339,12 @@ fn lower_reused_value(
         field_path.clone(),
         context.element_ids[name],
     ));
+    append_reused_field_provenance(
+        context.element_ids[name],
+        context.element_id,
+        field_path,
+        context.field_provenance,
+    );
     append_reference_provenance(
         &source_value,
         field_path,
@@ -1351,6 +1357,29 @@ fn lower_reused_value(
         Normalization::ImmutableValueReuse,
         decoded_bytes,
     ))
+}
+
+/// Preserves explicit/default field evidence when an immutable subtree is reused.
+///
+/// The dependency order has already published the provider's complete field
+/// evidence. Rebase its relative paths under the consumer occurrence; retain
+/// origins rather than inventing explicit fields for a default-filled value.
+/// Collect before extending because source and destination share one vector.
+fn append_reused_field_provenance(
+    source: ElementId,
+    consumer: ElementId,
+    prefix: &[String],
+    provenance: &mut Vec<FieldProvenanceRecord>,
+) {
+    let inherited = provenance
+        .iter()
+        .filter(|entry| entry.element_id() == source)
+        .map(|entry| {
+            let path = prefix.iter().chain(entry.field_path()).cloned().collect();
+            FieldProvenanceRecord::new(consumer, path, entry.origin())
+        })
+        .collect::<Vec<_>>();
+    provenance.extend(inherited);
 }
 
 /// Resolves one exact typed identity-reference target without value evaluation.

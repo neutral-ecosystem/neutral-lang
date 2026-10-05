@@ -1,0 +1,7 @@
+neu "1.0"
+module api
+// SPDX-License-Identifier: Apache-2.0
+
+public record Node { Ref<Node> next, }
+public Node first = { next: ref(second), }
+public Node second = { next: ref(first), }

@@ -1,0 +1,6 @@
+neu "1.0"
+module api
+// SPDX-License-Identifier: Apache-2.0
+
+import absent as absent
+public num answer = 42

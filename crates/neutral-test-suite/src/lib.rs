@@ -33,3 +33,7 @@ mod project_ir;
 #[cfg(test)]
 #[path = "../tests/project_identity/mod.rs"]
 mod project_identity;
+
+#[cfg(test)]
+#[path = "../tests/source_pipeline/mod.rs"]
+mod source_pipeline;

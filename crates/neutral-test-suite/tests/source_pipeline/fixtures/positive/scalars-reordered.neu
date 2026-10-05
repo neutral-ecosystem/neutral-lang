@@ -1,0 +1,10 @@
+neu "1.0"
+module api
+// SPDX-License-Identifier: Apache-2.0
+
+// Equivalent declarations in a different order and different number spellings.
+public string label = "neutral"
+public bool disabled = false
+public bool enabled = true
+public num exponent = 42.0
+public num fraction = -125

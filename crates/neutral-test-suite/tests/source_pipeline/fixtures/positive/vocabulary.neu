@@ -1,0 +1,9 @@
+neu "1.0"
+module api
+// SPDX-License-Identifier: Apache-2.0
+
+use Alpha as first
+use Beta as second
+public first::Visible original = { label: "typed", }
+public first::Visible copied = original
+public second::Visible other = { label: "other", }

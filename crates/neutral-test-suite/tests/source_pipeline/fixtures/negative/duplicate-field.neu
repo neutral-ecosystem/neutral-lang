@@ -1,0 +1,6 @@
+neu "1.0"
+module api
+// SPDX-License-Identifier: Apache-2.0
+
+public record Item { num count, }
+public Item item = { count: 1, count: 2, }

@@ -1,0 +1,6 @@
+neu "1.0"
+module cycle::left
+// SPDX-License-Identifier: Apache-2.0
+
+import cycle::right as right
+public num seed = 42
