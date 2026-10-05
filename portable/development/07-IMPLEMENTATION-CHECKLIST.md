@@ -286,7 +286,7 @@ explicit Stage 7 validation gates below, where their identity APIs belong.
 ### Promote to `v0.7.0`
 
 - [x] Confirm Stage 6 checklist, manifest, and traceability are complete.
-- [ ] Release `v0.7.0`; update the ledger to `released`.
+- [x] Release `v0.7.0`; update the ledger to `released`.
 
 ## Stage 7 — canonical identity and reproducibility
 
