@@ -331,6 +331,15 @@ pub fn analyze_project_semantics(
     analyze_project_semantics_with_parser(captured, graph, cancellation, &mut |source| {
         parse_roots(source.module_id(), source.digest(), source.bytes())
     })
+    .map(|resolved| resolved.model)
+}
+
+/// Validated semantic conclusions and their request-local parsed declaration scope.
+struct ResolvedProject {
+    /// Public conclusions exposed without leaking private syntax.
+    model: ProjectSemanticModel,
+    /// Exact roots passed directly to contextual lowering, not reparsed.
+    roots: BTreeMap<(String, String), Root>,
 }
 
 /// Resolves all project semantics while allowing only the unit parsing phase to be reused.
@@ -349,7 +358,7 @@ fn analyze_project_semantics_with_parser(
     graph: &ModuleGraph,
     cancellation: &CancellationToken,
     parse: &mut impl FnMut(&crate::CapturedProjectSource) -> Result<Vec<Root>, ProjectSemanticFailure>,
-) -> Result<ProjectSemanticModel, ProjectSemanticFailure> {
+) -> Result<ResolvedProject, ProjectSemanticFailure> {
     if graph.modules().len() != captured.sources().len()
         || graph
             .modules()
@@ -552,16 +561,17 @@ fn analyze_project_semantics_with_parser(
         })
         .collect::<Vec<_>>();
     let symbols = roots
-        .into_values()
-        .map(|root| root.symbol)
+        .values()
+        .map(|root| root.symbol.clone())
         .collect::<Vec<_>>();
-    Ok(ProjectSemanticModel {
+    let model = ProjectSemanticModel {
         symbols: Arc::from(symbols),
         dependencies: Arc::from(edges),
         value_order: Arc::from(value_order),
         public_interface: Arc::new(public_interface),
         locations: Arc::from(locations),
-    })
+    };
+    Ok(ResolvedProject { model, roots })
 }
 
 /// Orders all immutable roots after their ordinary value dependencies.

@@ -2,6 +2,8 @@
 
 //! Automatically retained, source-bound quality measurements.
 
+use super::gate::QualityGate;
+use crate::config::quality_settings::QualitySettings;
 use crate::constants::{flags, reports};
 use crate::*;
 use serde::{Deserialize, Serialize};
@@ -28,7 +30,7 @@ struct Receipt {
     /// Supported schema.
     schema_version: u32,
     /// Stable measurement name.
-    gate: String,
+    gate: QualityGate,
     /// Checkout commit used by the tool.
     source_commit: String,
     /// Digest of actual tracked and untracked measurement inputs.
@@ -45,37 +47,38 @@ struct Receipt {
     reports: BTreeMap<String, String>,
 }
 
-/// Required release measurements, independent of historical status labels.
-const REQUIRED_GATES: &[&str] = &[
-    "coverage",
-    "mutation",
-    "fuzz",
-    "performance-release",
-    "performance-soak",
-    "advisories",
-];
-
 /// Active measurement; failures never produce a passing receipt.
 pub(crate) struct Measurement {
     /// Destination beneath ignored generated results.
     pub(crate) directory: PathBuf,
     /// Provenance assembled from tool invocations and reports.
     receipt: Receipt,
+    /// Command-local policy snapshot used for execution and final validation.
+    pub(crate) settings: QualitySettings,
 }
 
 impl Measurement {
     /// Starts a measurement and invalidates any earlier generated receipt.
-    pub(crate) fn begin(gate: &str) -> Result<Self, String> {
-        if !REQUIRED_GATES.contains(&gate) {
-            return Err(format!("unknown quality gate: {gate}"));
-        }
+    pub(crate) fn begin(gate: QualityGate) -> Result<Self, String> {
+        let root = workspace_root()?;
+        let settings = QualitySettings::load(&root)?;
+        Self::begin_with_settings(gate, settings)
+    }
+
+    /// Starts a measurement using the command's already validated policy snapshot.
+    pub(crate) fn begin_with_settings(
+        gate: QualityGate,
+        settings: QualitySettings,
+    ) -> Result<Self, String> {
         let root = workspace_root()?;
         let toolchain = command_output(&rustc_command()?, &[flags::VERSION])?;
-        if matches!(gate, "coverage" | "fuzz") && !toolchain.contains("-nightly") {
+        if gate.requires_nightly() && !toolchain.contains("-nightly") {
             return Err("coverage and fuzz measurements require the isolated nightly toolchain; use RUSTUP_TOOLCHAIN=nightly".to_owned());
         }
         let inputs_sha256 = input_digest(&root)?;
-        let directory = generated_root()?.join(&inputs_sha256).join(gate);
+        let directory = generated_root(&settings)?
+            .join(&inputs_sha256)
+            .join(gate.as_str());
         fs::create_dir_all(&directory)
             .map_err(|error| format!("could not create gate reports: {error}"))?;
         let old = directory.join(reports::RECEIPT);
@@ -89,15 +92,16 @@ impl Measurement {
             directory,
             receipt: Receipt {
                 schema_version: 1,
-                gate: gate.to_owned(),
+                gate,
                 inputs_sha256,
                 source_commit: command_output(constants::GIT_COMMAND, &["rev-parse", "HEAD"])?,
-                policy_sha256: sha256_file(&root.join(constants::QUALITY_GATES_FILE))?,
+                policy_sha256: settings.policy_sha256.clone(),
                 toolchain,
                 finished_at_unix_ms: 0,
                 invocations: Vec::new(),
                 reports: BTreeMap::new(),
             },
+            settings,
         })
     }
 
@@ -208,7 +212,7 @@ impl Measurement {
             return Err("quality inputs changed during measurement; rerun the gate".to_owned());
         }
         self.receipt.finished_at_unix_ms = unix_time_millis()?;
-        validate_reports(&self.receipt, &self.directory)?;
+        validate_reports(&self.receipt, &self.directory, &self.settings)?;
         let json = serde_json::to_string_pretty(&self.receipt)
             .map_err(|error| format!("could not serialize receipt: {error}"))?;
         fs::write(self.directory.join(reports::RECEIPT), format!("{json}\n"))
@@ -229,12 +233,8 @@ fn plain_filename(value: &str) -> bool {
 }
 
 /// Resolves the configurable ignored measurement root.
-fn generated_root() -> Result<PathBuf, String> {
-    let relative = PathBuf::from(automation_value("quality", "evidence_root")?);
-    if !is_safe_relative_path(&relative) {
-        return Err("quality evidence root must be relative".to_owned());
-    }
-    Ok(result_root()?.join(relative))
+fn generated_root(settings: &QualitySettings) -> Result<PathBuf, String> {
+    Ok(result_root()?.join(&settings.evidence_root))
 }
 
 /// Hashes ordered code, tests, fixtures, locks, and configuration, including new files.
@@ -296,20 +296,28 @@ fn retained_root(root: &Path) -> Result<PathBuf, String> {
 /// Verifies generated or retained reports for the current input bytes.
 pub(crate) fn verify_all() -> Result<(), String> {
     let root = workspace_root()?;
-    let digest = input_digest(&root)?;
-    let generated = generated_root()?.join(&digest);
-    let retained = retained_root(&root)?.join(&digest);
-    for gate in REQUIRED_GATES {
+    let settings = QualitySettings::load(&root)?;
+    verify_all_with(&root, &settings)
+}
+
+/// Verifies all gates against one policy snapshot, including retention callers.
+fn verify_all_with(root: &Path, settings: &QualitySettings) -> Result<(), String> {
+    let digest = input_digest(root)?;
+    let generated = generated_root(settings)?.join(&digest);
+    let retained = retained_root(root)?.join(&digest);
+    for gate in QualityGate::ALL {
         let mut errors = Vec::new();
-        let accepted = [generated.join(gate), retained.join(gate)]
+        let accepted = [generated.join(gate.as_str()), retained.join(gate.as_str())]
             .iter()
-            .any(|directory| match verify(directory, gate, &digest, &root) {
-                Ok(()) => true,
-                Err(error) => {
-                    errors.push(error);
-                    false
-                }
-            });
+            .any(
+                |directory| match verify(directory, gate, &digest, settings) {
+                    Ok(()) => true,
+                    Err(error) => {
+                        errors.push(error);
+                        false
+                    }
+                },
+            );
         if !accepted {
             return Err(format!(
                 "missing or invalid {gate} evidence for current inputs: {}; run the documented quality measurements and retain them with `cargo xtask quality approve --release <version>`",
@@ -322,18 +330,19 @@ pub(crate) fn verify_all() -> Result<(), String> {
 
 /// Copies verified reports beside an approval without changing its historical record.
 pub(crate) fn retain() -> Result<(), String> {
-    verify_all()?;
     let root = workspace_root()?;
+    let settings = QualitySettings::load(&root)?;
+    verify_all_with(&root, &settings)?;
     let digest = input_digest(&root)?;
-    let generated = generated_root()?.join(&digest);
+    let generated = generated_root(&settings)?.join(&digest);
     let retained = retained_root(&root)?.join(&digest);
-    for gate in REQUIRED_GATES {
-        let source = generated.join(gate);
-        let destination = retained.join(gate);
-        if verify(&destination, gate, &digest, &root).is_ok() {
+    for gate in QualityGate::ALL {
+        let source = generated.join(gate.as_str());
+        let destination = retained.join(gate.as_str());
+        if verify(&destination, gate, &digest, &settings).is_ok() {
             continue;
         }
-        verify(&source, gate, &digest, &root)?;
+        verify(&source, gate, &digest, &settings)?;
         let receipt = read_receipt(&source)?;
         fs::create_dir_all(&destination)
             .map_err(|error| format!("could not retain gate: {error}"))?;
@@ -360,12 +369,17 @@ fn read_receipt(directory: &Path) -> Result<Receipt, String> {
 }
 
 /// Rejects wrong-source, wrong-policy, modified, or incomplete measurements.
-fn verify(directory: &Path, gate: &str, inputs: &str, root: &Path) -> Result<(), String> {
+fn verify(
+    directory: &Path,
+    gate: QualityGate,
+    inputs: &str,
+    settings: &QualitySettings,
+) -> Result<(), String> {
     let receipt = read_receipt(directory)?;
     if receipt.schema_version != 1
         || receipt.gate != gate
         || receipt.inputs_sha256 != inputs
-        || receipt.policy_sha256 != sha256_file(&root.join(constants::QUALITY_GATES_FILE))?
+        || receipt.policy_sha256 != settings.policy_sha256
         || receipt.source_commit.len() != 40
         || receipt.toolchain.is_empty()
         || receipt.finished_at_unix_ms == 0
@@ -373,7 +387,7 @@ fn verify(directory: &Path, gate: &str, inputs: &str, root: &Path) -> Result<(),
     {
         return Err(format!("{gate} receipt is stale or incomplete"));
     }
-    validate_reports(&receipt, directory)
+    validate_reports(&receipt, directory, settings)
 }
 
 /// Parses actual retained JSON output from a measurement tool.
@@ -385,10 +399,12 @@ fn json_report(directory: &Path, name: &str) -> Result<serde_json::Value, String
 }
 
 /// Checks exact report bytes and independent measured acceptance criteria.
-fn validate_reports(receipt: &Receipt, directory: &Path) -> Result<(), String> {
-    if matches!(receipt.gate.as_str(), "coverage" | "fuzz")
-        && !receipt.toolchain.contains("-nightly")
-    {
+fn validate_reports(
+    receipt: &Receipt,
+    directory: &Path,
+    settings: &QualitySettings,
+) -> Result<(), String> {
+    if receipt.gate.requires_nightly() && !receipt.toolchain.contains("-nightly") {
         return Err("analysis measurement was not produced with nightly".to_owned());
     }
     if receipt.invocations.is_empty() {
@@ -415,32 +431,38 @@ fn validate_reports(receipt: &Receipt, directory: &Path) -> Result<(), String> {
             }
         }
     }
-    match receipt.gate.as_str() {
-        "coverage" => validate_coverage(receipt, directory),
-        "mutation" => validate_mutation(receipt, directory),
-        "fuzz" => validate_fuzz(receipt, directory),
-        "performance-release" | "performance-soak" => validate_performance(receipt, directory),
-        "advisories" => validate_advisories(receipt, directory),
-        _ => Err("unknown evidence gate".to_owned()),
+    match receipt.gate {
+        QualityGate::Coverage => validate_coverage(receipt, directory, settings),
+        QualityGate::Mutation => validate_mutation(receipt, directory, settings),
+        QualityGate::Fuzz => validate_fuzz(receipt, directory, settings),
+        QualityGate::PerformanceRelease | QualityGate::PerformanceSoak => {
+            validate_performance(receipt, directory)
+        }
+        QualityGate::Advisories => validate_advisories(receipt, directory, settings),
     }
 }
 
 /// Validates native coverage measurements against the configured acceptance policy.
-fn validate_coverage(receipt: &Receipt, directory: &Path) -> Result<(), String> {
+fn validate_coverage(
+    receipt: &Receipt,
+    directory: &Path,
+    settings: &QualitySettings,
+) -> Result<(), String> {
     require_report(receipt, "coverage.json")?;
     let report = json_report(directory, "coverage.json")?;
     for (metric, threshold) in [
-        ("lines", "minimum_line_percent"),
-        ("functions", "minimum_function_percent"),
-        ("regions", "minimum_region_percent"),
+        ("lines", settings.policy.coverage.minimum_line_percent),
+        (
+            "functions",
+            settings.policy.coverage.minimum_function_percent,
+        ),
+        ("regions", settings.policy.coverage.minimum_region_percent),
     ] {
         let observed = report
             .pointer(&format!("/data/0/totals/{metric}/percent"))
             .and_then(serde_json::Value::as_f64)
             .ok_or_else(|| format!("coverage has no {metric} percentage"))?;
-        let minimum = quality_value("coverage", threshold)?
-            .parse::<f64>()
-            .map_err(|error| format!("invalid threshold: {error}"))?;
+        let minimum = threshold;
         if !observed.is_finite() || observed < minimum || observed > 100.0 {
             return Err(format!(
                 "measured coverage {metric} {observed} fails minimum {minimum}"
@@ -451,9 +473,13 @@ fn validate_coverage(receipt: &Receipt, directory: &Path) -> Result<(), String> 
 }
 
 /// Validates native mutation measurements against the configured acceptance policy.
-fn validate_mutation(receipt: &Receipt, directory: &Path) -> Result<(), String> {
+fn validate_mutation(
+    receipt: &Receipt,
+    directory: &Path,
+    settings: &QualitySettings,
+) -> Result<(), String> {
     require_report(receipt, "outcomes.json")?;
-    let target = quality_value("mutation", "critical_target")?;
+    let target = &settings.policy.mutation.critical_target;
     if !receipt.invocations.iter().any(|run| {
         run.arguments
             .windows(2)
@@ -469,9 +495,7 @@ fn validate_mutation(receipt: &Receipt, directory: &Path) -> Result<(), String> 
     };
     let caught = count("caught")?;
     let missed = count("missed")?;
-    let minimum = quality_value("mutation", "minimum_caught_percent")?
-        .parse::<f64>()
-        .map_err(|error| format!("invalid mutation threshold: {error}"))?;
+    let minimum = settings.policy.mutation.minimum_caught_percent;
     #[allow(clippy::cast_precision_loss)]
     let percentage = 100.0 * caught as f64
         / caught
@@ -484,13 +508,15 @@ fn validate_mutation(receipt: &Receipt, directory: &Path) -> Result<(), String> 
 }
 
 /// Validates native fuzz measurements against the configured acceptance policy.
-fn validate_fuzz(receipt: &Receipt, directory: &Path) -> Result<(), String> {
-    let minimum = quality_value("fuzz", "minimum_seconds_per_target")?
-        .parse::<u128>()
-        .map_err(|error| format!("invalid fuzz budget: {error}"))?;
-    for target in quality_array("fuzz", "targets")? {
+fn validate_fuzz(
+    receipt: &Receipt,
+    directory: &Path,
+    settings: &QualitySettings,
+) -> Result<(), String> {
+    let minimum = u128::from(settings.policy.fuzz.minimum_seconds_per_target);
+    for target in &settings.policy.fuzz.targets {
         if !receipt.invocations.iter().any(|run| {
-            run.report == target
+            run.report == *target
                 && run.elapsed_ms >= minimum * 1_000
                 && run
                     .arguments
@@ -526,7 +552,7 @@ fn validate_performance(receipt: &Receipt, directory: &Path) -> Result<(), Strin
     ] {
         require_report(receipt, report)?;
     }
-    let profile = if receipt.gate == "performance-soak" {
+    let profile = if receipt.gate == QualityGate::PerformanceSoak {
         "extended-soak"
     } else {
         "release"
@@ -567,15 +593,12 @@ fn validate_performance(receipt: &Receipt, directory: &Path) -> Result<(), Strin
 }
 
 /// Validates native advisories measurements against the configured acceptance policy.
-fn validate_advisories(receipt: &Receipt, directory: &Path) -> Result<(), String> {
-    let policy = read_workspace_text(&workspace_root()?, constants::DEPENDENCY_SOURCES_FILE)?;
-    let mut locks = vec![constants::CARGO_LOCK_FILE.to_owned()];
-    locks.extend(configuration_array_from(
-        &policy,
-        "",
-        "isolated_tool_lockfiles",
-    )?);
-    for lock in locks {
+fn validate_advisories(
+    receipt: &Receipt,
+    directory: &Path,
+    settings: &QualitySettings,
+) -> Result<(), String> {
+    for lock in &settings.advisory_locks {
         if !receipt.invocations.iter().any(|run| {
             run.arguments
                 .windows(2)
@@ -584,9 +607,7 @@ fn validate_advisories(receipt: &Receipt, directory: &Path) -> Result<(), String
             return Err(format!("advisory scan omitted {lock}"));
         }
     }
-    let age = automation_value("quality", "advisory_max_age_seconds")?
-        .parse::<u128>()
-        .map_err(|error| format!("invalid advisory freshness: {error}"))?;
+    let age = u128::from(settings.advisory_max_age_seconds);
     let now = unix_time_millis()?;
     if receipt.finished_at_unix_ms > now || now - receipt.finished_at_unix_ms > age * 1_000 {
         return Err("advisory scan is stale; rerun release quality".to_owned());
@@ -619,15 +640,8 @@ fn require_report(receipt: &Receipt, filename: &str) -> Result<(), String> {
 
 /// Scans every declared dependency lock against a freshly fetched advisory database.
 pub(crate) fn advisory_scan() -> Result<(), String> {
-    let root = workspace_root()?;
-    let policy = read_workspace_text(&root, constants::DEPENDENCY_SOURCES_FILE)?;
-    let mut locks = vec![constants::CARGO_LOCK_FILE.to_owned()];
-    locks.extend(configuration_array_from(
-        &policy,
-        "",
-        "isolated_tool_lockfiles",
-    )?);
-    let mut measurement = Measurement::begin("advisories")?;
+    let mut measurement = Measurement::begin(QualityGate::Advisories)?;
+    let locks = measurement.settings.advisory_locks.clone();
     let database = measurement.directory.join("advisory-db");
     let database = database
         .to_str()

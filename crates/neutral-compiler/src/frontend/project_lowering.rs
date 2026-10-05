@@ -91,11 +91,12 @@ pub(super) fn compile_project_with_parser(
     let graph = captured
         .module_graph(cancellation)
         .map_err(ProjectCompileFailure::Graph)?;
-    let model = analyze_project_semantics_with_parser(captured, &graph, cancellation, parse)
+    let resolved = analyze_project_semantics_with_parser(captured, &graph, cancellation, parse)
         .map_err(ProjectCompileFailure::Semantics)?;
+    let model = resolved.model;
+    let roots = resolved.roots;
     let vocabularies =
         validate_project_vocabularies(captured).map_err(|_| fail(codes::INVALID_VALUE, None))?;
-    let mut roots = BTreeMap::new();
     let mut modules = BTreeMap::new();
     for source in captured.sources() {
         modules.insert(
@@ -110,9 +111,6 @@ pub(super) fn compile_project_with_parser(
                     .collect(),
             },
         );
-        for root in parse(source).map_err(ProjectCompileFailure::Semantics)? {
-            roots.insert(key(root.symbol.identity()), root);
-        }
     }
     let controls = captured.limits().values();
     let limits = ProjectLimits {

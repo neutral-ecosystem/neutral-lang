@@ -5,11 +5,66 @@
 use crate::constants::flags;
 use crate::{
     Instant, OpenOptions, Path, SystemTime, UNIX_EPOCH, WorkflowStep, command_output, constants,
-    fs, json_string, output, read_workspace_text, result_root, rustc_command,
-    unique_generated_directory, workspace_package_license, workspace_package_version,
-    workspace_root,
+    fs, output, read_workspace_text, result_root, rustc_command, unique_generated_directory,
+    workspace_package_license, workspace_package_version, workspace_root,
 };
+use serde::Serialize;
+
+/// Independent schema for generated workflow summaries.
+const WORKFLOW_SCHEMA_VERSION: u32 = 1;
 use std::io::Write as _;
+
+/// One append-only JSONL event; optional errors retain their explicit null representation.
+#[derive(Serialize)]
+struct WorkflowEvent<'a> {
+    /// Workflow name.
+    workflow: &'a str,
+    /// Selected execution profile.
+    profile: &'a str,
+    /// Ordered step name.
+    step: &'a str,
+    /// Event state.
+    status: &'a str,
+    /// Event time in Unix milliseconds.
+    timestamp_unix_ms: u128,
+    /// Monotonic step elapsed time.
+    duration_ms: u128,
+    /// Failure details, or null for nonfailure events.
+    error: Option<&'a str>,
+}
+
+/// Current workflow state with source and tool provenance.
+#[derive(Serialize)]
+struct WorkflowSummary<'a> {
+    /// Independent generated-document schema.
+    schema_version: u32,
+    /// Workflow name.
+    workflow: &'a str,
+    /// Selected execution profile.
+    profile: &'a str,
+    /// Current state.
+    status: &'a str,
+    /// Successful steps so far.
+    completed_steps: usize,
+    /// Number of selected steps.
+    total_steps: usize,
+    /// Initial Unix time.
+    started_at_unix_ms: u128,
+    /// Most recent Unix time.
+    updated_at_unix_ms: u128,
+    /// Checkout identity at this summary update.
+    source_commit: String,
+    /// Whether the checkout has tracked or untracked changes.
+    worktree_clean: bool,
+    /// Workspace package version.
+    package_version: String,
+    /// Workspace license expression.
+    license: String,
+    /// Selected compiler version.
+    rustc: String,
+    /// Failure details, or null.
+    error: Option<&'a str>,
+}
 
 /// Runs ordered workflow steps while retaining start, pass, and failure events.
 pub(crate) fn run_recorded_workflow(
@@ -136,16 +191,19 @@ pub(crate) fn append_workflow_event(
         .append(true)
         .open(path)
         .map_err(|error| format!("could not open workflow event log: {error}"))?;
-    writeln!(
-        file,
-        "{{\"workflow\":\"{}\",\"profile\":\"{}\",\"step\":\"{}\",\"status\":\"{}\",\"timestamp_unix_ms\":{timestamp_unix_ms},\"duration_ms\":{duration_ms},\"error\":{}}}",
-        json_string(workflow),
-        json_string(profile),
-        json_string(step),
-        json_string(status),
-        json_optional_string(error)
-    )
-    .map_err(|error| format!("could not write workflow event log: {error}"))
+    let event = WorkflowEvent {
+        workflow,
+        profile,
+        step,
+        status,
+        timestamp_unix_ms,
+        duration_ms,
+        error,
+    };
+    // JSONL must remain one complete compact object per physical line.
+    serde_json::to_writer(&mut file, &event)
+        .map_err(|error| format!("could not serialize workflow event: {error}"))?;
+    writeln!(file).map_err(|error| format!("could not write workflow event log: {error}"))
 }
 
 /// Writes the current machine-readable summary for an aggregate workflow.
@@ -168,30 +226,24 @@ pub(crate) fn write_workflow_summary(
     let worktree_clean =
         command_output(constants::GIT_COMMAND, &["status", "--porcelain"])?.is_empty();
     let rustc = command_output(&rustc_command()?, &[flags::VERSION])?;
-    fs::write(
-        path,
-        format!(
-            "{{\n  \"schema_version\": 1,\n  \"workflow\": \"{}\",\n  \"profile\": \"{}\",\n  \"status\": \"{}\",\n  \"completed_steps\": {completed_steps},\n  \"total_steps\": {total_steps},\n  \"started_at_unix_ms\": {started_at_unix_ms},\n  \"updated_at_unix_ms\": {},\n  \"source_commit\": \"{}\",\n  \"worktree_clean\": {worktree_clean},\n  \"package_version\": \"{}\",\n  \"license\": \"{}\",\n  \"rustc\": \"{}\",\n  \"error\": {}\n}}\n",
-            json_string(workflow),
-            json_string(profile),
-            json_string(status),
-            unix_time_millis()?,
-            json_string(&commit),
-            json_string(&version),
-            json_string(&license),
-            json_string(&rustc),
-            json_optional_string(error)
-        ),
-    )
-    .map_err(|error| format!("could not write workflow summary: {error}"))
-}
-
-/// Encodes an optional string as one JSON value.
-pub(crate) fn json_optional_string(value: Option<&str>) -> String {
-    value.map_or_else(
-        || "null".to_owned(),
-        |value| format!("\"{}\"", json_string(value)),
-    )
+    let summary = WorkflowSummary {
+        schema_version: WORKFLOW_SCHEMA_VERSION,
+        workflow,
+        profile,
+        status,
+        completed_steps,
+        total_steps,
+        started_at_unix_ms,
+        updated_at_unix_ms: unix_time_millis()?,
+        source_commit: commit,
+        worktree_clean,
+        package_version: version,
+        license,
+        rustc,
+        error,
+    };
+    fs::write(path, super::json::pretty(&summary)?)
+        .map_err(|error| format!("could not write workflow summary: {error}"))
 }
 
 /// Returns milliseconds elapsed since the Unix epoch for generated evidence.

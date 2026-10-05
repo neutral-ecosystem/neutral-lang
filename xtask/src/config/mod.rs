@@ -7,3 +7,4 @@ pub(crate) mod configuration;
 pub(crate) mod configuration_models;
 pub mod constants;
 pub(crate) mod manifest_updates;
+pub(crate) mod quality_settings;

@@ -109,3 +109,9 @@ approves a language-contract change. Review the diff and run
 Some identifiers are contracts rather than setup choices: release approval
 still binds to `main` HEAD, frozen conformance inputs are selected by exact
 release, and binary/protocol names change only with their owning contract.
+
+Quality measurements and evidence validation share typed settings loaded once
+per invocation. Gate identifiers are checked enums rather than unchecked strings;
+receipts retain their existing serialized names. Policy changes during a
+measurement invalidate it rather than silently accepting a different threshold.
+These internal refactors require no new developer commands or manual logs.

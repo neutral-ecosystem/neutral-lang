@@ -43,6 +43,11 @@ before publishing complete `neutral-ir::project::ProjectIr`, including private
 and disconnected modules, materialized reuse, identity-only references, exact
 source/vocabulary companions, and resource facts. Failures never publish partial
 IR. This library API does not activate the standalone v1 compiler profile.
+
+Within one clean project compilation, semantic analysis hands its private parsed
+units to lowering instead of parsing them again. This request-local handoff does
+not expose syntax internals or retain data between requests; the explicit cache
+API remains a separate, caller-owned optimization.
 For captured projects, it validates every supplied vocabulary bundle as
 one exact canonical set, resolves module-local `use` aliases to locked public
 types, and retains direct `url`/`path` scalar bindings as distinct inert values.

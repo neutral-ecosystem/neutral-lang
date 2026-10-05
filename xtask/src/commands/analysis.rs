@@ -2,11 +2,12 @@
 
 //! commands / analysis responsibilities for repository automation.
 
+use crate::config::quality_settings::QualitySettings;
 use crate::constants::{flags, reports};
+use crate::quality::gate::QualityGate;
 use crate::{
-    FuzzMode, Path, PathBuf, PerformanceProfile, cargo_discovery, constants, fs,
-    is_safe_relative_path, output, quality_array, quality_evidence, quality_output_path,
-    quality_value, run_active_test_filter, run_cargo, workspace_root,
+    FuzzMode, Path, PerformanceProfile, cargo_discovery, constants, fs, output, quality_evidence,
+    result_root, run_active_test_filter, run_cargo, workspace_root,
 };
 
 /// Runs the selected durable fuzz mode.
@@ -19,20 +20,13 @@ pub(crate) fn fuzz(mode: FuzzMode) -> Result<(), String> {
 
 /// Runs every configured coverage-guided fuzz target for its approved budget.
 pub(crate) fn coverage_guided_fuzz_campaign() -> Result<(), String> {
-    let mut measurement = quality_evidence::Measurement::begin("fuzz")?;
-    let targets = quality_array("fuzz", "targets")?;
-    let seconds = quality_value("fuzz", "minimum_seconds_per_target")?
-        .parse::<u64>()
-        .map_err(|error| format!("invalid fuzz budget: {error}"))?;
-    if seconds == 0 {
-        return Err("fuzz budget must be positive".to_owned());
-    }
+    let mut measurement = quality_evidence::Measurement::begin(QualityGate::Fuzz)?;
+    let settings = measurement.settings.policy.fuzz.clone();
+    let targets = settings.targets;
+    let seconds = settings.minimum_seconds_per_target;
     let root = workspace_root()?;
-    let corpus_root = PathBuf::from(quality_value("fuzz", "corpus_root")?);
-    let seed_root = PathBuf::from(quality_value("fuzz", "seed_root")?);
-    if !is_safe_relative_path(&corpus_root) || !is_safe_relative_path(&seed_root) {
-        return Err("fuzz corpus and seed roots must be safe workspace-relative paths".to_owned());
-    }
+    let corpus_root = settings.corpus_root;
+    let seed_root = settings.seed_root;
     let total = targets.len();
     output::info(format!(
         "fuzz campaign: {total} targets | budget {} each | estimated total {} + build/startup",
@@ -43,9 +37,6 @@ pub(crate) fn coverage_guided_fuzz_campaign() -> Result<(), String> {
     ));
     for (index, target) in targets.into_iter().enumerate() {
         output::info(format!("fuzz [{}/{total}]: {target}", index + 1));
-        if !is_safe_relative_path(Path::new(&target)) {
-            return Err(format!("unsafe fuzz target name: {target}"));
-        }
         let seed_directory = root.join(&seed_root).join(&target);
         let corpus_directory = corpus_root.join(&target);
         let corpus = corpus_directory
@@ -74,17 +65,19 @@ pub(crate) fn coverage_guided_fuzz_campaign() -> Result<(), String> {
 
 /// Runs workspace coverage and enforces every configured percentage threshold.
 pub(crate) fn coverage() -> Result<(), String> {
-    let mut measurement = quality_evidence::Measurement::begin("coverage")?;
-    let lines = quality_value("coverage", "minimum_line_percent")?;
-    let functions = quality_value("coverage", "minimum_function_percent")?;
-    let regions = quality_value("coverage", "minimum_region_percent")?;
-    let exclusions = quality_value("coverage", "exclusion_regex")?;
-    let html_index = quality_output_path("coverage", "html_output")?;
+    let mut measurement = quality_evidence::Measurement::begin(QualityGate::Coverage)?;
+    let settings = measurement.settings.policy.coverage.clone();
+    let lines = settings.minimum_line_percent.to_string();
+    let functions = settings.minimum_function_percent.to_string();
+    let regions = settings.minimum_region_percent.to_string();
+    let exclusions = settings.exclusion_regex;
+    let results = result_root()?;
+    let html_index = results.join(&settings.html_output);
     let html = html_index
         .parent()
         .and_then(Path::parent)
         .ok_or_else(|| "coverage HTML output must be below a report directory".to_owned())?;
-    let json = quality_output_path("coverage", "json_output")?;
+    let json = results.join(&settings.json_output);
     fs::create_dir_all(
         json.parent()
             .ok_or_else(|| "coverage JSON output has no parent".to_owned())?,
@@ -145,8 +138,8 @@ pub(crate) fn coverage() -> Result<(), String> {
 
 /// Runs mutation analysis for the configured critical production target.
 pub(crate) fn mutate() -> Result<(), String> {
-    let target = quality_value("mutation", "critical_target")?;
-    let mut measurement = quality_evidence::Measurement::begin("mutation")?;
+    let mut measurement = quality_evidence::Measurement::begin(QualityGate::Mutation)?;
+    let target = measurement.settings.policy.mutation.critical_target.clone();
     let output = measurement.directory.to_string_lossy().into_owned();
     measurement.cargo(
         &["mutants", "--file", &target, "--output", &output],
@@ -161,9 +154,9 @@ pub(crate) fn mutate() -> Result<(), String> {
 pub(crate) fn performance(profile: PerformanceProfile) -> Result<(), String> {
     let measured = !matches!(profile, PerformanceProfile::Pr);
     let gate = if matches!(profile, PerformanceProfile::Soak) {
-        "performance-soak"
+        QualityGate::PerformanceSoak
     } else {
-        "performance-release"
+        QualityGate::PerformanceRelease
     };
     let profile = match profile {
         PerformanceProfile::Pr => "pr",
@@ -172,18 +165,10 @@ pub(crate) fn performance(profile: PerformanceProfile) -> Result<(), String> {
     };
     match profile {
         "pr" | "release" | "extended-soak" => {
-            let harness = quality_value("performance", "harness")?;
-            let (package, target) = harness
-                .split_once('/')
-                .ok_or_else(|| "quality performance harness must be package/target".to_owned())?;
-            if package != constants::NEUTRAL_BENCH
-                || target.is_empty()
-                || !target
-                    .bytes()
-                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
-            {
-                return Err(format!("invalid quality performance harness: {harness}"));
-            }
+            let settings = QualitySettings::load(&workspace_root()?)?;
+            let harness = settings.policy.performance.harness.clone();
+            let package = harness.package.as_str();
+            let target = harness.target.as_str();
             let arguments = [
                 "bench",
                 flags::PACKAGE,
@@ -196,7 +181,8 @@ pub(crate) fn performance(profile: PerformanceProfile) -> Result<(), String> {
             if !measured {
                 return run_cargo(&arguments);
             }
-            let mut measurement = quality_evidence::Measurement::begin(gate)?;
+            let mut measurement =
+                quality_evidence::Measurement::begin_with_settings(gate, settings)?;
             measurement.cargo(&arguments, "benchmark")?;
             measurement.cargo(
                 &[

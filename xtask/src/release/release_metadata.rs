@@ -7,11 +7,79 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 
 /// Reviewed source branch used for release candidates.
-const CANDIDATE_REF: &str = "main";
+pub(crate) const CANDIDATE_REF: &str = "main";
 /// Distribution channel represented by the assembled binary package.
 const BINARY_CHANNEL: &str = "github-binaries";
 /// State of a locally assembled, not yet published package.
 const ASSEMBLED_STATUS: &str = "assembled";
+
+/// Independent schema for generated release provenance and manifests.
+pub(crate) const RELEASE_METADATA_SCHEMA: u32 = 1;
+
+/// Exact build inputs recorded beside the assembled binaries.
+#[derive(Serialize)]
+pub(crate) struct BuildProvenance<'a> {
+    /// Release metadata schema.
+    pub(crate) schema_version: u32,
+    /// Command responsible for building the package.
+    pub(crate) builder: &'a str,
+    /// Reviewed candidate branch.
+    pub(crate) candidate_ref: &'a str,
+    /// Exact candidate commit.
+    pub(crate) candidate_commit: &'a str,
+    /// Workspace-derived tag.
+    pub(crate) release_tag: &'a str,
+    /// Build host triple.
+    pub(crate) target: &'a str,
+    /// Selected compiler identity.
+    pub(crate) rustc: String,
+    /// Exact dependency lock digest.
+    pub(crate) cargo_lock_sha256: String,
+    /// Command for reproducing assembly.
+    pub(crate) reproducible_command: &'a str,
+}
+
+/// One checksum-bound artifact, never a preformatted JSON fragment.
+#[derive(Serialize)]
+pub(crate) struct ReleaseArtifact {
+    /// Package-relative filename.
+    pub(crate) filename: String,
+    /// Exact byte checksum.
+    pub(crate) sha256: String,
+    /// Project license expression.
+    pub(crate) license: String,
+    /// Package version that produced the bytes.
+    pub(crate) producer_version: String,
+    /// Exact candidate commit.
+    pub(crate) source_commit: String,
+    /// Selected distribution channel.
+    pub(crate) channel: String,
+}
+
+/// Complete generated release manifest with typed artifact entries.
+#[derive(Serialize)]
+pub(crate) struct ReleaseManifest<'a> {
+    /// Release metadata schema.
+    pub(crate) schema_version: u32,
+    /// Workspace-derived tag.
+    pub(crate) release_tag: &'a str,
+    /// Reviewed candidate branch.
+    pub(crate) candidate_ref: &'a str,
+    /// Exact candidate commit.
+    pub(crate) candidate_commit: &'a str,
+    /// Project license expression.
+    pub(crate) license: &'a str,
+    /// Targets included in this package.
+    pub(crate) supported_targets: [&'a str; 1],
+    /// Explicit registry authority.
+    pub(crate) crates_io_selected: bool,
+    /// Current package limitations.
+    pub(crate) known_limitations: [&'static str; 2],
+    /// Unselected capabilities.
+    pub(crate) deferred: Vec<&'static str>,
+    /// Exact artifact records in assembly order.
+    pub(crate) artifacts: &'a [ReleaseArtifact],
+}
 
 /// Stable, typed shape of the generated package summary.
 #[derive(Serialize)]

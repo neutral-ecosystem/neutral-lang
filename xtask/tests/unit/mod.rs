@@ -509,6 +509,43 @@ fn automation_records_failed_workflow_steps() {
     assert!(events.contains("\"status\":\"fail\""));
 }
 
+/// JSONL serializes null errors and control characters without creating spurious event lines.
+#[test]
+fn automation_workflow_jsonl_preserves_typed_values() {
+    let directory = super::unique_generated_directory(
+        &super::result_root().unwrap().join("workflow-json-test"),
+    )
+    .unwrap();
+    let path = directory.join("events.jsonl");
+    for error in [None, Some("quote\" slash\\ newline\n tab\t unicode-é")] {
+        crate::runtime::workflow::append_workflow_event(
+            &path,
+            "workflow\nname",
+            "profile",
+            "step",
+            "pass",
+            123,
+            456,
+            error,
+        )
+        .unwrap();
+    }
+    let text = std::fs::read_to_string(path).unwrap();
+    let events = text
+        .lines()
+        .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(events.len(), 2);
+    assert_eq!(events[0]["error"], serde_json::Value::Null);
+    assert_eq!(
+        events[1]["error"],
+        "quote\" slash\\ newline\n tab\t unicode-é"
+    );
+    assert_eq!(events[0]["workflow"], "workflow\nname");
+    assert_eq!(events[0]["timestamp_unix_ms"], 123);
+    assert_eq!(events[0]["duration_ms"], 456);
+}
+
 #[test]
 /// Verifies that the environment manifest identifies the selected toolchain channel.
 fn environment_manifest_identifies_the_toolchain_channel() {

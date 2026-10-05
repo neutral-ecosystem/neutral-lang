@@ -71,6 +71,22 @@ fn zero_cache_retention_is_rejected() {
     );
 }
 
+/// Clean compilation passes the original parsed scope through both phases exactly once.
+#[test]
+fn clean_compilation_parses_each_unit_once() {
+    let capture = captured("example", "hello");
+    let token = CancellationToken::new();
+    let mut parses = 0;
+    let actual =
+        super::super::lowering::compile_project_with_parser(&capture, &token, &mut |source| {
+            parses += 1;
+            parse_roots(source.module_id(), source.digest(), source.bytes())
+        })
+        .unwrap();
+    assert_eq!(parses, capture.sources().len());
+    assert_eq!(actual, compile_project(&capture, &token).unwrap());
+}
+
 /// Simulated digest collisions cannot reuse syntax whose exact original bytes differ.
 #[test]
 fn cache_rejects_digest_collision_with_stale_bytes() {

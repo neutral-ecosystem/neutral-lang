@@ -101,11 +101,8 @@ impl ProjectCompilationCache {
         let mut pending = BTreeMap::<String, Entry>::new();
         let mut stats = ProjectCacheStats::default();
         let ir = compile_project_with_parser(captured, cancellation, &mut |source| {
-            // Semantics and lowering can request the same roots in one run. The
-            // pending generation avoids reparsing and counts each unit only once.
-            if let Some(entry) = pending.get(source.module_id()) {
-                return Ok(entry.roots.clone());
-            }
+            // Semantics passes these parsed roots directly to lowering. This
+            // pending generation is retained only after the entire run succeeds.
             let previous = self.entries.get(source.module_id());
             // A logical hash or public fingerprint loses spelling/private facts.
             // Even a matching source digest needs exact bytes to reject collisions.

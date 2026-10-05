@@ -3,12 +3,13 @@
 //! commands / distribution responsibilities for repository automation.
 
 use crate::constants::flags;
+use crate::release::release_metadata::{BuildProvenance, ReleaseArtifact, ReleaseManifest};
 use crate::{
     BTreeMap, Command, Path, PathBuf, QualityProfile, ValidationTarget, cargo_target_directory,
-    check_boundaries, command_output, constants, fs, html_spdx_marker, json_string, output,
-    project_license, project_slug, quality, release, release_metadata, release_plan,
-    require_main_head_checkout, result_root, run_cargo, run_program, run_recorded_workflow,
-    rustc_command, sha256_hex, verify_release_approval, workspace_root,
+    check_boundaries, command_output, constants, fs, html_spdx_marker, output, project_license,
+    project_slug, quality, release, release_metadata, release_plan, require_main_head_checkout,
+    result_root, run_cargo, run_program, run_recorded_workflow, rustc_command, sha256_hex,
+    verify_release_approval, workspace_root,
 };
 
 /// Validates either built release binaries or one encoded artifact.
@@ -168,7 +169,7 @@ pub(crate) fn release_distribution_assets(
         },
         DistributionAsset {
             filename: constants::RELEASE_PROVENANCE_FILE.to_owned(),
-            bytes: format!("{{\n  \"schema_version\": 1,\n  \"builder\": \"cargo xtask package\",\n  \"candidate_ref\": \"main\",\n  \"candidate_commit\": \"{}\",\n  \"release_tag\": \"{}\",\n  \"target\": \"{}\",\n  \"rustc\": \"{}\",\n  \"cargo_lock_sha256\": \"{}\",\n  \"reproducible_command\": \"cargo xtask package\"\n}}\n", json_string(candidate_commit), json_string(&plan.release_tag), json_string(host), json_string(&command_output(&rustc_command()?, &[flags::VERSION])?), sha256_hex(&lock_bytes)).into_bytes(),
+            bytes: release_provenance_bytes(plan, candidate_commit, host, &lock_bytes)?,
         },
     ];
     let mut entries = Vec::new();
@@ -218,7 +219,7 @@ pub(crate) fn release_distribution_assets(
             &entry_context,
         );
     }
-    let manifest = release_manifest_bytes(plan, &entry_context, host, &entries);
+    let manifest = release_manifest_bytes(plan, &entry_context, host, &entries)?;
     checksums.push(format!(
         "{}  {}\n",
         sha256_hex(&manifest),
@@ -236,9 +237,29 @@ pub(crate) fn release_distribution_assets(
     Ok(assets)
 }
 
+/// Serializes exact build inputs without concatenating user-supplied JSON fragments.
+fn release_provenance_bytes(
+    plan: &release::ReleasePlan,
+    candidate_commit: &str,
+    host: &str,
+    lock_bytes: &[u8],
+) -> Result<Vec<u8>, String> {
+    crate::runtime::json::pretty(&BuildProvenance {
+        schema_version: release_metadata::RELEASE_METADATA_SCHEMA,
+        builder: "cargo xtask package",
+        candidate_ref: release_metadata::CANDIDATE_REF,
+        candidate_commit,
+        release_tag: &plan.release_tag,
+        target: host,
+        rustc: command_output(&rustc_command()?, &[flags::VERSION])?,
+        cargo_lock_sha256: sha256_hex(lock_bytes),
+        reproducible_command: "cargo xtask package",
+    })
+}
+
 /// Hashes the selected built binaries into one release manifest and checksum set.
 pub(crate) fn append_binary_release_entries(
-    entries: &mut Vec<String>,
+    entries: &mut Vec<ReleaseArtifact>,
     checksums: &mut Vec<String>,
     source_directory: &Path,
     binaries: &[String],
@@ -286,22 +307,30 @@ pub(crate) fn release_manifest_bytes(
     plan: &release::ReleasePlan,
     context: &ReleaseEntryContext<'_>,
     host: &str,
-    entries: &[String],
-) -> Vec<u8> {
+    entries: &[ReleaseArtifact],
+) -> Result<Vec<u8>, String> {
     let crates_io_selected = plan
         .channels
         .contains(&release::DistributionChannel::CratesIo);
-    let deferred = if crates_io_selected {
-        "[\n    \"additional host targets\"\n  ]"
-    } else {
-        "[\n    \"additional host targets\",\n    \"crates.io publication\"\n  ]"
-    };
-    let artifacts = if entries.is_empty() {
-        String::new()
-    } else {
-        format!("\n{}\n  ", entries.join(",\n"))
-    };
-    format!("{{\n  \"schema_version\": 1,\n  \"release_tag\": \"{}\",\n  \"candidate_ref\": \"main\",\n  \"candidate_commit\": \"{}\",\n  \"license\": \"{}\",\n  \"supported_targets\": [\n    \"{}\"\n  ],\n  \"crates_io_selected\": {crates_io_selected},\n  \"known_limitations\": [\n    \"single-host binary package\",\n    \"no runtime or application semantics\"\n  ],\n  \"deferred\": {deferred},\n  \"artifacts\": [{artifacts}]\n}}\n", json_string(&plan.release_tag), json_string(context.candidate_commit), json_string(context.license), json_string(host)).into_bytes()
+    let mut deferred = vec!["additional host targets"];
+    if !crates_io_selected {
+        deferred.push("crates.io publication");
+    }
+    crate::runtime::json::pretty(&ReleaseManifest {
+        schema_version: release_metadata::RELEASE_METADATA_SCHEMA,
+        release_tag: &plan.release_tag,
+        candidate_ref: release_metadata::CANDIDATE_REF,
+        candidate_commit: context.candidate_commit,
+        license: context.license,
+        supported_targets: [host],
+        crates_io_selected,
+        known_limitations: [
+            "single-host binary package",
+            "no runtime or application semantics",
+        ],
+        deferred,
+        artifacts: entries,
+    })
 }
 
 /// Produces deterministic tracked source bytes for one exact candidate commit.
@@ -333,7 +362,7 @@ pub(crate) fn source_archive(
 
 /// Adds one selected file to the release manifest and checksum list.
 pub(crate) fn append_release_entry(
-    entries: &mut Vec<String>,
+    entries: &mut Vec<ReleaseArtifact>,
     checksums: &mut Vec<String>,
     filename: &str,
     bytes: &[u8],
@@ -342,7 +371,14 @@ pub(crate) fn append_release_entry(
 ) {
     let digest = sha256_hex(bytes);
     checksums.push(format!("{digest}  {filename}\n"));
-    entries.push(format!("    {{\n      \"filename\": \"{}\",\n      \"sha256\": \"{}\",\n      \"license\": \"{}\",\n      \"producer_version\": \"{}\",\n      \"source_commit\": \"{}\",\n      \"channel\": \"{}\"\n    }}", json_string(filename), digest, json_string(context.license), json_string(context.version), json_string(context.candidate_commit), json_string(channel)));
+    entries.push(ReleaseArtifact {
+        filename: filename.to_owned(),
+        sha256: digest,
+        license: context.license.to_owned(),
+        producer_version: context.version.to_owned(),
+        source_commit: context.candidate_commit.to_owned(),
+        channel: channel.to_owned(),
+    });
 }
 
 /// Atomically stages selected binaries, license material, and package metadata.
@@ -526,3 +562,7 @@ pub(crate) fn rust_host() -> Result<String, String> {
         .map(str::to_owned)
         .ok_or_else(|| "rustc -vV did not report a host triple".to_owned())
 }
+
+#[cfg(test)]
+#[path = "../../tests/unit/distribution.rs"]
+mod tests;

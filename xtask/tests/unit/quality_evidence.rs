@@ -5,7 +5,7 @@
 use super::*;
 
 /// Creates an isolated report directory and checksum-bound coverage fixture.
-fn fixture(label: &str) -> (PathBuf, Receipt) {
+fn fixture(label: &str) -> (PathBuf, Receipt, QualitySettings) {
     let directory =
         std::env::temp_dir().join(format!("neutral-evidence-{label}-{}", std::process::id()));
     fs::create_dir_all(&directory).expect("fixture directory");
@@ -26,7 +26,7 @@ fn fixture(label: &str) -> (PathBuf, Receipt) {
     }
     let receipt = Receipt {
         schema_version: 1,
-        gate: "coverage".to_owned(),
+        gate: QualityGate::Coverage,
         source_commit: "a".repeat(40),
         inputs_sha256: "b".repeat(64),
         policy_sha256: sha256_file(
@@ -45,7 +45,11 @@ fn fixture(label: &str) -> (PathBuf, Receipt) {
         }],
         reports,
     };
-    (directory, receipt)
+    (
+        directory,
+        receipt,
+        QualitySettings::load(&workspace_root().unwrap()).unwrap(),
+    )
 }
 
 /// Writes a fixture receipt without executing any measurement tools.
@@ -60,43 +64,66 @@ fn write_receipt(directory: &Path, receipt: &Receipt) {
 /// Accepts actual passing metrics and rejects stale provenance and altered bytes.
 #[test]
 fn rejects_stale_and_modified_evidence() {
-    let (directory, mut receipt) = fixture("provenance");
-    let root = workspace_root().unwrap();
+    let (directory, mut receipt, settings) = fixture("provenance");
     write_receipt(&directory, &receipt);
-    assert!(verify(&directory, "coverage", &receipt.inputs_sha256, &root).is_ok());
-    assert!(verify(&directory, "coverage", &"c".repeat(64), &root).is_err());
+    assert!(
+        verify(
+            &directory,
+            QualityGate::Coverage,
+            &receipt.inputs_sha256,
+            &settings
+        )
+        .is_ok()
+    );
+    assert!(
+        verify(
+            &directory,
+            QualityGate::Coverage,
+            &"c".repeat(64),
+            &settings
+        )
+        .is_err()
+    );
     receipt.policy_sha256 = "d".repeat(64);
     write_receipt(&directory, &receipt);
-    assert!(verify(&directory, "coverage", &receipt.inputs_sha256, &root).is_err());
+    assert!(
+        verify(
+            &directory,
+            QualityGate::Coverage,
+            &receipt.inputs_sha256,
+            &settings
+        )
+        .is_err()
+    );
     fs::write(directory.join("coverage.json"), "{}").unwrap();
-    assert!(validate_reports(&receipt, &directory).is_err());
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
     fs::remove_dir_all(directory).unwrap();
 }
 
 /// Rejects a native acceptance report not protected by a checksum.
 #[test]
 fn rejects_unhashed_native_metrics_and_low_coverage() {
-    let (directory, mut receipt) = fixture("metrics");
+    let (directory, mut receipt, settings) = fixture("metrics");
     receipt.reports.remove("coverage.json");
-    assert!(validate_reports(&receipt, &directory).is_err());
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
     fs::write(directory.join("coverage.json"), r#"{"data":[{"totals":{"lines":{"percent":0},"functions":{"percent":0},"regions":{"percent":0}}}]}"#).unwrap();
     receipt.reports.insert(
         "coverage.json".to_owned(),
         sha256_file(&directory.join("coverage.json")).unwrap(),
     );
-    assert!(validate_reports(&receipt, &directory).is_err());
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
     receipt
         .reports
         .insert("../outside".to_owned(), "a".repeat(64));
-    assert!(validate_reports(&receipt, &directory).is_err());
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
     fs::remove_dir_all(directory).unwrap();
 }
 
 /// Rejects mutation survivors, narrowed selections, and empty or timed-out campaigns.
 #[test]
 fn validates_real_mutation_counts() {
-    let (directory, mut receipt) = fixture("mutants");
-    receipt.gate = "mutation".to_owned();
+    let (directory, mut receipt, settings) = fixture("mutants");
+    receipt.gate = QualityGate::Mutation;
     receipt.invocations[0].arguments = vec![
         "--file".to_owned(),
         quality_value("mutation", "critical_target").unwrap(),
@@ -119,10 +146,13 @@ fn validates_real_mutation_counts() {
             "outcomes.json".to_owned(),
             sha256_file(&directory.join("outcomes.json")).unwrap(),
         );
-        assert_eq!(validate_reports(&receipt, &directory).is_ok(), accepted);
+        assert_eq!(
+            validate_reports(&receipt, &directory, &settings).is_ok(),
+            accepted
+        );
     }
     receipt.invocations[0].arguments.clear();
-    assert!(validate_reports(&receipt, &directory).is_err());
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
     fs::remove_dir_all(directory).unwrap();
 }
 
@@ -152,16 +182,16 @@ fn input_fingerprint_includes_untracked_source() {
 /// A missing receipt or unsupported schema never proves gate acceptance.
 #[test]
 fn rejects_missing_and_unknown_receipts() {
-    let (directory, mut receipt) = fixture("schema");
+    let (directory, mut receipt, settings) = fixture("schema");
     assert!(read_receipt(&directory).is_err());
     receipt.schema_version += 1;
     write_receipt(&directory, &receipt);
     assert!(
         verify(
             &directory,
-            "coverage",
+            QualityGate::Coverage,
             &receipt.inputs_sha256,
-            &workspace_root().unwrap()
+            &settings
         )
         .is_err()
     );
@@ -179,8 +209,8 @@ fn replace_report(directory: &Path, receipt: &mut Receipt, name: &str, contents:
 /// Compilation wall time alone cannot stand in for a full fuzzer campaign.
 #[test]
 fn fuzz_requires_every_target_and_actual_fuzzer_duration() {
-    let (directory, mut receipt) = fixture("fuzz-duration");
-    receipt.gate = "fuzz".to_owned();
+    let (directory, mut receipt, settings) = fixture("fuzz-duration");
+    receipt.gate = QualityGate::Fuzz;
     receipt.invocations.clear();
     let budget = quality_value("fuzz", "minimum_seconds_per_target").unwrap();
     let elapsed = budget.parse::<u128>().unwrap() * 1_000;
@@ -199,7 +229,7 @@ fn fuzz_requires_every_target_and_actual_fuzzer_duration() {
             report: target,
         });
     }
-    assert!(validate_reports(&receipt, &directory).is_ok());
+    assert!(validate_reports(&receipt, &directory, &settings).is_ok());
     let target = receipt.invocations[0].report.clone();
     replace_report(
         &directory,
@@ -207,17 +237,17 @@ fn fuzz_requires_every_target_and_actual_fuzzer_duration() {
         &format!("{target}.stderr"),
         "Done 1 runs in 1 second(s)\n",
     );
-    assert!(validate_reports(&receipt, &directory).is_err());
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
     receipt.invocations.pop();
-    assert!(validate_reports(&receipt, &directory).is_err());
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
     fs::remove_dir_all(directory).unwrap();
 }
 
 /// Performance labels without heap and successful allocation reports are insufficient.
 #[test]
 fn performance_requires_real_profiler_and_matching_profile() {
-    let (directory, mut receipt) = fixture("profilers");
-    receipt.gate = "performance-release".to_owned();
+    let (directory, mut receipt, settings) = fixture("profilers");
+    receipt.gate = QualityGate::PerformanceRelease;
     receipt.invocations[0].report = "benchmark".to_owned();
     receipt.invocations[0].arguments.push("release".to_owned());
     let phases = [
@@ -234,7 +264,7 @@ fn performance_requires_real_profiler_and_matching_profile() {
         .join("");
     replace_report(&directory, &mut receipt, "benchmark.stdout", &output);
     replace_report(&directory, &mut receipt, "benchmark.stderr", "");
-    assert!(validate_reports(&receipt, &directory).is_err());
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
     replace_report(&directory, &mut receipt, "massif.out", "mem_heap_B=100\n");
     replace_report(&directory, &mut receipt, "memcheck.stdout", "");
     replace_report(
@@ -249,27 +279,27 @@ fn performance_requires_real_profiler_and_matching_profile() {
         elapsed_ms: 1,
         report: "memcheck".to_owned(),
     });
-    assert!(validate_reports(&receipt, &directory).is_ok());
-    receipt.gate = "performance-soak".to_owned();
-    assert!(validate_reports(&receipt, &directory).is_err());
-    receipt.gate = "performance-release".to_owned();
+    assert!(validate_reports(&receipt, &directory, &settings).is_ok());
+    receipt.gate = QualityGate::PerformanceSoak;
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
+    receipt.gate = QualityGate::PerformanceRelease;
     replace_report(
         &directory,
         &mut receipt,
         "memcheck.stderr",
         "==1== ERROR SUMMARY: 1 errors\n",
     );
-    assert!(validate_reports(&receipt, &directory).is_err());
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
     fs::remove_dir_all(directory).unwrap();
 }
 
 /// Fresh zero-vulnerability output must cover every configured dependency lock.
 #[test]
 fn advisories_require_all_locks_and_fresh_zero_findings() {
-    let (directory, mut receipt) = fixture("advisories");
-    receipt.gate = "advisories".to_owned();
+    let (directory, mut receipt, settings) = fixture("advisories");
+    receipt.gate = QualityGate::Advisories;
     receipt.invocations.clear();
-    assert!(validate_reports(&receipt, &directory).is_err());
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
     let policy = read_workspace_text(
         &workspace_root().unwrap(),
         constants::DEPENDENCY_SOURCES_FILE,
@@ -293,9 +323,9 @@ fn advisories_require_all_locks_and_fresh_zero_findings() {
             report,
         });
     }
-    assert!(validate_reports(&receipt, &directory).is_ok());
+    assert!(validate_reports(&receipt, &directory, &settings).is_ok());
     receipt.finished_at_unix_ms = unix_time_millis().unwrap() + 60_000;
-    assert!(validate_reports(&receipt, &directory).is_err());
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
     receipt.finished_at_unix_ms = unix_time_millis().unwrap();
     replace_report(
         &directory,
@@ -303,17 +333,18 @@ fn advisories_require_all_locks_and_fresh_zero_findings() {
         "lock-0.stdout",
         r#"{"vulnerabilities":{"found":true,"count":1}}"#,
     );
-    assert!(validate_reports(&receipt, &directory).is_err());
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
     fs::remove_dir_all(directory).unwrap();
 }
 
 /// Failed commands keep diagnostic output without producing passing evidence.
 #[test]
 fn failed_tool_never_writes_a_receipt() {
-    let (directory, receipt) = fixture("failed-command");
+    let (directory, receipt, settings) = fixture("failed-command");
     let mut measurement = Measurement {
         directory: directory.clone(),
         receipt,
+        settings,
     };
     assert!(
         measurement
@@ -323,5 +354,36 @@ fn failed_tool_never_writes_a_receipt() {
     assert!(directory.join("failure.stderr").is_file());
     assert!(!directory.join("receipt.json").exists());
     assert!(measurement.finish().is_err());
+    fs::remove_dir_all(directory).unwrap();
+}
+
+/// Validation consumes the supplied command snapshot, not another on-disk threshold lookup.
+#[test]
+fn validates_against_supplied_policy_snapshot() {
+    let (directory, mut receipt, mut settings) = fixture("snapshot");
+    replace_report(
+        &directory,
+        &mut receipt,
+        "coverage.json",
+        r#"{"data":[{"totals":{"lines":{"percent":87},"functions":{"percent":100},"regions":{"percent":100}}}]}"#,
+    );
+    assert!(validate_reports(&receipt, &directory, &settings).is_ok());
+    settings.policy.coverage.minimum_line_percent = 90.0;
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
+    fs::remove_dir_all(directory).unwrap();
+}
+
+/// Unknown gate names fail at receipt decoding rather than falling through string dispatch.
+#[test]
+fn unknown_receipt_gate_is_rejected() {
+    let (directory, receipt, _) = fixture("unknown-gate");
+    let mut json = serde_json::to_value(&receipt).unwrap();
+    json["gate"] = serde_json::json!("unknown");
+    fs::write(
+        directory.join(reports::RECEIPT),
+        serde_json::to_vec(&json).unwrap(),
+    )
+    .unwrap();
+    assert!(read_receipt(&directory).is_err());
     fs::remove_dir_all(directory).unwrap();
 }

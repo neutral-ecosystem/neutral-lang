@@ -5,6 +5,7 @@
 pub(crate) mod environment;
 pub(crate) mod execution;
 pub(crate) mod files;
+pub(crate) mod json;
 pub mod output;
 pub(crate) mod progress;
 pub(crate) mod results;
