@@ -86,6 +86,24 @@ const CASES: &[Case] = &[
         declarations: 3,
     },
     Case {
+        name: "records-no-trailing-comma",
+        units: &[source!("positive", "records-no-trailing-comma", "api")],
+        vocabulary: false,
+        declarations: 3,
+    },
+    Case {
+        name: "single-line-fields",
+        units: &[source!("positive", "single-line-fields", "api")],
+        vocabulary: false,
+        declarations: 3,
+    },
+    Case {
+        name: "single-line-fields-comma",
+        units: &[source!("positive", "single-line-fields-comma", "api")],
+        vocabulary: false,
+        declarations: 3,
+    },
+    Case {
         name: "forward-reuse",
         units: &[source!("positive", "forward-reuse", "api")],
         vocabulary: false,
@@ -197,6 +215,7 @@ fn symbol(module: &str, name: &str) -> ModuleSymbolIdentity {
 /// Returns literal expected materialized values for each accepted program.
 fn expected_values(name: &str) -> Vec<(&str, &str, ProjectValue)> {
     match name {
+        "single-line-fields" | "single-line-fields-comma" => expected_single_line_fields(),
         "scalars" => vec![
             ("api", "fraction", number("-125")),
             ("api", "exponent", number("42")),
@@ -223,7 +242,7 @@ fn expected_values(name: &str) -> Vec<(&str, &str, ProjectValue)> {
             ),
             ("api", "empty", ProjectValue::List(Vec::new())),
         ],
-        "records" => vec![(
+        "records" | "records-no-trailing-comma" => vec![(
             "api",
             "service",
             ProjectValue::Record(vec![
@@ -285,6 +304,23 @@ fn expected_values(name: &str) -> Vec<(&str, &str, ProjectValue)> {
         ],
         _ => panic!("unregistered value oracle: {name}"),
     }
+}
+
+/// Both defaults materialize independently; overriding one field retains the other default.
+fn expected_single_line_fields() -> Vec<(&'static str, &'static str, ProjectValue)> {
+    [("defaults", "42"), ("overridden", "99")]
+        .into_iter()
+        .map(|(name, count)| {
+            (
+                "api",
+                name,
+                ProjectValue::Record(vec![
+                    ("count".to_owned(), number(count)),
+                    ("r".to_owned(), number("3")),
+                ]),
+            )
+        })
+        .collect()
 }
 
 /// Expected cyclic node embeds only a typed target identity, never the target value.
@@ -417,6 +453,9 @@ macro_rules! accepted {
 accepted! {
     scalars => "scalars", unicode => "unicode", nullable_lists => "nullable-lists",
     records => "records", forward_reuse => "forward-reuse", reference_cycle => "reference-cycle",
+    records_no_trailing_comma => "records-no-trailing-comma",
+    single_line_fields => "single-line-fields",
+    single_line_fields_with_comma => "single-line-fields-comma",
     locations => "locations", vocabulary_aliases => "vocabulary", cross_module => "imports",
     import_scc => "import-cycle",
 }
@@ -502,6 +541,71 @@ rejected_cases! {
     relative_import => ("relative-import", Graph, graph::FORBIDDEN_IMPORT),
     forbidden_function => ("function", Semantics, semantics::INVALID_SOURCE),
     record_value_cycle => ("record-value-cycle", Semantics, semantics::SEMANTIC_CYCLE),
+    missing_field_separator => ("missing-field-separator", Semantics, semantics::INVALID_SOURCE),
+    duplicate_final_field => ("duplicate-final-field", Semantics, semantics::INVALID_SOURCE),
+}
+
+/// Optional final punctuation changes captured bytes, not defaults, signatures or logical identity.
+#[test]
+fn optional_final_comma_preserves_complete_meaning() {
+    let token = CancellationToken::new();
+    let compile = |name| {
+        let case = CASES.iter().find(|case| case.name == name).unwrap();
+        compile_project(&capture(case.units, false), &token).unwrap()
+    };
+    let with_comma = compile("records");
+    let without_comma = compile("records-no-trailing-comma");
+    assert!(with_comma.logical_eq(&without_comma));
+    assert_eq!(
+        with_comma.public_interface.fingerprint(),
+        without_comma.public_interface.fingerprint()
+    );
+    assert_ne!(with_comma.sources, without_comma.sources);
+    let inspect = |ir: &Arc<ProjectIr>| {
+        inspect_project_encoded(
+            &encoded(ir, &token),
+            DecodeLimits::hard(),
+            ir.limits,
+            None,
+            &token,
+        )
+        .unwrap()
+    };
+    assert_eq!(
+        inspect(&with_comma).logical_identity,
+        inspect(&without_comma).logical_identity
+    );
+}
+
+/// Two fields on one line retain identical defaults and identities with either closing style.
+#[test]
+fn single_line_field_comma_styles_are_equivalent() {
+    let token = CancellationToken::new();
+    let compile = |name| {
+        let case = CASES.iter().find(|case| case.name == name).unwrap();
+        compile_project(&capture(case.units, false), &token).unwrap()
+    };
+    let plain = compile("single-line-fields");
+    let comma = compile("single-line-fields-comma");
+    assert!(plain.logical_eq(&comma));
+    assert_eq!(
+        plain.public_interface.fingerprint(),
+        comma.public_interface.fingerprint()
+    );
+    let inspect = |ir: &Arc<ProjectIr>| {
+        inspect_project_encoded(
+            &encoded(ir, &token),
+            DecodeLimits::hard(),
+            ir.limits,
+            None,
+            &token,
+        )
+        .unwrap()
+    };
+    assert_eq!(
+        inspect(&plain).logical_identity,
+        inspect(&comma).logical_identity
+    );
 }
 
 /// Declaration ordering and exact number spelling alter source facts but not logical identity.

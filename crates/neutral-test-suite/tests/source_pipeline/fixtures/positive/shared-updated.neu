@@ -1,6 +1,5 @@
 neu "1.0"
 module app::shared
-// SPDX-License-Identifier: Apache-2.0
 
 public record Service { string label, List<num> ports = [80, 443], }
 string secret = "private-updated"

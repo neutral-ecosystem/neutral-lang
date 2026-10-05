@@ -1,6 +1,5 @@
 neu "1.0"
 module app::consumer
-// SPDX-License-Identifier: Apache-2.0
 
 import app::shared as renamed
 public renamed::Service copied = renamed::api

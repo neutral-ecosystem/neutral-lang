@@ -1,6 +1,5 @@
 neu "1.0"
 module api
-// SPDX-License-Identifier: Apache-2.0
 
 num hidden = 42
 public Ref<num> pointer = ref(hidden)

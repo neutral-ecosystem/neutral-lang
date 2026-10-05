@@ -1,0 +1,6 @@
+neu "1.0"
+module api
+
+public record Inner { num count = 42, num r = 3, }
+public Inner defaults = {}
+public Inner overridden = { count: 99, }

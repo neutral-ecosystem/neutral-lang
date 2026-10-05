@@ -964,7 +964,7 @@ fn symbol(
     }
 }
 
-/// Parses comma-terminated record fields and their type expressions.
+/// Parses comma-separated fields with an optional final comma.
 fn parse_fields(tokens: &[Token]) -> Option<Vec<(String, TypeExpr)>> {
     let mut fields = Vec::new();
     let mut names = BTreeSet::new();
@@ -981,46 +981,58 @@ fn parse_fields(tokens: &[Token]) -> Option<Vec<(String, TypeExpr)>> {
             | TokenKind::CloseBracket
             | TokenKind::CloseParen => depth = depth.checked_sub(1)?,
             TokenKind::Comma if depth == 0 => {
-                let field = &tokens[start..index];
-                if field.len() < 2 {
-                    return None;
-                }
-                if matches!(&field[0].kind, TokenKind::Identifier(word) if word == graph_names::PUBLIC)
-                {
-                    return None;
-                }
-                let before_default = field
-                    .iter()
-                    .position(|token| matches!(token.kind, TokenKind::Equals))
-                    .unwrap_or(field.len());
-                let name_index = field[..before_default]
-                    .iter()
-                    .rposition(|token| matches!(token.kind, TokenKind::Identifier(_)))?;
-                if name_index == 0 {
-                    return None;
-                }
-                if name_index + 1 != before_default {
-                    return None;
-                }
-                let TokenKind::Identifier(name) = &field[name_index].kind else {
-                    return None;
-                };
-                if !names.insert(name.clone()) {
-                    return None;
-                }
-                fields.push((name.clone(), parse_complete_type(&field[..name_index])?));
-                if before_default < field.len() && !validate_value(&field[before_default + 1..]) {
-                    return None;
-                }
+                append_field(&tokens[start..index], &mut fields, &mut names)?;
                 start = index + 1;
             }
             _ => {}
         }
     }
-    if start != tokens.len() {
+    if depth != 0 {
         return None;
     }
+    if start < tokens.len() {
+        append_field(&tokens[start..], &mut fields, &mut names)?;
+    }
     Some(fields)
+}
+
+/// Validates each field identically with or without a terminating comma.
+fn append_field(
+    field: &[Token],
+    fields: &mut Vec<(String, TypeExpr)>,
+    names: &mut BTreeSet<String>,
+) -> Option<()> {
+    if field.len() < 2 {
+        return None;
+    }
+    if matches!(&field[0].kind, TokenKind::Identifier(word) if word == graph_names::PUBLIC) {
+        return None;
+    }
+    let before_default = field
+        .iter()
+        .position(|token| matches!(token.kind, TokenKind::Equals))
+        .unwrap_or(field.len());
+    let name_index = field[..before_default]
+        .iter()
+        .rposition(|token| matches!(token.kind, TokenKind::Identifier(_)))?;
+    if name_index == 0 {
+        return None;
+    }
+    if name_index + 1 != before_default {
+        return None;
+    }
+    let TokenKind::Identifier(name) = &field[name_index].kind else {
+        return None;
+    };
+    if !names.insert(name.clone()) {
+        return None;
+    }
+    let ty = parse_complete_type(&field[..name_index])?;
+    if before_default < field.len() && !validate_value(&field[before_default + 1..]) {
+        return None;
+    }
+    fields.push((name.clone(), ty));
+    Some(())
 }
 
 /// Parses exactly one type expression from token syntax.

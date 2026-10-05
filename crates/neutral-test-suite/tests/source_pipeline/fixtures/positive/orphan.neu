@@ -1,5 +1,4 @@
 neu "1.0"
 module app::orphan
-// SPDX-License-Identifier: Apache-2.0
 
 string hidden = "disconnected-private"

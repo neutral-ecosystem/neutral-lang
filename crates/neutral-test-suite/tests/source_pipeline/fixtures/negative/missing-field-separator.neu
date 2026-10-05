@@ -1,0 +1,4 @@
+neu "1.0"
+module api
+
+public record Item { num first = 1 num second = 2 }

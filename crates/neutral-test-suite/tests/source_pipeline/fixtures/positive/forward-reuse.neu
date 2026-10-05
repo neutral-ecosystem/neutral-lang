@@ -1,6 +1,5 @@
 neu "1.0"
 module api
-// SPDX-License-Identifier: Apache-2.0
 
 public num final_value = intermediate
 num intermediate = original

@@ -34,6 +34,13 @@ type, value, or source text.
 
 ## Types and values
 
+Record fields are comma-separated. The comma after the final field is optional,
+including on a single-line declaration: `public record Inner { num count = 42 }`.
+Multiple fields may share a line, for example
+`public record Inner { num count = 42, num r = 3 }`. Commas between fields
+remain required; only the final comma is optional.
+This applies to project syntax; frozen source profiles retain their own grammar.
+
 Core scalar types, `List<T>`, `Ref<T>`, and one outer nullable `?` retain the
 v0.1 type rules. Nominal types are identified by `(profile, full module ID,
 root name)`, never by an import alias, capture order, or source ID. Type
