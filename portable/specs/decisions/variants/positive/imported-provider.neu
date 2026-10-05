@@ -1,0 +1,7 @@
+neu "1.0"
+module example::shared
+
+public variant Outcome {
+    string success,
+    num failure
+}

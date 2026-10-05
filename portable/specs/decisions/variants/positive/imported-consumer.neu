@@ -1,0 +1,5 @@
+neu "1.0"
+module example::consumer
+import example::shared as shared
+
+public shared::Outcome answer = { tag: "success", payload: "complete", }

@@ -1,0 +1,5 @@
+neu "1.0"
+module example
+
+variant Outcome { string success, num failure }
+Outcome answer = { tag: "unknown", payload: "complete", }

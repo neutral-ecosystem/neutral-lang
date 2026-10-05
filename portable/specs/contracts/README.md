@@ -27,5 +27,8 @@ rules for values, records, lists, source literals, or v0 vocabulary encoding.
 - [CONSUMER-READINESS.md](CONSUMER-READINESS.md): scheduled `v0.8.0` composite
   vocabulary schema and `v0.9.0` project-neutral reader/authoring data boundaries;
   schema and fixture review must precede activation.
+- [VARIANTS.md](VARIANTS.md): accepted source/vocabulary ownership decision and
+  proposed shared variant grammar, typing, public closure, and fixture shapes;
+  not active syntax or a replacement for the full composition schema freeze.
 - [v1-checklist.md](v1-checklist.md): implementation and conformance completion
   checklist, kept separate from design acceptance.

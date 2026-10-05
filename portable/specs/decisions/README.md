@@ -24,3 +24,11 @@ The v1 delta is closed on these decisions:
 No decision here permits functions, control flow, mutation, secrets, packages,
 re-exports, runtime effects, executable vocabularies, or Editor-specific source
 semantics.
+
+## Vocabulary composition extension decision
+
+Closed tagged variants are supported in both `.neu` declarations and data-only
+vocabularies, with one resolved type/value model and nominal identity rules.
+The [variant contract proposal](../contracts/VARIANTS.md) records the intended
+forms. This ownership decision does not activate syntax, amend frozen schemas,
+or claim implementation; the Stage 7 extension gate still governs delivery.

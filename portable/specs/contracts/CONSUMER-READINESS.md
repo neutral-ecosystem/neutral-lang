@@ -45,8 +45,10 @@ The Stage 7 extension gate must close these requirements before promotion:
   value shapes across captured, logical, derivation, and artifact identities.
   Never reinterpret an existing identity profile or encoding. Freeze any needed
   new profile/version before publishing artifacts; retain all old vectors.
-- **V1-VOC-009:** Support closed tagged variants for heterogeneous typed values
-  and collections. Freeze source forms, nominal alternative identity, tag and
+- **V1-VOC-009:** Support both source-declared and vocabulary-declared closed
+  tagged variants for heterogeneous typed values and collections, using one
+  resolved semantic model. See the [variant contract proposal](VARIANTS.md).
+  Freeze source forms, nominal alternative identity, tag and
   payload typing, admissible nesting, public closure, and structural limits.
   Missing/duplicate/unknown tags, wrong payloads, and invalid field combinations
   fail closed. This is not open inheritance, implicit structural subtyping, or

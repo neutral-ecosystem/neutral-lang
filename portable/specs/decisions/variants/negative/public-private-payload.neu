@@ -1,0 +1,6 @@
+neu "1.0"
+module example
+
+record Internal { num count }
+public variant Outcome { string success, Internal hidden }
+public Outcome answer = { tag: "success", payload: "complete", }

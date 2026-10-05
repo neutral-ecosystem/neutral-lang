@@ -1,0 +1,9 @@
+{
+  "kind": "variant",
+  "name": "Outcome",
+  "public": true,
+  "alternatives": [
+    { "tag": "success", "type": { "kind": "string" } },
+    { "tag": "failure", "type": { "kind": "num" } }
+  ]
+}

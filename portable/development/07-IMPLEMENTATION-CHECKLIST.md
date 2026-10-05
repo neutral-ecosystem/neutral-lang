@@ -361,6 +361,9 @@ must pass before the unreleased promotion. No frozen schema is amended in place.
 - [ ] Freeze and implement closed tagged variants across source, vocabulary,
   semantic typing, IR, wire, reader, and identity; reject wrong/unknown tags and
   payloads and validate heterogeneous typed collections.
+  Both source declarations and vocabulary declarations are required, sharing
+  one semantic model; the [contract proposal](../specs/contracts/VARIANTS.md)
+  and proposed fixtures record the accepted ownership decision, not completion.
 - [ ] Freeze and implement cross-vocabulary public type dependencies and exact
   transitive lock closure, including diamond/conflicting/private/missing/cyclic
   dependency rules without compilation-time acquisition.

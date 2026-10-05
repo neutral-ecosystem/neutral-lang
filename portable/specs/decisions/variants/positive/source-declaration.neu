@@ -1,0 +1,12 @@
+neu "1.0"
+module example
+
+public variant Outcome {
+    string success,
+    num failure
+}
+
+public Outcome answer = { tag: "success", payload: "complete", }
+public Outcome error = { tag: "failure", payload: 42, }
+public List<Outcome> outcomes = [answer, error]
+public Ref<Outcome> selected = ref(answer)

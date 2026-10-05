@@ -1,0 +1,5 @@
+neu "1.0"
+module example::consumer
+use ExampleDomain as domain
+
+public domain::Outcome answer = { tag: "success", payload: "complete", }
