@@ -8,14 +8,16 @@ Status: accepted
 
 Evolve the working Neutral compiler from `v0.1.0` to `v1.0.0` without breaking
 the frozen `neu "0.1"` language profile. v1 is the portable, multi-file,
-data-only language substrate required before a generic Neutral Editor and a
-Flow vocabulary can be built on top of it.
+data-only language substrate for independent authoring clients and consumers.
+Before `v0.8.0`, add reviewed composite vocabulary contracts; before `v0.9.0`,
+complete their authoring and project-neutral consumer data boundaries. See
+[consumer readiness](specs/contracts/CONSUMER-READINESS.md).
 
 The compiler remains responsible for source, capture, semantic validation,
 project IR, reader, and the data-only authoring bridge. Hosts acquire files,
 URLs, registries, and credentials; vocabularies may interpret `url` and `path`
-values but Neutral never acquires through them. Flow owns any CI/CD mapping and
-execution semantics.
+values but Neutral never acquires through them. External consumers own mapping,
+scheduling, condition evaluation, authorization, and execution semantics.
 
 ## Governing package
 
@@ -79,9 +81,9 @@ behavior has been implemented and gated.
 | 4 | `v0.4.0` -> `v0.5.0` | Private-by-default APIs, public closure validation, qualified cross-module reuse and `Ref<T>`, and semantic-cycle checks. |
 | 5 | `v0.5.0` -> `v0.6.0` | Multiple exact data-only vocabulary locks, public vocabulary types, inert `url`/`path` scalars, and exact lock coverage. |
 | 6 | `v0.6.0` -> `v0.7.0` | Complete project-level IR, source maps, provenance, reader validation, resource facts, and consumer-selected views. |
-| 7 | `v0.7.0` -> `v0.8.0` | Canonical logical-project identity, captured-closure and artifact identity separation, deterministic derivations, and reviewed identity vectors. |
-| 8 | `v0.8.0` -> `v0.9.0` | Separately versioned authoring bridge: descriptor catalogue, project overlay, editable model, deterministic source projection, formatting, and generic Editor probe. |
-| 9 | `v0.9.0` -> `v1.0.0` | Full v1 conformance corpus, public Reader/Editor/Flow-boundary probes, migration evidence, release hardening, and v1.0.0 publication gate. |
+| 7 | `v0.7.0` -> `v0.8.0` | Canonical identities and reviewed vectors; versioned composite vocabulary fields, tagged variants, cross-bundle types, closed defaults/restrictions, origin distinctions, reader integration, and compatible identity coverage. |
+| 8 | `v0.8.0` -> `v0.9.0` | Separately versioned authoring bridge, generic data transport, field-level attribution, typed selectors, explicit entry discovery, self-contained contracts, reader compatibility, and independent authoring/consumer probes. |
+| 9 | `v0.9.0` -> `v1.0.0` | Full v1 conformance corpus, independent reader/authoring/consumer-boundary probes, migration evidence, release hardening, and v1.0.0 publication gate. |
 
 ## Implementation tracking
 
@@ -115,7 +117,7 @@ for every slice.
   ASTs and partial compiler models are never public contracts.
 - Keep roots out of capture, project IR equality, and logical identity. They are
   post-compilation views.
-- Keep Flow mapper/execution meaning and Editor UX out of core contracts.
+- Keep consumer mapper/execution meaning and authoring-client UX out of core contracts.
 - Do not promote a stage from a happy-path demo: negative diagnostics, bounds,
   deterministic order, reader behavior, and retained evidence close first.
 - Never turn skipped, retried, flaky, missing, or indeterminate evidence into a
@@ -148,6 +150,7 @@ between captures without changing logical project meaning.
 
 The final release is permitted only when the repository contains a standalone
 portable specification tree, exact conformance inputs and oracles, a public
-reader probe, a generic authoring probe, and a Flow boundary probe. Those probes
-verify infrastructure only: neither Neutral core nor the authoring bridge
-assigns Flow runtime or CI/CD meaning.
+reader probe, a generic authoring probe, and a project-neutral consumer boundary
+probe covering the composite vocabulary and consumer-readiness requirements.
+These verify typed data transport and boundary protocols, not backend execution.
+Neither Neutral core nor the authoring bridge assigns runtime or product meaning.

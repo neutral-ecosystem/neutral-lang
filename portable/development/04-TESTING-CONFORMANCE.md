@@ -20,11 +20,17 @@ family has at least one named negative case.
   incremental equivalence tests;
 - resource ceilings, cancellation, malformed/hostile input, fuzz, and decoder
   tests;
-- independent reader, generic Editor, and Flow-boundary probes; and
+- independent reader, generic authoring, and project-neutral consumer-boundary probes; and
 - reviewed captured-closure/logical-project/artifact identity vectors.
 
-Flow evidence verifies only that the public reader can supply resolved exported
-data to an external consumer. It does not authorize or execute a mapper.
+Consumer-boundary evidence verifies that the public reader supplies resolved
+typed data and safe attribution to an external consumer. It does not authorize
+or execute a mapper. The scheduled
+[consumer-readiness requirements](../specs/contracts/CONSUMER-READINESS.md)
+require composite vocabulary/default/restriction cases before `v0.8.0` and
+operation/resource/condition/output/capability/report and authoring cases before
+`v0.9.0`. Freeze literal outcomes and schema versions before activation; keep
+core rejection and consumer interpretation rejection as separate phases.
 
 ## Gate integrity
 

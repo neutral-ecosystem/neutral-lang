@@ -26,6 +26,16 @@ fresh vocabulary/controls/source facts, stale-entry rejection, failed-run
 recovery, and concurrent schedules. Immutable replay is not labelled caching;
 persistent or final-artifact caches are not implemented.
 
+Before `v0.8.0`, complete the newly scheduled vocabulary composition extension
+gate in the [implementation checklist](07-IMPLEMENTATION-CHECKLIST.md).
+[V1-VOC-005..011](../specs/contracts/CONSUMER-READINESS.md) add a reviewed,
+versioned bundle schema for lists, nullable values, typed references, closed
+defaults, bounded declarative restrictions, tagged variants, cross-vocabulary
+dependencies, and omission/default origin rules. Carry all new facts through IR,
+reader validation, view closure, and new identity vectors. Preserve old bundle
+schemas, v0 behavior, and frozen identity profiles. Existing Stage 7 evidence
+does not claim this extension is implemented.
+
 ### Stage 8 — `v0.8.0 -> v0.9.0`
 
 Implement the separately versioned, data-only authoring profile: exact profile
@@ -35,8 +45,27 @@ formatting; and authoring diagnostics. Connections are the only visual form of
 ordinary reuse and identity-reference edges. The compiler, not the Editor,
 remains the source authority.
 
+Before `v0.9.0`, complete
+[V1-CONS-001..010](../specs/contracts/CONSUMER-READINESS.md): project-neutral
+operation/input/result/resource data examples, explicit prerequisite/output
+connections, structured deferred conditions and symbolic handles, and versioned
+capability/mapping-description/report interfaces. Extend authoring discovery and
+projection for the composite vocabulary schema. Add precise public source
+attribution, typed member selectors, explicit entry
+discovery, self-contained contract facts, and producer/reader compatibility
+negotiation. Scheduling, mapping execution,
+condition evaluation, credentials, authorization, and backend behavior remain
+external responsibilities; no executor or new computation syntax is introduced.
+
 ## Exit evidence
 
 A generic Editor probe must build its palette from discovery, edit a bounded
 project model, project source, compile it, reopen it, and no-op round trip
 without a handwritten construct table or a private parser/AST dependency.
+
+A separate standalone reader-only probe must inspect the consumer examples,
+preserve public dependency closure, and exercise literal supported/unsupported
+capability reports with safe source attribution. Prove presentation-only edits
+preserve semantic identity, while semantic constraints/defaults change it.
+Register these as reviewed fixture families, not completed evidence, until
+schema freeze, implementation, hostile/limit testing, and integration pass.

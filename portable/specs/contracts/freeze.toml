@@ -56,3 +56,9 @@ project_identity_path = "portable/specs/contracts/PROJECT-IDENTITY.md"
 project_identity_sha256 = "2e3db95de5f9fb94f411bc85142540711caf6eb026fc1322cdcd7b426050c7ef"
 identity_profile = "neutral.project-identity/1"
 status = "contract-vectors-and-core-implemented; integration-review-pending"
+
+[consumer_readiness_plan]
+consumer_readiness_path = "portable/specs/contracts/CONSUMER-READINESS.md"
+status = "scheduled; schema-protocol-and-fixture-review-required"
+vocabulary_composition_target = "v0.8.0"
+consumer_authoring_target = "v0.9.0"

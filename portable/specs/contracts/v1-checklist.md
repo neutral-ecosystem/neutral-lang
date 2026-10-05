@@ -100,6 +100,13 @@ equivalence are verified. Release promotion remains a separate gate.
 
 ## Stage 8 — authoring (`v0.8.0 -> v0.9.0`)
 
+The `v0.8.0` promotion also requires the newly scheduled V1-VOC-005..011
+extension; `v0.9.0` requires V1-CONS-001..010. These are not covered by the
+completed identity items above. Their unchecked contract/implementation/public
+validation tasks live only in the
+[operational checklist](../../development/07-IMPLEMENTATION-CHECKLIST.md), with
+scope in [consumer readiness](CONSUMER-READINESS.md).
+
 - [ ] V1-AUTH-001 — Exact core/authoring profile compatibility discovery.
 - [ ] V1-AUTH-002 — Deterministic core/vocabulary descriptor catalogue.
 - [ ] V1-AUTH-003 — Revision-bound project descriptor overlay; separate
@@ -113,7 +120,7 @@ equivalence are verified. Release promotion remains a separate gate.
 
 - [ ] V1-CONF-001 — Every v1 requirement has fixture/oracle and traceability.
 - [ ] V1-CONF-002 — All named core and authoring diagnostics have negative cases.
-- [ ] V1-CONF-003 — Reader, generic Editor, and Flow-boundary probes pass.
+- [ ] V1-CONF-003 — Reader, generic authoring, and project-neutral consumer-boundary probes pass.
 - [ ] V1-CONF-004 — Limits, hostile input, deterministic, concurrency, and
   clean/incremental-equivalence evidence pass.
 - [ ] V1-REL-001 — Release notes publish profiles, limits, exclusions, and

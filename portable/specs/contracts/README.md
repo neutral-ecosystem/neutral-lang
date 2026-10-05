@@ -24,5 +24,8 @@ rules for values, records, lists, source literals, or v0 vocabulary encoding.
 - [VOCABULARY.md](VOCABULARY.md): exact data-only vocabulary locks and authoring
   metadata boundary.
 - [AUTHORING.md](AUTHORING.md): the separately versioned Editor bridge.
+- [CONSUMER-READINESS.md](CONSUMER-READINESS.md): scheduled `v0.8.0` composite
+  vocabulary schema and `v0.9.0` project-neutral reader/authoring data boundaries;
+  schema and fixture review must precede activation.
 - [v1-checklist.md](v1-checklist.md): implementation and conformance completion
   checklist, kept separate from design acceptance.

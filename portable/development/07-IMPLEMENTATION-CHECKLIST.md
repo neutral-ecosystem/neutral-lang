@@ -333,8 +333,41 @@ No version bump, approval, tag, or release is implied.
 
 ### Promote to `v0.8.0`
 
+- [ ] Complete the vocabulary composition extension gate below; existing
+  Stage 7 identity evidence does not cover these newly scheduled requirements.
 - [ ] Confirm Stage 7 checklist, manifest, and traceability are complete.
 - [ ] Release `v0.8.0`; update the ledger to `released`.
+
+### `v0.8.0` — vocabulary composition extension gate
+
+Scope: [V1-VOC-005..011](../specs/contracts/CONSUMER-READINESS.md).
+Previously completed `.1`–`.4` identity gates remain historical evidence;
+this additional contract -> implementation -> integration -> validation gate
+must pass before the unreleased promotion. No frozen schema is amended in place.
+
+- [ ] Freeze the new bundle schema, source-aligned list/nullable/reference
+  composition, semantic defaults/restrictions, compatibility, diagnostic codes,
+  public closure, recursive-type rules, and independent bounds.
+- [ ] Register literal positive/negative/boundary/migration fixtures and new
+  identity vectors before implementation; pin reviewed inputs at activation.
+- [ ] Implement composition, closed defaults, finite choices, numeric and
+  string/list length restrictions through compiler, IR, encoding, and reader.
+- [ ] Expose complete new contract facts and reference dependencies through
+  independent reader/probe APIs with public-view closure and source attribution.
+- [ ] Pass hostile schema/decoder, invalid default/constraint/reference,
+  exact/one-over, cancellation, ordering, clean/cache, and old-schema suites.
+- [ ] Verify semantic restrictions/defaults affect the appropriate identities,
+  presentation does not, and existing identity profiles/vectors remain immutable.
+- [ ] Freeze and implement closed tagged variants across source, vocabulary,
+  semantic typing, IR, wire, reader, and identity; reject wrong/unknown tags and
+  payloads and validate heterogeneous typed collections.
+- [ ] Freeze and implement cross-vocabulary public type dependencies and exact
+  transitive lock closure, including diamond/conflicting/private/missing/cyclic
+  dependency rules without compilation-time acquisition.
+- [ ] Freeze required/omitted/null/default distinctions and safe origin facts;
+  verify equivalent materialized meaning and distinct source evidence correctly.
+- [ ] Pass variant, cross-bundle closure, omission/default, old/new schema,
+  public-view, hostile-input, exact/one-over, and independent identity suites.
 
 ## Stage 8 — dynamic authoring bridge and Editor probe
 
@@ -346,6 +379,16 @@ Target transition: `v0.8.0 -> v0.9.0`.
   mappings, projection, formatting, diagnostics, and authoring limits.
 - [ ] Register core/vocabulary catalogue, model, stale-revision, projection,
   round-trip, and mismatch fixtures.
+- [ ] Freeze [V1-CONS-001..010](../specs/contracts/CONSUMER-READINESS.md):
+  operation/input/result/resource data, explicit prerequisites/output connections,
+  structured conditions/deferred inputs, symbolic handles, capability/mapping
+  descriptions, validation reports, and consumer/core ownership boundaries.
+- [ ] Freeze field/element source attribution, typed member selectors, explicit
+  entry discovery, self-contained artifact contracts, required-feature negotiation,
+  and the producer/reader compatibility matrix with literal fixture oracles.
+- [ ] Register project-neutral operation graph, map-entry, condition/output,
+  unsupported-capability, explicit-alternative, source-attribution, privacy,
+  and malformed/limit fixtures with literal expected consumer reports.
 
 ### `v0.8.2` — core implementation gate
 
@@ -353,6 +396,17 @@ Target transition: `v0.8.0 -> v0.9.0`.
 - [ ] Implement closed bounded editable model with connections as the sole
   reuse/reference edge representation.
 - [ ] Implement deterministic multi-source projection and mappings.
+- [ ] Extend catalogue/model/projection for composite vocabulary fields,
+  semantic defaults/restrictions, and consumer data connections; semantic
+  restrictions remain compiler-owned, not presentation hints.
+- [ ] Implement the closed data-only capability/report boundary and examples;
+  do not add an executor, backend adapter, or implicit condition evaluation.
+- [ ] Implement bounded public field-level attribution and typed selectors;
+  preserve safe supplied/default/reuse origins without runtime evaluation.
+- [ ] Implement explicit typed entry discovery and complete contract facts in
+  standalone artifacts/views with exact profile/feature compatibility discovery.
+- [ ] Cover variants, cross-vocabulary types, selectors, and origin distinctions
+  in generic authoring discovery, editing, projection, and diagnostics.
 
 ### `v0.8.3` — public integration gate
 
@@ -360,6 +414,14 @@ Target transition: `v0.8.0 -> v0.9.0`.
 - [ ] Verify create, import, edit, project, compile, save, reopen, and no-op
   round trip without private parser/AST access.
 - [ ] Verify compiler authority on authoring-preflight disagreement.
+- [ ] Pass a standalone reader-only consumer probe enumerating typed operations,
+  inputs/results, resource/prerequisite/output connections, deferred conditions,
+  and their public interpretive closure without compiler-private access.
+- [ ] Verify reports preserve safe source attribution and bind external plan
+  context to mapping/target/input revisions without changing project identity.
+- [ ] Verify compiler-free readers locate selected members and public entry
+  points, explain field-level failures, and discover all necessary contract facts
+  without reparsing source, fetching schemas, or depending on another project.
 
 ### `v0.8.4` — validation gate
 
@@ -369,10 +431,22 @@ Target transition: `v0.8.0 -> v0.9.0`.
   semantic contracts, project IR, and identity stay unchanged.
 - [ ] Audit that no adapter or descriptor contains executable callbacks.
 - [ ] Review authoring/core independent version compatibility.
+- [ ] Pass bounded consumer-data/protocol and authoring tests for wrong output
+  types, unavailable outputs, private dependencies, cyclic consumer graphs,
+  unsupported targets, explicit alternatives, and malformed/unknown members.
+- [ ] Verify data transport is distinguished from consumer interpretation;
+  core-valid consumer-invalid graphs cannot be mislabeled compiler failures.
+- [ ] Pass composite-field/default/constraint projection, formatting, no-op
+  identity, cancellation, hostile-input, and clean/incremental equivalence suites.
+- [ ] Pass member-path/type/bounds, ambiguous/private/missing-root, attribution
+  redaction, static fan-out/join, self-contained artifact, and producer/reader
+  compatibility/unknown-required-feature suites, including old-profile regressions.
 
 ### Promote to `v0.9.0`
 
 - [ ] Confirm Stage 8 checklist, manifest, and traceability are complete.
+- [ ] Confirm V1-VOC-005..011 and V1-CONS-001..010 have complete public evidence
+  and no dependency on a separate product implementation.
 - [ ] Release `v0.9.0`; update the ledger to `released`.
 
 ## Stage 9 — full conformance and `v1.0.0` qualification
@@ -396,8 +470,9 @@ Target transition: `v0.9.0 -> v1.0.0`.
 
 - [ ] Pass independent Reader probe over the complete v1 corpus.
 - [ ] Pass generic Editor probe over core and captured vocabulary features.
-- [ ] Pass Flow-boundary probe proving data access without mapper execution or
-  Neutral-owned CI/CD semantics.
+- [ ] Pass the project-neutral consumer boundary probe over composite vocabulary
+  data, conditions/output connections, capability reports, source attribution,
+  and identity separation without mapper execution or core-owned product semantics.
 
 ### `v0.9.4` — release validation gate
 
