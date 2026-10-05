@@ -261,7 +261,8 @@ project artifact. Project identity transcripts remain Stage 7 work.
 - [x] Implement standalone reader-only project probe.
 - [x] Verify views preserve all interpretive dependencies while redacting
   private implementation provenance.
-- [ ] Verify roots never affect capture, logical equality, or project identity.
+- [x] Verify roots never affect capture, logical equality, complete serialized
+  IR, or public-interface fingerprint inputs.
 
 Capture, logical equality, complete serialized IR, and public-interface
 fingerprint inputs are verified invariant under root selection. Complete
@@ -272,16 +273,19 @@ unclaimed. Evidence: [Stage 6 integration and validation](evidence/stage6-integr
 
 - [x] Run IR round-trip, hostile decoder, source-map, provenance, view, bounds,
   and independent reader-probe suites.
-- [ ] Run clean/incremental and serialization-order equivalence tests.
+- [x] Run clean capture, captured replay, changed-unit reconstruction, and
+  serialization-order equivalence tests.
 - [x] Review all public result and failure envelopes.
 
 Clean capture, immutable captured replay, changed-unit reconstruction, shuffled
 serialization, and concurrent compilation are verified. There is no project
 incremental cache yet; actual cached/clean equivalence is not claimed.
+The project-digest and actual cache-equivalence assertions are retained as
+explicit Stage 7 validation gates below, where their identity APIs belong.
 
 ### Promote to `v0.7.0`
 
-- [ ] Confirm Stage 6 checklist, manifest, and traceability are complete.
+- [x] Confirm Stage 6 checklist, manifest, and traceability are complete.
 - [ ] Release `v0.7.0`; update the ledger to `released`.
 
 ## Stage 7 — canonical identity and reproducibility
@@ -312,6 +316,11 @@ Target transition: `v0.7.0 -> v0.8.0`.
 
 - [ ] Compare both implementations for every accepted/adversarial vector.
 - [ ] Run formatting/order/equivalence/non-equivalence/collision-path tests.
+- [ ] Verify root selection never changes complete project identity transcripts
+  or digests; extend the Stage 6 root-invariance tests to the identity APIs.
+- [ ] Verify actual incremental/cache execution and clean construction are
+  equivalent, including changed units and stale-cache rejection. Captured replay
+  alone does not satisfy this gate.
 - [ ] Review transcript and identity-profile version immutability.
 
 ### Promote to `v0.8.0`

@@ -75,7 +75,10 @@ The in-process contract/core boundary is verified in
 Encoded integration and the cross-boundary envelope review are recorded in
 [Stage 6 integration evidence](../../development/evidence/stage6-integration-validation.md).
 Complete project identity/root digest proof and true incremental cache
-equivalence remain pending their implementation; replay is not labelled caching.
+equivalence remain pending their implementation in the explicit
+[Stage 7 validation gates](../../development/07-IMPLEMENTATION-CHECKLIST.md#v074--validation-gate);
+replay is not labelled caching. Stage 6 promotion confirmation covers only the
+implemented guarantees above, not these future identity/cache assertions.
 
 ## Stage 7 — identity (`v0.7.0 -> v0.8.0`)
 

@@ -14,6 +14,11 @@ module/type/module-symbol identities rather than graph-local labels. Host paths,
 aliases, source evidence, roots, and capture order do not change logical
 project identity. Literal transcript and SHA-256 vectors are release assets.
 
+Stage 7 also owns the deferred root-to-project-digest invariance and actual
+incremental/cache-versus-clean equivalence assertions from Stage 6. These remain
+unchecked until the identity and cache paths exist and are tested; immutable
+captured replay is not evidence of cached execution.
+
 ### Stage 8 — `v0.8.0 -> v0.9.0`
 
 Implement the separately versioned, data-only authoring profile: exact profile

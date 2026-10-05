@@ -64,13 +64,19 @@ locked workspace packages. The sandbox build uses per-command
 `CCACHE_DISABLE=1 CXX=/usr/bin/g++ CC=/usr/bin/gcc` to avoid writing the global
 compiler cache; no global toolchain or compiler-cache settings were changed.
 
-## Honest remaining gates
+## Gate ownership and promotion review
 
 There is no complete project identity transcript/digest API yet (Stage 7).
 Root invariance is proven for complete capture/IR/serialized identity inputs and
 the public-interface fingerprint, not for an unimplemented project hash.
 There is also no project incremental cache: replay and changed-unit recapture
-equivalence do not claim cached execution. Those two conjunctive checklist items
-remain open. No release tag, approval, version bump, or promotion was performed.
+equivalence do not claim cached execution. The implementation checklist now
+assigns both assertions explicitly to unchecked Stage 7 validation gates;
+Stage 6 closes only its implemented capture/IR/fingerprint and replay guarantees.
+
+The Stage 6 promotion prerequisite was reviewed on 05-10-2026: its scoped
+checklist, pinned fixture/oracle manifest, and traceability are complete.
+This confirms readiness only; no release tag, release approval, version bump,
+or release promotion was performed.
 The single-file CLI remains unavailable for the complete v1 profile. Updated
 IR/probe fuzz targets include project decoding; no full campaign is claimed here.
