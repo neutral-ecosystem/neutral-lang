@@ -46,6 +46,24 @@ and release binaries; they do not redirect the independent test-results root.
 
 ## Test execution
 
+Output is compact by default. Nextest keeps its live progress display, summary,
+slow-test warnings, and failure diagnostics; successful per-test rows are hidden.
+The explicit Cargo backend uses libtest's compact reporter. Inventory checks,
+JUnit reporting, exit status, and all quality requirements are unchanged.
+Configure `testing.verbose` in `config/automation.toml` or override it for one run:
+
+```sh
+NEUTRAL_TEST_VERBOSE=true cargo xtask test all
+```
+
+Xtask status labels share semantic terminal colors with Cargo/nextest:
+cyan for start/running, green for success, yellow for warnings, and red for
+failure. Status text remains meaningful without color. Automatic color disables
+ANSI styling in redirected logs and dumb terminals; `CARGO_TERM_COLOR=always`
+explicitly forces color, `CARGO_TERM_COLOR=never` disables it, and nonempty
+`NO_COLOR` takes precedence over either. Tool reports retained as quality evidence
+never receive forced color. Machine-readable stdout remains unchanged.
+
 Install once with `cargo install cargo-nextest --locked`. Container rebuilds
 and CI install the latest runner automatically. Run a focused
 `cargo xtask test <level>` while editing, `cargo xtask dev` to validate the local

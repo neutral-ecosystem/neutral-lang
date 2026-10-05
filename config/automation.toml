@@ -2,7 +2,8 @@
 
 # Local defaults for repository automation. Environment overrides are optional:
 # NEUTRAL_CARGO_COMMAND, NEUTRAL_RUSTC_COMMAND, NEUTRAL_TEST_RESULTS,
-# and NEUTRAL_TEST_RUNNER (nextest or cargo).
+# NEUTRAL_TEST_RUNNER (nextest or cargo), and NEUTRAL_TEST_VERBOSE (true or false).
+# Colors follow CARGO_TERM_COLOR=auto|always|never; NO_COLOR disables colors.
 schema_version = 1
 
 [tools]
@@ -17,6 +18,7 @@ evidence_root = "analysis/quality-gates"
 advisory_max_age_seconds = 86400
 
 [testing]
+verbose = false
 runner = "nextest"
 config = "config/nextest.toml"
 profile = "default"

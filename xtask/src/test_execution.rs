@@ -84,7 +84,55 @@ fn arguments(
     } else if let Some(filter) = filter {
         arguments.extend(["--".to_owned(), format!("{filter}_")]);
     }
+    if action == "run" {
+        reporting_arguments(&mut arguments, runner, verbose()?);
+    }
     Ok(arguments)
+}
+
+/// Resolves explicit test verbosity without changing test selection or acceptance.
+fn verbose() -> Result<bool, String> {
+    match env::var(constants::TEST_VERBOSE_ENV) {
+        Ok(value) => parse_verbose(&value),
+        Err(env::VarError::NotPresent) => Ok(configuration::automation()?.testing.verbose),
+        Err(error) => Err(format!("invalid {}: {error}", constants::TEST_VERBOSE_ENV)),
+    }
+}
+
+/// Accepts conventional Boolean spellings for the per-command verbosity override.
+fn parse_verbose(value: &str) -> Result<bool, String> {
+    match value {
+        "true" | "1" => Ok(true),
+        "false" | "0" => Ok(false),
+        _ => Err(format!(
+            "{} must be true, false, 1, or 0",
+            constants::TEST_VERBOSE_ENV
+        )),
+    }
+}
+
+/// Reduces successful-test noise while preserving summaries and failure diagnostics.
+fn reporting_arguments(arguments: &mut Vec<String>, runner: TestRunner, verbose: bool) {
+    if runner == TestRunner::Nextest {
+        let level = if verbose { "pass" } else { "slow" };
+        arguments.extend(
+            [
+                "--status-level",
+                level,
+                "--final-status-level",
+                "fail",
+                "--show-progress",
+                "auto",
+            ]
+            .map(str::to_owned),
+        );
+    } else if !verbose {
+        // Libtest options belong after the separator, including filtered runs.
+        if !arguments.iter().any(|argument| argument == "--") {
+            arguments.push("--".to_owned());
+        }
+        arguments.push("--quiet".to_owned());
+    }
 }
 
 /// Executes test binaries with the selected backend; shell smoke stays in its host adapter.

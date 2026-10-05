@@ -399,8 +399,10 @@ fn run_rustdoc() -> Result<(), String> {
 
     let arguments = ["doc", "--workspace", "--no-deps"];
     let cargo = cargo_command()?;
+    output::info(format!("command: {}", output::command(&cargo, &arguments)));
     let status = Command::new(&cargo)
         .current_dir(workspace_root()?)
+        .env(constants::CARGO_TERM_COLOR_ENV, output::child_color())
         .env(constants::CARGO_ENCODED_RUSTDOCFLAGS, rustdoc_flags)
         .args(arguments)
         .status()
@@ -1039,6 +1041,7 @@ fn release_binary_path(directory: &Path, binary: &str) -> PathBuf {
 fn run_program(program: &Path, arguments: &[&std::ffi::OsStr]) -> Result<(), String> {
     let status = Command::new(program)
         .current_dir(workspace_root()?)
+        .env(constants::CARGO_TERM_COLOR_ENV, output::child_color())
         .args(arguments)
         .status()
         .map_err(|error| format!("could not run {}: {error}", program.display()))?;
@@ -2652,6 +2655,7 @@ fn run_cargo(arguments: &[&str]) -> Result<(), String> {
     let status = Command::new(&cargo)
         .current_dir(workspace_root()?)
         .args(arguments)
+        .env(constants::CARGO_TERM_COLOR_ENV, output::child_color())
         .status()
         .map_err(|error| format!("could not run {} {}: {error}", cargo, arguments.join(" ")))?;
     status

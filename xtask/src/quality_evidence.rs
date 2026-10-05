@@ -132,6 +132,7 @@ impl Measurement {
         let mut child = Command::new(program)
             .current_dir(workspace_root()?)
             .args(arguments)
+            .env(constants::CARGO_TERM_COLOR_ENV, "never")
             .stdout(Stdio::from(stdout))
             .stderr(Stdio::from(stderr))
             .spawn()

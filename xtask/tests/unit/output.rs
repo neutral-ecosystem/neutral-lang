@@ -30,3 +30,61 @@ fn paths_are_relative_only_within_workspace() {
     );
     assert_eq!(path(Path::new("/tmp/report.json")), "/tmp/report.json");
 }
+
+/// Color is automatic only on capable terminals and respects explicit opt-outs.
+#[test]
+fn color_controls_preserve_plain_logs() {
+    assert!(color_policy(true, Some("xterm-256color"), false, None));
+    assert!(!color_policy(false, Some("xterm"), false, None));
+    assert!(!color_policy(true, Some("dumb"), false, None));
+    assert!(!color_policy(true, None, false, Some("never")));
+    assert!(color_policy(false, Some("dumb"), false, Some("always")));
+    assert!(!color_policy(true, None, true, Some("always")));
+}
+
+/// Human rows normalize status, command, and file labels without terminal escapes.
+#[test]
+fn human_status_rows_are_consistent() {
+    assert_eq!(
+        format_line(
+            crate::constants::INFO,
+            "quality [2/7] check: pass (1.2s)",
+            false
+        ),
+        "[info] PASS  quality [2/7] check (1.2s)"
+    );
+    assert_eq!(
+        format_line(crate::constants::INFO, "xtask check: start", false),
+        "[info] START xtask check"
+    );
+    assert_eq!(
+        format_line(crate::constants::INFO, "command: cargo check", false),
+        "[info] CMD   cargo check"
+    );
+    assert_eq!(
+        format_line(
+            crate::constants::INFO,
+            "reports: test-results/report",
+            false
+        ),
+        "[info] FILE  reports: test-results/report"
+    );
+    assert!(
+        format_line(
+            crate::constants::INFO,
+            "test: passing is not complete",
+            false
+        )
+        .contains("INFO")
+    );
+    assert!(!format_line(crate::constants::ERROR, "failed", false).contains('\x1b'));
+}
+
+/// Semantic status colors reset before the message, while text remains understandable.
+#[test]
+fn colors_use_distinct_statuses_and_reset() {
+    let success = format_line(crate::constants::INFO, "coverage: pass", true);
+    assert_eq!(success, "\x1b[32m[info] PASS \x1b[0m coverage");
+    assert!(format_line(crate::constants::WARN, "warning", true).starts_with("\x1b[33m"));
+    assert!(format_line(crate::constants::ERROR, "failure", true).starts_with("\x1b[31m"));
+}

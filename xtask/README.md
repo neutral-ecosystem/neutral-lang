@@ -83,7 +83,12 @@ Full coverage-guided fuzzing, LLVM coverage, and mutation analysis require their
 documented external Cargo tools. Missing tools fail their command; bounded fuzz
 regression tests are never reported as a full fuzz campaign.
 
-Human output uses shared `[info]` and `[error]` reporting on stderr. Commands
+Human output uses shared `[info]`, `[warn]`, and `[error]` reporting on stderr,
+with aligned `START`, `RUN`, `PASS`, `FAIL`, `CMD`, and `FILE` labels. Capable
+terminals color these statuses; redirected logs are plain by default.
+`CARGO_TERM_COLOR=always|never|auto` overrides automatic color selection;
+nonempty `NO_COLOR` disables color, including inherited Cargo/nextest output.
+Captured measurement reports are always color-free. Commands
 print start/result summaries, workflows number their steps, and measured tools
 show elapsed-time heartbeats while retaining complete stdout/stderr reports.
 Fuzz targets additionally show configured-budget progress and approximate ETA;
@@ -91,6 +96,12 @@ elapsed budget never substitutes for a successful tool exit or verified receipt.
 Report paths are workspace-relative, commands quote arguments containing spaces,
 and timings use readable units. Redirect stderr to retain the human log;
 `release tag` and `environment manifest` keep their script-facing stdout format.
+
+Tests use compact reporting by default: progress and summaries remain visible,
+along with slow tests and failures, without a line for every passing test.
+Set `testing.verbose = true` in `config/automation.toml` or use
+`NEUTRAL_TEST_VERBOSE=true cargo xtask test all` for detailed test statuses.
+Reporting settings never change test selection or quality acceptance.
 
 `cargo xtask docs` builds the searchable workspace Rustdoc site under ignored
 `target/doc/` from Cargo metadata. The published copy is the [Neutral API

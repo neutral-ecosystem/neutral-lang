@@ -57,3 +57,44 @@ fn automation_test_arguments_keep_full_gate_complete() {
     assert!(!unit.contains(&"--tests".to_owned()));
     assert_eq!(unit[0], "test");
 }
+
+/// Compact reporting hides only successful per-test rows, never failures or test selection.
+#[test]
+fn compact_reporting_preserves_failure_visibility() {
+    let mut nextest = vec!["nextest".to_owned(), "run".to_owned()];
+    reporting_arguments(&mut nextest, TestRunner::Nextest, false);
+    assert_eq!(
+        nextest,
+        [
+            "nextest",
+            "run",
+            "--status-level",
+            "slow",
+            "--final-status-level",
+            "fail",
+            "--show-progress",
+            "auto"
+        ]
+    );
+    let mut cargo = vec!["test".to_owned(), "--".to_owned(), "security_".to_owned()];
+    reporting_arguments(&mut cargo, TestRunner::Cargo, false);
+    assert_eq!(cargo, ["test", "--", "security_", "--quiet"]);
+}
+
+/// Verbosity is configurable and never adds human-report flags to typed listings.
+#[test]
+fn verbose_reporting_is_explicit() {
+    assert!(parse_verbose("true").unwrap());
+    assert!(parse_verbose("1").unwrap());
+    assert!(!parse_verbose("false").unwrap());
+    assert!(!parse_verbose("0").unwrap());
+    assert!(parse_verbose("maybe").is_err());
+    let mut args = Vec::new();
+    reporting_arguments(&mut args, TestRunner::Nextest, true);
+    assert!(
+        args.windows(2)
+            .any(|pair| pair == ["--status-level", "pass"])
+    );
+    let listing = arguments(TestRunner::Nextest, "list", false, true, None).unwrap();
+    assert!(!listing.contains(&"--status-level".to_owned()));
+}

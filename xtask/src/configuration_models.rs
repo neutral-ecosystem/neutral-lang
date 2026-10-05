@@ -104,6 +104,9 @@ pub(super) enum TestRunner {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Testing {
+    /// Successful-test details are opt-in; failure output is never suppressed.
+    #[serde(default)]
+    pub(super) verbose: bool,
     /// Default test backend.
     pub(super) runner: TestRunner,
     /// Workspace-relative nextest configuration.

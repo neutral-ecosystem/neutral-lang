@@ -3,25 +3,135 @@
 //! Shared human-readable automation output; machine-readable payloads bypass it.
 
 use std::{
-    fmt,
-    io::{self, Write},
+    env, fmt,
+    io::{self, IsTerminal, Write},
     path::Path,
     time::Duration,
 };
 
 /// Emits a categorized informational line without panicking on a closed pipe.
 pub(crate) fn info(message: impl fmt::Display) {
-    let _ = writeln!(io::stderr().lock(), "{} {message}", crate::constants::INFO);
+    emit(crate::constants::INFO, &message.to_string());
 }
 
 /// Emits a categorized warning without panicking on a closed pipe.
 pub(crate) fn warn(message: impl fmt::Display) {
-    let _ = writeln!(io::stderr().lock(), "{} {message}", crate::constants::WARN);
+    emit(crate::constants::WARN, &message.to_string());
 }
 
 /// Emits a categorized failure without panicking on a closed pipe.
 pub fn error(message: impl fmt::Display) {
-    let _ = writeln!(io::stderr().lock(), "{} {message}", crate::constants::ERROR);
+    emit(crate::constants::ERROR, &message.to_string());
+}
+
+/// Writes a uniformly formatted human line on stderr with optional terminal color.
+fn emit(category: &str, message: &str) {
+    let line = format_line(category, message, color_enabled());
+    let _ = writeln!(io::stderr().lock(), "{line}");
+}
+
+/// Resolves the shared Cargo/nextest terminal color policy without mutating global state.
+fn color_enabled() -> bool {
+    color_policy(
+        io::stderr().is_terminal(),
+        env::var("TERM").ok().as_deref(),
+        env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty()),
+        env::var(crate::constants::CARGO_TERM_COLOR_ENV)
+            .ok()
+            .as_deref(),
+    )
+}
+
+/// Honors explicit color controls while keeping redirected and dumb terminals plain.
+fn color_policy(
+    terminal: bool,
+    term: Option<&str>,
+    no_color: bool,
+    cargo_color: Option<&str>,
+) -> bool {
+    if no_color {
+        return false;
+    }
+    match cargo_color {
+        Some("always") => true,
+        Some("never") => false,
+        _ => terminal && term != Some("dumb"),
+    }
+}
+
+/// Propagates the resolved human-output color policy to inherited Cargo and nextest streams.
+pub(crate) fn child_color() -> &'static str {
+    if color_enabled() { "always" } else { "never" }
+}
+
+/// Renders a progress row through the same category, alignment, and color palette.
+pub(crate) fn progress(message: &str, completed: bool) -> String {
+    format_row(
+        crate::constants::INFO,
+        if completed { "PASS" } else { "RUN" },
+        message,
+        color_enabled(),
+    )
+}
+
+/// Extracts common human status labels without changing script-facing payloads.
+fn format_line(category: &str, message: &str, color: bool) -> String {
+    if category == crate::constants::ERROR {
+        return format_row(category, "FAIL", message, color);
+    }
+    if category == crate::constants::WARN {
+        return format_row(category, "WARN", message, color);
+    }
+    if let Some(command) = message.strip_prefix("command: ") {
+        return format_row(category, "CMD", command, color);
+    }
+    if let Some((label, status)) = message.split_once(": ") {
+        for (word, action) in [
+            ("start", "START"),
+            ("pass", "PASS"),
+            ("valid", "PASS"),
+            ("approved", "PASS"),
+            ("evidence verified", "PASS"),
+        ] {
+            if let Some(suffix) = status.strip_prefix(word)
+                && (suffix.is_empty() || suffix.starts_with([' ', ';']))
+            {
+                return format_row(category, action, &format!("{label}{suffix}"), color);
+            }
+        }
+        if matches!(
+            label,
+            "reports"
+                | "receipt"
+                | "workflow log"
+                | "coverage HTML"
+                | "coverage JSON"
+                | "workspace documentation"
+                | "package assembled"
+                | "quality evaluation"
+                | "version plan"
+        ) {
+            return format_row(category, "FILE", message, color);
+        }
+    }
+    format_row(category, "INFO", message, color)
+}
+
+/// Applies fixed-width labels and semantic colors, never relying on color alone.
+fn format_row(category: &str, action: &str, message: &str, color: bool) -> String {
+    let row = format!("{category} {action:<5} {message}");
+    if !color {
+        return row;
+    }
+    let code = match action {
+        "PASS" => "32",
+        "FAIL" => "31",
+        "WARN" => "33",
+        "START" | "RUN" => "36",
+        "CMD" | "FILE" => "2",
+        _ => "34",
+    };
+    format!("\x1b[{code}m{category} {action:<5}\x1b[0m {message}")
 }
 
 /// Formats elapsed time in compact units instead of large millisecond counts.

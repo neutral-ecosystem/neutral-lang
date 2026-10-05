@@ -36,10 +36,12 @@ pub(super) fn wait(child: &mut Child, label: &str, budget: Option<u64>) -> io::R
         if previous.is_none_or(|last| elapsed >= last + if terminal { 1 } else { 10 }) {
             let line = match budget {
                 Some(budget) => render(label, elapsed, budget),
-                None => format!(
-                    "{} {label}: running | elapsed {} | reports are being captured",
-                    crate::constants::INFO,
-                    crate::output::duration(Duration::from_secs(elapsed))
+                None => crate::output::progress(
+                    &format!(
+                        "{label} | elapsed {} | reports are being captured",
+                        crate::output::duration(Duration::from_secs(elapsed))
+                    ),
+                    false,
                 ),
             };
             let mut output = io::stderr().lock();
@@ -81,13 +83,15 @@ fn render_status(label: &str, elapsed: u64, budget: u64, completed: bool) -> Str
             remaining % 60
         )
     };
-    format!(
-        "{} {label} [{}{}] {percent}% | elapsed {}m {:02}s | {estimate}",
-        crate::constants::INFO,
-        "=".repeat(filled),
-        " ".repeat(WIDTH - filled),
-        elapsed / 60,
-        elapsed % 60
+    crate::output::progress(
+        &format!(
+            "{label} [{}{}] {percent}% | elapsed {}m {:02}s | {estimate}",
+            "=".repeat(filled),
+            " ".repeat(WIDTH - filled),
+            elapsed / 60,
+            elapsed % 60
+        ),
+        completed,
     )
 }
 
