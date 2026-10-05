@@ -334,6 +334,12 @@ pub fn analyze_project_semantics(
 }
 
 /// Resolves all project semantics while allowing only the unit parsing phase to be reused.
+///
+/// Bind the graph to the exact captured units before resolving anything. Collect
+/// the complete declaration scope before following dependencies, so source order
+/// cannot determine whether a name exists. Visibility, public type closure, and
+/// dependency-cycle checks run on every request, even when the supplied internal
+/// parser returns cached roots. Parsed syntax is not a cached semantic conclusion.
 #[expect(
     clippy::too_many_lines,
     reason = "explicit fail-closed project phases remain visible in one orchestration boundary"

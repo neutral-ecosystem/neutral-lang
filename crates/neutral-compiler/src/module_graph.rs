@@ -528,6 +528,11 @@ fn condense(
 }
 
 /// Finds strongly connected groups with iterative depth-first traversals.
+///
+/// This is the two-pass Kosaraju traversal: finish nodes in the forward graph,
+/// then traverse the reverse graph in reverse finishing order. Explicit stacks
+/// bound call-stack use even for a long import chain. Sorting neighbors and group
+/// members makes later condensation independent of input enumeration order.
 fn strongly_connected_groups(
     count: usize,
     edges: &[GraphEdge],
@@ -575,6 +580,7 @@ fn strongly_connected_groups(
         }
     }
     visited.fill(false);
+    // Reverse finishing order makes each reverse traversal stay within one SCC.
     let mut groups = Vec::new();
     for &root in finishing.iter().rev() {
         if visited[root] {

@@ -9,6 +9,13 @@ It depends on core, IR, and vocabulary contracts only. The CLI supplies any
 host-facing capture work before this crate runs; `neutral-compiler` must remain
 deterministic and free of filesystem, environment, network, command, locale,
 and clock access. Its parser and semantic internals are intentionally private.
+For code orientation, follow [capture](src/project_capture.rs),
+[graph construction](src/module_graph.rs),
+[semantic resolution](src/frontend/project_semantics.rs), and
+[contextual lowering](src/frontend/project_lowering.rs). Their function comments
+explain phase ordering, validation responsibilities, and publication boundaries;
+the [cache](src/frontend/project_cache.rs) documents the narrow reuse seam.
+
 The public boundary captures exact bytes immutably. The v1 project-capture
 boundary accepts only a closed, versioned, data-only request with explicit
 independent limits. It retains the complete supplied source set, validates

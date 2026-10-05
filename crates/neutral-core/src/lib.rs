@@ -5,6 +5,16 @@
 //! This crate owns source identity, source spans, diagnostics, resource limits,
 //! cancellation, and result classification. It must remain independent of the
 //! compiler, reader, command-line hosts, and ambient host services.
+//!
+//! # Contract boundaries
+//! Source and vocabulary digests identify exact bytes; semantic digests identify
+//! explicitly framed meaning. They are distinct types so callers cannot quietly
+//! replace one identity layer with another. Locations likewise retain original
+//! byte offsets, not decoded-character or editor-display coordinates.
+//!
+//! This crate supplies primitives, not a validator for complete programs. Hosts
+//! own acquisition, higher layers enforce their work budgets, and consumers must
+//! validate external values before treating these contracts as authoritative.
 
 pub mod profile;
 
@@ -37,6 +47,9 @@ impl SourceContentDigest {
     }
 
     /// Computes the digest over exactly `bytes`, without normalization.
+    ///
+    /// Whitespace, BOMs, and line-ending changes therefore change source identity
+    /// even when a later compiler considers the program logically equivalent.
     #[must_use]
     pub fn from_bytes(bytes: &[u8]) -> Self {
         let bytes: [u8; 32] = Sha256::digest(bytes).into();
@@ -163,6 +176,10 @@ pub struct SemanticDigest([u8; 32]);
 impl SemanticDigest {
     /// Hashes a caller-constructed complete NHT transcript without framing it again.
     /// The caller owns transcript validation, domain separation, and resource bounds.
+    ///
+    /// Use this when an encoder has already written the envelope and domain.
+    /// Passing that transcript to `from_nht` instead would add a second envelope
+    /// and produce a different digest. Hashing alone does not validate meaning.
     #[must_use]
     pub fn from_transcript(transcript: &[u8]) -> Self {
         Self(Sha256::digest(transcript).into())
@@ -204,6 +221,11 @@ impl fmt::Display for SemanticDigest {
 }
 
 /// Frames one NHT-v1 tagged payload using unsigned big-endian lengths.
+///
+/// The layout is `u16(tag length) || ASCII tag || u64(payload length) || payload`.
+/// Explicit lengths distinguish tuples that collide under plain concatenation.
+/// This low-level helper checks representable lengths, not application budgets;
+/// large or hostile inputs need a bounded encoder before reaching this boundary.
 ///
 /// # Errors
 ///
@@ -297,6 +319,10 @@ pub struct SourceLocation {
 
 impl SourceLocation {
     /// Creates a location for `span` in the source identified by `source`.
+    ///
+    /// The digest binds the range to exact source bytes, but this constructor
+    /// cannot check whether the range fits those bytes. The owning source-map
+    /// validator must check that before a consumer indexes into captured input.
     #[must_use]
     pub const fn new(source: SourceContentDigest, span: ByteSpan) -> Self {
         Self { source, span }
@@ -342,6 +368,10 @@ impl LineColumn {
 ///
 /// CRLF is one line ending, while a lone CR and a lone LF are each one line
 /// ending. The LF byte in a CRLF pair maps to the following line's first column.
+/// Columns count original bytes, so a multibyte UTF-8 character occupies multiple
+/// columns. The end-of-input offset is valid; no decoding or tab expansion occurs.
+/// The scan is linear in `offset`, so repeated bulk lookups belong in an indexed
+/// source-map layer rather than repeated calls to this primitive.
 ///
 /// # Errors
 ///
@@ -458,6 +488,9 @@ pub struct Diagnostic {
 
 impl Ord for Diagnostic {
     /// Orders diagnostics by source identity, byte range, code, then safe parameters.
+    ///
+    /// Remaining fields break ties to keep ordering consistent with equality.
+    /// Sorting never depends on emission timing or localized rendered messages.
     fn cmp(&self, other: &Self) -> CompareOrdering {
         self.primary
             .cmp(&other.primary)
@@ -479,6 +512,10 @@ impl PartialOrd for Diagnostic {
 
 impl Diagnostic {
     /// Creates a diagnostic with safe, deterministic parameters.
+    ///
+    /// Safety is the caller's responsibility: parameters are stored as supplied,
+    /// not escaped or redacted here. Rendering and input-derived text checks must
+    /// happen at the owning diagnostic boundary.
     #[must_use]
     pub fn new(
         code: DiagnosticCode,
@@ -766,6 +803,10 @@ impl StructuralLimits {
 }
 
 /// A shareable cancellation signal for bounded compilation work.
+///
+/// Clones share one monotonic signal; there is deliberately no reset operation.
+/// This is cooperative cancellation, not thread interruption or rollback. Each
+/// phase must poll at its work boundaries and before authoritative publication.
 #[derive(Clone, Debug, Default)]
 pub struct CancellationToken(Arc<AtomicBool>);
 
@@ -777,6 +818,9 @@ impl CancellationToken {
     }
 
     /// Requests cancellation for every holder of this signal.
+    ///
+    /// Release/acquire ordering synchronizes observation of the request; callers
+    /// must still explicitly poll and must not infer successful work from a token.
     pub fn cancel(&self) {
         self.0.store(true, Ordering::Release);
     }

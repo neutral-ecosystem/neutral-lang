@@ -570,6 +570,9 @@ impl ProjectCaptureError {
 ///
 /// Every byte sequence and lock must already be present in `request`. The
 /// request type has no resolver, callback, path, URL, or root field.
+/// Capture validates the envelope, integrity, headers, and exact vocabulary
+/// coverage, not declaration semantics or contextual values. A successful
+/// capture is an immutable input boundary, not a successful compilation.
 ///
 /// # Errors
 ///
@@ -594,6 +597,12 @@ enum ProjectCaptureCheckpoint {
 }
 
 /// Captures a project while exposing deterministic handoffs to private tests.
+///
+/// Validate collection/byte budgets before scanning content. Check exact input
+/// integrity before trusting headers, then require the locked vocabulary set to
+/// match those headers. Test checkpoints can request cancellation between these
+/// phases; production supplies a no-op callback. Only the final freeze publishes
+/// a project, and cancellation is checked again at that boundary.
 fn capture_project_with_checkpoints(
     request: CapturedProjectRequest,
     mut checkpoint: impl FnMut(ProjectCaptureCheckpoint),
@@ -603,6 +612,8 @@ fn capture_project_with_checkpoints(
         return Err(ProjectCaptureError::Cancelled);
     }
     validate_envelope(&request)?;
+    // Take ownership of accepted source bytes without changing their spelling;
+    // normalization here would invalidate exact digests and original-byte spans.
     let values = request.controls.limits.values();
     let mut captured_sources = validate_sources(request.sources, values)?;
     let vocabulary_ids = validate_vocabularies(&request.vocabularies, values)?;
@@ -616,6 +627,7 @@ fn capture_project_with_checkpoints(
         return Err(ProjectCaptureError::Cancelled);
     }
     validate_vocabulary_cover(&required_vocabularies, &vocabulary_ids)?;
+    // A subset would hide missing locks; a superset would retain unused inputs.
     checkpoint(ProjectCaptureCheckpoint::Publish);
     if request.controls.cancellation.is_cancelled() {
         return Err(ProjectCaptureError::Cancelled);

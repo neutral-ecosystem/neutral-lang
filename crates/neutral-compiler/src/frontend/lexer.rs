@@ -12,6 +12,11 @@ use crate::language::names;
 const UTF8_BOM: &[u8; 3] = b"\xef\xbb\xbf";
 
 /// Lexes exact captured bytes while retaining physical newline tokens and spans.
+///
+/// Tokens carry original-byte coordinates; decoded strings are values, not new
+/// source coordinates. Preserve comments and whitespace separately for formatting.
+/// Physical line boundaries remain tokens because the later layout pass, not the
+/// raw lexer, decides where statement boundaries are legal.
 pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
     validate_source_text(source)?;
     let mut tokens = Vec::new();

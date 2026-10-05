@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Explicit bounded in-process syntax reuse; graph, semantics, and companions stay fresh.
+//!
+//! A generation contains only private parsed source units from a successful run.
+//! Entries cannot be supplied by callers or loaded from disk. Reuse is safe only
+//! for exact bytes under the same module/profile; source IDs and current controls
+//! are deliberately not taken from cached entries. Retention budgets describe
+//! retained units and original bytes, not a promise about total heap usage.
 
 use super::{Root, lowering::compile_project_with_parser, parse_roots};
 use crate::{CapturedProject, ProjectCompileFailure};
@@ -95,10 +101,14 @@ impl ProjectCompilationCache {
         let mut pending = BTreeMap::<String, Entry>::new();
         let mut stats = ProjectCacheStats::default();
         let ir = compile_project_with_parser(captured, cancellation, &mut |source| {
+            // Semantics and lowering can request the same roots in one run. The
+            // pending generation avoids reparsing and counts each unit only once.
             if let Some(entry) = pending.get(source.module_id()) {
                 return Ok(entry.roots.clone());
             }
             let previous = self.entries.get(source.module_id());
+            // A logical hash or public fingerprint loses spelling/private facts.
+            // Even a matching source digest needs exact bytes to reject collisions.
             let reusable = previous.filter(|entry| {
                 entry.module == source.module_id()
                     && entry.profile == captured.profile().source_version()
@@ -134,6 +144,8 @@ impl ProjectCompilationCache {
         }
         let mut retained = BTreeMap::new();
         let mut retained_bytes = 0_u64;
+        // Replace, rather than accumulate, generations: removed modules cannot
+        // remain resident forever. Canonical map order makes budget eviction stable.
         for (module, entry) in pending {
             let length = entry.bytes.len() as u64;
             if (retained.len() as u64) < self.limits.source_units

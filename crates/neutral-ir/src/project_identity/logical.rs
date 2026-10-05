@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Complete typed logical form; source/processing companions never enter this layer.
+//!
+//! Canonical traversal follows retained module, declaration, schema, and public
+//! edge order. Private and disconnected declarations are included; source maps,
+//! aliases, local allocation labels, resource facts, and view roots are not.
+//! Keep these exclusions explicit: adding a convenient companion field here
+//! would change complete logical identity even if program meaning stayed fixed.
 
 use super::{
     IdentityError, IdentityLimits, IdentityTranscript, LOGICAL_DOMAIN, LogicalProjectIdentity,
@@ -15,6 +21,12 @@ use crate::{
 use neutral_core::{CancellationToken, profile::V1_SOURCE_PROFILE};
 
 /// Builds bounded complete logical form for structurally canonical, semantically validated IR.
+///
+/// This function checks canonical structure needed by the transcript, not every
+/// semantic invariant of a project. For external artifacts, validate through the
+/// reader first. It never hashes a selected public view or signature snapshot.
+/// Profile/domain and field-order changes require a new versioned contract;
+/// changing a package release number must not change these bytes.
 ///
 /// # Errors
 /// Rejects noncanonical/schema input, byte/node/depth bounds, or cancellation.
@@ -84,6 +96,10 @@ pub fn canonical_logical_project(
 }
 
 /// Caps aggregate identity-key comparison work before comparing canonical root sequences.
+///
+/// Input is typed but can still come from an untrusted producer. Charge all
+/// comparison keys and aggregate import counts before order checks; otherwise a
+/// tiny output limit could still permit expensive comparisons of huge inputs.
 fn preflight_keys(writer: &mut Writer<'_>, ir: &ProjectIr) -> Result<(), IdentityError> {
     let mut imports = 0_usize;
     for module in &ir.modules {

@@ -304,6 +304,11 @@ impl Parser<'_> {
     }
 
     /// Parses one scalar or recursively contextual record value.
+    ///
+    /// This constructs syntax only: names and references are resolved later, and
+    /// record literals gain their nominal type from semantic context. Charge the
+    /// request-wide node budget before dispatch so scalars and container children
+    /// cannot evade aggregate limits by staying shallow.
     fn parse_value(&mut self, depth: u64) -> Result<ParsedValue, FrontendError> {
         let token = self.next().ok_or_else(|| self.other_here())?;
         self.value_nodes = self.value_nodes.saturating_add(1);

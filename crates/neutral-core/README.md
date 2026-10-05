@@ -20,6 +20,11 @@ depend on compiler, reader, CLI, host, automation, or test packages, and it
 must not perform host I/O. Higher layers use these stable value contracts to
 communicate without coupling to a particular source parser or artifact encoding.
 
+For code orientation, [lib.rs](src/lib.rs) explains exact-byte digests, transcript
+framing, original-byte coordinates, diagnostic ordering, and cooperative
+cancellation. [profile.rs](src/profile.rs) owns discovery and defaults. These are
+primitives; they do not establish that a whole program or external artifact is valid.
+
 ## Command
 
 This is a library crate. Verify its foundational contracts with:

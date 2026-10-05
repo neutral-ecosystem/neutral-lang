@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! In-place NHT frames; nested payloads never require proportional temporary copies.
+//!
+//! One writer owns an unpublished buffer and independent output/work budgets.
+//! The caller chooses the domain and field order; this module enforces framing,
+//! cancellation, and limits, not semantic validity. On any error the enclosing
+//! transcript operation discards the writer, so incomplete bytes cannot escape.
 
 use super::{IdentityError, IdentityLimits, MAX_TRANSCRIPT_BYTES, MAX_TRANSCRIPT_NODES};
 use neutral_core::CancellationToken;
@@ -59,6 +64,9 @@ impl<'a> Writer<'a> {
         }
     }
     /// Bounds text keys before canonical-order comparisons or sorting.
+    ///
+    /// This cumulative comparison budget is separate from output length: large
+    /// keys must fail before an ordering check performs unbounded text work.
     pub(super) fn text(&mut self, text: &str) -> Result<(), IdentityError> {
         self.check()?;
         self.key_bytes = self
@@ -89,6 +97,12 @@ impl<'a> Writer<'a> {
         Ok(())
     }
     /// Writes and backpatches one NHT frame without retaining an intermediate payload.
+    ///
+    /// Reserve the fixed-width payload-length slot, let nested frames append into
+    /// the same buffer, then fill the slot from the completed byte range. A failed
+    /// body leaves a partial buffer; callers must propagate the error and discard
+    /// this writer, not retry or publish it. Node accounting includes containers
+    /// as well as leaves, so deep framing cannot evade the work budget.
     pub(super) fn frame(
         &mut self,
         tag: &str,
@@ -109,6 +123,7 @@ impl<'a> Writer<'a> {
         self.append(&0_u64.to_be_bytes())?;
         let start = self.bytes.len();
         body(self)?;
+        // Offsets, rather than borrowed slices, survive reallocations in `body`.
         let length = u64::try_from(self.bytes.len() - start).map_err(|_| IdentityError::Limit)?;
         self.bytes[length_offset..length_offset + 8].copy_from_slice(&length.to_be_bytes());
         self.check()
@@ -128,6 +143,10 @@ impl<'a> Writer<'a> {
 }
 
 /// Rejects duplicate and noncanonical sequences in already typed logical content.
+///
+/// Do not sort here: accepting reordered producer data would conceal a malformed
+/// canonical representation. Normalization is explicit only at contract-approved
+/// boundaries such as artifact root selection.
 pub(super) fn ordered<T: Ord>(values: impl IntoIterator<Item = T>) -> Result<(), IdentityError> {
     let mut previous = None;
     for value in values {

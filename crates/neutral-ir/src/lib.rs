@@ -5,6 +5,17 @@
 //! This crate owns the logical IR, source maps, provenance, and derivation
 //! records. It must not acquire source input, expose compiler-private models, or
 //! perform host I/O.
+//!
+//! # Reading the model
+//! Scalar/document contracts live here; [`project`] retains complete multi-unit
+//! meaning and its separate source/processing companions. [`project_interface`]
+//! describes only the public signature surface, while [`project_identity`]
+//! defines content-sensitive identity layers. Do not substitute an interface
+//! fingerprint or graph-local label for a complete project identity.
+//!
+//! Public data structures let producers construct values; construction alone
+//! does not establish validity. The independent reader boundary is responsible
+//! for checking hostile artifacts before exposing authoritative traversal.
 
 pub mod language;
 pub mod project;
@@ -74,6 +85,10 @@ pub struct NominalTypeIdentity {
 
 impl NominalTypeIdentity {
     /// Creates one module-owned nominal record identity.
+    ///
+    /// This assembles a value from already validated names; it does not parse
+    /// source or enforce the declaration grammar. Readers must check hostile
+    /// external components before using the identity to resolve a type.
     #[must_use]
     pub fn new(module: LogicalModuleIdentity, name: impl Into<String>) -> Self {
         Self {
@@ -106,6 +121,10 @@ pub struct ModuleSymbolIdentity {
 
 impl ModuleSymbolIdentity {
     /// Creates a module-symbol identity from validated semantic values.
+    ///
+    /// The tuple denotes declaration continuity, not its current content. A
+    /// declaration can keep this identity while its value or signature changes;
+    /// content-sensitive decisions require the appropriate fingerprint/digest.
     #[must_use]
     pub fn new(module: LogicalModuleIdentity, declaration_name: impl Into<String>) -> Self {
         Self {
@@ -163,6 +182,11 @@ pub struct ExactNumber {
 impl ExactNumber {
     /// Reconstructs one validated normalized exact number from external parts.
     ///
+    /// The value is `sign * coefficient * 10^scale`. Nonzero coefficients have
+    /// neither leading nor trailing zeroes; zero has one spelling, positive with
+    /// scale zero. External decoders must reject noncanonical parts, not silently
+    /// normalize them, so equivalent wire values cannot gain multiple identities.
+    ///
     /// # Errors
     ///
     /// Returns an error when the coefficient is noncanonical or the configured
@@ -196,6 +220,12 @@ impl ExactNumber {
 
     /// Normalizes one frozen source number without floating-point conversion.
     ///
+    /// Unlike the external-parts constructor, this accepts source spelling
+    /// variations. Fractional digits and exponents become a decimal scale, then
+    /// insignificant zeroes are removed without changing the exact value.
+    /// Limits apply during parsing as well as after normalization; spelling a
+    /// tiny value with excessive digits does not bypass the input-work bound.
+    ///
     /// # Errors
     ///
     /// Returns an error for a malformed spelling or an exceeded digit/scale bound.
@@ -207,6 +237,7 @@ impl ExactNumber {
         let parsed = parse_source_number(spelling, maximum_digits, maximum_scale)?;
         let coefficient = parsed.coefficient.trim_start_matches('0');
         if coefficient.is_empty() {
+            // All signed/exponent spellings of zero share one canonical value.
             return Ok(Self {
                 negative: false,
                 coefficient: "0".to_owned(),
@@ -215,6 +246,7 @@ impl ExactNumber {
         }
         let mut coefficient = coefficient.to_owned();
         let mut scale = parsed.scale;
+        // Removing a coefficient zero multiplies the power of ten by one.
         while coefficient.ends_with('0') {
             coefficient.pop();
             scale = scale
@@ -343,6 +375,8 @@ fn parse_source_number(
     if u64::try_from(digit_count).unwrap_or(u64::MAX) > maximum_digits {
         return Err(IrError::ExactNumberLimitExceeded);
     }
+    // Concatenating fractional digits into the integer coefficient shifts the
+    // decimal point right; subtract their count from the source exponent.
     let fraction_scale =
         i64::try_from(fraction.digit_count).map_err(|_| IrError::ExactNumberLimitExceeded)?;
     let scale = exponent

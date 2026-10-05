@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Complete contextual project lowering over frozen captured inputs.
+//!
+//! Semantic resolution establishes legal names, types, and dependency order;
+//! lowering materializes values under those types. Ordinary reuse copies immutable
+//! meaning, whereas `ref` retains a typed identity edge. Only after all defaults
+//! and bindings validate are source/processing companions assembled for publication.
 
 use super::{
     Arc, BTreeMap, BTreeSet, CancellationToken, CapturedProject, LogicalModuleIdentity,
@@ -57,6 +62,10 @@ impl ProjectCompileFailure {
 
 /// Compiles every supplied module to complete, fully typed project data.
 ///
+/// Private and disconnected units participate just like public ones. This entry
+/// point has no root-selection argument: consumers derive views after complete
+/// compilation and independent reader validation, never by pruning input here.
+///
 /// # Errors
 /// Returns no authoritative partial artifact on graph, semantic, value, limit,
 /// or cancellation failure. Performs no acquisition or ambient host I/O.
@@ -70,6 +79,10 @@ pub fn compile_project(
 }
 
 /// Runs fresh graph, semantic, and contextual phases over an explicit unit parser.
+///
+/// The parser hook is private and is the only cache seam. Recompute all later
+/// phases under current inputs and controls; a cache hit must not preserve old
+/// vocabulary visibility, dependency conclusions, provenance, or resource facts.
 pub(super) fn compile_project_with_parser(
     captured: &CapturedProject,
     cancellation: &CancellationToken,
@@ -120,12 +133,16 @@ pub(super) fn compile_project_with_parser(
         remaining: controls.output_bytes,
         numeric_limit: controls.source_bytes_per_unit,
     };
+    // Validate defaults even if no binding uses them; unused declarations are
+    // still part of the complete project and cannot shelter invalid values.
     for root in roots
         .values()
         .filter(|root| root.symbol.kind == ProjectSymbolKind::Record)
     {
         lowering.record_defaults(root.symbol.identity(), 0)?;
     }
+    // Ordinary value dependencies have already been ordered by semantics. A
+    // reused value must be materialized before a dependent reuse reads it.
     for identity in model.value_order() {
         let root = &roots[&key(identity)];
         let ty = public_type(
@@ -249,6 +266,10 @@ fn lower_provenance(model: &ProjectSemanticModel) -> Vec<ProjectProvenance> {
 }
 
 /// Assembles complete immutable publication data after all contextual checks.
+///
+/// This is the publication boundary, not another parser. Meaning and companions
+/// come from the same accepted capture so source locations and resource facts
+/// cannot accidentally describe a prior successful request.
 fn assemble_project(
     captured: &CapturedProject,
     graph: &ModuleGraph,
@@ -363,6 +384,11 @@ impl Lowering<'_> {
     }
 
     /// Materializes one expected type without accepting unresolved names or syntax.
+    ///
+    /// Context chooses how a literal is interpreted: record fields, nullable
+    /// values, vocabulary defaults, and references must match the already resolved
+    /// type. Recursive work spends the shared budget and checks depth rather than
+    /// treating each nested value as an independent fresh allowance.
     fn value(
         &mut self,
         tokens: &[Token],

@@ -46,6 +46,11 @@ Complete encoded
 transport is owned by `neutral-encoding`, which retains explicit artifact-byte
 limits separately from logical content and materialized-value work.
 
+Start with [lib.rs](src/lib.rs) for value/identity distinctions and exact-number
+normalization, then [project.rs](src/project.rs) for meaning versus companions.
+The [identity writer](src/project_identity/framing.rs) explains bounded in-place
+framing and why malformed canonical order is rejected instead of silently sorted.
+
 ## Command
 
 This is a library crate. Verify its public logical-model contracts with:

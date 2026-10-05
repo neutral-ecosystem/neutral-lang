@@ -7,6 +7,17 @@
 //! path must not use filesystem, process, environment, network, locale, or clock
 //! authority. Project capture and the private frontend preserve that same
 //! effect-free boundary as language features evolve.
+//!
+//! # Pipeline map
+//! Hosts supply bytes and locks; capture checks their closed envelope and freezes
+//! exact inputs. The private frontend handles source spelling, then graph and
+//! semantic phases resolve logical dependencies before contextual lowering
+//! publishes complete IR. The independent reader is a separate validation
+//! boundary, not a shortcut around compiler phases.
+//!
+//! Document compilation and complete-project compilation are separate entry
+//! points. Optional project syntax caching reuses only private parsed units;
+//! current graph, vocabulary, semantic, and source-accounting work remains fresh.
 
 use neutral_core::{
     ByteSpan, CancellationToken, Diagnostic, DiagnosticCode, DiagnosticLayer, DiagnosticSeverity,

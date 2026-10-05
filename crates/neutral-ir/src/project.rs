@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Complete project data; constructors never imply independent validation.
+//!
+//! Keep logical declarations, types, and values distinct from source maps,
+//! provenance, captured digests, limits, and resource accounting. The former
+//! express meaning; the latter explain where it came from and how it was built.
+//! Logical comparison and identity deliberately exclude those companions, but
+//! reader validation must still check their consistency with the complete data.
+//! A view is a post-validation public selection, never a pruned compilation input.
 
 use crate::{
     ExactNumber, LogicalModuleIdentity, ModuleSymbolIdentity,
