@@ -5,14 +5,14 @@
 use toml_edit::{DocumentMut, Item, Value};
 
 /// Parses an editable document while preserving whitespace, comments, and key order.
-pub(super) fn parse(content: &str, label: &str) -> Result<DocumentMut, String> {
+pub(crate) fn parse(content: &str, label: &str) -> Result<DocumentMut, String> {
     content
         .parse()
         .map_err(|error| format!("invalid {label}: {error}"))
 }
 
 /// Replaces an existing string only after checking the expected value, retaining its decoration.
-pub(super) fn replace_string(
+pub(crate) fn replace_string(
     item: &mut Item,
     expected: &str,
     requested: &str,
@@ -31,7 +31,7 @@ pub(super) fn replace_string(
 }
 
 /// Changes the central package version without touching dependency or contract versions.
-pub(super) fn package_version(
+pub(crate) fn package_version(
     content: &str,
     current: &str,
     requested: &str,
@@ -47,7 +47,7 @@ pub(super) fn package_version(
 }
 
 /// Updates exactly one source-free lock record per workspace package; registry namesakes are untouched.
-pub(super) fn lock_versions(
+pub(crate) fn lock_versions(
     content: &str,
     names: &std::collections::BTreeSet<String>,
     current: &str,
@@ -91,5 +91,5 @@ pub(super) fn lock_versions(
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/manifest_updates.rs"]
+#[path = "../../tests/unit/manifest_updates.rs"]
 mod tests;

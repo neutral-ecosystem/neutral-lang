@@ -11,29 +11,90 @@ use std::{
 
 /// Emits a categorized informational line without panicking on a closed pipe.
 pub(crate) fn info(message: impl fmt::Display) {
-    emit(crate::constants::INFO, &message.to_string());
+    emit(crate::constants::INFO, "INFO", &message.to_string());
+}
+
+/// Announces a command or workflow step before work begins.
+pub(crate) fn start(message: impl fmt::Display) {
+    emit(crate::constants::INFO, "START", &message.to_string());
+}
+
+/// Reports successful completion using the shared success style.
+pub(crate) fn pass(message: impl fmt::Display) {
+    emit(crate::constants::INFO, "PASS", &message.to_string());
+}
+
+/// Announces an invoked subprocess without changing its native output.
+pub(crate) fn invocation(program: &str, arguments: &[&str]) {
+    emit(crate::constants::INFO, "CMD", &command(program, arguments));
+}
+
+/// Identifies a generated file or directory using a workspace-relative path.
+pub(crate) fn file(label: &str, value: &Path) {
+    emit(
+        crate::constants::INFO,
+        "FILE",
+        &format!("{label}: {}", path(value)),
+    );
+}
+
+/// Writes consistently styled help to stdout, tolerating a closed reader.
+pub(crate) fn help(message: &str) {
+    let mut stream = io::stdout().lock();
+    for line in message.lines() {
+        let _ = writeln!(
+            stream,
+            "{}",
+            format_row(
+                crate::constants::INFO,
+                "HELP",
+                line,
+                color_enabled_on(io::stdout().is_terminal())
+            )
+        );
+    }
+}
+
+/// Writes a script-facing payload without human labels or terminal colors.
+///
+/// # Errors
+/// Returns an error if stdout cannot accept the payload.
+pub(crate) fn machine(message: impl fmt::Display) -> Result<(), String> {
+    writeln!(io::stdout().lock(), "{message}")
+        .map_err(|error| format!("could not write command output: {error}"))
 }
 
 /// Emits a categorized warning without panicking on a closed pipe.
 pub(crate) fn warn(message: impl fmt::Display) {
-    emit(crate::constants::WARN, &message.to_string());
+    emit(crate::constants::WARN, "WARN", &message.to_string());
 }
 
 /// Emits a categorized failure without panicking on a closed pipe.
 pub fn error(message: impl fmt::Display) {
-    emit(crate::constants::ERROR, &message.to_string());
+    emit(crate::constants::ERROR, "FAIL", &message.to_string());
 }
 
 /// Writes a uniformly formatted human line on stderr with optional terminal color.
-fn emit(category: &str, message: &str) {
-    let line = format_line(category, message, color_enabled());
-    let _ = writeln!(io::stderr().lock(), "{line}");
+fn emit(category: &str, action: &str, message: &str) {
+    let mut stream = io::stderr().lock();
+    for line in message.lines() {
+        let _ = writeln!(
+            stream,
+            "{}",
+            format_row(category, action, line, color_enabled())
+        );
+    }
 }
 
 /// Resolves the shared Cargo/nextest terminal color policy without mutating global state.
 fn color_enabled() -> bool {
+    color_enabled_on(io::stderr().is_terminal())
+}
+
+/// Resolves color for the actual destination stream, including piped help output.
+fn color_enabled_on(terminal: bool) -> bool {
     color_policy(
-        io::stderr().is_terminal(),
+        terminal,
         env::var("TERM").ok().as_deref(),
         env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty()),
         env::var(crate::constants::CARGO_TERM_COLOR_ENV)
@@ -72,49 +133,6 @@ pub(crate) fn progress(message: &str, completed: bool) -> String {
         message,
         color_enabled(),
     )
-}
-
-/// Extracts common human status labels without changing script-facing payloads.
-fn format_line(category: &str, message: &str, color: bool) -> String {
-    if category == crate::constants::ERROR {
-        return format_row(category, "FAIL", message, color);
-    }
-    if category == crate::constants::WARN {
-        return format_row(category, "WARN", message, color);
-    }
-    if let Some(command) = message.strip_prefix("command: ") {
-        return format_row(category, "CMD", command, color);
-    }
-    if let Some((label, status)) = message.split_once(": ") {
-        for (word, action) in [
-            ("start", "START"),
-            ("pass", "PASS"),
-            ("valid", "PASS"),
-            ("approved", "PASS"),
-            ("evidence verified", "PASS"),
-        ] {
-            if let Some(suffix) = status.strip_prefix(word)
-                && (suffix.is_empty() || suffix.starts_with([' ', ';']))
-            {
-                return format_row(category, action, &format!("{label}{suffix}"), color);
-            }
-        }
-        if matches!(
-            label,
-            "reports"
-                | "receipt"
-                | "workflow log"
-                | "coverage HTML"
-                | "coverage JSON"
-                | "workspace documentation"
-                | "package assembled"
-                | "quality evaluation"
-                | "version plan"
-        ) {
-            return format_row(category, "FILE", message, color);
-        }
-    }
-    format_row(category, "INFO", message, color)
 }
 
 /// Applies fixed-width labels and semantic colors, never relying on color alone.
@@ -186,5 +204,5 @@ fn quote(value: &str) -> String {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/output.rs"]
+#[path = "../../tests/unit/output.rs"]
 mod tests;

@@ -2,7 +2,7 @@
 
 //! Typed generated metadata and result layout for binary release packages.
 
-use super::constants;
+use crate::constants;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
@@ -31,7 +31,7 @@ struct PackageSummary<'a> {
 }
 
 /// Returns the release package directory beneath a validated results root.
-pub(super) fn package_output_directory(
+pub(crate) fn package_output_directory(
     results_root: &Path,
     release_tag: &str,
     candidate_commit: &str,
@@ -46,7 +46,7 @@ pub(super) fn package_output_directory(
 }
 
 /// Serializes the package summary as deterministic, indented JSON.
-pub(super) fn package_summary_json(
+pub(crate) fn package_summary_json(
     release_tag: &str,
     candidate_commit: &str,
     host: &str,

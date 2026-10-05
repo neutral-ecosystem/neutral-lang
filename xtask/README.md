@@ -52,19 +52,18 @@ publish, mutate frozen contracts, or write into another repository.
 
 | Path | Ownership |
 | --- | --- |
-| `src/interface.rs` | Stable stage-free command grammar and help |
-| `src/configuration.rs`, `src/configuration_models.rs` | Standard TOML access, typed schemas, and local automation defaults |
-| `src/cargo_discovery.rs` | Typed Cargo workspace/target/graph and build-message discovery |
-| `src/manifest_updates.rs`, `src/fixtures.rs` | Formatting-preserving version/lock and preflighted fixture/hash edits |
-| `src/test_execution.rs` | Configured nextest/Cargo execution, exact inventory counts, and full-gate doctests |
-| `src/environment.rs` | Toolchain and host checks; environment evidence |
-| `src/results.rs` | Ignored generated-result paths and safe cleanup |
+| `src/lib.rs`, `src/interface.rs` | Public entry point, stable command grammar, routing, and help |
+| [`src/commands/`](src/commands/README.md) | Development, docs, tests, analysis, quality, distribution, and portable task composition |
+| [`src/checks/`](src/checks/README.md) | Repository ownership, dependencies, traceability, test layout, and tracked-file hygiene |
+| [`src/config/`](src/config/README.md) | Typed configuration, Cargo discovery, stable names, and formatting-preserving manifest edits |
+| [`src/runtime/`](src/runtime/README.md) | Shared reporting, subprocess execution, progress, workflow logs, environment, and safe result paths |
+| [`src/conformance/`](src/conformance/README.md) | Released bundle discovery, active suite selection, and preflighted fixture/hash edits |
+| [`src/quality/`](src/quality/README.md) | Source-bound measurement evidence and approval ledger management |
+| [`src/release/`](src/release/README.md) | Typed fail-closed release scope, artifact metadata, and approval validation |
 | `src/versioning.rs` | Package version, dependency lock, and inherited-contract checks |
-| `src/portable_stage.rs` | Derived active conformance-suite stage for environment evidence |
-| `src/release.rs` | Typed fail-closed release-scope parsing |
-| `src/constants.rs` | Stable package, contract, and output names—not user defaults |
-| `src/lib.rs` | Command composition and remaining repository checks |
+| [`templates/`](templates/README.md) | Workspace landing page and shared Rustdoc presentation templates |
 | `tests/unit/` | Parser, safety, boundary, release-plan, and helper tests |
+| `tests/command_output.rs` | Executable-level reporting and script-compatible stdout contracts |
 
 Use `cargo xtask --help` for the authoritative command list. The root README
 documents contributor usage and migration from removed legacy names. Linux and
@@ -88,14 +87,25 @@ with aligned `START`, `RUN`, `PASS`, `FAIL`, `CMD`, and `FILE` labels. Capable
 terminals color these statuses; redirected logs are plain by default.
 `CARGO_TERM_COLOR=always|never|auto` overrides automatic color selection;
 nonempty `NO_COLOR` disables color, including inherited Cargo/nextest output.
-Captured measurement reports are always color-free. Commands
-print start/result summaries, workflows number their steps, and measured tools
+Captured measurement reports are always color-free. Every command, including
+help and script-facing commands, prints lifecycle summaries on stderr. Statuses
+are explicit at each call site, not guessed from message wording; every line in
+a multiline diagnostic gets a category. Failures produce one final contextual
+error instead of duplicate command-failure summaries. Workflows number their
+steps, and measured tools
 show elapsed-time heartbeats while retaining complete stdout/stderr reports.
 Fuzz targets additionally show configured-budget progress and approximate ETA;
 elapsed budget never substitutes for a successful tool exit or verified receipt.
 Report paths are workspace-relative, commands quote arguments containing spaces,
 and timings use readable units. Redirect stderr to retain the human log;
 `release tag` and `environment manifest` keep their script-facing stdout format.
+
+When adding a command, route it through `run`, keep task composition in
+`commands/`, and place reusable policies in their owning boundary. Use
+`output::start`, `pass`, `warn`, `error`, `invocation`, and `file` for human
+reporting rather than direct `println!` calls or embedded ANSI escapes. Native
+Cargo/nextest diagnostics retain their own format and inherit the shared color
+policy; retained measurement files stay color-free.
 
 Tests use compact reporting by default: progress and summaries remain visible,
 along with slow tests and failures, without a line for every passing test.

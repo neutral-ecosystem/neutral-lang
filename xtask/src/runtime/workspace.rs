@@ -31,5 +31,5 @@ pub(crate) fn discover(start: &Path) -> Result<PathBuf, String> {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/workspace.rs"]
+#[path = "../../tests/unit/workspace.rs"]
 mod tests;

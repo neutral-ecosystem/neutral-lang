@@ -2,8 +2,8 @@
 
 //! Typed, fail-closed parsing for the explicit release-authority selection.
 
-use super::constants;
-use super::{configuration, configuration_models::Release};
+use crate::constants;
+use crate::{configuration, configuration_models::Release};
 use std::{collections::BTreeSet, fs, path::Path, process::Command};
 
 /// Requires the release candidate to contain its approved baseline in Git history.
@@ -117,5 +117,5 @@ impl ReleasePlan {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/release.rs"]
+#[path = "../../tests/unit/release.rs"]
 mod tests;

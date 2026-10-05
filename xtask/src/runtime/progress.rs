@@ -10,7 +10,7 @@ use std::{
 };
 
 /// Waits for a child, refreshing terminal progress or emitting periodic log lines.
-pub(super) fn wait(child: &mut Child, label: &str, budget: Option<u64>) -> io::Result<ExitStatus> {
+pub(crate) fn wait(child: &mut Child, label: &str, budget: Option<u64>) -> io::Result<ExitStatus> {
     let start = Instant::now();
     let terminal = io::stderr().is_terminal();
     let mut previous = None;
@@ -96,5 +96,5 @@ fn render_status(label: &str, elapsed: u64, budget: u64, completed: bool) -> Str
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/progress.rs"]
+#[path = "../../tests/unit/progress.rs"]
 mod tests;

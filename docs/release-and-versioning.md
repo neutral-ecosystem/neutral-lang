@@ -110,11 +110,15 @@ git push origin main
 Approval checks that the supplied version equals `workspace.package.version` and
 that a passing release evaluation exists for the candidate commit. It then writes
 the immutable `record.toml` approval record and regenerates `quality/STATUS.md`.
-It also retains checksum-bound machine reports under the release's `gates/`
-directory. Approving an already recorded version retains fresh measurements
+It also retains checksum-bound machine reports under the release's ignored
+local `gates/` directory. Never add these raw reports to Git: tool output may
+contain personal paths and host details. Approving an already recorded version retains fresh measurements
 without rewriting the historical approval record.
-Those tracked evidence changes must be committed so the repository, rather than a
-local machine, retains the decision.
+Commit only the compact approval record and maintained status so Git retains
+the decision, not raw machine output. Fresh release runners still need the
+exact measurements, either regenerated there or restored from trusted private
+storage. The current workflow does not automatically restore them; missing
+measurement evidence blocks qualification without weakening any quality gate.
 
 ### 4. Assemble and validate release files
 

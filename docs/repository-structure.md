@@ -35,6 +35,16 @@ restricted to the validated, Git-ignored relative result root and cannot target 
 repository root, a parent or absolute directory, released conformance data,
 tracked quality policy, or an installed portable plan.
 
+`cargo xtask check` also rejects tracked files matched by Git's ignore policy,
+including force-added generated output. Fuzz harnesses, their isolated lockfile,
+and reviewed `fuzz/seeds/` are intentional inputs; mutable corpora, raw findings,
+coverage, and build products are local state. Compact approval records and
+review summaries under `quality/evidence/` are tracked; raw `gates/` snapshots
+are ignored because tool reports can disclose personal paths and host details.
+If an accidental generated file is tracked, remove it with
+`git rm --cached -- <exact-file>` to preserve its local bytes; this does not
+rewrite previous commits or remove files from Git history.
+
 ## Portable development plans
 
 `portable/` contains the reviewed future-version plan currently active for

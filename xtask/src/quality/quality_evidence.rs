@@ -2,7 +2,7 @@
 
 //! Automatically retained, source-bound quality measurements.
 
-use super::*;
+use crate::*;
 use serde::{Deserialize, Serialize};
 use std::process::Stdio;
 
@@ -55,16 +55,16 @@ const REQUIRED_GATES: &[&str] = &[
 ];
 
 /// Active measurement; failures never produce a passing receipt.
-pub(super) struct Measurement {
+pub(crate) struct Measurement {
     /// Destination beneath ignored generated results.
-    pub(super) directory: PathBuf,
+    pub(crate) directory: PathBuf,
     /// Provenance assembled from tool invocations and reports.
     receipt: Receipt,
 }
 
 impl Measurement {
     /// Starts a measurement and invalidates any earlier generated receipt.
-    pub(super) fn begin(gate: &str) -> Result<Self, String> {
+    pub(crate) fn begin(gate: &str) -> Result<Self, String> {
         if !REQUIRED_GATES.contains(&gate) {
             return Err(format!("unknown quality gate: {gate}"));
         }
@@ -82,8 +82,8 @@ impl Measurement {
             fs::remove_file(old)
                 .map_err(|error| format!("could not invalidate receipt: {error}"))?;
         }
-        output::info(format!("{gate}: collecting source-bound measurements"));
-        output::info(format!("reports: {}", output::path(&directory)));
+        output::start(format!("{gate}: collecting source-bound measurements"));
+        output::file("reports", &directory);
         Ok(Self {
             directory,
             receipt: Receipt {
@@ -101,7 +101,7 @@ impl Measurement {
     }
 
     /// Captures a command's reports and rejects unsuccessful exits.
-    pub(super) fn run(
+    pub(crate) fn run(
         &mut self,
         program: &str,
         arguments: &[&str],
@@ -126,8 +126,8 @@ impl Measurement {
         let stderr = fs::File::create(self.directory.join(format!("{report}.stderr")))
             .map_err(|error| format!("could not create tool errors: {error}"))?;
         let label = format!("{}/{report}", self.receipt.gate);
-        output::info(format!("{label}: start"));
-        output::info(format!("command: {}", output::command(program, arguments)));
+        output::start(&label);
+        output::invocation(program, arguments);
         let start = Instant::now();
         let mut child = Command::new(program)
             .current_dir(workspace_root()?)
@@ -140,24 +140,17 @@ impl Measurement {
         let status = progress::wait(&mut child, &label, budget_seconds)
             .map_err(|error| format!("could not wait for measured tool: {error}"))?;
         if !status.success() {
-            output::error(format!(
-                "{label}: failed ({}, {status})",
-                output::duration(start.elapsed())
-            ));
-            output::info(format!(
-                "tool errors: {}",
-                output::path(&self.directory.join(format!("{report}.stderr")))
-            ));
+            output::file(
+                "tool errors",
+                &self.directory.join(format!("{report}.stderr")),
+            );
             return Err(format!(
-                "measurement {} failed with {status}; reports {}",
-                self.receipt.gate,
-                self.directory.display()
+                "{label} failed ({}, {status}); reports {}",
+                output::duration(start.elapsed()),
+                output::path(&self.directory)
             ));
         }
-        output::info(format!(
-            "{label}: pass ({})",
-            output::duration(start.elapsed())
-        ));
+        output::pass(format!("{label} ({})", output::duration(start.elapsed())));
         self.receipt.invocations.push(Invocation {
             program: program.to_owned(),
             arguments: arguments.iter().map(|value| (*value).to_owned()).collect(),
@@ -169,12 +162,12 @@ impl Measurement {
     }
 
     /// Runs Cargo through the configured local executable.
-    pub(super) fn cargo(&mut self, arguments: &[&str], report: &str) -> Result<(), String> {
+    pub(crate) fn cargo(&mut self, arguments: &[&str], report: &str) -> Result<(), String> {
         self.run(&cargo_command()?, arguments, report)
     }
 
     /// Runs a retained Cargo measurement with an approximate progress budget.
-    pub(super) fn cargo_with_progress(
+    pub(crate) fn cargo_with_progress(
         &mut self,
         arguments: &[&str],
         report: &str,
@@ -184,7 +177,7 @@ impl Measurement {
     }
 
     /// Copies and hashes a native tool report before retaining evidence.
-    pub(super) fn copy_report(&mut self, source: &Path, filename: &str) -> Result<(), String> {
+    pub(crate) fn copy_report(&mut self, source: &Path, filename: &str) -> Result<(), String> {
         if !plain_filename(filename) {
             return Err("unsafe quality report filename".to_owned());
         }
@@ -206,7 +199,7 @@ impl Measurement {
     }
 
     /// Writes evidence only after validation and detection of mid-run input changes.
-    pub(super) fn finish(mut self) -> Result<(), String> {
+    pub(crate) fn finish(mut self) -> Result<(), String> {
         let root = workspace_root()?;
         if input_digest(&root)? != self.receipt.inputs_sha256
             || sha256_file(&root.join(constants::QUALITY_GATES_FILE))? != self.receipt.policy_sha256
@@ -219,15 +212,12 @@ impl Measurement {
             .map_err(|error| format!("could not serialize receipt: {error}"))?;
         fs::write(self.directory.join("receipt.json"), format!("{json}\n"))
             .map_err(|error| format!("could not write receipt: {error}"))?;
-        output::info(format!(
-            "{}: evidence verified ({} tool runs)",
+        output::pass(format!(
+            "{} ({} tool runs)",
             self.receipt.gate,
             self.receipt.invocations.len()
         ));
-        output::info(format!(
-            "receipt: {}",
-            output::path(&self.directory.join("receipt.json"))
-        ));
+        output::file("receipt", &self.directory.join("receipt.json"));
         Ok(())
     }
 }
@@ -247,7 +237,7 @@ fn generated_root() -> Result<PathBuf, String> {
 }
 
 /// Hashes ordered code, tests, fixtures, locks, and configuration, including new files.
-pub(super) fn input_digest(root: &Path) -> Result<String, String> {
+pub(crate) fn input_digest(root: &Path) -> Result<String, String> {
     let output = Command::new(constants::GIT_COMMAND)
         .current_dir(root)
         .args([
@@ -290,7 +280,7 @@ pub(super) fn input_digest(root: &Path) -> Result<String, String> {
     Ok(format!("{:x}", hash.finalize()))
 }
 
-/// Resolves the release's durable machine evidence directory.
+/// Resolves the release's ignored local snapshot directory; raw reports never belong in Git.
 fn retained_root(root: &Path) -> Result<PathBuf, String> {
     let version = workspace_package_version(&read_workspace_text(
         root,
@@ -303,7 +293,7 @@ fn retained_root(root: &Path) -> Result<PathBuf, String> {
 }
 
 /// Verifies generated or retained reports for the current input bytes.
-pub(super) fn verify_all() -> Result<(), String> {
+pub(crate) fn verify_all() -> Result<(), String> {
     let root = workspace_root()?;
     let digest = input_digest(&root)?;
     let generated = generated_root()?.join(&digest);
@@ -330,7 +320,7 @@ pub(super) fn verify_all() -> Result<(), String> {
 }
 
 /// Copies verified reports beside an approval without changing its historical record.
-pub(super) fn retain() -> Result<(), String> {
+pub(crate) fn retain() -> Result<(), String> {
     verify_all()?;
     let root = workspace_root()?;
     let digest = input_digest(&root)?;
@@ -623,7 +613,7 @@ fn require_report(receipt: &Receipt, filename: &str) -> Result<(), String> {
 }
 
 /// Scans every declared dependency lock against a freshly fetched advisory database.
-pub(super) fn advisory_scan() -> Result<(), String> {
+pub(crate) fn advisory_scan() -> Result<(), String> {
     let root = workspace_root()?;
     let policy = read_workspace_text(&root, constants::DEPENDENCY_SOURCES_FILE)?;
     let mut locks = vec![constants::CARGO_LOCK_FILE.to_owned()];
@@ -650,5 +640,5 @@ pub(super) fn advisory_scan() -> Result<(), String> {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/quality_evidence.rs"]
+#[path = "../../tests/unit/quality_evidence.rs"]
 mod tests;

@@ -11,6 +11,16 @@ stable compiler.
 Confirmed failures must be minimized and promoted into deterministic fixtures
 or regression tests before they are considered resolved.
 
+## What belongs in Git
+
+Keep `Cargo.toml`, `Cargo.lock`, harness source, responsibility READMEs, and
+reviewed seeds under `seeds/`. The isolated lockfile is intentional dependency
+input, not build output. Do not commit target binaries, mutable corpus entries
+(including loose files directly under `corpus/`), coverage output, or raw crash,
+timeout, out-of-memory, and leak findings. Keep local findings until they are
+triaged and minimized; promote real defects to named deterministic tests.
+`cargo xtask check` rejects ignored files that were force-added to Git.
+
 ## Subsystem ownership
 
 | Target | Owning boundary |

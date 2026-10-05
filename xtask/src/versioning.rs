@@ -68,7 +68,7 @@ pub(super) fn check_versions() -> Result<(), String> {
     {
         return Err("contract freeze must remain approved and version-complete".to_owned());
     }
-    crate::output::info("centralized package versions: pass");
+    crate::output::pass("centralized package versions");
     Ok(())
 }
 
@@ -178,7 +178,7 @@ pub(super) fn prepare_version(requested: &str) -> Result<(), String> {
         ),
     )
     .map_err(|error| format!("could not write {}: {error}", output.display()))?;
-    crate::output::info(format!(
+    crate::output::pass(format!(
         "package release prepared: {current} -> {requested}"
     ));
     crate::output::info(format!(
@@ -190,7 +190,7 @@ pub(super) fn prepare_version(requested: &str) -> Result<(), String> {
             .unwrap_or(&evidence_readme)
             .display()
     ));
-    crate::output::info(format!("version plan: {}", crate::output::path(&output)));
+    crate::output::file("version plan", &output);
     Ok(())
 }
 

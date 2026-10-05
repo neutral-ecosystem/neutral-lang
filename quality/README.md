@@ -52,6 +52,10 @@ invalidates the snapshot; handwritten status labels cannot satisfy these gates.
 See [quality commands](../docs/quality-and-analysis.md#release-measurements) for
 the measurement sequence. Approval retains these reports automatically, including
 for a previously approved version, without changing its historical `record.toml`.
+Raw retained snapshots are ignored local files, not Git inputs: they can contain
+personal paths and host details. Only compact records and reviewed summaries are
+committed. Fresh release runners must regenerate measurements or restore an
+exact trusted private snapshot; qualification still fails on missing reports.
 
 Release preparation accepts later `main` commits descending from the recorded
 candidate under the same quality-gate configuration. It reruns the full release

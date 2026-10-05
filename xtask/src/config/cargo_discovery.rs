@@ -9,7 +9,7 @@ use std::{
 };
 
 /// Queries the selected Cargo executable without modifying its lockfile or using the network.
-pub(super) fn metadata(root: &Path, dependencies: bool) -> Result<Metadata, String> {
+pub(crate) fn metadata(root: &Path, dependencies: bool) -> Result<Metadata, String> {
     let mut options = vec!["--locked".to_owned(), "--offline".to_owned()];
     if dependencies {
         let compiler = crate::command_output(&crate::configuration::rustc_command()?, &["-vV"])?;
@@ -39,7 +39,7 @@ pub(super) fn metadata(root: &Path, dependencies: bool) -> Result<Metadata, Stri
 }
 
 /// Returns Cargo's resolved member manifests, including globbed and root-package members.
-pub(super) fn manifests(root: &Path) -> Result<Vec<PathBuf>, String> {
+pub(crate) fn manifests(root: &Path) -> Result<Vec<PathBuf>, String> {
     let metadata = metadata(root, false)?;
     let canonical_root = root
         .canonicalize()
@@ -64,7 +64,7 @@ pub(super) fn manifests(root: &Path) -> Result<Vec<PathBuf>, String> {
 }
 
 /// Finds a workspace package by its declared name, not its directory or dependency alias.
-pub(super) fn package<'a>(metadata: &'a Metadata, name: &str) -> Result<&'a Package, String> {
+pub(crate) fn package<'a>(metadata: &'a Metadata, name: &str) -> Result<&'a Package, String> {
     metadata
         .workspace_packages()
         .into_iter()
@@ -91,7 +91,7 @@ fn selected(dependency: &NodeDep, all: bool, root: bool) -> bool {
 }
 
 /// Returns the direct normal dependency names from one resolved Cargo graph.
-pub(super) fn direct_dependencies(
+pub(crate) fn direct_dependencies(
     metadata: &Metadata,
     name: &str,
 ) -> Result<BTreeSet<String>, String> {
@@ -113,7 +113,7 @@ pub(super) fn direct_dependencies(
 }
 
 /// Traverses a resolved dependency closure once per ID, retaining the root package.
-pub(super) fn closure(
+pub(crate) fn closure(
     metadata: &Metadata,
     name: &str,
     all: bool,
@@ -147,7 +147,7 @@ pub(super) fn closure(
 }
 
 /// Finds a benchmark executable through Cargo's typed build-message stream.
-pub(super) fn benchmark_executable(output: &str, target: &str) -> Result<String, String> {
+pub(crate) fn benchmark_executable(output: &str, target: &str) -> Result<String, String> {
     for message in cargo_metadata::Message::parse_stream(output.as_bytes()) {
         let message = message.map_err(|error| format!("invalid Cargo build message: {error}"))?;
         if let cargo_metadata::Message::CompilerArtifact(artifact) = message
@@ -163,5 +163,5 @@ pub(super) fn benchmark_executable(output: &str, target: &str) -> Result<String,
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/cargo_discovery.rs"]
+#[path = "../../tests/unit/cargo_discovery.rs"]
 mod tests;

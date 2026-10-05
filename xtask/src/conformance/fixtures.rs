@@ -27,7 +27,7 @@ struct SyncSummary {
 
 /// Preflights both documents and all their inputs before writing any changed manifest.
 pub(crate) fn sync_fixtures(root: &Path, check: bool) -> Result<(), String> {
-    crate::output::info(format!(
+    crate::output::start(format!(
         "fixtures: {} fixture and contract hashes",
         if check { "verifying" } else { "synchronizing" }
     ));
@@ -67,7 +67,7 @@ pub(crate) fn sync_fixtures(root: &Path, check: bool) -> Result<(), String> {
                 .map_err(|error| format!("could not write {}: {error}", freeze_path.display()))?;
         }
     }
-    crate::output::info(format!(
+    crate::output::pass(format!(
         "fixtures: verified {} fixtures, {} oracles (manifest updates: {}, freeze updates: {})",
         summary.fixture_count,
         summary.oracle_count,
@@ -284,5 +284,5 @@ fn hash_file(path: &Path) -> Result<String, String> {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/fixtures.rs"]
+#[path = "../../tests/unit/fixtures.rs"]
 mod tests;

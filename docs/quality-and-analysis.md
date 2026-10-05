@@ -100,7 +100,12 @@ release qualification; manual Markdown approval cannot substitute for them.
 
 `cargo xtask quality approve --release <version>` automatically retains verified
 reports under `quality/evidence/v<version>/gates/<input-fingerprint>/`. Commit
-those snapshots so a fresh CI checkout can verify them. Existing historical
-approval records remain unchanged when new source-bound reports are retained.
+only the compact approval record and maintained status, never these raw
+snapshots: they are ignored local evidence and may contain personal paths or
+other host details. Existing historical approval records remain unchanged.
+A fresh release runner must regenerate the required measurements or restore a
+trusted, privately stored exact snapshot before qualification. The current
+release workflow does not automatically transfer these snapshots; missing
+reports fail closed rather than treating an approval summary as measured proof.
 Advisory scans expire according to `config/automation.toml` and are rerun during
 release qualification. No additional handwritten per-command evidence is needed.

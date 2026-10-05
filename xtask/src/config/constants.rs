@@ -60,7 +60,7 @@ pub const DOCUMENTATION_ASSET_FILES: &[&str] = &[
     NEUTRAL_TRANSPARENT_LOGO_FILE,
 ];
 /// Rustdoc HTML header fragment relative to the workspace root.
-pub const RUSTDOC_HEADER_FILE: &str = "xtask/src/rustdoc-header.html";
+pub const RUSTDOC_HEADER_FILE: &str = "xtask/templates/rustdoc-header.html";
 /// Rustdoc option that injects shared markup into every generated page.
 pub const RUSTDOC_HTML_HEADER_FLAG: &str = "--html-in-header";
 /// Separator used by Cargo's encoded compiler-flag environment variables.

@@ -80,7 +80,7 @@ cargo xtask docs
 The command writes the complete generated website to `target/doc/`. This
 repository does not track that output; it is published at the [Neutral API
 documentation website](https://neutral-lang-doc.younesrabeh.workers.dev/).
-Update Rust documentation, package metadata, or the templates under `xtask/src/`,
+Update Rust documentation, package metadata, or the templates under `xtask/templates/`,
 then regenerate the local output.
 
 The task-oriented Markdown guides in `docs/` are maintained source documents;

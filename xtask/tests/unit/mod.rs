@@ -3,6 +3,7 @@
 //! Tests for dependency-boundary policy failures.
 
 use super::configuration::quality_value_from;
+use super::constants;
 use super::interface::{
     BuildProfile, CiProfile, FuzzMode, PerformanceProfile, PortableAction, QualityAction,
     QualityProfile, Task, TestLevel, ValidationTarget, VersionAction,
@@ -11,11 +12,15 @@ use super::versioning::{
     release_evidence_readme, replace_workspace_lock_versions, replace_workspace_package_version,
     validate_version_transition,
 };
-use super::{
-    constants, contract_ids, ensure_ids_covered, ensure_syntax_complete, render_rustdoc_index,
-    rustdoc_header_configuration, set, source_has_non_path_test_configuration,
-    validate_allowed_packages, validate_direct_dependencies,
-};
+use crate::checks::dependencies::set;
+use crate::checks::dependencies::validate_allowed_packages;
+use crate::checks::dependencies::validate_direct_dependencies;
+use crate::checks::test_layout::source_has_non_path_test_configuration;
+use crate::checks::traceability::contract_ids;
+use crate::checks::traceability::ensure_ids_covered;
+use crate::checks::traceability::ensure_syntax_complete;
+use crate::commands::documentation::render_rustdoc_index;
+use crate::commands::documentation::rustdoc_header_configuration;
 use std::collections::{BTreeMap, BTreeSet};
 
 #[test]
@@ -120,22 +125,22 @@ fn automation_reports_io_failures() {
         std::env::temp_dir().join(format!("neutral-xtask-missing-{}", std::process::id()));
     assert!(!directory.exists());
     assert!(
-        super::read_workspace_text(&directory, "missing")
+        crate::runtime::files::read_workspace_text(&directory, "missing")
             .unwrap_err()
             .contains("could not read missing")
     );
     assert!(
-        super::collect_regular_files(&directory, &mut Vec::new())
+        crate::runtime::files::collect_regular_files(&directory, &mut Vec::new())
             .unwrap_err()
             .contains("could not inspect")
     );
     assert!(
-        super::command_output(directory.to_str().unwrap(), &[])
+        crate::runtime::execution::command_output(directory.to_str().unwrap(), &[])
             .unwrap_err()
             .contains("could not run")
     );
     assert!(
-        super::command_output("rustc", &["--invalid-neutral-test-option"])
+        crate::runtime::execution::command_output("rustc", &["--invalid-neutral-test-option"])
             .unwrap_err()
             .contains("failed with")
     );
@@ -147,7 +152,7 @@ fn automation_reports_io_failures() {
 /// Successful commands with malformed bytes cannot bypass UTF-8 validation.
 fn automation_rejects_non_utf8_command_output() {
     assert!(
-        super::command_output("sh", &["-c", "printf '\\377'"])
+        crate::runtime::execution::command_output("sh", &["-c", "printf '\\377'"])
             .unwrap_err()
             .contains("non-UTF-8")
     );
@@ -285,7 +290,7 @@ fn automation_reads_all_contract_version_domains() {
 #[test]
 /// Portable link discovery excludes remote URLs and document anchors.
 fn automation_extracts_only_local_portable_links() {
-    let links = super::markdown_link_targets(
+    let links = crate::runtime::files::markdown_link_targets(
         "[local](specs/README.md) [anchor](#part) [remote](https://example.com) [section](PLAN.md#gate)",
     );
     assert_eq!(links, ["specs/README.md", "PLAN.md"]);
@@ -303,7 +308,7 @@ fn automation_hashes_snapshot_bytes_deterministically() {
 #[test]
 /// Quality status rendering is deterministic and contains release state.
 fn automation_renders_quality_approval_status() {
-    let approval = super::QualityApproval {
+    let approval = crate::quality::ledger::QualityApproval {
         release: "v1.0.0".to_owned(),
         commit: "0123456789012345678901234567890123456789".to_owned(),
         status: "approved".to_owned(),
@@ -311,43 +316,44 @@ fn automation_renders_quality_approval_status() {
         evaluation: "quality/evaluations/example/release.toml".to_owned(),
         quality_gates_sha256: "b".repeat(64),
     };
-    let rendered = super::quality_status_markdown(&[approval], "LicenseRef-Neutral-Test")
-        .expect("approval timestamps are valid");
+    let rendered =
+        crate::quality::ledger::quality_status_markdown(&[approval], "LicenseRef-Neutral-Test")
+            .expect("approval timestamps are valid");
     assert!(rendered.starts_with("<!-- SPDX-License-Identifier: LicenseRef-Neutral-Test -->"));
     assert!(rendered.contains("`v1.0.0`"));
     assert!(rendered.contains("| approved | `03-10-2026` |"));
-    assert!(super::is_sha256(&"a".repeat(64)));
-    assert!(!super::is_sha256(&"A".repeat(64)));
+    assert!(crate::runtime::files::is_sha256(&"a".repeat(64)));
+    assert!(!crate::runtime::files::is_sha256(&"A".repeat(64)));
 }
 
 #[test]
 /// Quality approval dates format historical records and UTC leap days consistently.
 fn automation_formats_quality_approval_dates() {
     assert_eq!(
-        super::quality_approval_date("2026-09-11"),
+        crate::quality::ledger::quality_approval_date("2026-09-11"),
         Ok("11-09-2026".to_owned())
     );
     assert_eq!(
-        super::quality_approval_date("0"),
+        crate::quality::ledger::quality_approval_date("0"),
         Ok("01-01-1970".to_owned())
     );
     assert_eq!(
-        super::quality_approval_date("951782400"),
+        crate::quality::ledger::quality_approval_date("951782400"),
         Ok("29-02-2000".to_owned())
     );
-    assert!(super::quality_approval_date("not-a-date").is_err());
-    assert!(super::quality_approval_date(&u64::MAX.to_string()).is_err());
+    assert!(crate::quality::ledger::quality_approval_date("not-a-date").is_err());
+    assert!(crate::quality::ledger::quality_approval_date(&u64::MAX.to_string()).is_err());
 }
 
 #[test]
 /// Portable series identifiers accept future numeric versions without package coupling.
 fn automation_accepts_numeric_portable_series() {
-    assert!(super::is_portable_series("v0"));
-    assert!(super::is_portable_series("v1"));
-    assert!(super::is_portable_series("v12"));
-    assert!(!super::is_portable_series("v"));
-    assert!(!super::is_portable_series("1"));
-    assert!(!super::is_portable_series("v1-beta"));
+    assert!(crate::commands::portable::is_portable_series("v0"));
+    assert!(crate::commands::portable::is_portable_series("v1"));
+    assert!(crate::commands::portable::is_portable_series("v12"));
+    assert!(!crate::commands::portable::is_portable_series("v"));
+    assert!(!crate::commands::portable::is_portable_series("1"));
+    assert!(!crate::commands::portable::is_portable_series("v1-beta"));
 }
 
 #[test]
@@ -386,7 +392,7 @@ fn automation_accepts_version_independent_portable_layouts() {
     )
     .expect("package-owned contract should be writable");
 
-    assert!(super::verify_portable_layout(&root).is_ok());
+    assert!(crate::commands::portable::verify_portable_layout(&root).is_ok());
     std::fs::remove_dir_all(root).expect("portable test root should be removable");
 }
 
@@ -411,7 +417,7 @@ fn automation_accepts_version_independent_frozen_inputs() {
     )
     .expect("freeze manifest should be writable");
 
-    assert!(super::verify_frozen_input_digests(&root, "freeze.toml").is_ok());
+    assert!(crate::commands::portable::verify_frozen_input_digests(&root, "freeze.toml").is_ok());
     std::fs::remove_dir_all(root).expect("freeze test root should be removable");
 }
 
@@ -447,9 +453,13 @@ fn automation_revalidates_portable_snapshot_bytes() {
         ),
     )
     .expect("snapshot manifest should be writable");
-    assert!(super::verify_portable_snapshot_directory(&root, &snapshot).is_ok());
+    assert!(
+        crate::commands::portable::verify_portable_snapshot_directory(&root, &snapshot).is_ok()
+    );
     std::fs::write(&copied, b"corrupt").expect("snapshot corruption should be writable");
-    assert!(super::verify_portable_snapshot_directory(&root, &snapshot).is_err());
+    assert!(
+        crate::commands::portable::verify_portable_snapshot_directory(&root, &snapshot).is_err()
+    );
     std::fs::remove_dir_all(root).expect("temporary snapshot should be removable");
 }
 
@@ -474,7 +484,7 @@ fn automation_derives_spdx_markers_from_the_workspace_license() {
 #[test]
 /// Failed workflows retain the failed step and JSON-safe diagnostic automatically.
 fn automation_records_failed_workflow_steps() {
-    let error = super::run_recorded_workflow(
+    let error = crate::runtime::workflow::run_recorded_workflow(
         "unit-test",
         "failure",
         vec![(
@@ -686,19 +696,25 @@ fn automation_stages_the_selected_binary_package() {
     std::fs::write(root.join(constants::ROOT_README_FILE), "readme")
         .expect("temporary README should be written");
     for binary in [constants::NEUTRAL_CLI, constants::NEUTRAL_PROBE] {
-        std::fs::write(super::release_binary_path(&source, binary), binary)
-            .expect("temporary binary should be written");
+        std::fs::write(
+            crate::commands::distribution::release_binary_path(&source, binary),
+            binary,
+        )
+        .expect("temporary binary should be written");
     }
     let binaries = vec![
         constants::NEUTRAL_CLI.to_owned(),
         constants::NEUTRAL_PROBE.to_owned(),
     ];
-    let assets = vec![super::DistributionAsset {
+    let assets = vec![crate::commands::distribution::DistributionAsset {
         filename: constants::RELEASE_CHECKSUM_FILE.to_owned(),
         bytes: b"checksums".to_vec(),
     }];
     assert!(
-        super::stage_binary_package(&root, &source, &output, &binaries, &assets, "{}\n").is_ok()
+        crate::commands::distribution::stage_binary_package(
+            &root, &source, &output, &binaries, &assets, "{}\n"
+        )
+        .is_ok()
     );
     assert!(
         output
@@ -709,26 +725,38 @@ fn automation_stages_the_selected_binary_package() {
     assert!(output.join(constants::ROOT_README_FILE).is_file());
     assert!(output.join(constants::RELEASE_CHECKSUM_FILE).is_file());
     assert!(
-        super::stage_binary_package(&root, &source, &output, &binaries, &assets, "{}\n").is_ok()
+        crate::commands::distribution::stage_binary_package(
+            &root, &source, &output, &binaries, &assets, "{}\n"
+        )
+        .is_ok()
     );
     std::fs::write(output.join(constants::RELEASE_CHECKSUM_FILE), "tampered")
         .expect("temporary package asset should be writable");
     assert!(
-        super::stage_binary_package(&root, &source, &output, &binaries, &assets, "{}\n").is_err()
+        crate::commands::distribution::stage_binary_package(
+            &root, &source, &output, &binaries, &assets, "{}\n"
+        )
+        .is_err()
     );
     std::fs::write(output.join(constants::RELEASE_CHECKSUM_FILE), "checksums")
         .expect("temporary package asset should be restored");
     std::fs::write(output.join("unexpected"), "extra")
         .expect("unexpected package file should be writable");
     assert!(
-        super::stage_binary_package(&root, &source, &output, &binaries, &assets, "{}\n").is_err()
+        crate::commands::distribution::stage_binary_package(
+            &root, &source, &output, &binaries, &assets, "{}\n"
+        )
+        .is_err()
     );
     std::fs::remove_file(output.join("unexpected"))
         .expect("unexpected package file should be removable");
     std::fs::remove_file(output.join(constants::LICENSE_FILE))
         .expect("temporary package license should be removable");
     assert!(
-        super::stage_binary_package(&root, &source, &output, &binaries, &assets, "{}\n").is_err()
+        crate::commands::distribution::stage_binary_package(
+            &root, &source, &output, &binaries, &assets, "{}\n"
+        )
+        .is_err()
     );
     std::fs::remove_dir_all(root).expect("temporary package tree should be removable");
 }
@@ -773,7 +801,7 @@ fn automation_rejects_a_zero_active_suite() {
     let minimums = BTreeMap::from([("automation".to_owned(), 1)]);
     let discovered = BTreeMap::from([("automation".to_owned(), 0)]);
 
-    assert!(super::validate_test_minimums(&minimums, &discovered).is_err());
+    assert!(crate::commands::testing::validate_test_minimums(&minimums, &discovered).is_err());
 }
 
 #[test]
@@ -791,10 +819,10 @@ fn automation_rejects_inline_test_module_bodies() {
 /// Verifies xtask commands run successfully.
 fn xtask_commands_and_helpers() {
     assert!(super::run(["environment".into(), "manifest".into()]).is_ok());
-    assert!(super::check_boundaries().is_ok());
-    assert!(super::check_test_layout().is_ok());
-    assert!(super::check_traceability().is_ok());
-    assert!(super::check_workflow_contract().is_ok());
+    assert!(crate::checks::dependencies::check_boundaries().is_ok());
+    assert!(crate::checks::test_layout::check_test_layout().is_ok());
+    assert!(crate::checks::traceability::check_traceability().is_ok());
+    assert!(crate::checks::repository::check_workflow_contract().is_ok());
     assert!(super::run(["--help".into()]).is_ok());
 
     assert_eq!(
@@ -812,15 +840,17 @@ fn xtask_commands_and_helpers() {
         super::automation_value("output", "results_root").expect("configured result directory");
     assert!(res_root.ends_with(configured));
 
-    let uniq_dir = super::unique_generated_directory(&res_root.join("unit-test-probe"))
-        .expect("unique result dir");
+    let uniq_dir =
+        crate::runtime::files::unique_generated_directory(&res_root.join("unit-test-probe"))
+            .expect("unique result dir");
     assert!(uniq_dir.exists());
 
-    let text = super::read_workspace_text(&root, "Cargo.toml").expect("read workspace text");
+    let text = crate::runtime::files::read_workspace_text(&root, "Cargo.toml")
+        .expect("read workspace text");
     assert!(text.contains("workspace"));
 
     let mut files = Vec::new();
-    assert!(super::collect_regular_files(&root.join("config"), &mut files).is_ok());
+    assert!(crate::runtime::files::collect_regular_files(&root.join("config"), &mut files).is_ok());
     assert_ne!(files.len(), 0);
 
     let bundle = super::ReleasedBundle::load(&root).expect("configured inherited bundle");
@@ -830,8 +860,11 @@ fn xtask_commands_and_helpers() {
             .starts_with("conformance/releases/v")
     );
     assert!(
-        super::ensure_registered_paths_exist(&root, &bundle.member("specs/REQUIREMENTS.md"))
-            .is_ok()
+        crate::checks::traceability::ensure_registered_paths_exist(
+            &root,
+            &bundle.member("specs/REQUIREMENTS.md")
+        )
+        .is_ok()
     );
     let inventory = files
         .iter()
@@ -843,8 +876,11 @@ fn xtask_commands_and_helpers() {
         })
         .collect::<Vec<_>>()
         .join("\n");
-    assert!(super::ensure_inventory_registered(&root, "config", &inventory).is_ok());
-    assert!(super::ensure_inventory_registered(&root, "config", "").is_err());
+    assert!(
+        crate::checks::traceability::ensure_inventory_registered(&root, "config", &inventory)
+            .is_ok()
+    );
+    assert!(crate::checks::traceability::ensure_inventory_registered(&root, "config", "").is_err());
 
     assert!(super::print_environment_manifest().is_ok());
     assert_eq!(super::configuration::active_test_profile(), "current");

@@ -8,7 +8,7 @@ use nextest_metadata::{RustTestSuiteStatusSummary, TestListSummary};
 use std::{collections::BTreeMap, env};
 
 /// Selects an explicit backend override without silently falling back when nextest is absent.
-pub(super) fn runner() -> Result<TestRunner, String> {
+pub(crate) fn runner() -> Result<TestRunner, String> {
     match env::var(constants::TEST_RUNNER_ENV) {
         Ok(value) => parse_runner(&value),
         Err(env::VarError::NotPresent) => Ok(configuration::automation()?.testing.runner),
@@ -29,7 +29,7 @@ fn parse_runner(value: &str) -> Result<TestRunner, String> {
 }
 
 /// Verifies the selected runner early and explains how to install it.
-pub(super) fn verify_runner() -> Result<(), String> {
+pub(crate) fn verify_runner() -> Result<(), String> {
     if runner()? == TestRunner::Nextest {
         crate::command_output(&configuration::cargo_command()?, &["nextest", "--version"])
             .map_err(|error| format!("nextest is required: {error}; run `cargo install cargo-nextest --locked` (or explicitly set {}=cargo)", constants::TEST_RUNNER_ENV))?;
@@ -136,7 +136,7 @@ fn reporting_arguments(arguments: &mut Vec<String>, runner: TestRunner, verbose:
 }
 
 /// Executes test binaries with the selected backend; shell smoke stays in its host adapter.
-pub(super) fn run(level: TestLevel, full_gate: bool) -> Result<(), String> {
+pub(crate) fn run(level: TestLevel, full_gate: bool) -> Result<(), String> {
     if level == TestLevel::Smoke {
         return crate::run_shell_smoke();
     }
@@ -160,7 +160,7 @@ pub(super) fn run(level: TestLevel, full_gate: bool) -> Result<(), String> {
 }
 
 /// Runs one named regression category, including the bounded fuzz-smoke suite.
-pub(super) fn run_filter(filter: &str) -> Result<(), String> {
+pub(crate) fn run_filter(filter: &str) -> Result<(), String> {
     if !filter
         .bytes()
         .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
@@ -213,7 +213,7 @@ fn cargo_test_names(list: &str) -> impl Iterator<Item = &str> {
 }
 
 /// Verifies category minima using nextest's own typed listing format or explicit libtest records.
-pub(super) fn verify_counts(profile: &str, full_gate: bool) -> Result<(), String> {
+pub(crate) fn verify_counts(profile: &str, full_gate: bool) -> Result<(), String> {
     let minimums = configuration::test_minimums(profile)?;
     let backend = runner()?;
     let mut args = arguments(backend, "list", false, full_gate, None)?;
@@ -269,5 +269,5 @@ pub(super) fn verify_counts(profile: &str, full_gate: bool) -> Result<(), String
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/test_execution.rs"]
+#[path = "../../tests/unit/test_execution.rs"]
 mod tests;

@@ -46,45 +46,48 @@ fn color_controls_preserve_plain_logs() {
 #[test]
 fn human_status_rows_are_consistent() {
     assert_eq!(
-        format_line(
+        format_row(
             crate::constants::INFO,
-            "quality [2/7] check: pass (1.2s)",
+            "PASS",
+            "quality [2/7] check (1.2s)",
             false
         ),
         "[info] PASS  quality [2/7] check (1.2s)"
     );
     assert_eq!(
-        format_line(crate::constants::INFO, "xtask check: start", false),
+        format_row(crate::constants::INFO, "START", "xtask check", false),
         "[info] START xtask check"
     );
     assert_eq!(
-        format_line(crate::constants::INFO, "command: cargo check", false),
+        format_row(crate::constants::INFO, "CMD", "cargo check", false),
         "[info] CMD   cargo check"
     );
     assert_eq!(
-        format_line(
+        format_row(
             crate::constants::INFO,
+            "FILE",
             "reports: test-results/report",
             false
         ),
         "[info] FILE  reports: test-results/report"
     );
     assert!(
-        format_line(
+        format_row(
             crate::constants::INFO,
+            "INFO",
             "test: passing is not complete",
             false
         )
         .contains("INFO")
     );
-    assert!(!format_line(crate::constants::ERROR, "failed", false).contains('\x1b'));
+    assert!(!format_row(crate::constants::ERROR, "FAIL", "failed", false).contains('\x1b'));
 }
 
 /// Semantic status colors reset before the message, while text remains understandable.
 #[test]
 fn colors_use_distinct_statuses_and_reset() {
-    let success = format_line(crate::constants::INFO, "coverage: pass", true);
+    let success = format_row(crate::constants::INFO, "PASS", "coverage", true);
     assert_eq!(success, "\x1b[32m[info] PASS \x1b[0m coverage");
-    assert!(format_line(crate::constants::WARN, "warning", true).starts_with("\x1b[33m"));
-    assert!(format_line(crate::constants::ERROR, "failure", true).starts_with("\x1b[31m"));
+    assert!(format_row(crate::constants::WARN, "WARN", "warning", true).starts_with("\x1b[33m"));
+    assert!(format_row(crate::constants::ERROR, "FAIL", "failure", true).starts_with("\x1b[31m"));
 }

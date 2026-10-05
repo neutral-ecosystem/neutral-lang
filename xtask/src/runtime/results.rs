@@ -2,13 +2,13 @@
 
 //! Ignored generated-result root and safe local cleanup.
 
-use super::{
+use crate::{
     Command, PathBuf, automation_value, constants, env, fs, is_safe_relative_path, quality_value,
     workspace_root,
 };
 
 /// Returns the configured result root after rejecting unsafe paths.
-pub(super) fn result_root() -> Result<PathBuf, String> {
+pub(crate) fn result_root() -> Result<PathBuf, String> {
     let configured = match env::var(constants::TEST_RESULTS_ENV) {
         Ok(path) => path,
         Err(env::VarError::NotPresent) => automation_value("output", "results_root")?,
@@ -50,7 +50,7 @@ pub(super) fn result_root() -> Result<PathBuf, String> {
 }
 
 /// Resolves one quality-configured generated file below the selected result root.
-pub(super) fn quality_output_path(section: &str, key: &str) -> Result<PathBuf, String> {
+pub(crate) fn quality_output_path(section: &str, key: &str) -> Result<PathBuf, String> {
     let relative = PathBuf::from(quality_value(section, key)?);
     if !is_safe_result_path(&relative) {
         return Err(format!(
@@ -61,12 +61,12 @@ pub(super) fn quality_output_path(section: &str, key: &str) -> Result<PathBuf, S
 }
 
 /// Returns whether a configured result path cannot name the workspace or escape it.
-pub(super) fn is_safe_result_path(path: &std::path::Path) -> bool {
+pub(crate) fn is_safe_result_path(path: &std::path::Path) -> bool {
     is_safe_relative_path(path) && !path.starts_with("target")
 }
 
 /// Removes only the configured generated-result root after validating its path.
-pub(super) fn clean_results() -> Result<(), String> {
+pub(crate) fn clean_results() -> Result<(), String> {
     let root = result_root()?;
     if root.exists() {
         if !root.is_dir() {
@@ -78,6 +78,6 @@ pub(super) fn clean_results() -> Result<(), String> {
         fs::remove_dir_all(&root)
             .map_err(|error| format!("could not remove {}: {error}", root.display()))?;
     }
-    crate::output::info("generated results cleaned");
+    crate::output::pass("generated results cleaned");
     Ok(())
 }

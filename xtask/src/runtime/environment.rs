@@ -2,10 +2,10 @@
 
 //! Workstation verification, tool inventory, and environment evidence.
 
-use super::*;
+use crate::*;
 
 /// Creates ignored automation-result directories and records the local environment.
-pub(super) fn bootstrap() -> Result<(), String> {
+pub(crate) fn bootstrap() -> Result<(), String> {
     verify_environment()?;
     let result_directory = result_root()?.join("bootstrap");
     fs::create_dir_all(&result_directory)
@@ -15,12 +15,12 @@ pub(super) fn bootstrap() -> Result<(), String> {
         environment_manifest()?,
     )
     .map_err(|error| format!("could not write bootstrap environment manifest: {error}"))?;
-    crate::output::info("workspace bootstrap: pass");
+    crate::output::pass("workspace bootstrap");
     Ok(())
 }
 
 /// Verifies the files and selected Rust toolchain channel required by the workspace.
-pub(super) fn verify_environment() -> Result<(), String> {
+pub(crate) fn verify_environment() -> Result<(), String> {
     let workspace_root = workspace_root()?;
     for required_path in [
         "Cargo.lock",
@@ -75,12 +75,12 @@ pub(super) fn verify_environment() -> Result<(), String> {
     }
 
     test_execution::verify_runner()?;
-    crate::output::info("environment verification: pass");
+    crate::output::pass("environment verification");
     Ok(())
 }
 
 /// Verifies the complete stable, analysis, and release workstation tool set.
-pub(super) fn verify_complete_environment() -> Result<(), String> {
+pub(crate) fn verify_complete_environment() -> Result<(), String> {
     verify_environment()?;
     let mut failures = Vec::new();
     for tool in required_tool_specs()? {
@@ -89,7 +89,7 @@ pub(super) fn verify_complete_environment() -> Result<(), String> {
         }
     }
     if failures.is_empty() {
-        crate::output::info("complete environment tool set: pass");
+        crate::output::pass("complete environment tool set");
         Ok(())
     } else {
         Err(format!(
@@ -100,17 +100,17 @@ pub(super) fn verify_complete_environment() -> Result<(), String> {
 }
 
 /// Describes one executable and an actionable installation hint.
-pub(super) struct ToolSpec {
+pub(crate) struct ToolSpec {
     /// Stable machine-readable manifest key.
-    pub(super) key: &'static str,
+    pub(crate) key: &'static str,
     /// Human-readable tool name used in diagnostics.
-    pub(super) label: &'static str,
+    pub(crate) label: &'static str,
     /// Executable resolved from the selected environment.
-    pub(super) command: String,
+    pub(crate) command: String,
     /// Arguments that print a bounded identity or version.
-    pub(super) arguments: &'static [&'static str],
+    pub(crate) arguments: &'static [&'static str],
     /// Action the operator can take when verification fails.
-    pub(super) install_hint: &'static str,
+    pub(crate) install_hint: &'static str,
 }
 
 /// Describes the advisory checker shared by release qualification and workstation checks.
@@ -136,7 +136,7 @@ fn nextest_tool_spec(cargo: &str) -> ToolSpec {
 }
 
 /// Returns the complete release-workstation tool inventory.
-pub(super) fn required_tool_specs() -> Result<Vec<ToolSpec>, String> {
+pub(crate) fn required_tool_specs() -> Result<Vec<ToolSpec>, String> {
     let cargo = cargo_command()?;
     Ok(vec![
         nextest_tool_spec(&cargo),
@@ -236,7 +236,7 @@ pub(super) fn required_tool_specs() -> Result<Vec<ToolSpec>, String> {
 }
 
 /// Returns a verified one-line tool version or an actionable error.
-pub(super) fn tool_version(tool: &ToolSpec) -> Result<String, String> {
+pub(crate) fn tool_version(tool: &ToolSpec) -> Result<String, String> {
     command_output(&tool.command, tool.arguments)
         .map(|output| output.lines().next().unwrap_or_default().to_owned())
         .map_err(|error| {
@@ -248,13 +248,16 @@ pub(super) fn tool_version(tool: &ToolSpec) -> Result<String, String> {
 }
 
 /// Prints the machine-readable environment manifest without writing tracked files.
-pub(super) fn print_environment_manifest() -> Result<(), String> {
-    println!("{} {}", constants::MANIFEST, environment_manifest()?);
-    Ok(())
+pub(crate) fn print_environment_manifest() -> Result<(), String> {
+    crate::output::machine(format!(
+        "{} {}",
+        constants::MANIFEST,
+        environment_manifest()?
+    ))
 }
 
 /// Builds the machine-readable environment manifest used in generated evidence.
-pub(super) fn environment_manifest() -> Result<String, String> {
+pub(crate) fn environment_manifest() -> Result<String, String> {
     let rustc_version = command_output(&rustc_command()?, &["--version"])?;
     let cargo_version = command_output(&cargo_command()?, &["--version"])?;
     let rust_channel = rust_channel()?;
@@ -286,7 +289,7 @@ pub(super) fn environment_manifest() -> Result<String, String> {
 }
 
 /// Returns the host operating-system identity without a user-specific path.
-pub(super) fn host_image() -> String {
+pub(crate) fn host_image() -> String {
     fs::read_to_string("/etc/os-release")
         .ok()
         .and_then(|content| {
@@ -299,7 +302,7 @@ pub(super) fn host_image() -> String {
 }
 
 /// Renders all specialized tool versions, retaining unavailable diagnostics.
-pub(super) fn environment_tools_json() -> Result<String, String> {
+pub(crate) fn environment_tools_json() -> Result<String, String> {
     Ok(required_tool_specs()?
         .into_iter()
         .map(|tool| {
@@ -312,7 +315,7 @@ pub(super) fn environment_tools_json() -> Result<String, String> {
 }
 
 /// Reads the selected Rust channel from the repository toolchain manifest.
-pub(super) fn rust_channel() -> Result<String, String> {
+pub(crate) fn rust_channel() -> Result<String, String> {
     let path = workspace_root()?.join("rust-toolchain.toml");
     let manifest = fs::read_to_string(&path)
         .map_err(|error| format!("could not read {}: {error}", path.display()))?;
@@ -325,7 +328,7 @@ pub(super) fn rust_channel() -> Result<String, String> {
 }
 
 /// Returns whether one compiler version belongs to the selected toolchain channel.
-pub(super) fn rust_version_matches_channel(rustc_version: &str, channel: &str) -> bool {
+pub(crate) fn rust_version_matches_channel(rustc_version: &str, channel: &str) -> bool {
     if channel == "stable" {
         rustc_version.starts_with("rustc ")
             && !["-nightly", "-beta", "-dev"]
@@ -337,12 +340,12 @@ pub(super) fn rust_version_matches_channel(rustc_version: &str, channel: &str) -
 }
 
 /// Derives the active conformance stage from required portable manifest suites.
-pub(super) fn active_stage() -> Result<u8, String> {
+pub(crate) fn active_stage() -> Result<u8, String> {
     portable_stage::active_conformance_stage(&workspace_root()?)
 }
 
 /// Escapes a string for the limited JSON values emitted by automation evidence.
-pub(super) fn json_string(value: &str) -> String {
+pub(crate) fn json_string(value: &str) -> String {
     let mut escaped = String::with_capacity(value.len());
     for character in value.chars() {
         match character {

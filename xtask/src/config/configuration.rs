@@ -2,26 +2,26 @@
 
 //! Repository configuration access and active test-minimum selection.
 
-use super::{
+use crate::{
     BTreeMap, Component, Path, PathBuf, constants, env, read_workspace_text, workspace_root,
 };
 
-pub(super) use crate::configuration_models::{Automation, RepositoryDirectory, TestRunner};
+pub(crate) use crate::configuration_models::{Automation, RepositoryDirectory, TestRunner};
 use crate::configuration_models::{Layout, TestMinimumProfile};
 use serde::de::DeserializeOwned;
 
 /// Deserializes TOML with its owning file/context in parser diagnostics.
-pub(super) fn parse<T: DeserializeOwned>(content: &str, label: &str) -> Result<T, String> {
+pub(crate) fn parse<T: DeserializeOwned>(content: &str, label: &str) -> Result<T, String> {
     toml::from_str(content).map_err(|error| format!("invalid {label}: {error}"))
 }
 
 /// Reads a workspace-owned typed configuration.
-pub(super) fn read<T: DeserializeOwned>(root: &Path, relative: &str) -> Result<T, String> {
+pub(crate) fn read<T: DeserializeOwned>(root: &Path, relative: &str) -> Result<T, String> {
     parse(&read_workspace_text(root, relative)?, relative)
 }
 
 /// Checks a configuration schema independently of package and language versions.
-pub(super) fn require_schema(schema: u32, context: &str) -> Result<(), String> {
+pub(crate) fn require_schema(schema: u32, context: &str) -> Result<(), String> {
     if schema != constants::CONFIG_SCHEMA_VERSION {
         return Err(format!("unsupported {context} schema: {schema}"));
     }
@@ -29,7 +29,7 @@ pub(super) fn require_schema(schema: u32, context: &str) -> Result<(), String> {
 }
 
 /// Loads the closed automation settings with fail-closed execution defaults.
-pub(super) fn automation() -> Result<Automation, String> {
+pub(crate) fn automation() -> Result<Automation, String> {
     let config: Automation = read(&workspace_root()?, constants::AUTOMATION_CONFIG_FILE)?;
     require_schema(config.schema_version, "automation configuration")?;
     if !is_safe_relative_path(Path::new(&config.output.results_root))
@@ -77,7 +77,7 @@ fn scalar(value: &toml::Value) -> Option<String> {
 }
 
 /// Accepts only nonempty paths composed of normal workspace-relative components.
-pub(super) fn is_safe_relative_path(path: &Path) -> bool {
+pub(crate) fn is_safe_relative_path(path: &Path) -> bool {
     !path.as_os_str().is_empty()
         && path
             .components()
@@ -85,7 +85,7 @@ pub(super) fn is_safe_relative_path(path: &Path) -> bool {
 }
 
 /// Reads the closed ownership inventory through typed TOML.
-pub(super) fn repository_directories(root: &Path) -> Result<Vec<RepositoryDirectory>, String> {
+pub(crate) fn repository_directories(root: &Path) -> Result<Vec<RepositoryDirectory>, String> {
     let layout: Layout = read(root, constants::REPOSITORY_LAYOUT_FILE)?;
     require_schema(layout.schema_version, "repository layout")?;
     if layout.directory.is_empty() {
@@ -103,7 +103,7 @@ pub(super) fn repository_directories(root: &Path) -> Result<Vec<RepositoryDirect
 }
 
 /// Reads section values through the standard TOML parser, not line splitting.
-pub(super) fn configuration_section(
+pub(crate) fn configuration_section(
     content: &str,
     name: &str,
 ) -> Result<Vec<(String, String)>, String> {
@@ -122,12 +122,12 @@ pub(super) fn configuration_section(
 }
 
 /// Reads a root scalar without inheriting values from nested sections.
-pub(super) fn configuration_value(content: &str, key: &str) -> Option<String> {
+pub(crate) fn configuration_value(content: &str, key: &str) -> Option<String> {
     quality_value_from(content, "", key)
 }
 
 /// Reads a typed automation setting through its owning structure.
-pub(super) fn automation_value(name: &str, key: &str) -> Result<String, String> {
+pub(crate) fn automation_value(name: &str, key: &str) -> Result<String, String> {
     let config = automation()?;
     let value = match (name, key) {
         ("tools", "cargo") => config.tools.cargo,
@@ -163,24 +163,24 @@ fn configured_command(environment: &str, key: &str) -> Result<String, String> {
 }
 
 /// Returns the selected Cargo executable for all xtask subprocesses.
-pub(super) fn cargo_command() -> Result<String, String> {
+pub(crate) fn cargo_command() -> Result<String, String> {
     configured_command(constants::CARGO_COMMAND_ENV, "cargo")
 }
 
 /// Returns the selected Rust compiler executable for environment and release checks.
-pub(super) fn rustc_command() -> Result<String, String> {
+pub(crate) fn rustc_command() -> Result<String, String> {
     configured_command(constants::RUSTC_COMMAND_ENV, "rustc")
 }
 
 /// Resolves Cargo's actual target directory, including configuration-file overrides.
-pub(super) fn cargo_target_directory() -> Result<PathBuf, String> {
+pub(crate) fn cargo_target_directory() -> Result<PathBuf, String> {
     Ok(crate::cargo_discovery::metadata(&workspace_root()?, false)?
         .target_directory
         .into_std_path_buf())
 }
 
 /// Reads one required quality setting with parser errors retained.
-pub(super) fn quality_value(name: &str, key: &str) -> Result<String, String> {
+pub(crate) fn quality_value(name: &str, key: &str) -> Result<String, String> {
     let content = read_workspace_text(&workspace_root()?, constants::QUALITY_GATES_FILE)?;
     let document: toml::Table = parse(&content, constants::QUALITY_GATES_FILE)?;
     section(&document, name)
@@ -190,19 +190,19 @@ pub(super) fn quality_value(name: &str, key: &str) -> Result<String, String> {
 }
 
 /// Compatibility accessor backed by parsed TOML rather than raw text.
-pub(super) fn quality_value_from(content: &str, name: &str, key: &str) -> Option<String> {
+pub(crate) fn quality_value_from(content: &str, name: &str, key: &str) -> Option<String> {
     let document = toml::from_str::<toml::Table>(content).ok()?;
     scalar(section(&document, name)?.get(key)?)
 }
 
 /// Reads one quoted-string array from the quality configuration.
-pub(super) fn quality_array(section: &str, key: &str) -> Result<Vec<String>, String> {
+pub(crate) fn quality_array(section: &str, key: &str) -> Result<Vec<String>, String> {
     let configuration = read_workspace_text(&workspace_root()?, constants::QUALITY_GATES_FILE)?;
     configuration_array_from(&configuration, section, key)
 }
 
 /// Reads escaped/commented/multiline string arrays without splitting comma-containing values.
-pub(super) fn configuration_array_from(
+pub(crate) fn configuration_array_from(
     content: &str,
     name: &str,
     key: &str,
@@ -229,12 +229,12 @@ pub(super) fn configuration_array_from(
 }
 
 /// Returns the durable current test-minimum profile.
-pub(super) fn active_test_profile() -> &'static str {
+pub(crate) fn active_test_profile() -> &'static str {
     constants::CURRENT_TEST_PROFILE
 }
 
 /// Reads typed test counts with extensible named category profiles.
-pub(super) fn test_minimums(profile: &str) -> Result<BTreeMap<String, usize>, String> {
+pub(crate) fn test_minimums(profile: &str) -> Result<BTreeMap<String, usize>, String> {
     let profiles: BTreeMap<String, TestMinimumProfile> =
         read(&workspace_root()?, constants::TEST_SUITES_FILE)?;
     let profile = profiles
@@ -247,5 +247,5 @@ pub(super) fn test_minimums(profile: &str) -> Result<BTreeMap<String, usize>, St
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/configuration.rs"]
+#[path = "../../tests/unit/configuration.rs"]
 mod tests;

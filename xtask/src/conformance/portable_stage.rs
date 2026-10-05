@@ -34,5 +34,5 @@ fn parse_active_stage(manifest: &str) -> Result<u8, String> {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/portable_stage.rs"]
+#[path = "../../tests/unit/portable_stage.rs"]
 mod tests;
