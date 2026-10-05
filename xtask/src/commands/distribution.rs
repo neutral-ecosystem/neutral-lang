@@ -2,6 +2,7 @@
 
 //! commands / distribution responsibilities for repository automation.
 
+use crate::constants::flags;
 use crate::{
     BTreeMap, Command, Path, PathBuf, QualityProfile, ValidationTarget, cargo_target_directory,
     check_boundaries, command_output, constants, fs, html_spdx_marker, json_string, output,
@@ -91,7 +92,7 @@ pub(crate) fn package() -> Result<(), String> {
         return Err("GitHub binary distribution is not selected".to_owned());
     }
     for binary in &plan.binaries {
-        run_cargo(&["build", "--release", "--locked", "--package", binary])?;
+        run_cargo(&["build", "--release", flags::LOCKED, flags::PACKAGE, binary])?;
     }
     let root = workspace_root()?;
     let host = rust_host()?;
@@ -167,7 +168,7 @@ pub(crate) fn release_distribution_assets(
         },
         DistributionAsset {
             filename: constants::RELEASE_PROVENANCE_FILE.to_owned(),
-            bytes: format!("{{\n  \"schema_version\": 1,\n  \"builder\": \"cargo xtask package\",\n  \"candidate_ref\": \"main\",\n  \"candidate_commit\": \"{}\",\n  \"release_tag\": \"{}\",\n  \"target\": \"{}\",\n  \"rustc\": \"{}\",\n  \"cargo_lock_sha256\": \"{}\",\n  \"reproducible_command\": \"cargo xtask package\"\n}}\n", json_string(candidate_commit), json_string(&plan.release_tag), json_string(host), json_string(&command_output(&rustc_command()?, &["--version"])?), sha256_hex(&lock_bytes)).into_bytes(),
+            bytes: format!("{{\n  \"schema_version\": 1,\n  \"builder\": \"cargo xtask package\",\n  \"candidate_ref\": \"main\",\n  \"candidate_commit\": \"{}\",\n  \"release_tag\": \"{}\",\n  \"target\": \"{}\",\n  \"rustc\": \"{}\",\n  \"cargo_lock_sha256\": \"{}\",\n  \"reproducible_command\": \"cargo xtask package\"\n}}\n", json_string(candidate_commit), json_string(&plan.release_tag), json_string(host), json_string(&command_output(&rustc_command()?, &[flags::VERSION])?), sha256_hex(&lock_bytes)).into_bytes(),
         },
     ];
     let mut entries = Vec::new();

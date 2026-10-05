@@ -53,7 +53,7 @@ pub(crate) fn lock_versions(
     current: &str,
     requested: &str,
 ) -> Result<String, String> {
-    let mut document = parse(content, "Cargo.lock")?;
+    let mut document = parse(content, crate::constants::CARGO_LOCK_FILE)?;
     let packages = document
         .get_mut("package")
         .and_then(Item::as_array_of_tables_mut)

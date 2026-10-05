@@ -2,6 +2,7 @@
 
 //! commands / documentation responsibilities for repository automation.
 
+use crate::constants::flags;
 use crate::{
     Command, Path, RUSTDOC_HEADER_TEMPLATE, RUSTDOC_INDEX_TEMPLATE, cargo_command, cargo_discovery,
     cargo_target_directory, constants, env, fs, output, workspace_root,
@@ -93,7 +94,7 @@ pub(crate) fn run_rustdoc() -> Result<(), String> {
     rustdoc_flags.push(constants::RUSTDOC_FLAG_SEPARATOR);
     rustdoc_flags.push_str(&rustdoc_header_configuration());
 
-    let arguments = ["doc", "--workspace", "--no-deps"];
+    let arguments = ["doc", flags::WORKSPACE, "--no-deps"];
     let cargo = cargo_command()?;
     output::invocation(&cargo, &arguments);
     let status = Command::new(&cargo)

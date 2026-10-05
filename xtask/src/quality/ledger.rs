@@ -2,6 +2,7 @@
 
 //! quality / ledger responsibilities for repository automation.
 
+use crate::constants::flags;
 use crate::{
     Path, PathBuf, QualityProfile, SystemTime, UNIX_EPOCH, check_quality_inventory,
     collect_named_files, command_output, configuration_value, constants, fs, html_spdx_marker,
@@ -45,7 +46,7 @@ pub(crate) fn evaluate_quality(profile: QualityProfile) -> Result<(), String> {
     }
     let manifest_sha256 = sha256_file(&root.join(constants::QUALITY_MANIFEST_FILE))?;
     let quality_gates_sha256 = sha256_file(&root.join(constants::QUALITY_GATES_FILE))?;
-    let toolchain = command_output(&rustc_command()?, &["--version"])?;
+    let toolchain = command_output(&rustc_command()?, &[flags::VERSION])?;
     let license_marker = line_spdx_marker(&project_license(&root)?);
     fs::write(
         &output,

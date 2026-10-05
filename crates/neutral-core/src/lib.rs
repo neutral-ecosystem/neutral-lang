@@ -253,7 +253,7 @@ pub fn nht_frame(tag: &str, payload: &[u8]) -> Result<Vec<u8>, CoreError> {
 impl fmt::Display for SourceContentDigest {
     /// Formats the digest using the frozen `sha256:` lower-hex text form.
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "sha256:")?;
+        write!(formatter, "{SHA256_TEXT_PREFIX}")?;
         for byte in self.0 {
             write!(formatter, "{byte:02x}")?;
         }

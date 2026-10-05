@@ -2,6 +2,7 @@
 
 //! Automatically retained, source-bound quality measurements.
 
+use crate::constants::{flags, reports};
 use crate::*;
 use serde::{Deserialize, Serialize};
 use std::process::Stdio;
@@ -69,7 +70,7 @@ impl Measurement {
             return Err(format!("unknown quality gate: {gate}"));
         }
         let root = workspace_root()?;
-        let toolchain = command_output(&rustc_command()?, &["--version"])?;
+        let toolchain = command_output(&rustc_command()?, &[flags::VERSION])?;
         if matches!(gate, "coverage" | "fuzz") && !toolchain.contains("-nightly") {
             return Err("coverage and fuzz measurements require the isolated nightly toolchain; use RUSTUP_TOOLCHAIN=nightly".to_owned());
         }
@@ -77,7 +78,7 @@ impl Measurement {
         let directory = generated_root()?.join(&inputs_sha256).join(gate);
         fs::create_dir_all(&directory)
             .map_err(|error| format!("could not create gate reports: {error}"))?;
-        let old = directory.join("receipt.json");
+        let old = directory.join(reports::RECEIPT);
         if old.exists() {
             fs::remove_file(old)
                 .map_err(|error| format!("could not invalidate receipt: {error}"))?;
@@ -210,14 +211,14 @@ impl Measurement {
         validate_reports(&self.receipt, &self.directory)?;
         let json = serde_json::to_string_pretty(&self.receipt)
             .map_err(|error| format!("could not serialize receipt: {error}"))?;
-        fs::write(self.directory.join("receipt.json"), format!("{json}\n"))
+        fs::write(self.directory.join(reports::RECEIPT), format!("{json}\n"))
             .map_err(|error| format!("could not write receipt: {error}"))?;
         output::pass(format!(
             "{} ({} tool runs)",
             self.receipt.gate,
             self.receipt.invocations.len()
         ));
-        output::file("receipt", &self.directory.join("receipt.json"));
+        output::file("receipt", &self.directory.join(reports::RECEIPT));
         Ok(())
     }
 }
@@ -341,8 +342,8 @@ pub(crate) fn retain() -> Result<(), String> {
                 .map_err(|error| format!("could not retain report: {error}"))?;
         }
         fs::copy(
-            source.join("receipt.json"),
-            destination.join("receipt.json"),
+            source.join(reports::RECEIPT),
+            destination.join(reports::RECEIPT),
         )
         .map_err(|error| format!("could not retain receipt: {error}"))?;
     }
@@ -352,7 +353,7 @@ pub(crate) fn retain() -> Result<(), String> {
 /// Loads one strict receipt schema.
 fn read_receipt(directory: &Path) -> Result<Receipt, String> {
     serde_json::from_slice(
-        &fs::read(directory.join("receipt.json"))
+        &fs::read(directory.join(reports::RECEIPT))
             .map_err(|error| format!("{}: {error}", directory.display()))?,
     )
     .map_err(|error| format!("invalid quality receipt: {error}"))
@@ -518,7 +519,11 @@ fn validate_fuzz(receipt: &Receipt, directory: &Path) -> Result<(), String> {
 
 /// Validates native performance measurements against the configured acceptance policy.
 fn validate_performance(receipt: &Receipt, directory: &Path) -> Result<(), String> {
-    for report in ["benchmark.stdout", "massif.out", "memcheck.stderr"] {
+    for report in [
+        reports::BENCHMARK_STDOUT,
+        reports::MASSIF,
+        reports::MEMCHECK_STDERR,
+    ] {
         require_report(receipt, report)?;
     }
     let profile = if receipt.gate == "performance-soak" {
@@ -531,7 +536,7 @@ fn validate_performance(receipt: &Receipt, directory: &Path) -> Result<(), Strin
     }) {
         return Err("performance profile does not match its gate".to_owned());
     }
-    let output = fs::read_to_string(directory.join("benchmark.stdout"))
+    let output = fs::read_to_string(directory.join(reports::BENCHMARK_STDOUT))
         .map_err(|error| format!("missing benchmark: {error}"))?;
     for phase in [
         "compile-end-to-end",
@@ -546,9 +551,9 @@ fn validate_performance(receipt: &Receipt, directory: &Path) -> Result<(), Strin
             return Err(format!("benchmark has no {phase} measurement"));
         }
     }
-    let massif = fs::read_to_string(directory.join("massif.out"))
+    let massif = fs::read_to_string(directory.join(reports::MASSIF))
         .map_err(|error| format!("missing heap profile: {error}"))?;
-    let memcheck = fs::read_to_string(directory.join("memcheck.stderr"))
+    let memcheck = fs::read_to_string(directory.join(reports::MEMCHECK_STDERR))
         .map_err(|error| format!("missing allocation review: {error}"))?;
     if !massif.contains("mem_heap_B=")
         || !memcheck.contains("ERROR SUMMARY: 0 errors")

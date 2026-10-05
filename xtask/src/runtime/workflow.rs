@@ -2,6 +2,7 @@
 
 //! runtime / workflow responsibilities for repository automation.
 
+use crate::constants::flags;
 use crate::{
     Instant, OpenOptions, Path, SystemTime, UNIX_EPOCH, WorkflowStep, command_output, constants,
     fs, json_string, output, read_workspace_text, result_root, rustc_command,
@@ -166,7 +167,7 @@ pub(crate) fn write_workflow_summary(
     let commit = command_output(constants::GIT_COMMAND, &["rev-parse", "HEAD"])?;
     let worktree_clean =
         command_output(constants::GIT_COMMAND, &["status", "--porcelain"])?.is_empty();
-    let rustc = command_output(&rustc_command()?, &["--version"])?;
+    let rustc = command_output(&rustc_command()?, &[flags::VERSION])?;
     fs::write(
         path,
         format!(

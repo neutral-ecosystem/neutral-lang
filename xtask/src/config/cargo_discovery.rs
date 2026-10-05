@@ -2,6 +2,7 @@
 
 //! Cargo-owned workspace, output-path, and resolved dependency discovery.
 
+use crate::constants::flags;
 use cargo_metadata::{DependencyKind, Metadata, MetadataCommand, NodeDep, Package, PackageId};
 use std::{
     collections::BTreeSet,
@@ -10,7 +11,7 @@ use std::{
 
 /// Queries the selected Cargo executable without modifying its lockfile or using the network.
 pub(crate) fn metadata(root: &Path, dependencies: bool) -> Result<Metadata, String> {
-    let mut options = vec!["--locked".to_owned(), "--offline".to_owned()];
+    let mut options = vec![flags::LOCKED.to_owned(), "--offline".to_owned()];
     if dependencies {
         let compiler = crate::command_output(&crate::configuration::rustc_command()?, &["-vV"])?;
         let host = compiler

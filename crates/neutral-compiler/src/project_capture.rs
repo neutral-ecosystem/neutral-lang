@@ -887,7 +887,7 @@ pub(crate) fn scan_vocabulary_requirements(
         let as_keyword = words.next().ok_or(ProjectCaptureError::InvalidHeader)?;
         let alias = words.next().ok_or(ProjectCaptureError::InvalidHeader)?;
         if words.next().is_some()
-            || as_keyword != "as"
+            || as_keyword != crate::language::graph_names::AS
             || !valid_vocabulary_identity(identity)
             || !valid_name_segment(alias)
             || !identities.insert(identity.to_owned())

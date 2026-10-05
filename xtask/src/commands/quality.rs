@@ -2,6 +2,7 @@
 
 //! commands / quality responsibilities for repository automation.
 
+use crate::constants::flags;
 use crate::{
     BuildProfile, QualityAction, QualityProfile, TestLevel, ValidationTarget, WorkflowStep,
     approve_quality_release, build, check, constants, documentation, evaluate_quality,
@@ -35,7 +36,14 @@ pub(crate) fn quality(profile: QualityProfile) -> Result<(), String> {
         ("smoke", Box::new(|| test_suite(TestLevel::Smoke))),
         (
             "probe-build",
-            Box::new(|| run_cargo(&["build", "--locked", "--package", constants::NEUTRAL_PROBE])),
+            Box::new(|| {
+                run_cargo(&[
+                    "build",
+                    flags::LOCKED,
+                    flags::PACKAGE,
+                    constants::NEUTRAL_PROBE,
+                ])
+            }),
         ),
         ("docs", Box::new(documentation)),
     ];

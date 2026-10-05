@@ -20,7 +20,10 @@ pub(crate) fn check_traceability() -> Result<(), String> {
         &bundle.member("specs/fixtures"),
         &bundle.member("conformance/oracles"),
     )?;
-    verify_frozen_input_digests(&root, &bundle.member("specs/contracts/freeze.toml"))
+    verify_frozen_input_digests(
+        &root,
+        &bundle.member(crate::constants::BUNDLE_CONTRACT_FREEZE_MEMBER),
+    )
 }
 
 /// Checks the version-independent conformance inventory of an installed portable package.

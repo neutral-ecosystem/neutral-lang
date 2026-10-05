@@ -49,11 +49,11 @@ impl ProjectPublicType {
             return Err(CoreError::TranscriptLengthExceeded);
         }
         match self {
-            Self::Num => nht_frame("num", &[]),
-            Self::String => nht_frame("string", &[]),
-            Self::Bool => nht_frame("bool", &[]),
-            Self::Url => nht_frame("url", &[]),
-            Self::Path => nht_frame("path", &[]),
+            Self::Num => nht_frame(crate::language::NUM, &[]),
+            Self::String => nht_frame(crate::language::STRING, &[]),
+            Self::Bool => nht_frame(crate::language::BOOL, &[]),
+            Self::Url => nht_frame(crate::language::URL, &[]),
+            Self::Path => nht_frame(crate::language::PATH, &[]),
             Self::VocabularyNominal {
                 identity,
                 version,

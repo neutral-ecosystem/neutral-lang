@@ -406,10 +406,10 @@ pub(crate) fn verify_ignore_policy(root: &Path) -> Result<(), String> {
         ));
     }
     let bundle = ReleasedBundle::load(root)?;
-    let freeze = bundle.member("specs/contracts/freeze.toml");
+    let freeze = bundle.member(crate::constants::BUNDLE_CONTRACT_FREEZE_MEMBER);
     let manifest = bundle.member("conformance/manifest.toml");
     for required in [
-        "Cargo.lock",
+        crate::constants::CARGO_LOCK_FILE,
         "rust-toolchain.toml",
         constants::AUTOMATION_CONFIG_FILE,
         constants::CONFORMANCE_CONFIG_FILE,

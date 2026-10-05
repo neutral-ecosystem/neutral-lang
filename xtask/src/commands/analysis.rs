@@ -2,6 +2,7 @@
 
 //! commands / analysis responsibilities for repository automation.
 
+use crate::constants::{flags, reports};
 use crate::{
     FuzzMode, Path, PathBuf, PerformanceProfile, cargo_discovery, constants, fs,
     is_safe_relative_path, output, quality_array, quality_evidence, quality_output_path,
@@ -96,7 +97,7 @@ pub(crate) fn coverage() -> Result<(), String> {
         .to_str()
         .ok_or_else(|| "coverage JSON path is not valid UTF-8".to_owned())?;
     measurement.cargo(
-        &["llvm-cov", "--workspace", "--all-targets", "--no-report"],
+        &["llvm-cov", flags::WORKSPACE, "--all-targets", "--no-report"],
         "tests",
     )?;
     measurement.cargo(
@@ -185,7 +186,7 @@ pub(crate) fn performance(profile: PerformanceProfile) -> Result<(), String> {
             }
             let arguments = [
                 "bench",
-                "--package",
+                flags::PACKAGE,
                 package,
                 "--bench",
                 target,
@@ -200,7 +201,7 @@ pub(crate) fn performance(profile: PerformanceProfile) -> Result<(), String> {
             measurement.cargo(
                 &[
                     "bench",
-                    "--package",
+                    flags::PACKAGE,
                     package,
                     "--bench",
                     target,
@@ -212,14 +213,14 @@ pub(crate) fn performance(profile: PerformanceProfile) -> Result<(), String> {
             let build = fs::read_to_string(measurement.directory.join("build.stdout"))
                 .map_err(|error| format!("could not read benchmark build: {error}"))?;
             let executable = cargo_discovery::benchmark_executable(&build, target)?;
-            let heap_report = measurement.directory.join("massif.out");
+            let heap_report = measurement.directory.join(reports::MASSIF);
             let heap_argument = format!("--massif-out-file={}", heap_report.display());
             measurement.run(
                 constants::VALGRIND_COMMAND,
                 &["--tool=massif", &heap_argument, &executable, profile],
                 "massif",
             )?;
-            measurement.copy_report(&heap_report, "massif.out")?;
+            measurement.copy_report(&heap_report, reports::MASSIF)?;
             measurement.run(
                 constants::VALGRIND_COMMAND,
                 &[

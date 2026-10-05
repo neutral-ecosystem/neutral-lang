@@ -2,6 +2,7 @@
 
 //! commands / testing responsibilities for repository automation.
 
+use crate::constants::flags;
 use crate::{BTreeMap, TestLevel, constants, run_cargo, test_execution};
 
 /// Runs one independently selectable, stage-free test level.
@@ -19,7 +20,7 @@ pub(crate) fn run_shell_smoke() -> Result<(), String> {
     run_cargo(&[
         "run",
         "--quiet",
-        "--package",
+        flags::PACKAGE,
         constants::NEUTRAL_CLI,
         "--",
         "--help",
@@ -27,7 +28,7 @@ pub(crate) fn run_shell_smoke() -> Result<(), String> {
     run_cargo(&[
         "run",
         "--quiet",
-        "--package",
+        flags::PACKAGE,
         constants::NEUTRAL_PROBE,
         "--",
         "--help",

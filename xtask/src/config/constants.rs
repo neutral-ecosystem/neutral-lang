@@ -4,6 +4,30 @@
 
 /// Repository configuration schema, unrelated to package release versions.
 pub const CONFIG_SCHEMA_VERSION: u32 = 1;
+
+/// Process flags shared by command construction and tool discovery.
+pub mod flags {
+    /// Prints the selected tool's version without executing its main task.
+    pub const VERSION: &str = "--version";
+    /// Prevents Cargo from changing the resolved dependency lock.
+    pub const LOCKED: &str = "--locked";
+    /// Selects all Cargo workspace packages.
+    pub const WORKSPACE: &str = "--workspace";
+    /// Selects an explicitly named Cargo package.
+    pub const PACKAGE: &str = "--package";
+}
+
+/// Filenames shared by quality measurement producers and evidence validators.
+pub mod reports {
+    /// Machine-readable measurement receipt.
+    pub const RECEIPT: &str = "receipt.json";
+    /// Captured benchmark output used for baseline validation.
+    pub const BENCHMARK_STDOUT: &str = "benchmark.stdout";
+    /// Heap allocation profile produced by Valgrind Massif.
+    pub const MASSIF: &str = "massif.out";
+    /// Captured Valgrind memory-check diagnostics.
+    pub const MEMCHECK_STDERR: &str = "memcheck.stderr";
+}
 /// Explicit test-runner override; no silent fallback is permitted.
 pub const TEST_RUNNER_ENV: &str = "NEUTRAL_TEST_RUNNER";
 /// Explicit per-invocation test-report verbosity override.
@@ -139,6 +163,8 @@ pub const PORTABLE_CONTRACT_DIRECTORY: &str = "portable/specs/contracts";
 pub const PORTABLE_TRACEABILITY_FILE: &str = "portable/specs/TRACEABILITY.md";
 /// Active portable contract-freeze manifest relative to the workspace root.
 pub const PORTABLE_CONTRACT_FREEZE_FILE: &str = "portable/specs/contracts/freeze.toml";
+/// Contract freeze path inside either an active or archived portable bundle.
+pub const BUNDLE_CONTRACT_FREEZE_MEMBER: &str = "specs/contracts/freeze.toml";
 /// Active portable fixture root relative to the workspace root.
 pub const PORTABLE_FIXTURE_DIRECTORY: &str = "portable/specs/fixtures";
 /// Active portable oracle root relative to the workspace root.

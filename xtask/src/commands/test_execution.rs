@@ -2,6 +2,7 @@
 
 //! Configured test execution and inventory independent of repository policy compositions.
 
+use crate::constants::flags;
 use crate::{configuration, constants, interface::TestLevel};
 use configuration::TestRunner;
 use nextest_metadata::{RustTestSuiteStatusSummary, TestListSummary};
@@ -31,7 +32,7 @@ fn parse_runner(value: &str) -> Result<TestRunner, String> {
 /// Verifies the selected runner early and explains how to install it.
 pub(crate) fn verify_runner() -> Result<(), String> {
     if runner()? == TestRunner::Nextest {
-        crate::command_output(&configuration::cargo_command()?, &["nextest", "--version"])
+        crate::command_output(&configuration::cargo_command()?, &["nextest", flags::VERSION])
             .map_err(|error| format!("nextest is required: {error}; run `cargo install cargo-nextest --locked` (or explicitly set {}=cargo)", constants::TEST_RUNNER_ENV))?;
         let config = configuration::automation()?.testing.config;
         crate::read_workspace_text(&crate::workspace_root()?, &config)?;
@@ -68,7 +69,7 @@ fn arguments(
             ]
         }
     };
-    arguments.extend(["--workspace", "--locked", "--lib", "--bins"].map(str::to_owned));
+    arguments.extend([flags::WORKSPACE, flags::LOCKED, "--lib", "--bins"].map(str::to_owned));
     if !unit {
         arguments.push("--tests".to_owned());
     }
@@ -153,7 +154,7 @@ pub(crate) fn run(level: TestLevel, full_gate: bool) -> Result<(), String> {
         verify_counts(configuration::active_test_profile(), full_gate)?;
         // Nextest runs binaries, not doctests. Keep doctests in the full quality gate.
         if full_gate {
-            crate::run_cargo(&["test", "--workspace", "--doc", "--locked"])?;
+            crate::run_cargo(&["test", flags::WORKSPACE, "--doc", flags::LOCKED])?;
         }
     }
     Ok(())

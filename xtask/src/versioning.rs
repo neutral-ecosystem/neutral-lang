@@ -3,6 +3,7 @@
 //! Package release versioning, dependency lock, and inherited contract checks.
 
 use super::*;
+use crate::constants::flags;
 
 /// Executes the stable version command family.
 pub(super) fn version(action: VersionAction) -> Result<(), String> {
@@ -23,7 +24,7 @@ pub(super) fn show_versions() -> Result<(), String> {
     crate::output::info(format!("package-release {package}"));
     let freeze = read_workspace_text(
         &root,
-        &ReleasedBundle::load(&root)?.member("specs/contracts/freeze.toml"),
+        &ReleasedBundle::load(&root)?.member(crate::constants::BUNDLE_CONTRACT_FREEZE_MEMBER),
     )?;
     for (name, value) in configuration_section(&freeze, "contract_versions")? {
         crate::output::info(format!("contract {name}={value}"));
@@ -61,7 +62,7 @@ pub(super) fn check_versions() -> Result<(), String> {
     verify_dependency_lock(&root, &package_version)?;
     let freeze = read_workspace_text(
         &root,
-        &ReleasedBundle::load(&root)?.member("specs/contracts/freeze.toml"),
+        &ReleasedBundle::load(&root)?.member(crate::constants::BUNDLE_CONTRACT_FREEZE_MEMBER),
     )?;
     if configuration_value(&freeze, "status").as_deref() != Some("approved")
         || configuration_section(&freeze, "contract_versions")?.is_empty()
@@ -75,7 +76,7 @@ pub(super) fn check_versions() -> Result<(), String> {
 /// Rejects ordinary version work mixed with unreviewed normative changes.
 pub(super) fn ensure_no_unreviewed_contract_changes(root: &Path) -> Result<(), String> {
     let bundle = ReleasedBundle::load(root)?;
-    let freeze = bundle.member("specs/contracts/freeze.toml");
+    let freeze = bundle.member(crate::constants::BUNDLE_CONTRACT_FREEZE_MEMBER);
     let specs = bundle.member("specs");
     let manifest = bundle.member("conformance/manifest.toml");
     let oracles = bundle.member("conformance/oracles");
@@ -143,9 +144,10 @@ pub(super) fn prepare_version(requested: &str) -> Result<(), String> {
         ));
     }
 
-    let freeze_bytes =
-        fs::read(root.join(ReleasedBundle::load(&root)?.member("specs/contracts/freeze.toml")))
-            .map_err(|error| format!("could not read contract freeze: {error}"))?;
+    let freeze_bytes = fs::read(root.join(
+        ReleasedBundle::load(&root)?.member(crate::constants::BUNDLE_CONTRACT_FREEZE_MEMBER),
+    ))
+    .map_err(|error| format!("could not read contract freeze: {error}"))?;
     let freeze_digest = sha256_hex(&freeze_bytes);
 
     fs::create_dir_all(&evidence_directory).map_err(|error| {
@@ -244,7 +246,8 @@ pub(super) fn verify_dependency_lock(root: &Path, package_version: &str) -> Resu
         return Err("dependency review is not approved in the quality manifest".to_owned());
     }
     let lock = read_workspace_text(root, constants::CARGO_LOCK_FILE)?;
-    let lock_document: toml::Table = configuration::parse(&lock, "Cargo.lock")?;
+    let lock_document: toml::Table =
+        configuration::parse(&lock, crate::constants::CARGO_LOCK_FILE)?;
     let locked_packages = lock_document
         .get("package")
         .and_then(toml::Value::as_array)
@@ -289,7 +292,7 @@ pub(super) fn verify_dependency_lock(root: &Path, package_version: &str) -> Resu
         .current_dir(root)
         .args([
             "metadata",
-            "--locked",
+            flags::LOCKED,
             "--offline",
             "--format-version",
             "1",

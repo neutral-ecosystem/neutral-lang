@@ -2,6 +2,7 @@
 
 //! commands / development responsibilities for repository automation.
 
+use crate::constants::flags;
 use crate::{
     BuildProfile, CiProfile, QualityProfile, TestLevel, check_boundaries, check_generated_outputs,
     check_repository_structure, check_test_layout, check_traceability, check_versions,
@@ -39,7 +40,7 @@ pub(crate) fn format_workspace(write: bool) -> Result<(), String> {
 pub(crate) fn lint() -> Result<(), String> {
     run_cargo(&[
         "clippy",
-        "--workspace",
+        flags::WORKSPACE,
         "--all-targets",
         "--all-features",
         "--",
@@ -50,7 +51,7 @@ pub(crate) fn lint() -> Result<(), String> {
 
 /// Runs locked compilation plus repository boundary and coherence checks.
 pub(crate) fn check() -> Result<(), String> {
-    run_cargo(&["check", "--workspace", "--all-targets", "--locked"])?;
+    run_cargo(&["check", flags::WORKSPACE, "--all-targets", flags::LOCKED])?;
     check_boundaries()?;
     check_test_layout()?;
     check_traceability()?;
@@ -66,8 +67,10 @@ pub(crate) fn check() -> Result<(), String> {
 /// Runs the requested durable Cargo build profile.
 pub(crate) fn build(profile: BuildProfile) -> Result<(), String> {
     match profile {
-        BuildProfile::Dev => run_cargo(&["build", "--workspace", "--locked"]),
-        BuildProfile::Release => run_cargo(&["build", "--workspace", "--release", "--locked"]),
+        BuildProfile::Dev => run_cargo(&["build", flags::WORKSPACE, flags::LOCKED]),
+        BuildProfile::Release => {
+            run_cargo(&["build", flags::WORKSPACE, "--release", flags::LOCKED])
+        }
     }
 }
 

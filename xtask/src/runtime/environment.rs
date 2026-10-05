@@ -2,6 +2,7 @@
 
 //! Workstation verification, tool inventory, and environment evidence.
 
+use crate::constants::flags;
 use crate::*;
 
 /// Creates ignored automation-result directories and records the local environment.
@@ -23,7 +24,7 @@ pub(crate) fn bootstrap() -> Result<(), String> {
 pub(crate) fn verify_environment() -> Result<(), String> {
     let workspace_root = workspace_root()?;
     for required_path in [
-        "Cargo.lock",
+        crate::constants::CARGO_LOCK_FILE,
         "rust-toolchain.toml",
         constants::AUTOMATION_CONFIG_FILE,
         "config/dependency-sources.toml",
@@ -51,8 +52,8 @@ pub(crate) fn verify_environment() -> Result<(), String> {
         ));
     }
 
-    let rustc_version = command_output(&rustc_command()?, &["--version"])?;
-    let _cargo_version = command_output(&cargo_command()?, &["--version"])?;
+    let rustc_version = command_output(&rustc_command()?, &[flags::VERSION])?;
+    let _cargo_version = command_output(&cargo_command()?, &[flags::VERSION])?;
     let rust_channel = rust_channel()?;
     if !rust_version_matches_channel(&rustc_version, &rust_channel) {
         return Err(format!(
@@ -119,7 +120,7 @@ fn advisory_tool_spec(cargo: &str) -> ToolSpec {
         key: "cargo_audit",
         label: "dependency advisory checker",
         command: cargo.to_owned(),
-        arguments: &["audit", "--version"],
+        arguments: &["audit", flags::VERSION],
         install_hint: "run `cargo install cargo-audit --locked`",
     }
 }
@@ -130,7 +131,7 @@ fn nextest_tool_spec(cargo: &str) -> ToolSpec {
         key: "cargo_nextest",
         label: "process-isolated test runner",
         command: cargo.to_owned(),
-        arguments: &["nextest", "--version"],
+        arguments: &["nextest", flags::VERSION],
         install_hint: "run `cargo install cargo-nextest --locked`",
     }
 }
@@ -144,14 +145,14 @@ pub(crate) fn required_tool_specs() -> Result<Vec<ToolSpec>, String> {
             key: "rustfmt",
             label: "Rustfmt",
             command: constants::RUSTFMT_COMMAND.to_owned(),
-            arguments: &["--version"],
+            arguments: &[flags::VERSION],
             install_hint: "run `rustup component add rustfmt`",
         },
         ToolSpec {
             key: "clippy",
             label: "Clippy",
             command: cargo.clone(),
-            arguments: &["clippy", "--version"],
+            arguments: &["clippy", flags::VERSION],
             install_hint: "run `rustup component add clippy`",
         },
         ToolSpec {
@@ -165,28 +166,28 @@ pub(crate) fn required_tool_specs() -> Result<Vec<ToolSpec>, String> {
             key: "nightly_rustc",
             label: "isolated nightly Rust",
             command: constants::RUSTUP_COMMAND.to_owned(),
-            arguments: &["run", "nightly", "rustc", "--version"],
+            arguments: &["run", "nightly", "rustc", flags::VERSION],
             install_hint: "run `rustup toolchain install nightly --profile minimal`",
         },
         ToolSpec {
             key: "cargo_llvm_cov",
             label: "LLVM coverage tools",
             command: cargo.clone(),
-            arguments: &["llvm-cov", "--version"],
+            arguments: &["llvm-cov", flags::VERSION],
             install_hint: "run `rustup component add --toolchain nightly llvm-tools-preview` and `cargo install cargo-llvm-cov`",
         },
         ToolSpec {
             key: "cargo_fuzz",
             label: "coverage-guided fuzzing tools",
             command: cargo.clone(),
-            arguments: &["fuzz", "--version"],
+            arguments: &["fuzz", flags::VERSION],
             install_hint: "run `cargo install cargo-fuzz`",
         },
         ToolSpec {
             key: "cargo_mutants",
             label: "mutation testing tools",
             command: cargo.clone(),
-            arguments: &["mutants", "--version"],
+            arguments: &["mutants", flags::VERSION],
             install_hint: "run `cargo install cargo-mutants`",
         },
         advisory_tool_spec(&cargo),
@@ -194,14 +195,14 @@ pub(crate) fn required_tool_specs() -> Result<Vec<ToolSpec>, String> {
             key: "valgrind",
             label: "Valgrind",
             command: constants::VALGRIND_COMMAND.to_owned(),
-            arguments: &["--version"],
+            arguments: &[flags::VERSION],
             install_hint: "install the distribution `valgrind` package",
         },
         ToolSpec {
             key: "git",
             label: "Git",
             command: constants::GIT_COMMAND.to_owned(),
-            arguments: &["--version"],
+            arguments: &[flags::VERSION],
             install_hint: "install the distribution `git` package",
         },
         ToolSpec {
@@ -215,21 +216,21 @@ pub(crate) fn required_tool_specs() -> Result<Vec<ToolSpec>, String> {
             key: "tar",
             label: "tar",
             command: constants::TAR_COMMAND.to_owned(),
-            arguments: &["--version"],
+            arguments: &[flags::VERSION],
             install_hint: "install the distribution `tar` package",
         },
         ToolSpec {
             key: "curl",
             label: "curl",
             command: constants::CURL_COMMAND.to_owned(),
-            arguments: &["--version"],
+            arguments: &[flags::VERSION],
             install_hint: "install TLS-enabled `curl` with system certificates",
         },
         ToolSpec {
             key: "sha256sum",
             label: "SHA-256 checksum utility",
             command: constants::SHA256_COMMAND.to_owned(),
-            arguments: &["--version"],
+            arguments: &[flags::VERSION],
             install_hint: "install the distribution `coreutils` package",
         },
     ])
@@ -258,8 +259,8 @@ pub(crate) fn print_environment_manifest() -> Result<(), String> {
 
 /// Builds the machine-readable environment manifest used in generated evidence.
 pub(crate) fn environment_manifest() -> Result<String, String> {
-    let rustc_version = command_output(&rustc_command()?, &["--version"])?;
-    let cargo_version = command_output(&cargo_command()?, &["--version"])?;
+    let rustc_version = command_output(&rustc_command()?, &[flags::VERSION])?;
+    let cargo_version = command_output(&cargo_command()?, &[flags::VERSION])?;
     let rust_channel = rust_channel()?;
     let active_stage = active_stage()?;
     let host_image = host_image();
