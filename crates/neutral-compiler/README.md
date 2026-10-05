@@ -19,6 +19,10 @@ CLI, Editor-style hosts, and test harnesses supply the same logical source and
 vocabulary facts while retaining locations outside core. Successful capture
 exposes exact immutable sources, vocabularies, aggregate resource facts,
 meaning equivalence, and replay through a newly supplied cancellation token.
+`CapturedProject::identity_transcript` projects verified exact source/vocabulary
+facts into the shared bounded captured-closure identity contract without
+recapture or I/O. `identity_capture_limits` exposes the explicit control order
+used for derivation identity; it never adds these controls to logical meaning.
 The pure `CapturedProject::module_graph` API scans those already-captured bytes
 for logical module imports, validates the complete supplied closure, and
 returns a deterministic, bounded SCC graph. Modules, edges, and diagnostics
@@ -37,8 +41,9 @@ one exact canonical set, resolves module-local `use` aliases to locked public
 types, and retains direct `url`/`path` scalar bindings as distinct inert values.
 The independently validated reader derives public views only after complete
 compilation; selected roots never prune input or change complete logical meaning.
-Externally encoded project transport and standalone project probing remain
-later-stage work.
+`neutral-encoding` owns external project transport; the standalone probe
+validates it through reader-only dependencies. Identity integration with those
+reader/probe APIs remains a separate public integration gate.
 Its private frontend recognizes the supported source, identifier, comment, exact-number,
 bounded-string, Boolean, nullable-scalar, null, nominal-record, and
 contextual-record behavior.

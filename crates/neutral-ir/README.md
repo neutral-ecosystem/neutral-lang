@@ -24,7 +24,7 @@ consumer. It carries only exported signatures and public-to-public dependency
 edges. Its source-profile version comes from `neutral-core`; the Cargo package
 version comes from the workspace manifest. Neither is duplicated in this
 interface. The domain-separated fingerprint covers that signature surface,
-not private values or the future complete project identity.
+not private values or complete project identity.
 Project signatures now distinguish canonical locked vocabulary nominals and
 inert `url`/`path` types. `ProjectLocationValue` retains decoded source text in
 separate URL and path variants without interpretation or host authority.
@@ -36,7 +36,13 @@ defaults, plus separate original-byte source maps, dependency provenance, exact
 captured input evidence, explicit limits, and resource facts. `logical_eq`
 excludes host/source and processing evidence. `ViewRequest` is a distinct
 post-compilation selection contract; it cannot change complete project meaning.
-Canonical project identity transcripts remain a separate gate. Complete encoded
+The `project_identity` module owns separately typed captured-closure, complete
+logical-project, derivation, and artifact identities. Its versioned NHT/SHA-256
+transcripts include private/disconnected meaning while excluding host mappings,
+source evidence, aliases, roots, and processing context from the logical layer.
+Construction uses independent byte/node/depth bounds and cancellation. Semantic
+reader validation remains mandatory: an identity is not an attestation.
+Complete encoded
 transport is owned by `neutral-encoding`, which retains explicit artifact-byte
 limits separately from logical content and materialized-value work.
 

@@ -13,6 +13,7 @@ repository.workspace = true
 owner = "cross-package-testing"
 
 [dev-dependencies]
+serde_json = "1"
 neutral-compiler = { path = "../neutral-compiler" }
 neutral-core = { path = "../neutral-core" }
 neutral-encoding = { path = "../neutral-encoding" }

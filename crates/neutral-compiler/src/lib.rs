@@ -22,6 +22,7 @@ mod frontend;
 mod language;
 mod module_graph;
 mod project_capture;
+mod project_identity;
 mod project_vocabulary;
 mod semantics;
 

@@ -29,3 +29,7 @@ mod public_semantics;
 #[cfg(test)]
 #[path = "../tests/project_ir/mod.rs"]
 mod project_ir;
+
+#[cfg(test)]
+#[path = "../tests/project_identity/mod.rs"]
+mod project_identity;

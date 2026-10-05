@@ -14,6 +14,11 @@ module/type/module-symbol identities rather than graph-local labels. Host paths,
 aliases, source evidence, roots, and capture order do not change logical
 project identity. Literal transcript and SHA-256 vectors are release assets.
 
+The [frozen transcript contract](../specs/contracts/PROJECT-IDENTITY.md) and
+[contract/core review](evidence/stage7-contract-core.md) now cover all four
+bounded core identity layers. They do not complete the independent full-vector
+review, validated-reader/probe identity integration, or cache execution gates.
+
 Stage 7 also owns the deferred root-to-project-digest invariance and actual
 incremental/cache-versus-clean equivalence assertions from Stage 6. These remain
 unchecked until the identity and cache paths exist and are tested; immutable

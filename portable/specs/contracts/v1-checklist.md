@@ -74,22 +74,28 @@ The in-process contract/core boundary is verified in
 [Stage 6 evidence](../../development/evidence/stage6-contract-core.md).
 Encoded integration and the cross-boundary envelope review are recorded in
 [Stage 6 integration evidence](../../development/evidence/stage6-integration-validation.md).
-Complete project identity/root digest proof and true incremental cache
-equivalence remain pending their implementation in the explicit
+Validated-reader identity/root digest integration and true incremental cache
+equivalence remain pending in the explicit
 [Stage 7 validation gates](../../development/07-IMPLEMENTATION-CHECKLIST.md#v074--validation-gate);
 replay is not labelled caching. Stage 6 promotion confirmation covers only the
 implemented guarantees above, not these future identity/cache assertions.
 
 ## Stage 7 — identity (`v0.7.0 -> v0.8.0`)
 
-- [ ] V1-ID-001 — Captured-closure identity is distinct from logical identity.
-- [ ] V1-ID-002 — Canonical logical form ignores host paths, aliases, capture
+- [x] V1-ID-001 — Captured-closure identity is distinct from logical identity.
+- [x] V1-ID-002 — Canonical logical form ignores host paths, aliases, capture
   order, source evidence, roots, and derivation options.
-- [ ] V1-ID-003 — Logical project identity uses a versioned canonical transcript
+- [x] V1-ID-003 — Logical project identity uses a versioned canonical transcript
   and SHA-256 digest.
-- [ ] V1-ID-004 — Derivation and artifact identities include only their stated
+- [x] V1-ID-004 — Derivation and artifact identities include only their stated
   additional context.
 - [ ] V1-ID-005 — Independent implementations agree on literal identity vectors.
+
+The [frozen identity contract](PROJECT-IDENTITY.md), pinned literal vectors,
+public core utility/capture-adapter tests, and
+[contract/core review](../../development/evidence/stage7-contract-core.md)
+complete V1-ID-001..004. Full independent adversarial-vector review and
+validated-reader/probe/cache integration are not claimed by these checks.
 
 ## Stage 8 — authoring (`v0.8.0 -> v0.9.0`)
 

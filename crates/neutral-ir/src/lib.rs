@@ -8,6 +8,7 @@
 
 pub mod language;
 pub mod project;
+pub mod project_identity;
 pub mod project_interface;
 
 use neutral_core::{

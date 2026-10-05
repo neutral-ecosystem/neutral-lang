@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+
+schema = "neutral.project-identity-oracle/1"
+requirements = ["V1-ID-001", "V1-ID-002", "V1-ID-003", "V1-ID-004"]
+literal_vectors = 6
+comparison = "exact-complete-transcript-bytes-and-sha256"
+complete_meaning = "includes-private-declarations-and-disconnected-modules"
+logical_exclusions = ["host-mapping", "alias", "capture-order", "source-evidence", "roots", "processing-context"]
+failure_classes = ["Limit", "InvalidInput", "Cancelled"]
+remaining_review = "independent-full-vector-implementation-reader-probe-and-actual-cache-equivalence"

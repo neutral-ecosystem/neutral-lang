@@ -254,6 +254,7 @@ dependencies = [
  "neutral-probe",
  "neutral-reader",
  "neutral-vocabulary",
+ "serde_json",
 ]
 
 [[package]]

@@ -294,17 +294,22 @@ Target transition: `v0.7.0 -> v0.8.0`.
 
 ### `v0.7.1` — contract and vector gate
 
-- [ ] Freeze canonical logical form, domain tags, transcript framing, SHA-256
+- [x] Freeze canonical logical form, domain tags, transcript framing, SHA-256
   usage, identity exclusions, and artifact derivation inputs.
-- [ ] Publish literal captured/logical/derivation/artifact vector inputs and
+- [x] Publish literal captured/logical/derivation/artifact vector inputs and
   expected transcripts/digests.
 
 ### `v0.7.2` — core implementation gate
 
-- [ ] Implement bounded canonical logical form and every identity layer.
-- [ ] Keep graph-local IDs, host mappings, aliases, roots, capture order, and
+- [x] Implement bounded canonical logical form and every identity layer.
+- [x] Keep graph-local IDs, host mappings, aliases, roots, capture order, and
   source evidence out of logical identity.
-- [ ] Implement deterministic artifact identity by kind and format.
+- [x] Implement deterministic artifact identity by kind and format.
+
+Evidence: [Stage 7 contract, vectors, and core review](evidence/stage7-contract-core.md).
+Core identity utilities and capture adapters are implemented; reader/probe
+identity integration, the full independent implementation review, and actual
+incremental/cache execution remain the next gates. No release is implied.
 
 ### `v0.7.3` — public integration gate
 

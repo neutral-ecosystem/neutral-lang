@@ -19,6 +19,8 @@ rules for values, records, lists, source literals, or v0 vocabulary encoding.
   closure, qualified resolution, semantic cycles, and identity edges.
 - [PROJECT-IR.md](PROJECT-IR.md): Stage 6 complete typed project publication,
   companions, resources, independent reader validation, and public view closure.
+- [PROJECT-IDENTITY.md](PROJECT-IDENTITY.md): bounded canonical logical form,
+  domain-separated captured/logical/derivation/artifact transcripts and vectors.
 - [VOCABULARY.md](VOCABULARY.md): exact data-only vocabulary locks and authoring
   metadata boundary.
 - [AUTHORING.md](AUTHORING.md): the separately versioned Editor bridge.

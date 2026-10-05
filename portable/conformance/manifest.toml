@@ -407,3 +407,16 @@ id = "authoring-and-public-probes"
 profile = "1.0"
 active_from_stage = 8
 status = "planned"
+
+[[suite]]
+id = "project-identities"
+profile = "1.0"
+active_from_stage = 7
+status = "required"
+
+[[case]]
+id = "V1-ID-001..004-LITERAL-VECTORS"
+fixture = "portable/specs/fixtures/stage7/vectors.json"
+fixture_sha256 = "a09a1e281274bd154d7add38aed96e1da938711b0ec1f85c419d533679c86af7"
+oracle = "portable/conformance/oracles/stage7/identity.toml"
+oracle_sha256 = "98dcee2e254abddbff59fd6477ad98bb8272f916e867dfc553d792bc2087202b"

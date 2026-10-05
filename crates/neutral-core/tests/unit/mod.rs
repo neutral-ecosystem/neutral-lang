@@ -107,6 +107,21 @@ fn semantic_digest_uses_the_frozen_nht_v1_frame() {
 }
 
 #[test]
+/// Hashing a complete transcript hashes exactly once and preserves the shared NHT contract.
+fn complete_transcript_hashing_matches_domain_framing() {
+    let payload = nht_frame("domain-a", b"value").unwrap();
+    let transcript = nht_frame(super::HASH_TRANSCRIPT_ENVELOPE, &payload).unwrap();
+    assert_eq!(
+        SemanticDigest::from_transcript(&transcript),
+        SemanticDigest::from_nht("domain-a", b"value").unwrap()
+    );
+    assert_ne!(
+        SemanticDigest::from_transcript(&payload),
+        SemanticDigest::from_transcript(&transcript)
+    );
+}
+
+#[test]
 /// Verifies that inverted source spans are rejected.
 fn inverted_spans_are_rejected() {
     assert!(ByteSpan::new(2, 1).is_err());

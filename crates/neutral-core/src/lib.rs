@@ -22,6 +22,8 @@ use std::{
 const SHA256_TEXT_PREFIX: &str = "sha256:";
 /// Exact character length of one prefixed SHA-256 digest.
 const SHA256_TEXT_LENGTH: usize = SHA256_TEXT_PREFIX.len() + 64;
+/// Frozen outer domain-separation envelope for every Neutral Hash Transcript v1.
+pub const HASH_TRANSCRIPT_ENVELOPE: &str = "neutral-nht-v1";
 
 /// A typed SHA-256 digest of exact captured source bytes.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -159,6 +161,12 @@ fn lowercase_hex_value(value: u8) -> Option<u8> {
 pub struct SemanticDigest([u8; 32]);
 
 impl SemanticDigest {
+    /// Hashes a caller-constructed complete NHT transcript without framing it again.
+    /// The caller owns transcript validation, domain separation, and resource bounds.
+    #[must_use]
+    pub fn from_transcript(transcript: &[u8]) -> Self {
+        Self(Sha256::digest(transcript).into())
+    }
     /// Reconstructs a typed semantic digest from validated transcript bytes.
     #[must_use]
     pub const fn from_raw_bytes(bytes: [u8; 32]) -> Self {
@@ -173,7 +181,7 @@ impl SemanticDigest {
     /// represented by the frozen transcript integer widths.
     pub fn from_nht(domain: &str, payload: &[u8]) -> Result<Self, CoreError> {
         let domain = nht_frame(domain, payload)?;
-        let transcript = nht_frame("neutral-nht-v1", &domain)?;
+        let transcript = nht_frame(HASH_TRANSCRIPT_ENVELOPE, &domain)?;
         let bytes: [u8; 32] = Sha256::digest(transcript).into();
         Ok(Self(bytes))
     }

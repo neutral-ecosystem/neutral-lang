@@ -63,3 +63,6 @@ transcripts. Host paths/mappings, source evidence, capture order, aliases,
 roots, and derivation options are not logical meaning. Conflicting mappings for
 one logical module fail; equivalent canonical logical content may yield the
 same logical project identity from different hosts.
+
+The exact frozen domains, canonical fields, framing, bounds, derivation inputs,
+and literal vectors are defined in [PROJECT-IDENTITY](PROJECT-IDENTITY.md).

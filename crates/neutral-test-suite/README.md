@@ -17,6 +17,10 @@ probe, documentation, and traceability.
 Formatter evidence spans the complete positive source corpus and checks exact
 canonical layout, idempotence, logical/provenance preservation, deterministic
 nonsemantic comment placement, and separation from source/artifact identity.
+Project identity tests pin complete literal transcripts and SHA-256 digests,
+verify capture/logical/derivation/artifact exclusions, exact byte/node boundaries,
+cancellation, canonical value equivalence, and artifact kind/format/selection.
+Crate-owned vector copies remain runnable when the active portable is archived.
 
 ## Command
 

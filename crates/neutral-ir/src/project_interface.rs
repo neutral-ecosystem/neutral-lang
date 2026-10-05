@@ -212,7 +212,7 @@ pub enum ProjectPublicEdgeKind {
 
 impl ProjectPublicEdgeKind {
     /// Returns the stable transcript spelling of one typed edge.
-    const fn spelling(self) -> &'static str {
+    pub(crate) const fn spelling(self) -> &'static str {
         match self {
             Self::Type => "type",
             Self::ReferenceType => "reference-type",
