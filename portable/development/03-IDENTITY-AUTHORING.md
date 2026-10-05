@@ -15,14 +15,16 @@ aliases, source evidence, roots, and capture order do not change logical
 project identity. Literal transcript and SHA-256 vectors are release assets.
 
 The [frozen transcript contract](../specs/contracts/PROJECT-IDENTITY.md) and
-[contract/core review](evidence/stage7-contract-core.md) now cover all four
-bounded core identity layers. They do not complete the independent full-vector
-review, validated-reader/probe identity integration, or cache execution gates.
+[contract and integration review](evidence/stage7-contract-core.md) cover all four
+bounded identity layers, validated-reader facts, reader-only probe reporting,
+and independently reproduced literal/adversarial vectors.
 
 Stage 7 also owns the deferred root-to-project-digest invariance and actual
-incremental/cache-versus-clean equivalence assertions from Stage 6. These remain
-unchecked until the identity and cache paths exist and are tested; immutable
-captured replay is not evidence of cached execution.
+incremental/cache-versus-clean equivalence assertions from Stage 6. These are
+verified against actual caller-owned syntax cache execution: changed units,
+fresh vocabulary/controls/source facts, stale-entry rejection, failed-run
+recovery, and concurrent schedules. Immutable replay is not labelled caching;
+persistent or final-artifact caches are not implemented.
 
 ### Stage 8 — `v0.8.0 -> v0.9.0`
 

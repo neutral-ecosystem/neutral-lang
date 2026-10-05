@@ -63,6 +63,9 @@ fn inspect_path(path: &Path, json: bool, roots: Option<&[String]>) -> Result<(),
         .map_err(|error| match error {
             ProjectProbeError::Decode(e) => render_decode_error(e),
             ProjectProbeError::View(e) => format!("{} {e:?}", e.schema()),
+            ProjectProbeError::Identity(e) => {
+                format!("{} identity {e:?}", neutral_reader::PROJECT_RESULT_SCHEMA)
+            }
         })?;
         let rendered = render_project_summary_json(&summary);
         if json {

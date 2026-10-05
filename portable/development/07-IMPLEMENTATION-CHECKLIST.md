@@ -278,8 +278,9 @@ unclaimed. Evidence: [Stage 6 integration and validation](evidence/stage6-integr
 - [x] Review all public result and failure envelopes.
 
 Clean capture, immutable captured replay, changed-unit reconstruction, shuffled
-serialization, and concurrent compilation are verified. There is no project
-incremental cache yet; actual cached/clean equivalence is not claimed.
+serialization, and concurrent compilation were verified in Stage 6. That review
+did not include an incremental cache; actual cached/clean equivalence is now
+verified separately in Stage 7.
 The project-digest and actual cache-equivalence assertions are retained as
 explicit Stage 7 validation gates below, where their identity APIs belong.
 
@@ -306,27 +307,29 @@ Target transition: `v0.7.0 -> v0.8.0`.
   source evidence out of logical identity.
 - [x] Implement deterministic artifact identity by kind and format.
 
-Evidence: [Stage 7 contract, vectors, and core review](evidence/stage7-contract-core.md).
-Core identity utilities and capture adapters are implemented; reader/probe
-identity integration, the full independent implementation review, and actual
-incremental/cache execution remain the next gates. No release is implied.
+Evidence: [Stage 7 contract, vectors, and integration review](evidence/stage7-contract-core.md).
+All four typed layers are exposed through the validated reader; the reader-only
+probe reports complete logical identity. A retained independent Python encoder
+checks literal and adversarial vectors. Actual bounded syntax cache execution
+rebuilds semantics and companions and is compared with clean compilation.
+No version bump, approval, tag, or release is implied.
 
 ### `v0.7.3` — public integration gate
 
-- [ ] Expose typed identities and derivation facts through public reader APIs.
-- [ ] Produce identity vectors from a second independent implementation.
-- [ ] Verify cache keys use the correct identity layer.
+- [x] Expose typed identities and derivation facts through public reader APIs.
+- [x] Produce identity vectors from a second independent implementation.
+- [x] Verify cache keys use the correct identity layer.
 
 ### `v0.7.4` — validation gate
 
-- [ ] Compare both implementations for every accepted/adversarial vector.
-- [ ] Run formatting/order/equivalence/non-equivalence/collision-path tests.
-- [ ] Verify root selection never changes complete project identity transcripts
+- [x] Compare both implementations for every accepted/adversarial vector.
+- [x] Run formatting/order/equivalence/non-equivalence/collision-path tests.
+- [x] Verify root selection never changes complete project identity transcripts
   or digests; extend the Stage 6 root-invariance tests to the identity APIs.
-- [ ] Verify actual incremental/cache execution and clean construction are
+- [x] Verify actual incremental/cache execution and clean construction are
   equivalent, including changed units and stale-cache rejection. Captured replay
   alone does not satisfy this gate.
-- [ ] Review transcript and identity-profile version immutability.
+- [x] Review transcript and identity-profile version immutability.
 
 ### Promote to `v0.8.0`
 

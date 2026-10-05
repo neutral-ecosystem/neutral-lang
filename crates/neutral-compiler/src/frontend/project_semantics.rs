@@ -27,6 +27,10 @@ mod lowering;
 pub use lowering::codes as project_lowering_diagnostics;
 pub use lowering::{ProjectCompileFailure, compile_project};
 
+#[path = "project_cache.rs"]
+mod cache;
+pub use cache::{ProjectCacheLimits, ProjectCacheStats, ProjectCompilationCache};
+
 #[cfg(test)]
 #[path = "../../tests/project_semantics/mod.rs"]
 mod tests;
@@ -319,14 +323,26 @@ struct ModuleContext {
 /// cancellation fail. A successful resolution model does not by itself make
 /// the v1 source profile available or replace later contextual value
 /// validation and project-IR lowering.
-#[expect(
-    clippy::too_many_lines,
-    reason = "explicit fail-closed project phases remain visible in one orchestration boundary"
-)]
 pub fn analyze_project_semantics(
     captured: &CapturedProject,
     graph: &ModuleGraph,
     cancellation: &CancellationToken,
+) -> Result<ProjectSemanticModel, ProjectSemanticFailure> {
+    analyze_project_semantics_with_parser(captured, graph, cancellation, &mut |source| {
+        parse_roots(source.module_id(), source.digest(), source.bytes())
+    })
+}
+
+/// Resolves all project semantics while allowing only the unit parsing phase to be reused.
+#[expect(
+    clippy::too_many_lines,
+    reason = "explicit fail-closed project phases remain visible in one orchestration boundary"
+)]
+fn analyze_project_semantics_with_parser(
+    captured: &CapturedProject,
+    graph: &ModuleGraph,
+    cancellation: &CancellationToken,
+    parse: &mut impl FnMut(&crate::CapturedProjectSource) -> Result<Vec<Root>, ProjectSemanticFailure>,
 ) -> Result<ProjectSemanticModel, ProjectSemanticFailure> {
     if graph.modules().len() != captured.sources().len()
         || graph
@@ -398,7 +414,7 @@ pub fn analyze_project_semantics(
                 aliases,
             },
         );
-        let declarations = parse_roots(source.module_id(), source.digest(), source.bytes())?;
+        let declarations = parse(source)?;
         for root in declarations {
             let key = key(root.symbol.identity());
             if modules[source.module_id()].aliases.contains_key(&key.1) {

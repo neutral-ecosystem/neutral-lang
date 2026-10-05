@@ -18,16 +18,28 @@ use std::{
 };
 
 mod project;
+mod project_identity;
 mod project_interface;
 
+pub use neutral_ir::project_identity::{
+    ArtifactIdentityInput, ArtifactKind, CAPTURE_LIMIT_TAGS, CapturedClosureIdentity,
+    CapturedIdentityInput, CapturedIdentitySource, CapturedIdentityVocabulary, IDENTITY_PROFILE,
+    IdentityError, IdentityLimits, IdentityTranscript, LogicalProjectIdentity,
+    MAX_TRANSCRIPT_BYTES, MAX_TRANSCRIPT_NODES, ProjectArtifactIdentity, ProjectDerivationIdentity,
+};
 pub use project::{ProjectReadError, ProjectView, ValidatedProject};
+pub use project_identity::{
+    ProjectDerivationFacts, ProjectIdentities, ProjectIdentityContext, ProjectIdentityReadError,
+};
 pub use project_interface::{ProjectInterfaceError, ValidatedProjectInterface};
 
 pub use neutral_core::profile::{
     LanguageCapability, LanguageProfile, LanguageProfileDescriptor, ProfileAvailability,
 };
 pub use neutral_ir::ElementId;
-pub use neutral_ir::project::{PROJECT_VIEW_SCHEMA, ProjectLimits, ViewRequest};
+pub use neutral_ir::project::{
+    PROJECT_RESULT_SCHEMA, PROJECT_VIEW_SCHEMA, ProjectLimits, ViewRequest,
+};
 pub use neutral_ir::{ModuleSymbolIdentity, project_interface::ProjectPublicEdge};
 
 /// Returns the shared deterministic language-profile capability catalogue.

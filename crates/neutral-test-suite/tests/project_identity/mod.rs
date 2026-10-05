@@ -23,6 +23,9 @@ use std::sync::Arc;
 /// Reviewed literal vectors, independent of the runtime implementation.
 const VECTORS: &str = include_str!("vectors.json");
 
+mod integration;
+mod reference;
+
 /// Independent generous test bounds; exact boundaries are tested separately.
 fn limits() -> IdentityLimits {
     IdentityLimits {
@@ -203,6 +206,7 @@ fn property_project_identity_normalizes_values_not_types_or_order() {
         let capture = captured("source:example", &source, capture_limits());
         let ir = compile_project(&capture, &token).unwrap();
         neutral_reader::ValidatedProject::from_ir(Arc::clone(&ir), ir.limits, &token).unwrap();
+        reference::compare(&capture, &ir);
         canonical_logical_project(&ir, limits(), &token)
             .unwrap()
             .identity()
@@ -289,6 +293,7 @@ fn property_project_identity_vocabulary_evidence_and_aliases() {
         ))
         .unwrap();
         let other_ir = compile_project(&other, &token).unwrap();
+        reference::compare(&other, &other_ir);
         assert!(ir.logical_eq(&other_ir));
         assert_eq!(
             logical,

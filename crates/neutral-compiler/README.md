@@ -42,8 +42,17 @@ types, and retains direct `url`/`path` scalar bindings as distinct inert values.
 The independently validated reader derives public views only after complete
 compilation; selected roots never prune input or change complete logical meaning.
 `neutral-encoding` owns external project transport; the standalone probe
-validates it through reader-only dependencies. Identity integration with those
-reader/probe APIs remains a separate public integration gate.
+validates it through reader-only dependencies and reports the typed complete
+logical identity independently of selected roots.
+
+`ProjectCompilationCache` is an optional caller-owned, bounded in-process syntax
+cache. Its explicit retention budgets limit units and original source bytes;
+statistics distinguish actual parser execution from reused units. Keys check
+module, language profile, exact source digest, and exact bytes, not public or
+logical fingerprints. Every run reconstructs the graph and revalidates vocabulary,
+semantics, values, source maps, provenance, resource facts, and current controls.
+Failures do not publish a new cache generation. There is no persistent/importable
+cache, global state, host acquisition, or final-artifact memoization.
 Its private frontend recognizes the supported source, identifier, comment, exact-number,
 bounded-string, Boolean, nullable-scalar, null, nominal-record, and
 contextual-record behavior.

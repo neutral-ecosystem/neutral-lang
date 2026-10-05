@@ -27,6 +27,11 @@ and a redacted public view. No private identities, source IDs, spans, or raw
 provenance appear in that projection. An omitted selection includes all public
 exports; `--root` can be repeated to select a smaller public dependency closure.
 Selection never changes complete IR. Artifact file reads obey the hard byte cap.
+Project summaries also expose the frozen identity profile and typed complete
+logical digest, computed through the validated reader without compiler linkage.
+This digest includes private/disconnected meaning but publishes no transcript or
+private provenance; it is distinct from the public-interface fingerprint and
+remains unchanged for omitted, empty, or explicit public-root selections.
 
 ```console
 cargo run --package neutral-probe -- path/to/artifact.nir
@@ -48,7 +53,7 @@ The single-file compiler CLI does not yet produce complete-project artifacts.
 The library's `inspect_project_encoded` accepts explicit consumer limits and
 optional selections; `Some(&[])` yields an empty view, while `None` selects all
 public exports. Its typed failure contains either a bounded decode error or a
-reader view error and no partial summary.
+reader view or identity-construction error and no partial summary.
 
 The JSON view is a readable, versioned projection of the probe summary. Its
 field names, value shapes, and text labels are shared through

@@ -16,6 +16,12 @@ cargo install cargo-nextest --locked
 cargo fetch --locked
 ```
 
+Install Python 3 through your platform package manager as well. Project identity
+conformance runs a retained independent standard-library encoder; it is a real
+test prerequisite, not an optional skipped check. Discovery tries `python3`, then
+`python`; `NEUTRAL_IDENTITY_REFERENCE_PYTHON` selects another interpreter path.
+No Python packages or virtual environment are required.
+
 Run the platform bootstrap adapter after cloning or when the toolchain changes:
 
 ```sh
@@ -62,6 +68,8 @@ For project IR and public-view changes, run the focused boundaries first:
 cargo test --package neutral-encoding project
 cargo test --package neutral-probe --test encoded_project
 cargo test --package neutral-test-suite project_ir
+cargo test --package neutral-test-suite project_identity
+cargo test --package neutral-compiler cache
 cargo xtask fixtures check
 cargo xtask ci pr
 ```

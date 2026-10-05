@@ -1,10 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema = "neutral.project-identity-oracle/1"
-requirements = ["V1-ID-001", "V1-ID-002", "V1-ID-003", "V1-ID-004"]
+requirements = ["V1-ID-001", "V1-ID-002", "V1-ID-003", "V1-ID-004", "V1-ID-005"]
 literal_vectors = 6
 comparison = "exact-complete-transcript-bytes-and-sha256"
 complete_meaning = "includes-private-declarations-and-disconnected-modules"
 logical_exclusions = ["host-mapping", "alias", "capture-order", "source-evidence", "roots", "processing-context"]
 failure_classes = ["Limit", "InvalidInput", "Cancelled"]
-remaining_review = "independent-full-vector-implementation-reader-probe-and-actual-cache-equivalence"
+independent_implementation = "python-standard-library-separate-framing-and-sha256"
+reader_integration = "typed-complete-layers-and-explicit-derivation-facts"
+root_invariance = "complete-transcripts-digests-and-reader-only-probe"
+cache_review = "actual-bounded-syntax-execution-exact-source-profile-module-and-byte-keys"
+immutability_review = "frozen-contract-profile-domains-and-six-literal-vectors-unchanged"

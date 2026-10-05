@@ -5,6 +5,8 @@
 use crate::inspection_schema::{Field, FieldValue, render_fields_json};
 use neutral_core::CancellationToken;
 use neutral_encoding::{DecodeError, DecodeLimits, project::decode_project};
+use neutral_reader::{IDENTITY_PROFILE, MAX_TRANSCRIPT_BYTES, MAX_TRANSCRIPT_NODES};
+use neutral_reader::{IdentityError, IdentityLimits, LogicalProjectIdentity};
 use neutral_reader::{ProjectLimits, ProjectReadError, ProjectView, ValidatedProject, ViewRequest};
 use std::collections::BTreeMap;
 
@@ -15,6 +17,8 @@ pub enum ProjectProbeError {
     Decode(DecodeError),
     /// Post-validation root selection failed.
     View(ProjectReadError),
+    /// Bounded complete-project identity construction failed.
+    Identity(IdentityError),
 }
 
 /// Complete-project counts and a selected public view, never private provenance.
@@ -30,6 +34,10 @@ pub struct ProjectProbeSummary {
     pub interface_fingerprint: String,
     /// Complete IR contract identification.
     pub schema: String,
+    /// Typed complete logical identity, never a public-view fingerprint.
+    pub logical_identity: LogicalProjectIdentity,
+    /// Frozen identity profile, independent of package and transport versions.
+    pub identity_profile: &'static str,
 }
 
 /// Inspects external project bytes without compiler linkage or host acquisition.
@@ -87,11 +95,25 @@ pub fn inspect_project_encoded(
             cancellation,
         )
         .map_err(ProjectProbeError::View)?;
-    Ok(summarize_project(&project, view))
+    let logical_identity = project
+        .logical_identity(
+            IdentityLimits {
+                bytes: MAX_TRANSCRIPT_BYTES,
+                nodes: MAX_TRANSCRIPT_NODES,
+            },
+            cancellation,
+        )
+        .map_err(ProjectProbeError::Identity)?
+        .identity();
+    Ok(summarize_project(&project, view, logical_identity))
 }
 
 /// Returns a bounded trusted projection; source IDs, spans and private roots are absent.
-fn summarize_project(project: &ValidatedProject, view: ProjectView) -> ProjectProbeSummary {
+fn summarize_project(
+    project: &ValidatedProject,
+    view: ProjectView,
+    logical_identity: LogicalProjectIdentity,
+) -> ProjectProbeSummary {
     let ir = project.complete_ir();
     ProjectProbeSummary {
         modules: ir.resources.source_units,
@@ -99,6 +121,8 @@ fn summarize_project(project: &ValidatedProject, view: ProjectView) -> ProjectPr
         view,
         interface_fingerprint: ir.public_interface.fingerprint().to_string(),
         schema: ir.schema.clone(),
+        logical_identity,
+        identity_profile: IDENTITY_PROFILE,
     }
 }
 
@@ -140,6 +164,7 @@ pub fn render_project_summary_json(summary: &ProjectProbeSummary) -> String {
         .collect::<Vec<_>>();
     let modules = summary.modules.to_string();
     let declarations = summary.declarations.to_string();
+    let logical_identity = summary.logical_identity.to_string();
     render_fields_json(&[
         Field {
             json_key: "schema",
@@ -165,6 +190,16 @@ pub fn render_project_summary_json(summary: &ProjectProbeSummary) -> String {
             json_key: "interface_fingerprint",
             text_prefix: "interface",
             value: FieldValue::Text(&summary.interface_fingerprint),
+        },
+        Field {
+            json_key: "identity_profile",
+            text_prefix: "identity-profile",
+            value: FieldValue::Text(summary.identity_profile),
+        },
+        Field {
+            json_key: "logical_identity",
+            text_prefix: "logical-identity",
+            value: FieldValue::Text(&logical_identity),
         },
         Field {
             json_key: "roots",

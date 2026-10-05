@@ -74,11 +74,11 @@ The in-process contract/core boundary is verified in
 [Stage 6 evidence](../../development/evidence/stage6-contract-core.md).
 Encoded integration and the cross-boundary envelope review are recorded in
 [Stage 6 integration evidence](../../development/evidence/stage6-integration-validation.md).
-Validated-reader identity/root digest integration and true incremental cache
-equivalence remain pending in the explicit
+Validated-reader identity/root digest integration and actual syntax-cache
+equivalence are verified in the explicit
 [Stage 7 validation gates](../../development/07-IMPLEMENTATION-CHECKLIST.md#v074--validation-gate);
 replay is not labelled caching. Stage 6 promotion confirmation covers only the
-implemented guarantees above, not these future identity/cache assertions.
+implemented guarantees above; the additional identity/cache review belongs to Stage 7.
 
 ## Stage 7 — identity (`v0.7.0 -> v0.8.0`)
 
@@ -89,13 +89,14 @@ implemented guarantees above, not these future identity/cache assertions.
   and SHA-256 digest.
 - [x] V1-ID-004 — Derivation and artifact identities include only their stated
   additional context.
-- [ ] V1-ID-005 — Independent implementations agree on literal identity vectors.
+- [x] V1-ID-005 — Independent implementations agree on literal identity vectors.
 
 The [frozen identity contract](PROJECT-IDENTITY.md), pinned literal vectors,
-public core utility/capture-adapter tests, and
-[contract/core review](../../development/evidence/stage7-contract-core.md)
-complete V1-ID-001..004. Full independent adversarial-vector review and
-validated-reader/probe/cache integration are not claimed by these checks.
+public reader/capture-adapter tests, independent Python encoder, and
+[contract and integration review](../../development/evidence/stage7-contract-core.md)
+complete V1-ID-001..005. Literal/adversarial framing, root-invariant complete
+identities, reader-only probe reporting, and actual bounded syntax-cache
+equivalence are verified. Release promotion remains a separate gate.
 
 ## Stage 8 — authoring (`v0.8.0 -> v0.9.0`)
 

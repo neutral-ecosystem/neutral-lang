@@ -7,8 +7,8 @@ use super::{
     ModuleContext, ModuleGraph, ModuleSymbolIdentity, NameOccurrence, ProjectDependencyKind,
     ProjectPublicEdgeKind, ProjectPublicField, ProjectPublicType, ProjectSemanticFailure,
     ProjectSemanticModel, ProjectSymbolKind, ProjectVocabularySet, Root, SourceLocation, Token,
-    TokenKind, V1_SOURCE_PROFILE, analyze_project_semantics, key, parse_name, parse_reference,
-    parse_roots, public_type, resolve_name, validate_project_vocabularies,
+    TokenKind, V1_SOURCE_PROFILE, analyze_project_semantics_with_parser, key, parse_name,
+    parse_reference, parse_roots, public_type, resolve_name, validate_project_vocabularies,
 };
 use neutral_ir::{
     ExactNumber,
@@ -64,10 +64,21 @@ pub fn compile_project(
     captured: &CapturedProject,
     cancellation: &CancellationToken,
 ) -> Result<Arc<ProjectIr>, ProjectCompileFailure> {
+    compile_project_with_parser(captured, cancellation, &mut |source| {
+        parse_roots(source.module_id(), source.digest(), source.bytes())
+    })
+}
+
+/// Runs fresh graph, semantic, and contextual phases over an explicit unit parser.
+pub(super) fn compile_project_with_parser(
+    captured: &CapturedProject,
+    cancellation: &CancellationToken,
+    parse: &mut impl FnMut(&crate::CapturedProjectSource) -> Result<Vec<Root>, ProjectSemanticFailure>,
+) -> Result<Arc<ProjectIr>, ProjectCompileFailure> {
     let graph = captured
         .module_graph(cancellation)
         .map_err(ProjectCompileFailure::Graph)?;
-    let model = analyze_project_semantics(captured, &graph, cancellation)
+    let model = analyze_project_semantics_with_parser(captured, &graph, cancellation, parse)
         .map_err(ProjectCompileFailure::Semantics)?;
     let vocabularies =
         validate_project_vocabularies(captured).map_err(|_| fail(codes::INVALID_VALUE, None))?;
@@ -86,9 +97,7 @@ pub fn compile_project(
                     .collect(),
             },
         );
-        for root in parse_roots(source.module_id(), source.digest(), source.bytes())
-            .map_err(ProjectCompileFailure::Semantics)?
-        {
+        for root in parse(source).map_err(ProjectCompileFailure::Semantics)? {
             roots.insert(key(root.symbol.identity()), root);
         }
     }

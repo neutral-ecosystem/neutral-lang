@@ -44,6 +44,15 @@ wire/schema checks; the standalone project probe then exposes a selected public
 view without compiler linkage. Captured artifact-byte limits are independent
 of in-process value work and are enforced by the codec.
 
+`ValidatedProject::logical_identity` exposes the bounded complete logical
+transcript and typed digest. `identities` additionally binds explicit capture
+locks and producer facts to the validated source/vocabulary companions and
+returns distinct captured, logical, and derivation identities with processing
+facts. These caller claims are not producer authentication or proof of faithful
+compilation. `ProjectIdentities::artifact` checks public/existing view roots
+before publishing a typed artifact identity. Roots cannot mutate complete
+transcripts; a public interface fingerprint is not a complete logical identity.
+
 ## Command
 
 This is a library crate. Verify its public artifact-reading contracts with:
