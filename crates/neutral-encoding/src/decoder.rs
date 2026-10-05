@@ -5,6 +5,10 @@
 use crate::{DecodeError, DecodeErrorClass, DecodeLimits};
 use neutral_core::CancellationToken;
 
+#[cfg(test)]
+#[path = "../tests/decoder/mod.rs"]
+mod tests;
+
 /// One duplicate-preserving untrusted CBOR value and its byte offset.
 pub(crate) struct LocatedValue {
     /// Absolute encoded byte offset of the initial byte.

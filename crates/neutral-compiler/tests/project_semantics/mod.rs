@@ -8,6 +8,192 @@ use crate::{
     ProjectCaptureLimitValues, ProjectCaptureLimits, build_module_graph, capture_project,
 };
 use neutral_core::profile::LanguageProfile;
+use std::fmt::Write;
+
+/// Malformed declarations and contextual shapes fail at the semantic grammar boundary.
+#[test]
+fn malformed_declaration_and_value_matrix_is_rejected() {
+    for body in [
+        "public",
+        "record {}",
+        "record Name []",
+        "num answer",
+        "num = 1",
+        "num answer =",
+        "num 7 = 1",
+        "List num answer = []",
+        "List<> answer = []",
+        "List<num answer = []",
+        "bool? ? answer = null",
+        "url answer = 1",
+        "path answer = true",
+        "List<num> answer = [1 2]",
+        "num answer = ref()",
+        "num answer = ref(1)",
+        "num answer = missing::",
+        "num answer = [1,,2]",
+        "record R { , }",
+        "record R { num, }",
+        "record R { public num count, }",
+        "record R { num count =, }",
+        "record R { num count = [1 2], }",
+        "record R { num count extra, }",
+        "record R { List<> items, }",
+        "record R { num count, num count }",
+        "record R { num count }\nR value = { count 1, }",
+        "record R { num count }\nR value = { true: 1, }",
+        "record R { num count }\nR value = { count: 1 }",
+    ] {
+        assert_eq!(
+            first_code(&[("api", body)]),
+            diagnostics::INVALID_SOURCE,
+            "{body}"
+        );
+    }
+}
+
+/// A graph from different source bytes and cancellation never expose a semantic model.
+#[test]
+fn semantic_requests_reject_stale_graphs_and_cancellation() {
+    let (captured, graph) = project(&[("api", "public num answer = 1")]);
+    let (changed, _) = project(&[("api", "public num answer = 2")]);
+    let failure =
+        analyze_project_semantics(&changed, &graph, &CancellationToken::new()).unwrap_err();
+    assert_eq!(failure.diagnostics()[0].code(), diagnostics::GRAPH_MISMATCH);
+    let token = CancellationToken::new();
+    token.cancel();
+    let failure = analyze_project_semantics(&captured, &graph, &token).unwrap_err();
+    assert_eq!(failure.diagnostics()[0].code(), diagnostics::CANCELLED);
+}
+
+/// Cancellation arriving during parsing is observed before another unit or resolution starts.
+#[test]
+fn semantic_cancellation_between_phases_never_publishes_partial_results() {
+    for sources in [
+        vec![("api", "public num answer = 1")],
+        vec![
+            ("api", "public num answer = 1"),
+            ("other", "num hidden = 2"),
+        ],
+    ] {
+        let (captured, graph) = project(&sources);
+        let token = CancellationToken::new();
+        let mut calls = 0;
+        let result =
+            analyze_project_semantics_with_parser(&captured, &graph, &token, &mut |source| {
+                calls += 1;
+                let roots = parse_roots(source.module_id(), source.digest(), source.bytes());
+                token.cancel();
+                roots
+            });
+        let Err(failure) = result else {
+            panic!("cancelled request published a semantic model");
+        };
+        assert_eq!(calls, 1);
+        assert_eq!(failure.diagnostics().len(), 1);
+        assert_eq!(failure.diagnostics()[0].code(), diagnostics::CANCELLED);
+        assert!(
+            captured.sources().iter().any(
+                |source| source.digest() == failure.diagnostics()[0].source_location().source()
+            )
+        );
+    }
+}
+
+/// Declaration limits and duplicate bindings reject the complete request rather than truncating it.
+#[test]
+fn duplicate_roots_and_declaration_overflow_are_rejected() {
+    assert_eq!(
+        first_code(&[("api", "num value = 1\nnum value = 2")]),
+        diagnostics::INACCESSIBLE_NAME
+    );
+    let mut body = String::new();
+    for index in 0..65 {
+        writeln!(body, "num item_{index} = {index}").unwrap();
+    }
+    assert_eq!(first_code(&[("api", &body)]), diagnostics::LIMIT_EXCEEDED);
+}
+
+/// Nominal types, reuse, and references cannot silently resolve to incompatible declaration kinds.
+#[test]
+fn semantic_kind_and_composite_type_mismatches_are_rejected() {
+    for (body, expected) in [
+        (
+            "num value = 1\nvalue item = {}",
+            diagnostics::INACCESSIBLE_NAME,
+        ),
+        (
+            "record Item {}\nnum item = Item",
+            diagnostics::INACCESSIBLE_NAME,
+        ),
+        (
+            "record Item {}\nRef<Item> item = ref(Item)",
+            diagnostics::INVALID_REFERENCE,
+        ),
+        (
+            "num value = 1\nnum item = ref(value)",
+            diagnostics::TYPE_MISMATCH,
+        ),
+        (
+            "num value = 1\nRef<string> item = ref(value)",
+            diagnostics::TYPE_MISMATCH,
+        ),
+        (
+            "List<num> values = [1]\nList<string> items = values",
+            diagnostics::TYPE_MISMATCH,
+        ),
+        (
+            "num? value = null\nstring? item = value",
+            diagnostics::TYPE_MISMATCH,
+        ),
+        (
+            "url value = \"inert\"\npath item = value",
+            diagnostics::INVALID_SOURCE,
+        ),
+        (
+            "record Item {}\nrecord Other {}\nItem value = {}\nOther item = value",
+            diagnostics::TYPE_MISMATCH,
+        ),
+        (
+            "num value = missing::unknown",
+            diagnostics::INACCESSIBLE_NAME,
+        ),
+    ] {
+        assert_eq!(first_code(&[("api", body)]), expected, "{body}");
+    }
+}
+
+/// Public semantic accessors retain exact root categories and reference occurrence spans.
+#[test]
+fn semantic_public_facts_cover_record_and_binding_origins() {
+    let (captured, graph) = project(&[(
+        "api",
+        "public record Item { num count = 1 }\npublic Item item = {}\npublic Ref<Item> pointer = ref(item)\n",
+    )]);
+    let model = analyze_project_semantics(&captured, &graph, &CancellationToken::new()).unwrap();
+    for root in model.symbols() {
+        assert!(root.is_public());
+        assert_eq!(
+            root.source_location().source(),
+            captured.sources()[0].digest()
+        );
+        assert_eq!(
+            root.kind(),
+            if root.identity().declaration_name() == "Item" {
+                ProjectSymbolKind::Record
+            } else {
+                ProjectSymbolKind::Binding
+            }
+        );
+    }
+    for edge in model.dependencies() {
+        assert_eq!(
+            edge.source_location().source(),
+            captured.sources()[0].digest()
+        );
+        assert!(edge.source_location().span().start() < edge.source_location().span().end());
+    }
+}
 
 /// Captures and graph-validates a small exact source closure.
 fn project(sources: &[(&str, &str)]) -> (CapturedProject, ModuleGraph) {

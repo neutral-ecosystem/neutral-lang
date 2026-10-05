@@ -7,6 +7,182 @@ use crate::decoder::{CborValue, LocatedValue};
 use neutral_core::{CancellationToken, StructuralLimits};
 use neutral_ir::ResolvedType;
 
+/// Independent reader rejections retain distinct schema, source-map, and provenance classes.
+#[test]
+fn reader_failures_map_to_stable_decoder_classes() {
+    use neutral_reader::ReaderError;
+    for (error, class) in [
+        (
+            ReaderError::MissingSourceMapEntry,
+            DecodeErrorClass::InvalidSourceMap,
+        ),
+        (
+            ReaderError::InvalidFieldProvenance,
+            DecodeErrorClass::InvalidProvenance,
+        ),
+        (
+            ReaderError::InvalidReuseProvenance,
+            DecodeErrorClass::InvalidProvenance,
+        ),
+        (
+            ReaderError::InvalidReferenceEdge,
+            DecodeErrorClass::InvalidProvenance,
+        ),
+        (
+            ReaderError::MissingProvenanceRecord,
+            DecodeErrorClass::InvalidProvenance,
+        ),
+        (
+            ReaderError::InvalidVocabularyContract,
+            DecodeErrorClass::InvalidLogicalIr,
+        ),
+        (
+            ReaderError::DuplicateElementId,
+            DecodeErrorClass::InvalidLogicalIr,
+        ),
+        (
+            ReaderError::DuplicateDeclarationName,
+            DecodeErrorClass::InvalidLogicalIr,
+        ),
+        (
+            ReaderError::TypeValueMismatch,
+            DecodeErrorClass::InvalidLogicalIr,
+        ),
+        (
+            ReaderError::InvalidRecordSchema,
+            DecodeErrorClass::InvalidLogicalIr,
+        ),
+        (
+            ReaderError::InvalidDeclarationFingerprint,
+            DecodeErrorClass::InvalidLogicalIr,
+        ),
+    ] {
+        assert_eq!(super::map_reader_error(error).class(), class);
+    }
+}
+
+/// Frame scalar reads reject truncation and arithmetic overflow for every encoded width.
+#[test]
+fn fixed_width_reads_reject_short_and_overflowing_offsets() {
+    let bytes = [0_u8; 8];
+    for offset in [usize::MAX, usize::MAX - 1, bytes.len()] {
+        assert_eq!(
+            super::read_u16(&bytes, offset).unwrap_err().class(),
+            DecodeErrorClass::MalformedFrame
+        );
+        assert_eq!(
+            super::read_u32(&bytes, offset).unwrap_err().class(),
+            DecodeErrorClass::MalformedFrame
+        );
+        assert_eq!(
+            super::read_u64(&bytes, offset).unwrap_err().class(),
+            DecodeErrorClass::MalformedFrame
+        );
+    }
+    assert_eq!(
+        super::read_u16(&bytes[..1], 0).unwrap_err().class(),
+        DecodeErrorClass::MalformedFrame
+    );
+    assert_eq!(
+        super::read_u32(&bytes[..3], 0).unwrap_err().class(),
+        DecodeErrorClass::MalformedFrame
+    );
+    assert_eq!(
+        super::read_u64(&bytes[..7], 0).unwrap_err().class(),
+        DecodeErrorClass::MalformedFrame
+    );
+    assert_eq!(super::read_u16(&[0x12, 0x34], 0).unwrap(), 0x1234);
+    assert_eq!(
+        super::read_u32(&[0x12, 0x34, 0x56, 0x78], 0).unwrap(),
+        0x1234_5678
+    );
+    assert_eq!(
+        super::read_u64(&u64::MAX.to_be_bytes(), 0).unwrap(),
+        u64::MAX
+    );
+}
+
+/// Untrusted scalar types and digest sizes preserve the offending encoded byte offset.
+#[test]
+fn schema_scalars_reject_wrong_types_and_preserve_offsets() {
+    let wrong = LocatedValue {
+        offset: 37,
+        value: CborValue::Null,
+    };
+    for error in [
+        super::text(&wrong).unwrap_err(),
+        super::unsigned(&wrong).unwrap_err(),
+        super::signed(&wrong).unwrap_err(),
+        super::boolean(&wrong).unwrap_err(),
+        super::array(&wrong).err().unwrap(),
+        super::digest_bytes(&wrong).unwrap_err(),
+        super::discriminator(&wrong).unwrap_err(),
+    ] {
+        assert_eq!(error.class(), DecodeErrorClass::InvalidEncodedSchema);
+        assert_eq!(error.offset(), Some(37));
+    }
+    let too_large = LocatedValue {
+        offset: 37,
+        value: CborValue::Unsigned(u64::MAX),
+    };
+    assert_eq!(
+        super::signed(&too_large).unwrap_err().class(),
+        DecodeErrorClass::InvalidEncodedSchema
+    );
+    for length in [0, 31, 33] {
+        let value = LocatedValue {
+            offset: 37,
+            value: CborValue::Bytes(vec![0; length]),
+        };
+        assert_eq!(
+            super::digest_bytes(&value).unwrap_err().class(),
+            DecodeErrorClass::InvalidEncodedSchema
+        );
+    }
+    let duplicate = map(vec![
+        (constants::key::KIND, CborValue::Text("num".to_owned())),
+        (constants::key::KIND, CborValue::Text("num".to_owned())),
+    ]);
+    assert_eq!(
+        super::discriminator(&duplicate).unwrap_err().class(),
+        DecodeErrorClass::InvalidEncodedSchema
+    );
+    assert_eq!(
+        super::discriminator(&map(Vec::new())).unwrap_err().class(),
+        DecodeErrorClass::InvalidEncodedSchema
+    );
+}
+
+/// Exact-map checking prevents missing, unknown, duplicate, and non-map schemas from escaping.
+#[test]
+fn closed_object_validation_rejects_every_invalid_key_shape() {
+    for value in [
+        map(vec![("a", CborValue::Null), ("a", CborValue::Null)]),
+        map(vec![("a", CborValue::Null), ("unknown", CborValue::Null)]),
+        map(vec![("a", CborValue::Null)]),
+        null_value(),
+    ] {
+        let Err(error) = super::Object::exact(&value, &["a", "b"]) else {
+            panic!("invalid closed map accepted");
+        };
+        assert_eq!(error.class(), DecodeErrorClass::InvalidEncodedSchema);
+    }
+    let valid = map(vec![("a", CborValue::Null)]);
+    let object = super::Object::exact(&valid, &["a"]).unwrap();
+    assert!(matches!(object.get("a").unwrap().value, CborValue::Null));
+    assert_eq!(
+        object.get("missing").err().unwrap().class(),
+        DecodeErrorClass::InternalDefect
+    );
+    let token = CancellationToken::new();
+    let mut budget = type_budget(&token, 4);
+    budget.nodes = u64::MAX;
+    assert_eq!(
+        budget.visit(1).unwrap_err().class(),
+        DecodeErrorClass::EncodedSizeLimit
+    );
+}
+
 /// Total-length field offset in the frozen frame header.
 const TOTAL_LENGTH_OFFSET: usize = 16;
 /// Directory-offset field offset in the frozen frame header.

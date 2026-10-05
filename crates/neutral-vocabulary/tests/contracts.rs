@@ -5,8 +5,9 @@
 use neutral_core::{StructuralLimits, VocabularyContentDigest};
 use neutral_vocabulary::{
     MAX_VOCABULARY_NESTING_DEPTH, PROJECT_VOCABULARY_ENCODING_VERSION,
-    PROJECT_VOCABULARY_SCHEMA_VERSION, VOCABULARY_ENCODING_VERSION, VOCABULARY_SCHEMA_VERSION,
-    VocabularyError, VocabularyLimits, VocabularyLock, validate_project_bundle,
+    PROJECT_VOCABULARY_SCHEMA_VERSION, ProjectVocabularyType, VOCABULARY_ENCODING_VERSION,
+    VOCABULARY_SCHEMA_VERSION, VocabularyError, VocabularyLimits, VocabularyLock,
+    validate_project_bundle,
 };
 
 /// Builds one exact locked v1 bundle from its closed-schema type entries.
@@ -34,6 +35,215 @@ fn project_validate(bytes: &[u8], limits: VocabularyLimits) -> Result<(), Vocabu
 /// Returns generous but finite v1 JSON limits for exact-lock tests.
 fn project_limits() -> VocabularyLimits {
     VocabularyLimits::from_structural(StructuralLimits::new(4096, 1).expect("nonzero limits"))
+}
+
+/// Public vocabulary projections retain every scalar and canonical nominal dependency.
+#[test]
+fn project_vocabulary_projection_preserves_types_and_exact_digest() {
+    let bytes = project_bundle(
+        r#"
+        {"name":"Visible","public":true,"fields":[
+            {"name":"text","type":"string"}, {"name":"number","type":"num"},
+            {"name":"enabled","type":"bool"}, {"name":"location","type":"url"},
+            {"name":"directory","type":"path"}, {"name":"child","type":"Child"}]},
+        {"name":"Hidden","public":false,"fields":[{"name":"child","type":"Child"}]},
+        {"name":"Child","public":true,"fields":[]}
+    "#,
+    );
+    let digest = VocabularyContentDigest::from_bytes(&bytes);
+    let lock = VocabularyLock::new(
+        "Fixture",
+        "1.0.0",
+        PROJECT_VOCABULARY_ENCODING_VERSION,
+        PROJECT_VOCABULARY_SCHEMA_VERSION,
+        digest,
+        Vec::new(),
+    )
+    .unwrap();
+    let model = validate_project_bundle(&bytes, &lock, project_limits()).unwrap();
+    assert_eq!(model.identity(), lock.identity());
+    assert_eq!(model.version(), lock.version());
+    assert_eq!(model.content_digest(), digest);
+    assert_eq!(
+        model
+            .types()
+            .iter()
+            .map(neutral_vocabulary::ProjectVocabularyTypeDefinition::name)
+            .collect::<Vec<_>>(),
+        ["Child", "Hidden", "Visible"]
+    );
+    assert!(model.public_type("Hidden").is_none());
+    assert!(model.public_type("Missing").is_none());
+    let visible = model.public_type("Visible").unwrap();
+    assert!(visible.is_public());
+    let expected = [
+        ("child", ProjectVocabularyType::Nominal("Child".to_owned())),
+        ("directory", ProjectVocabularyType::Path),
+        ("enabled", ProjectVocabularyType::Bool),
+        ("location", ProjectVocabularyType::Url),
+        ("number", ProjectVocabularyType::Num),
+        ("text", ProjectVocabularyType::String),
+    ];
+    for (field, (name, ty)) in visible.fields().iter().zip(&expected) {
+        assert_eq!(field.name(), *name);
+        assert_eq!(field.ty(), ty);
+    }
+    assert_eq!(visible.fields().len(), expected.len());
+}
+
+/// Invalid nominal names, duplicate declarations, private closure leaks, and cycles fail closed.
+#[test]
+fn project_vocabulary_nominal_schema_rejections_are_classified() {
+    for (types, expected) in [
+        (
+            r#"{"name":"lower","public":true,"fields":[]}"#,
+            VocabularyError::InvalidTypeName,
+        ),
+        (
+            r#"{"name":"List","public":true,"fields":[]}"#,
+            VocabularyError::InvalidTypeName,
+        ),
+        (
+            r#"{"name":"Item","public":true,"fields":[]},{"name":"Item","public":false,"fields":[]}"#,
+            VocabularyError::DuplicateType,
+        ),
+        (
+            r#"{"name":"Item","public":true,"fields":[{"name":"Upper","type":"num"}]}"#,
+            VocabularyError::InvalidFieldName,
+        ),
+        (
+            r#"{"name":"Item","public":true,"fields":[{"name":"num","type":"num"}]}"#,
+            VocabularyError::InvalidFieldName,
+        ),
+        (
+            r#"{"name":"Item","public":true,"fields":[{"name":"a","type":"num"},{"name":"a","type":"bool"}]}"#,
+            VocabularyError::DuplicateField,
+        ),
+        (
+            r#"{"name":"Item","public":true,"fields":[{"name":"a","type":"Missing"}]}"#,
+            VocabularyError::UnknownTypeTarget,
+        ),
+        (
+            r#"{"name":"Item","public":true,"fields":[{"name":"a","type":"Hidden"}]},{"name":"Hidden","public":false,"fields":[]}"#,
+            VocabularyError::PrivateTypeExposed,
+        ),
+        (
+            r#"{"name":"Item","public":true,"fields":[{"name":"a","type":"Item"}]}"#,
+            VocabularyError::InvalidTypeRecursion,
+        ),
+        (
+            r#"{"name":"Item","public":true,"fields":[{"name":"a","type":"Other"}]},{"name":"Other","public":true,"fields":[{"name":"b","type":"Item"}]}"#,
+            VocabularyError::InvalidTypeRecursion,
+        ),
+    ] {
+        assert_eq!(
+            project_validate(&project_bundle(types), project_limits()),
+            Err(expected),
+            "{types}"
+        );
+    }
+}
+
+/// Exact lock coverage includes revisions, identity, features, and content bytes independently.
+#[test]
+fn project_vocabulary_lock_and_feature_rejections_are_classified() {
+    let valid = String::from_utf8(project_bundle("")).unwrap();
+    for (old, replacement, expected) in [
+        (
+            "neutral-vocabulary-bundle",
+            "unsupported-bundle",
+            VocabularyError::UnsupportedFormat,
+        ),
+        (
+            PROJECT_VOCABULARY_ENCODING_VERSION,
+            "unsupported",
+            VocabularyError::UnsupportedEncodingVersion,
+        ),
+        (
+            "\"identity\":\"Fixture\"",
+            "\"identity\":\"Other\"",
+            VocabularyError::LockMismatch,
+        ),
+        (
+            "\"version\":\"1.0.0\"",
+            "\"version\":\"2.0.0\"",
+            VocabularyError::LockMismatch,
+        ),
+        (
+            "\"required_features\":[]",
+            "\"required_features\":[true]",
+            VocabularyError::InvalidMemberType,
+        ),
+        (
+            "\"required_features\":[]",
+            "\"required_features\":[\"BAD\"]",
+            VocabularyError::InvalidFeatureId,
+        ),
+        (
+            "\"required_features\":[]",
+            "\"required_features\":[\"feature\",\"feature\"]",
+            VocabularyError::DuplicateFeature,
+        ),
+        (
+            "\"required_features\":[]",
+            "\"required_features\":[\"feature\"]",
+            VocabularyError::LockMismatch,
+        ),
+    ] {
+        let bytes = valid.replace(old, replacement);
+        assert_eq!(
+            project_validate(bytes.as_bytes(), project_limits()),
+            Err(expected),
+            "{replacement}"
+        );
+    }
+    let schema = valid.replace(
+        &format!("\"schema_version\":\"{PROJECT_VOCABULARY_SCHEMA_VERSION}\""),
+        "\"schema_version\":\"unsupported\"",
+    );
+    assert_eq!(
+        project_validate(schema.as_bytes(), project_limits()),
+        Err(VocabularyError::UnsupportedSchemaVersion)
+    );
+    for (encoding, schema, expected) in [
+        (
+            "unsupported",
+            PROJECT_VOCABULARY_SCHEMA_VERSION,
+            VocabularyError::UnsupportedEncodingVersion,
+        ),
+        (
+            PROJECT_VOCABULARY_ENCODING_VERSION,
+            "unsupported",
+            VocabularyError::UnsupportedSchemaVersion,
+        ),
+    ] {
+        let lock = VocabularyLock::new(
+            "Fixture",
+            "1.0.0",
+            encoding,
+            schema,
+            VocabularyContentDigest::from_bytes(valid.as_bytes()),
+            Vec::new(),
+        )
+        .unwrap();
+        assert_eq!(
+            validate_project_bundle(valid.as_bytes(), &lock, project_limits()),
+            Err(expected)
+        );
+    }
+    let wrong_digest = VocabularyLock::new(
+        "Fixture",
+        "1.0.0",
+        PROJECT_VOCABULARY_ENCODING_VERSION,
+        PROJECT_VOCABULARY_SCHEMA_VERSION,
+        VocabularyContentDigest::from_bytes(b"different"),
+        Vec::new(),
+    )
+    .unwrap();
+    assert_eq!(
+        validate_project_bundle(valid.as_bytes(), &wrong_digest, project_limits()),
+        Err(VocabularyError::DigestMismatch)
+    );
 }
 
 #[test]

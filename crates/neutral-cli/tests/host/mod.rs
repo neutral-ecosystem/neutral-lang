@@ -5,6 +5,144 @@
 use super::{CliFailure, ExitClass, atomic_write, create_temporary, read_bounded, required_option};
 use std::{fs, io::Cursor, path::PathBuf};
 
+/// Every host failure adapter preserves its stable class without leaking host details.
+#[test]
+fn capture_failure_classes_and_safe_messages_are_complete() {
+    use neutral_compiler::{CaptureError, ProjectCaptureError, ProjectHostError};
+    use neutral_core::SourceContentDigest;
+    for (error, class, message) in [
+        (CaptureError::Cancelled, ExitClass::Cancelled, "cancelled"),
+        (
+            CaptureError::MissingSource,
+            ExitClass::Validation,
+            "missing-source",
+        ),
+        (
+            CaptureError::SourceLimitExceeded {
+                actual: 2,
+                limit: 1,
+            },
+            ExitClass::Validation,
+            "source-limit-exceeded",
+        ),
+        (
+            CaptureError::SourceDigestMismatch {
+                expected: SourceContentDigest::from_bytes(b"expected"),
+                actual: SourceContentDigest::from_bytes(b"actual"),
+            },
+            ExitClass::Validation,
+            "source-digest-mismatch",
+        ),
+    ] {
+        let failure = super::capture_failure(&error);
+        assert_eq!(failure.class(), class);
+        assert_eq!(failure.messages(), [message]);
+        assert_eq!(
+            super::format_failure(super::FormatError::Capture(error)),
+            failure
+        );
+    }
+    let error = ProjectHostError::ConflictingSourceMapping;
+    assert_eq!(
+        super::project_host_failure(error).messages(),
+        [error.code()]
+    );
+    for error in [
+        ProjectCaptureError::Cancelled,
+        ProjectCaptureError::InvalidRequest,
+    ] {
+        let failure = super::project_capture_failure(error);
+        assert_eq!(failure.messages(), [error.code()]);
+        assert_eq!(
+            failure.class(),
+            if error == ProjectCaptureError::Cancelled {
+                ExitClass::Cancelled
+            } else {
+                ExitClass::Validation
+            }
+        );
+    }
+}
+
+/// Failed output creation or publication cannot replace a directory or leak temporary files.
+#[test]
+fn atomic_output_failures_cleanup_uncommitted_files() {
+    let directory = temporary_path("failed-publication");
+    fs::create_dir_all(&directory).unwrap();
+    let destination = directory.join("existing-directory");
+    fs::create_dir(&destination).unwrap();
+    assert_eq!(
+        atomic_write(&destination, b"new", true)
+            .unwrap_err()
+            .messages(),
+        ["output-commit-failed"]
+    );
+    assert_eq!(fs::read_dir(&directory).unwrap().count(), 1);
+    let missing = directory.join("missing").join("artifact.nir");
+    assert_eq!(
+        atomic_write(&missing, b"new", false)
+            .unwrap_err()
+            .messages(),
+        ["output-create-failed"]
+    );
+    assert!(destination.is_dir());
+    fs::remove_dir_all(directory).unwrap();
+}
+
+/// Captured project vocabulary options retain exact lock facts and reject malformed digests.
+#[test]
+fn project_vocabulary_lock_acquisition_is_explicit() {
+    let path = temporary_path("vocabulary.json");
+    let bytes = b"captured bytes";
+    fs::write(&path, bytes).unwrap();
+    let mut options = super::VocabularyOptions {
+        bundle: Some(path.to_string_lossy().into_owned()),
+        identity: Some("Fixture".to_owned()),
+        version: Some("1.0.0".to_owned()),
+        encoding_version: Some(neutral_vocabulary::PROJECT_VOCABULARY_ENCODING_VERSION.to_owned()),
+        schema_version: Some(neutral_vocabulary::PROJECT_VOCABULARY_SCHEMA_VERSION.to_owned()),
+        digest: Some(neutral_core::VocabularyContentDigest::from_bytes(bytes).to_string()),
+        features: Vec::new(),
+    };
+    assert!(super::project_vocabulary(&options, 64).unwrap().is_some());
+    let request = || {
+        super::CompilationRequest::new(
+            Vec::new(),
+            neutral_core::StructuralLimits::new(64, 4).unwrap(),
+            neutral_core::CancellationToken::new(),
+        )
+    };
+    assert!(super::captured_vocabulary(request(), &options, 64).is_ok());
+    options.digest = Some("invalid".to_owned());
+    assert_eq!(
+        super::captured_vocabulary(request(), &options, 64)
+            .unwrap_err()
+            .messages(),
+        ["invalid-vocabulary-digest"]
+    );
+    assert_eq!(
+        super::project_vocabulary(&options, 64)
+            .unwrap_err()
+            .messages(),
+        ["invalid-vocabulary-digest"]
+    );
+    options.digest = Some(neutral_core::VocabularyContentDigest::from_bytes(bytes).to_string());
+    options.identity = Some("invalid identity".to_owned());
+    assert_eq!(
+        super::captured_vocabulary(request(), &options, 64)
+            .unwrap_err()
+            .messages(),
+        ["invalid-vocabulary-lock"]
+    );
+    assert_eq!(
+        super::project_vocabulary(&options, 64)
+            .unwrap_err()
+            .messages(),
+        ["invalid-vocabulary-lock"]
+    );
+    fs::remove_file(path).unwrap();
+}
+
 /// Returns a process-unique temporary path inside the system temporary directory.
 fn temporary_path(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("neutral-cli-host-{}-{name}", std::process::id()))

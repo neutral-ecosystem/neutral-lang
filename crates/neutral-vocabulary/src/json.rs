@@ -4,6 +4,10 @@
 
 use crate::{VocabularyError, VocabularyLimits};
 
+#[cfg(test)]
+#[path = "../tests/json/mod.rs"]
+mod tests;
+
 /// Untrusted JSON tree retained only until closed-schema validation succeeds.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum JsonValue {
