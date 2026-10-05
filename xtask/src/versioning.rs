@@ -20,13 +20,13 @@ pub(super) fn show_versions() -> Result<(), String> {
         &root,
         constants::WORKSPACE_MANIFEST_FILE,
     )?)?;
-    println!("{} package-release {package}", constants::INFO);
+    crate::output::info(format!("package-release {package}"));
     let freeze = read_workspace_text(
         &root,
         &ReleasedBundle::load(&root)?.member("specs/contracts/freeze.toml"),
     )?;
     for (name, value) in configuration_section(&freeze, "contract_versions")? {
-        println!("{} contract {name}={value}", constants::INFO);
+        crate::output::info(format!("contract {name}={value}"));
     }
     Ok(())
 }
@@ -68,7 +68,7 @@ pub(super) fn check_versions() -> Result<(), String> {
     {
         return Err("contract freeze must remain approved and version-complete".to_owned());
     }
-    println!("{} centralized package versions: pass", constants::INFO);
+    crate::output::info("centralized package versions: pass");
     Ok(())
 }
 
@@ -178,21 +178,19 @@ pub(super) fn prepare_version(requested: &str) -> Result<(), String> {
         ),
     )
     .map_err(|error| format!("could not write {}: {error}", output.display()))?;
-    println!(
-        "{} package release prepared: {current} -> {requested}",
-        constants::INFO
-    );
-    println!(
-        "{} updated: {}, {}, {}",
-        constants::INFO,
+    crate::output::info(format!(
+        "package release prepared: {current} -> {requested}"
+    ));
+    crate::output::info(format!(
+        "updated: {}, {}, {}",
         constants::WORKSPACE_MANIFEST_FILE,
         constants::CARGO_LOCK_FILE,
         evidence_readme
             .strip_prefix(&root)
             .unwrap_or(&evidence_readme)
             .display()
-    );
-    println!("{} version plan: {}", constants::INFO, output.display());
+    ));
+    crate::output::info(format!("version plan: {}", crate::output::path(&output)));
     Ok(())
 }
 

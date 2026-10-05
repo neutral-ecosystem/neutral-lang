@@ -82,6 +82,8 @@ impl Measurement {
             fs::remove_file(old)
                 .map_err(|error| format!("could not invalidate receipt: {error}"))?;
         }
+        output::info(format!("{gate}: collecting source-bound measurements"));
+        output::info(format!("reports: {}", output::path(&directory)));
         Ok(Self {
             directory,
             receipt: Receipt {
@@ -123,13 +125,9 @@ impl Measurement {
             .map_err(|error| format!("could not create tool output: {error}"))?;
         let stderr = fs::File::create(self.directory.join(format!("{report}.stderr")))
             .map_err(|error| format!("could not create tool errors: {error}"))?;
-        println!(
-            "{} measuring {}: {program} {}; reports {}",
-            constants::INFO,
-            self.receipt.gate,
-            arguments.join(" "),
-            self.directory.display()
-        );
+        let label = format!("{}/{report}", self.receipt.gate);
+        output::info(format!("{label}: start"));
+        output::info(format!("command: {}", output::command(program, arguments)));
         let start = Instant::now();
         let mut child = Command::new(program)
             .current_dir(workspace_root()?)
@@ -138,18 +136,27 @@ impl Measurement {
             .stderr(Stdio::from(stderr))
             .spawn()
             .map_err(|error| format!("could not run measured tool: {error}"))?;
-        let status = match budget_seconds {
-            Some(seconds) => progress::wait(&mut child, report, seconds),
-            None => child.wait(),
-        }
-        .map_err(|error| format!("could not wait for measured tool: {error}"))?;
+        let status = progress::wait(&mut child, &label, budget_seconds)
+            .map_err(|error| format!("could not wait for measured tool: {error}"))?;
         if !status.success() {
+            output::error(format!(
+                "{label}: failed ({}, {status})",
+                output::duration(start.elapsed())
+            ));
+            output::info(format!(
+                "tool errors: {}",
+                output::path(&self.directory.join(format!("{report}.stderr")))
+            ));
             return Err(format!(
                 "measurement {} failed with {status}; reports {}",
                 self.receipt.gate,
                 self.directory.display()
             ));
         }
+        output::info(format!(
+            "{label}: pass ({})",
+            output::duration(start.elapsed())
+        ));
         self.receipt.invocations.push(Invocation {
             program: program.to_owned(),
             arguments: arguments.iter().map(|value| (*value).to_owned()).collect(),
@@ -211,12 +218,15 @@ impl Measurement {
             .map_err(|error| format!("could not serialize receipt: {error}"))?;
         fs::write(self.directory.join("receipt.json"), format!("{json}\n"))
             .map_err(|error| format!("could not write receipt: {error}"))?;
-        println!(
-            "{} verified {} evidence: {}",
-            constants::INFO,
+        output::info(format!(
+            "{}: evidence verified ({} tool runs)",
             self.receipt.gate,
-            self.directory.display()
-        );
+            self.receipt.invocations.len()
+        ));
+        output::info(format!(
+            "receipt: {}",
+            output::path(&self.directory.join("receipt.json"))
+        ));
         Ok(())
     }
 }

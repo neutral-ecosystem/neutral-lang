@@ -128,12 +128,11 @@ fn execute(unit: bool, full_gate: bool, filter: Option<&str>) -> Result<(), Stri
     verify_runner()?;
     let backend = runner()?;
     let arguments = arguments(backend, "run", unit, full_gate, filter)?;
-    println!(
-        "{} tests: {:?}{}",
-        constants::INFO,
+    crate::output::info(format!(
+        "tests: {:?}{}",
         backend,
         if full_gate { " (full gate)" } else { "" }
-    );
+    ));
     crate::run_cargo(&arguments.iter().map(String::as_str).collect::<Vec<_>>())
 }
 

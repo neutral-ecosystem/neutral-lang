@@ -15,7 +15,7 @@ pub(super) fn bootstrap() -> Result<(), String> {
         environment_manifest()?,
     )
     .map_err(|error| format!("could not write bootstrap environment manifest: {error}"))?;
-    println!("{} workspace bootstrap: pass", constants::INFO);
+    crate::output::info("workspace bootstrap: pass");
     Ok(())
 }
 
@@ -75,7 +75,7 @@ pub(super) fn verify_environment() -> Result<(), String> {
     }
 
     test_execution::verify_runner()?;
-    println!("{} environment verification: pass", constants::INFO);
+    crate::output::info("environment verification: pass");
     Ok(())
 }
 
@@ -89,7 +89,7 @@ pub(super) fn verify_complete_environment() -> Result<(), String> {
         }
     }
     if failures.is_empty() {
-        println!("{} complete environment tool set: pass", constants::INFO);
+        crate::output::info("complete environment tool set: pass");
         Ok(())
     } else {
         Err(format!(

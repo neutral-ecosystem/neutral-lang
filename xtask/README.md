@@ -83,6 +83,15 @@ Full coverage-guided fuzzing, LLVM coverage, and mutation analysis require their
 documented external Cargo tools. Missing tools fail their command; bounded fuzz
 regression tests are never reported as a full fuzz campaign.
 
+Human output uses shared `[info]` and `[error]` reporting on stderr. Commands
+print start/result summaries, workflows number their steps, and measured tools
+show elapsed-time heartbeats while retaining complete stdout/stderr reports.
+Fuzz targets additionally show configured-budget progress and approximate ETA;
+elapsed budget never substitutes for a successful tool exit or verified receipt.
+Report paths are workspace-relative, commands quote arguments containing spaces,
+and timings use readable units. Redirect stderr to retain the human log;
+`release tag` and `environment manifest` keep their script-facing stdout format.
+
 `cargo xtask docs` builds the searchable workspace Rustdoc site under ignored
 `target/doc/` from Cargo metadata. The published copy is the [Neutral API
 documentation website](https://neutral-lang-doc.younesrabeh.workers.dev/). The

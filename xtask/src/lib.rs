@@ -26,6 +26,7 @@ mod environment;
 mod fixtures;
 mod interface;
 mod manifest_updates;
+pub mod output;
 mod portable_stage;
 mod progress;
 mod quality_evidence;
@@ -74,7 +75,25 @@ const RUSTDOC_HEADER_TEMPLATE: &str = include_str!("rustdoc-header.html");
 /// graph violates the boundary policy.
 pub fn run(arguments: impl IntoIterator<Item = String>) -> Result<(), String> {
     let arguments = arguments.into_iter().collect::<Vec<_>>();
-    execute(interface::parse(&arguments)?)
+    let task = interface::parse(&arguments)?;
+    // Keep scripting interfaces and help free of human lifecycle summaries.
+    if matches!(
+        task,
+        Task::ReleaseTag | Task::EnvironmentManifest | Task::Help
+    ) {
+        return execute(task);
+    }
+    let label = arguments.join(" ");
+    let started = Instant::now();
+    output::info(format!("xtask {label}: start"));
+    let result = execute(task);
+    let duration = output::duration(started.elapsed());
+    if result.is_ok() {
+        output::info(format!("xtask {label}: pass ({duration})"));
+    } else {
+        output::error(format!("xtask {label}: failed ({duration})"));
+    }
+    result
 }
 
 /// Executes one parsed stable automation task.
@@ -198,7 +217,7 @@ fn verify_repository_markdown_links() -> Result<(), String> {
         }
     }
     if failures.is_empty() {
-        println!("{} repository Markdown links: pass", constants::INFO);
+        crate::output::info("repository Markdown links: pass");
         Ok(())
     } else {
         failures.sort();
@@ -280,7 +299,7 @@ fn check_workflow_contract() -> Result<(), String> {
             return Err(format!("{relative} does not delegate to `{command}`"));
         }
     }
-    println!("{} stable workflow contract: pass", constants::INFO);
+    crate::output::info("stable workflow contract: pass");
     Ok(())
 }
 
@@ -309,11 +328,10 @@ fn documentation() -> Result<(), String> {
     fs::write(&output_path, index)
         .map_err(|error| format!("could not write {}: {error}", output_path.display()))?;
     copy_documentation_assets(&workspace_root()?, &output_directory)?;
-    println!(
-        "{} workspace documentation: {}",
-        constants::INFO,
-        output_path.display()
-    );
+    output::info(format!(
+        "workspace documentation: {}",
+        output::path(&output_path)
+    ));
     Ok(())
 }
 
@@ -446,7 +464,16 @@ fn coverage_guided_fuzz_campaign() -> Result<(), String> {
     if !is_safe_relative_path(&corpus_root) || !is_safe_relative_path(&seed_root) {
         return Err("fuzz corpus and seed roots must be safe workspace-relative paths".to_owned());
     }
-    for target in targets {
+    let total = targets.len();
+    output::info(format!(
+        "fuzz campaign: {total} targets | budget {} each | estimated total {} + build/startup",
+        output::duration(std::time::Duration::from_secs(seconds)),
+        output::duration(std::time::Duration::from_secs(
+            seconds.saturating_mul(total as u64)
+        ))
+    ));
+    for (index, target) in targets.into_iter().enumerate() {
+        output::info(format!("fuzz [{}/{total}]: {target}", index + 1));
         if !is_safe_relative_path(Path::new(&target)) {
             return Err(format!("unsafe fuzz target name: {target}"));
         }
@@ -541,12 +568,8 @@ fn coverage() -> Result<(), String> {
         ],
         "json",
     )?;
-    println!(
-        "{} coverage HTML: {}",
-        constants::INFO,
-        html_index.display()
-    );
-    println!("{} coverage JSON: {json}", constants::INFO);
+    output::info(format!("coverage HTML: {}", output::path(&html_index)));
+    output::info(format!("coverage JSON: {}", output::path(Path::new(json))));
     measurement.copy_report(Path::new(json), "coverage.json")?;
     measurement.finish()
 }
@@ -660,11 +683,7 @@ fn evaluate_quality(profile: QualityProfile) -> Result<(), String> {
         ),
     )
     .map_err(|error| format!("could not write {}: {error}", output.display()))?;
-    println!(
-        "{} quality evaluation: {}",
-        constants::INFO,
-        output.display()
-    );
+    crate::output::info(format!("quality evaluation: {}", output.display()));
     Ok(())
 }
 
@@ -727,11 +746,10 @@ fn approve_quality_release(release: &str) -> Result<(), String> {
     if record.exists() {
         verify_release_approval()?;
         quality_evidence::retain()?;
-        println!(
-            "{} retained current measurement evidence; existing approval remains immutable: {}",
-            constants::INFO,
+        crate::output::info(format!(
+            "retained current measurement evidence; existing approval remains immutable: {}",
             record.display()
-        );
+        ));
         return Ok(());
     }
     quality_evidence::retain()?;
@@ -746,7 +764,7 @@ fn approve_quality_release(release: &str) -> Result<(), String> {
     )
     .map_err(|error| format!("could not write {}: {error}", record.display()))?;
     render_quality_status()?;
-    println!("{} quality release v{version}: approved", constants::INFO);
+    crate::output::info(format!("quality release v{version}: approved"));
     Ok(())
 }
 
@@ -754,15 +772,10 @@ fn approve_quality_release(release: &str) -> Result<(), String> {
 fn quality_status() -> Result<(), String> {
     let approvals = read_quality_approvals()?;
     if approvals.is_empty() {
-        println!("{} no approved quality releases", constants::INFO);
+        crate::output::info("no approved quality releases");
     }
     for approval in approvals {
-        println!(
-            "{} {} {}",
-            constants::INFO,
-            approval.release,
-            approval.status
-        );
+        crate::output::info(format!("{} {}", approval.release, approval.status));
     }
     Ok(())
 }
@@ -775,11 +788,7 @@ fn render_quality_status() -> Result<(), String> {
     let path = root.join(constants::QUALITY_STATUS_FILE);
     fs::write(&path, rendered)
         .map_err(|error| format!("could not write {}: {error}", path.display()))?;
-    println!(
-        "{} quality status rendered: {}",
-        constants::INFO,
-        path.display()
-    );
+    crate::output::info(format!("quality status rendered: {}", path.display()));
     Ok(())
 }
 
@@ -819,7 +828,7 @@ fn verify_quality_ledger() -> Result<(), String> {
             "quality status documentation is stale; run `cargo xtask quality render`".to_owned(),
         );
     }
-    println!("{} quality approval ledger: pass", constants::INFO);
+    crate::output::info("quality approval ledger: pass");
     Ok(())
 }
 
@@ -1016,7 +1025,7 @@ fn validate_release_binaries(directory: &Path, binaries: &[String]) -> Result<()
         run_program(&path, &[std::ffi::OsStr::new("--help")])?;
     }
     check_boundaries()?;
-    println!("{} release binaries: valid", constants::INFO);
+    crate::output::info("release binaries: valid");
     Ok(())
 }
 
@@ -1191,11 +1200,10 @@ fn package() -> Result<(), String> {
         &assets,
         &summary,
     )?;
-    println!(
-        "{} package assembled: {}",
-        constants::INFO,
-        output_directory.display()
-    );
+    output::info(format!(
+        "package assembled: {}",
+        output::path(&output_directory)
+    ));
     Ok(())
 }
 
@@ -1561,11 +1569,10 @@ fn verify_existing_binary_package(
             expected.keys().cloned().collect::<Vec<_>>().join(", ")
         ));
     }
-    println!(
-        "{} existing package verified: {}",
-        constants::INFO,
+    crate::output::info(format!(
+        "existing package verified: {}",
         output_directory.display()
-    );
+    ));
     Ok(())
 }
 
@@ -1586,11 +1593,10 @@ fn release_prepare() -> Result<(), String> {
         ],
     )?;
     let plan = release_plan()?;
-    println!(
-        "{} release {} prepared; no publish action was performed",
-        constants::INFO,
+    crate::output::info(format!(
+        "release {} prepared; no publish action was performed",
         plan.release_tag
-    );
+    ));
     Ok(())
 }
 
@@ -1683,11 +1689,10 @@ fn install_portable(source: &Path) -> Result<(), String> {
             rejected.display()
         ));
     }
-    println!(
-        "{} active portable installed from {}",
-        constants::INFO,
+    crate::output::info(format!(
+        "active portable installed from {}",
         source.display()
-    );
+    ));
     Ok(())
 }
 
@@ -1747,7 +1752,7 @@ fn verify_portable() -> Result<(), String> {
     verify_portable_links(&root)?;
     ensure_no_portable_archive_dependencies(&root)?;
     verify_existing_portable_snapshots(&root)?;
-    println!("{} active portable package: pass", constants::INFO);
+    crate::output::info("active portable package: pass");
     Ok(())
 }
 
@@ -1793,9 +1798,8 @@ fn verify_optional_portable() -> Result<(), String> {
     if root.join(constants::PORTABLE_DIRECTORY).exists() {
         verify_portable()
     } else {
-        println!(
-            "{} no active portable package installed; release conformance remains available",
-            constants::INFO
+        crate::output::info(
+            "no active portable package installed; release conformance remains available",
         );
         Ok(())
     }
@@ -2058,11 +2062,7 @@ fn snapshot_portable() -> Result<(), String> {
                 output.display()
             ));
         }
-        println!(
-            "{} portable snapshot: {}",
-            constants::INFO,
-            output.display()
-        );
+        crate::output::info(format!("portable snapshot: {}", output.display()));
         return Ok(());
     }
     fs::create_dir_all(&parent)
@@ -2105,11 +2105,7 @@ fn snapshot_portable() -> Result<(), String> {
             output.display()
         )
     })?;
-    println!(
-        "{} portable snapshot: {}",
-        constants::INFO,
-        output.display()
-    );
+    crate::output::info(format!("portable snapshot: {}", output.display()));
     Ok(())
 }
 
@@ -2182,7 +2178,7 @@ fn check_generated_outputs() -> Result<(), String> {
     {
         return Err("Cargo target and configured results must remain ignored".to_owned());
     }
-    println!("{} generated-output ownership: pass", constants::INFO);
+    crate::output::info("generated-output ownership: pass");
     Ok(())
 }
 
@@ -2242,7 +2238,7 @@ fn check_quality_inventory() -> Result<(), String> {
             "quality inventory differs from durable documents; unregistered: {unregistered:?}; missing: {missing:?}"
         ));
     }
-    println!("{} quality document inventory: pass", constants::INFO);
+    crate::output::info("quality document inventory: pass");
     Ok(())
 }
 
@@ -2325,7 +2321,7 @@ fn check_repository_structure() -> Result<(), String> {
     verify_fuzz_ownership(&root)?;
     verify_generated_file_hygiene(&root)?;
     verify_ignore_policy(&root)?;
-    println!("{} repository ownership and hygiene: pass", constants::INFO);
+    crate::output::info("repository ownership and hygiene: pass");
     Ok(())
 }
 
@@ -2652,6 +2648,7 @@ fn run_ci_gate(profile: &str, quality_profile: QualityProfile) -> Result<(), Str
 /// Runs Cargo with inherited standard streams and converts failures to task errors.
 fn run_cargo(arguments: &[&str]) -> Result<(), String> {
     let cargo = cargo_command()?;
+    output::info(format!("command: {}", output::command(&cargo, arguments)));
     let status = Command::new(&cargo)
         .current_dir(workspace_root()?)
         .args(arguments)
@@ -2716,11 +2713,8 @@ fn run_recorded_workflow(
     write_workflow_summary(
         &summary, workflow, profile, "running", 0, total, started_at, None,
     )?;
-    println!(
-        "{} {workflow} {profile}: start; log {}",
-        constants::INFO,
-        directory.display()
-    );
+    output::info(format!("{workflow} {profile}: start ({total} steps)"));
+    output::info(format!("workflow log: {}", output::path(&directory)));
 
     for (index, (name, step)) in steps.into_iter().enumerate() {
         let step_started_at = unix_time_millis()?;
@@ -2735,7 +2729,7 @@ fn run_recorded_workflow(
             0,
             None,
         )?;
-        println!("{} {workflow}/{name}: start", constants::INFO);
+        output::info(format!("{workflow} [{}/{total}] {name}: start", index + 1));
         match step() {
             Ok(()) => {
                 let elapsed = step_started.elapsed().as_millis();
@@ -2759,7 +2753,11 @@ fn run_recorded_workflow(
                     started_at,
                     None,
                 )?;
-                println!("{} {workflow}/{name}: pass ({elapsed} ms)", constants::INFO);
+                output::info(format!(
+                    "{workflow} [{}/{total}] {name}: pass ({})",
+                    index + 1,
+                    output::duration(step_started.elapsed())
+                ));
             }
             Err(error) => {
                 let elapsed = step_started.elapsed().as_millis();
@@ -2784,22 +2782,22 @@ fn run_recorded_workflow(
                     Some(&error),
                 )?;
                 return Err(format!(
-                    "{workflow}/{name} failed: {error}; workflow log: {}",
-                    directory.display()
+                    "{workflow} [{}/{total}] {name} failed ({}): {error}; workflow log: {}",
+                    index + 1,
+                    output::duration(step_started.elapsed()),
+                    output::path(&directory)
                 ));
             }
         }
     }
 
-    let elapsed = started.elapsed().as_millis();
     write_workflow_summary(
         &summary, workflow, profile, "pass", total, total, started_at, None,
     )?;
-    println!(
-        "{} {workflow} {profile}: pass ({elapsed} ms); log {}",
-        constants::INFO,
-        directory.display()
-    );
+    output::info(format!(
+        "{workflow} {profile}: pass ({total}/{total} steps, {})",
+        output::duration(started.elapsed())
+    ));
     Ok(())
 }
 
@@ -2943,7 +2941,7 @@ fn check_boundaries() -> Result<(), String> {
         ]),
     )?;
 
-    println!("{} dependency boundaries: pass", constants::INFO);
+    crate::output::info("dependency boundaries: pass");
     Ok(())
 }
 
@@ -3037,7 +3035,7 @@ fn check_portable_traceability_at(root: &Path) -> Result<(), String> {
     ensure_inventory_registered(root, constants::PORTABLE_FIXTURE_DIRECTORY, &manifest)?;
     ensure_inventory_registered(root, constants::PORTABLE_ORACLE_DIRECTORY, &manifest)?;
     ensure_registered_paths_exist(root, &manifest)?;
-    println!("{} traceability coherence: pass", constants::INFO);
+    crate::output::info("traceability coherence: pass");
     Ok(())
 }
 
@@ -3072,7 +3070,7 @@ fn check_traceability_bundle(
     ensure_inventory_registered(&root, oracle_directory, &manifest)?;
     ensure_registered_paths_exist(&root, &manifest)?;
 
-    println!("{} traceability coherence: pass", constants::INFO);
+    crate::output::info("traceability coherence: pass");
     Ok(())
 }
 
@@ -3209,7 +3207,7 @@ fn check_test_layout() -> Result<(), String> {
         }
     }
     if violations.is_empty() {
-        println!("{} crate-local test layout: pass", constants::INFO);
+        crate::output::info("crate-local test layout: pass");
         Ok(())
     } else {
         Err(format!(

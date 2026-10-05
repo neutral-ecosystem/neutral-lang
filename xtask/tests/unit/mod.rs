@@ -485,7 +485,7 @@ fn automation_records_failed_workflow_steps() {
     .expect_err("synthetic workflow should fail");
     let directory = error
         .split_once("workflow log: ")
-        .map(|(_, directory)| std::path::PathBuf::from(directory))
+        .map(|(_, directory)| super::workspace_root().unwrap().join(directory))
         .expect("failure should identify its workflow log");
     let summary = std::fs::read_to_string(directory.join("summary.json"))
         .expect("failed workflow summary should exist");

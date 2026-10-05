@@ -78,6 +78,6 @@ pub(super) fn clean_results() -> Result<(), String> {
         fs::remove_dir_all(&root)
             .map_err(|error| format!("could not remove {}: {error}", root.display()))?;
     }
-    println!("{} generated results cleaned", constants::INFO);
+    crate::output::info("generated results cleaned");
     Ok(())
 }

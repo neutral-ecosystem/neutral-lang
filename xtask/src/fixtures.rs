@@ -27,11 +27,10 @@ struct SyncSummary {
 
 /// Preflights both documents and all their inputs before writing any changed manifest.
 pub(crate) fn sync_fixtures(root: &Path, check: bool) -> Result<(), String> {
-    println!(
-        "{} fixtures: {} fixture and contract hashes",
-        constants::INFO,
+    crate::output::info(format!(
+        "fixtures: {} fixture and contract hashes",
         if check { "verifying" } else { "synchronizing" }
-    );
+    ));
     let manifest_path = root.join(constants::PORTABLE_CONFORMANCE_MANIFEST_FILE);
     let freeze_path = root.join(constants::PORTABLE_CONTRACT_FREEZE_FILE);
     let manifest_raw =
@@ -68,14 +67,13 @@ pub(crate) fn sync_fixtures(root: &Path, check: bool) -> Result<(), String> {
                 .map_err(|error| format!("could not write {}: {error}", freeze_path.display()))?;
         }
     }
-    println!(
-        "{} fixtures: verified {} fixtures, {} oracles (manifest updates: {}, freeze updates: {})",
-        constants::INFO,
+    crate::output::info(format!(
+        "fixtures: verified {} fixtures, {} oracles (manifest updates: {}, freeze updates: {})",
         summary.fixture_count,
         summary.oracle_count,
         summary.manifest_changes,
         summary.freeze_changes
-    );
+    ));
     Ok(())
 }
 
@@ -234,10 +232,9 @@ fn discover_untracked_fixtures(root: &Path, registered: &BTreeSet<String>) -> Re
             .to_string_lossy()
             .replace('\\', "/");
         if !registered.contains(&relative) {
-            println!(
-                "{} fixtures: file on disk not yet in manifest: {relative}",
-                constants::WARN
-            );
+            crate::output::warn(format!(
+                "fixtures: file on disk not yet in manifest: {relative}"
+            ));
         }
     }
     Ok(())

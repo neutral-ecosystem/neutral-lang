@@ -46,11 +46,12 @@ RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz smoke
 RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign
 ```
 
-Full fuzz campaigns use the configured 300-second (five-minute) budget per
-subsystem in `config/quality-gates.toml`. A live progress bar shows each target's
+Full fuzz campaigns use the per-target budget configured in
+`config/quality-gates.toml`; the command prints target count, per-target budget,
+and estimated total time before starting. A live progress bar shows each target's
 command elapsed time and estimated remaining budget; compilation/startup can
 extend the estimate, and only successful exit plus validated fuzzer reports
-confirm completion. Five targets take approximately 25 minutes plus overhead.
+confirm completion.
 Full stdout/stderr remain retained in the reported evidence directory. Mutable
 fuzz corpora, findings, and crash artifacts are not normative conformance data.
 
@@ -60,6 +61,15 @@ is `test-results/analysis/coverage/coverage.json`. Thresholds and reviewed
 exclusions are defined in [`config/quality-gates.toml`](../config/quality-gates.toml).
 
 ## Release measurements
+
+Measurements print their report directory once, then a labeled start, exact
+command, elapsed-time progress, and pass/fail result for each tool invocation.
+Tools without a fixed budget (including profilers) show elapsed time rather than
+an invented percentage or ETA. Redirected logs receive periodic plain-text
+updates instead of terminal control sequences. A passing tool invocation is
+distinct from the final `evidence verified` result: only the latter confirms
+acceptance of the retained reports. Failure output identifies the captured
+stderr report to inspect.
 
 Install the current analysis tools and the system's Valgrind package:
 
