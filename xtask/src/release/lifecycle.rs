@@ -62,7 +62,7 @@ pub(crate) fn prepare(requested: Option<&str>) -> Result<(), String> {
 
 /// Runs only missing/stale measurements, selecting nightly per child without changing global Rust.
 pub(crate) fn ensure_measurements() -> Result<(), String> {
-    for gate in QualityGate::ALL {
+    for gate in QualityGate::RELEASE_REQUIRED {
         if quality_evidence::verify_gate(gate).is_ok() {
             output::pass(format!(
                 "release measurement {gate}: reusing verified evidence"

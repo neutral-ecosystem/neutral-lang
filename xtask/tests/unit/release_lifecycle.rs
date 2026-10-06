@@ -103,7 +103,7 @@ fn tag_checks_fail_closed_and_metadata_commits_are_repeatable() {
 /// Every required gate delegates to the existing measurement family and correct toolchain.
 #[test]
 fn release_measurement_mapping_covers_all_required_gates() {
-    for gate in QualityGate::ALL {
+    for gate in QualityGate::RELEASE_REQUIRED {
         let arguments = measurement_arguments(gate);
         if gate == QualityGate::Advisories {
             assert_eq!(arguments, [] as [&str; 0]);
@@ -117,7 +117,7 @@ fn release_measurement_mapping_covers_all_required_gates() {
             .unwrap();
             assert!(matches!(
                 task,
-                Task::Coverage | Task::Mutate | Task::Fuzz(_) | Task::Performance(_)
+                Task::Coverage | Task::Mutate | Task::Performance(_)
             ));
         }
     }

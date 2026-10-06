@@ -31,15 +31,17 @@ once; preparation does not install software or weaken checks when a tool is miss
 - When a new version is supplied, updates the workspace version, inherited
   lockfile entries, and compact evidence scaffold; commits only those files
   with the message `[REL] v<version>`.
-- Runs the ordinary quality gate, then coverage, mutation, fuzzing, performance,
+- Runs the ordinary quality gate, then coverage, mutation, performance,
   soak, and advisory checks. Valid evidence for the exact current inputs is
   reused; missing or stale measurements are run automatically.
-- Selects nightly only for coverage/fuzz child commands, leaving the global
+- Selects nightly only for coverage child commands, leaving the global
   stable toolchain unchanged.
 - Records a passing evaluation for the exact candidate and assembles binaries,
   source archive, manifests, and checksums under ignored `test-results/release/`.
 
 Preparation may take time when the expensive measurements need to run.
+Fuzzing is opt-in (`RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign`), not a
+release requirement; preparation, qualification, and approval do not demand fuzz evidence.
 Watch the labeled progress and inspect the package path printed at completion.
 It creates no approval, tag, remote push, or GitHub release.
 

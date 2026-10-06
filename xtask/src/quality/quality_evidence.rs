@@ -305,7 +305,7 @@ fn verify_all_with(root: &Path, settings: &QualitySettings) -> Result<(), String
     let digest = input_digest(root)?;
     let generated = generated_root(settings)?.join(&digest);
     let retained = retained_root(root)?.join(&digest);
-    for gate in QualityGate::ALL {
+    for gate in QualityGate::RELEASE_REQUIRED {
         verify_gate_at(gate, &digest, &generated, &retained, settings)?;
     }
     Ok(())
@@ -366,7 +366,7 @@ pub(crate) fn retain() -> Result<(), String> {
     let digest = input_digest(&root)?;
     let generated = generated_root(&settings)?.join(&digest);
     let retained = retained_root(&root)?.join(&digest);
-    for gate in QualityGate::ALL {
+    for gate in QualityGate::RELEASE_REQUIRED {
         let source = generated.join(gate.as_str());
         let destination = retained.join(gate.as_str());
         if verify(&destination, gate, &digest, &settings).is_ok() {

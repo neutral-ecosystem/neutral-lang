@@ -90,10 +90,13 @@ a failure on the final source inputs:
 ```sh
 RUSTUP_TOOLCHAIN=nightly cargo xtask coverage
 cargo xtask mutate
-RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign
 cargo xtask test performance --profile release
 cargo xtask test performance --profile soak
 ```
+
+Fuzz campaigns are separate, opt-in analysis, not a release-quality requirement.
+Run `RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign` when needed; release
+preparation, CI qualification, approval, and evidence retention do not require them.
 
 The performance commands automatically capture phase/end-to-end, growth, and
 concurrency timings, Massif heap snapshots, and Memcheck allocation/leak results.
