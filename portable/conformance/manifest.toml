@@ -10,6 +10,69 @@ target_profile = "1.0"
 # are reviewed. The v0.1 corpus remains a required inherited suite.
 
 [[suite]]
+id = "composition-catalogue"
+profile = "vocabulary-schema-2.0; legacy-schema-1.0-leaf"
+active_from_stage = 7
+status = "required"
+scope = "standalone-catalogue-only; source-project-wire-identity-not-activated"
+
+[[case]]
+id = "V1-VOC-CATALOGUE-POSITIVE-PRESENCE"
+fixture = "portable/specs/fixtures/composition/positive/presence.json"
+fixture_sha256 = "f79072dee04a81d34d915daa93040753a28ee63121d07c81298b8b905d8a8450"
+oracle = "portable/conformance/oracles/composition/positive-presence.toml"
+oracle_sha256 = "d32bc4d0ec4909301982afcdf3b23b598dff3fe8e189354202e0575bb39554ef"
+
+[[case]]
+id = "V1-VOC-CATALOGUE-POSITIVE-VARIANTS"
+fixture = "portable/specs/fixtures/composition/positive/variants.json"
+fixture_sha256 = "369ecaa4cd385bcdffa12b46886ca2e2d0dcd955732cebd49242b0c3c3d031e6"
+oracle = "portable/conformance/oracles/composition/positive-variants.toml"
+oracle_sha256 = "ae2e8f9f7f077170c1535eada7e8a40f02166f98b74dc72c4ad53aa15002aed2"
+
+[[case]]
+id = "V1-VOC-CATALOGUE-NEGATIVE-DUPLICATE-CHOICE"
+fixture = "portable/specs/fixtures/composition/negative/duplicate-choice.json"
+fixture_sha256 = "e895501697de85ab40524d5da83e01662aa801a5446218f73e8d63c60a592e8c"
+oracle = "portable/conformance/oracles/composition/negative-duplicate-choice.toml"
+oracle_sha256 = "9cfd040d14e808bcdcdfa8718b0b8094b166f54b7b9043938e4a0a70f554247c"
+
+[[case]]
+id = "V1-VOC-CATALOGUE-NEGATIVE-DEFAULT-OUTSIDE-BOUNDS"
+fixture = "portable/specs/fixtures/composition/negative/default-outside-bounds.json"
+fixture_sha256 = "e3f3883673ee4c9c390dfd33fcc9ed8659e25087f3b29747562d572f54514f37"
+oracle = "portable/conformance/oracles/composition/negative-default-outside-bounds.toml"
+oracle_sha256 = "833e63f2aa4c3eb1f051535fe41fd63101971f5b209c2e35aebd1bff9e07a84f"
+
+[[case]]
+id = "V1-VOC-CATALOGUE-NEGATIVE-UNKNOWN-TAG"
+fixture = "portable/specs/fixtures/composition/negative/unknown-tag.json"
+fixture_sha256 = "25f155995993f532f404916ce3e93ba050b206bb64260eae476f7af6ded2d3d2"
+oracle = "portable/conformance/oracles/composition/negative-unknown-tag.toml"
+oracle_sha256 = "00c2961dfda51dd83eaeb936e32ca9a4227ce20b387c55c1b93a91f11042fae1"
+
+[[case]]
+id = "V1-VOC-CATALOGUE-NEGATIVE-PUBLIC-PRIVATE-CLOSURE"
+fixture = "portable/specs/fixtures/composition/negative/public-private-closure.json"
+fixture_sha256 = "b597efe992a603a0a86a4b783d157c6db47005105164951a4822d32032e15204"
+oracle = "portable/conformance/oracles/composition/negative-public-private-closure.toml"
+oracle_sha256 = "608a0ae4a90e49631141fef7f081660b0b0c3f7f86e28e9c8cc5e8a7a7c46241"
+
+[[case]]
+id = "V1-VOC-CATALOGUE-BOUNDARY-ALTERNATIVES"
+fixture = "portable/specs/fixtures/composition/boundary/alternatives.json"
+fixture_sha256 = "437e8b767037bd8c2eae58885f3dcf26ead4485d6f501b16bbbd9d67597dc7dc"
+oracle = "portable/conformance/oracles/composition/boundary-alternatives.toml"
+oracle_sha256 = "4e7e360640820df6b5e9d5980a7838d43f4259ddbeaa6f5f6622ebdb4bfd7372"
+
+[[case]]
+id = "V1-VOC-CATALOGUE-MIGRATION-LEGACY-LEAF"
+fixture = "portable/specs/fixtures/composition/migration/legacy-leaf.json"
+fixture_sha256 = "cd8a2bb3e4244461270ff2fc418cf1bb1898a295379fbd8d7d576676404c23f6"
+oracle = "portable/conformance/oracles/composition/migration-legacy-leaf.toml"
+oracle_sha256 = "8e82e65283fcb55140f8350f417cac6ca397592611bee4129cd1dcd6f7d75d3f"
+
+[[suite]]
 id = "inherited-v0"
 profile = "0.1"
 active_from_stage = 1

@@ -1,0 +1,75 @@
+{
+  "format": "neutral-vocabulary-bundle",
+  "encoding_version": "1.0",
+  "schema_version": "2.0",
+  "identity": "Fixture",
+  "version": "1.0.0",
+  "required_features": [
+    "vocabulary-composition-v2"
+  ],
+  "dependencies": [],
+  "types": [
+    {
+      "kind": "variant",
+      "name": "Outcome",
+      "public": true,
+      "alternatives": [
+        {
+          "tag": "text",
+          "type": {
+            "kind": "string"
+          }
+        },
+        {
+          "tag": "number",
+          "type": {
+            "kind": "num"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "record",
+      "name": "Item",
+      "public": true,
+      "fields": [
+        {
+          "name": "values",
+          "type": {
+            "kind": "list",
+            "element": {
+              "kind": "nominal",
+              "name": "Outcome"
+            }
+          },
+          "presence": "defaulted",
+          "restrictions": {
+            "max_length": "2"
+          },
+          "default": {
+            "kind": "list",
+            "items": [
+              {
+                "kind": "variant",
+                "tag": "text",
+                "payload": {
+                  "kind": "string",
+                  "value": "ok"
+                }
+              },
+              {
+                "kind": "variant",
+                "tag": "number",
+                "payload": {
+                  "kind": "num",
+                  "value": "3"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
+

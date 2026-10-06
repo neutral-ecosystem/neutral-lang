@@ -14,7 +14,7 @@ use neutral_ir::{
 use std::{cmp::Ordering, collections::BTreeMap};
 
 /// Immutable lookup for contextual nominal owners while materializing defaults.
-type Catalogue<'a> = BTreeMap<(&'a str, &'a str, &'a str), &'a CompositionDefinition>;
+pub(super) type Catalogue<'a> = BTreeMap<(&'a str, &'a str, &'a str), &'a CompositionDefinition>;
 
 /// Validates every restriction/default, even on private unused types, before publishing a catalogue.
 pub(super) fn validate_defaults(
@@ -250,7 +250,7 @@ fn check_restrictions(
 }
 
 /// Materializes one closed default under its expected type and bounded nominal expansion.
-fn materialize(
+pub(super) fn materialize(
     value: &V,
     ty: &T,
     catalogue: &Catalogue<'_>,
@@ -258,6 +258,7 @@ fn materialize(
     depth: u64,
 ) -> Result<V, E> {
     budget.depth(depth, budget.limits.value_depth)?;
+    budget.value_node()?;
     if let T::Nullable(inner) = ty {
         return if matches!(value, V::Null) {
             Ok(V::Null)
@@ -267,15 +268,39 @@ fn materialize(
     }
     if scalar_matches(value, ty) {
         budget.step(scalar_size(value))?;
+        match value {
+            V::Number(number)
+                if number.coefficient().len() as u64 > budget.limits.json.numeric_digits
+                    || number.scale().unsigned_abs() > budget.limits.json.numeric_scale =>
+            {
+                return Err(E::Limit);
+            }
+            V::String(text) | V::Url(text) | V::Path(text)
+                if text.len() as u64 > budget.limits.json.string_bytes =>
+            {
+                return Err(E::Limit);
+            }
+            _ => {}
+        }
         return Ok(value.clone());
     }
     match (value, ty) {
-        (V::List(values), T::List(inner)) => Ok(V::List(
-            values
-                .iter()
-                .map(|value| materialize(value, inner, catalogue, budget, depth + 1))
-                .collect::<Result<Vec<_>, _>>()?,
-        )),
+        (V::List(values), T::List(inner)) => {
+            super::check_count(values.len(), budget.limits.json.array_items)?;
+            super::check_count(
+                values.len(),
+                budget.limits.value_nodes.saturating_sub(budget.value_nodes),
+            )?;
+            budget.step(values.len() as u64)?;
+            let mut result = Vec::new();
+            result
+                .try_reserve(values.len())
+                .map_err(|_| E::Allocation)?;
+            for value in values {
+                result.push(materialize(value, inner, catalogue, budget, depth + 1)?);
+            }
+            Ok(V::List(result))
+        }
         (
             _,
             T::VocabularyNominal {
@@ -284,6 +309,7 @@ fn materialize(
                 name,
             },
         ) => {
+            budget.key(identity.len() + version.len() + name.len(), catalogue.len())?;
             let definition = catalogue
                 .get(&(identity.as_str(), version.as_str(), name.as_str()))
                 .ok_or(E::UnknownType)?;
@@ -292,10 +318,14 @@ fn materialize(
                     materialize_record(values, fields, catalogue, budget, depth + 1)
                 }
                 (CompositionBody::Variant(alternatives), V::Variant { tag, payload }) => {
-                    let alternative = alternatives
-                        .iter()
-                        .find(|a| a.tag == *tag)
-                        .ok_or(E::InvalidDefault)?;
+                    if tag.len() as u64 > budget.limits.json.string_bytes {
+                        return Err(E::Limit);
+                    }
+                    budget.key(tag.len(), alternatives.len())?;
+                    let index = alternatives
+                        .binary_search_by(|alternative| alternative.tag.cmp(tag))
+                        .map_err(|_| E::InvalidDefault)?;
+                    let alternative = &alternatives[index];
                     Ok(V::Variant {
                         tag: tag.clone(),
                         payload: Box::new(materialize(
@@ -325,9 +355,17 @@ fn materialize_record(
     depth: u64,
 ) -> Result<V, E> {
     budget.depth(depth, budget.limits.value_depth)?;
+    super::check_count(values.len(), budget.limits.json.fields)?;
+    super::check_count(fields.len(), budget.limits.json.fields)?;
+    super::check_count(
+        fields.len(),
+        budget.limits.value_nodes.saturating_sub(budget.value_nodes),
+    )?;
+    budget.step(values.len() as u64 + fields.len() as u64)?;
     let mut supplied = BTreeMap::new();
     for (name, value) in values {
         budget.step(1)?;
+        budget.key(name.len(), values.len())?;
         if supplied.insert(name.as_str(), value).is_some()
             || fields
                 .binary_search_by(|field| field.name.as_str().cmp(name))
@@ -337,6 +375,9 @@ fn materialize_record(
         }
     }
     let mut result = Vec::new();
+    result
+        .try_reserve(fields.len())
+        .map_err(|_| E::Allocation)?;
     for field in fields {
         budget.step(1)?;
         let restrictions = validate_restrictions(field, budget)?;
@@ -347,7 +388,10 @@ fn materialize_record(
             Some(value) => Some(materialize(value, &field.ty, catalogue, budget, depth + 1)?),
             None => match field.presence {
                 FieldPresence::Required => return Err(E::InvalidDefault),
-                FieldPresence::Optional => None,
+                FieldPresence::Optional => {
+                    budget.value_node()?;
+                    None
+                }
                 FieldPresence::Defaulted => Some(materialize(
                     field.default.as_ref().ok_or(E::InvalidDefault)?,
                     &field.ty,

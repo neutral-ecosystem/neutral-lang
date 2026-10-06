@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+
+scope = "standalone-composition-catalogue"
+fixture = "boundary/alternatives.json"
+outcome = "accepted"
+limit = "alternatives_per_type"
+exact = 2
+one_over = 1
+over_diagnostic_code = "NEU-COM-003"
+

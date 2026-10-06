@@ -29,6 +29,9 @@ nullable/nominal references, omission policies, closed defaults and declarative
 restrictions against shared `neutral-ir` contracts. It does not acquire inputs
 or activate these forms in the existing compiler, project wire, or identity
 profiles. Successful catalogue validation alone is not project acceptance.
+`materialize_composition_value` reuses the same validator for supplied closed
+data and keeps safe supplied/null/absent/default origin facts separate from
+materialized meaning. It cannot introduce source-reference targets or effects.
 
 ## Command
 

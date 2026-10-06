@@ -15,6 +15,7 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 neutral-compiler = { path = "../crates/neutral-compiler" }
 neutral-core = { path = "../crates/neutral-core" }
+neutral-ir = { path = "../crates/neutral-ir" }
 neutral-encoding = { path = "../crates/neutral-encoding" }
 neutral-probe = { path = "../crates/neutral-probe" }
 neutral-vocabulary = { path = "../crates/neutral-vocabulary" }

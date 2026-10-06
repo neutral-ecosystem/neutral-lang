@@ -105,3 +105,35 @@ identity and wire contracts are unchanged.
 
 Release promotion confirmation, release-quality approval, and the next release
 remain separate unchecked tasks. No version, tag, commit, or publication was changed.
+
+## Standalone composition catalogue/value slice (06-10-2026)
+
+This slice does not extend the frozen project identity profile. Eight literal
+positive/negative/boundary/migration catalogue inputs and acceptance/error oracles
+are registered with SHA-256 byte pins and runtime-owned copies. Supplied closed
+values reuse the default/type/restriction validator, including heterogeneous
+variant payloads. Independent materialization-node, work, depth, list, string-byte,
+numeric-digit and scale limits reject without partial results. Optional absence,
+explicit null, defaults and supplied occurrences remain separate safe origin
+facts; equivalent materialized values compare equal without equating origins.
+
+The compiler-independent reader exposes public materialization and bounded
+reference-type paths through lists, nullable wrappers and every variant alternative.
+Private/missing root types share a safe unavailable classification. These are type
+dependencies and occurrence classifications, not source binding edges, source-map
+spans, a serialized project, or independently verified new logical identities.
+
+Validation: `cargo xtask test all` passes 638 Nextest tests (zero skips) plus the
+compiler compile-fail doctest. `cargo xtask ci pr`, strict workspace Clippy,
+`cargo xtask fixtures check` (59 fixture/oracle entries), and portable verification
+pass. The vocabulary fuzz harness additionally exercises bounded supplied-value
+probes on accepted catalogues and builds with `CCACHE_DISABLE=1`; no full fuzz
+campaign or allocation-fault gate is claimed by this slice. The existing public
+semantics hash was synchronized with the already accepted trailing-comma change.
+
+Still required: full source variant/composition syntax and semantics, non-null
+reference-value edges, complete project IR/provenance/source attribution, new codec
+and independent probe/view integration, frozen new identity transcripts and literal
+independent vectors, actual clean/cache equivalence, and complete hostile/allocation
+validation. The full extension and promotion-conformance checklist remains open;
+creating a package tag does not substitute for these requirements.

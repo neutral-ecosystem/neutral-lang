@@ -4,7 +4,10 @@
 
 mod closure;
 mod decode;
+mod supplied;
 mod values;
+
+pub use supplied::{ValidatedCompositionValue, materialize_composition_value};
 
 use crate::{VocabularyError, VocabularyLimits, VocabularyLock};
 use neutral_core::{CancellationToken, VocabularyContentDigest};
@@ -57,6 +60,8 @@ pub struct CompositionLimits {
     pub type_depth: u64,
     /// Maximum closed default/value layers, including nominal expansion.
     pub value_depth: u64,
+    /// Maximum cumulative materialized value visits, including absent field states.
+    pub value_nodes: u64,
     /// Maximum semantic traversal, comparison, and default-expansion work.
     pub work: u64,
 }
@@ -80,6 +85,7 @@ impl CompositionLimits {
             total_choices: json.total_nodes(),
             type_depth: json.nesting_depth(),
             value_depth: json.nesting_depth(),
+            value_nodes: json.total_nodes(),
             work: json.total_nodes(),
         }
     }
@@ -100,6 +106,7 @@ impl CompositionLimits {
             self.total_choices,
             self.type_depth,
             self.value_depth,
+            self.value_nodes,
             self.work,
         ]
         .contains(&0)
@@ -155,6 +162,10 @@ pub enum CompositionError {
     DuplicateChoice,
     /// Closed default is incomplete, incompatible, or violates restrictions.
     InvalidDefault,
+    /// Supplied value violates its selected public type or declarative restrictions.
+    InvalidValue,
+    /// A bounded fallible result/origin reservation failed.
+    Allocation,
 }
 
 impl From<VocabularyError> for CompositionError {
@@ -189,6 +200,8 @@ impl CompositionError {
             Self::InvalidRestrictions => "NEU-COM-014",
             Self::DuplicateChoice => "NEU-COM-015",
             Self::InvalidDefault => "NEU-COM-016",
+            Self::InvalidValue => "NEU-COM-017",
+            Self::Allocation => "NEU-COM-018",
         }
     }
 }
@@ -286,6 +299,8 @@ struct Budget<'a> {
     choices: u64,
     /// Total dependency edges decoded.
     edges: u64,
+    /// Cumulative materialization visits, independent of aggregate work.
+    value_nodes: u64,
 }
 
 impl<'a> Budget<'a> {
@@ -300,6 +315,7 @@ impl<'a> Budget<'a> {
             alternatives: 0,
             choices: 0,
             edges: 0,
+            value_nodes: 0,
         }
     }
     /// Charges work and observes cancellation before proportional semantic operations.
@@ -317,6 +333,12 @@ impl<'a> Budget<'a> {
         } else {
             Ok(())
         }
+    }
+
+    /// Charges an independent output-value visit before reserving materialized storage.
+    fn value_node(&mut self) -> Result<(), CompositionError> {
+        self.step(1)?;
+        charge(&mut self.value_nodes, 1, self.limits.value_nodes)
     }
 
     /// Reserves conservative string-key inspection work before ordered insertion and sorting.

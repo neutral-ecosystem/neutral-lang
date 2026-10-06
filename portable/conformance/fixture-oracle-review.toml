@@ -1,8 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "stage7-contract-core-active"
+status = "stage7-contract-core-and-standalone-catalogue-active"
 profile = "1.0"
+
+[[suite]]
+id = "composition-catalogue"
+status = "reviewed-active-standalone-catalogue-only"
+requirements = ["V1-VOC-005", "V1-VOC-006", "V1-VOC-007", "V1-VOC-008", "V1-VOC-009", "V1-VOC-010", "V1-VOC-011"]
+fixture_families = ["presence-defaults", "variant-collections", "duplicate-choices", "invalid-defaults", "unknown-tags", "public-private-closure", "exact-one-over-alternatives", "schema1-migration"]
+oracle_directory = "portable/conformance/oracles/composition"
+review_date = "2026-10-06"
+exclusions = "source/compiler/project/wire/probe/identity activation and independent new identity vectors remain pending"
 
 # v1 fixture bytes and expected outcomes are added by their owning stage.
 # Empty inventories are intentional until the corresponding contract gate is

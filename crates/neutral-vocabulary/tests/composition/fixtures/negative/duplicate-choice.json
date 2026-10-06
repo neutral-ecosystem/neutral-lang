@@ -1,0 +1,44 @@
+{
+  "format": "neutral-vocabulary-bundle",
+  "encoding_version": "1.0",
+  "schema_version": "2.0",
+  "identity": "Fixture",
+  "version": "1.0.0",
+  "required_features": [
+    "vocabulary-composition-v2"
+  ],
+  "dependencies": [],
+  "types": [
+    {
+      "kind": "record",
+      "name": "Item",
+      "public": true,
+      "fields": [
+        {
+          "name": "count",
+          "type": {
+            "kind": "num"
+          },
+          "presence": "defaulted",
+          "restrictions": {
+            "choices": [
+              {
+                "kind": "num",
+                "value": "1"
+              },
+              {
+                "kind": "num",
+                "value": "1.0"
+              }
+            ]
+          },
+          "default": {
+            "kind": "num",
+            "value": "3"
+          }
+        }
+      ]
+    }
+  ]
+}
+

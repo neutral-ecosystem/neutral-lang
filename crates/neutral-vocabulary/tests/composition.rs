@@ -925,6 +925,8 @@ fn composition_diagnostic_codes_are_stable_and_unique() {
         E::InvalidRestrictions,
         E::DuplicateChoice,
         E::InvalidDefault,
+        E::InvalidValue,
+        E::Allocation,
     ];
     let mut codes = std::collections::BTreeSet::new();
     for (index, error) in errors.iter().enumerate() {

@@ -48,6 +48,39 @@ pub enum ClosedValue {
     },
 }
 
+/// A schema-checked location inside a closed value, never a host/source path.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ValuePathSegment {
+    /// Canonical record field name.
+    Field(String),
+    /// Zero-based ordered list element.
+    Element(u64),
+    /// Payload of the selected closed variant tag.
+    Payload,
+}
+
+/// How an occurrence entered the final value, separate from its logical meaning.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ValueOriginKind {
+    /// Explicitly supplied non-null value.
+    Supplied,
+    /// Explicit null at a nullable position.
+    ExplicitNull,
+    /// Absent optional record field, not a null scalar.
+    OmittedOptional,
+    /// Omission materialized a closed contract default, including its children.
+    Defaulted,
+}
+
+/// Safe occurrence classification without fabricated source coordinates.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ValueOrigin {
+    /// Canonical field/list/payload path from the value root.
+    pub path: Vec<ValuePathSegment>,
+    /// Supplied/null/absent/default classification.
+    pub kind: ValueOriginKind,
+}
+
 /// Closed scalar/length restrictions, never executable predicates.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct FieldRestrictions {

@@ -57,7 +57,10 @@ transcripts; a public interface fingerprint is not a complete logical identity.
 vocabulary catalogue without compiler linkage. Public lookup returns complete
 record/variant contracts, restrictions/defaults and exact dependencies; private
 and missing types are indistinguishable to callers, including diagnostic debug
-output. This component does not imply support in the existing project codec or
+output. Bounded `reference_types` includes unselected variant alternatives and
+list/nullable wrappers. `materialize` checks closed supplied values with the
+vocabulary validator and exposes safe origin classifications, not invented source
+spans or binding edges. This component does not imply support in the existing project codec or
 compiled-project identity profiles.
 
 ## Command

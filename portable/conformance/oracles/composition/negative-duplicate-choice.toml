@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+
+scope = "standalone-composition-catalogue"
+fixture = "negative/duplicate-choice.json"
+outcome = "rejected"
+diagnostic_code = "NEU-COM-015"
+

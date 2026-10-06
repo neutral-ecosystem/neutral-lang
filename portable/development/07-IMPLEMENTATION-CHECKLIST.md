@@ -333,22 +333,28 @@ No version bump, approval, tag, or release is implied.
 
 ### Promote to `v0.8.0`
 
-- [x] Complete the vocabulary composition extension gate below; existing
+- [ ] Complete the vocabulary composition extension gate below; existing
   Stage 7 identity evidence does not cover these newly scheduled requirements.
-- [x] Confirm Stage 7 checklist, manifest, and traceability are complete.
+- [ ] Confirm Stage 7 checklist, manifest, and traceability are complete.
 - [x] Release `v0.8.0`; update the ledger to `released`.
+
+The release item records package publication, not completion of the composition
+extension. The two conformance prerequisites above remain open.
 
 ### `v0.8.0` — vocabulary composition extension gate
 
 Scope: [V1-VOC-005..011](../specs/contracts/CONSUMER-READINESS.md).
 Previously completed `.1`–`.4` identity gates remain historical evidence;
 this additional contract -> implementation -> integration -> validation gate
-must pass before the unreleased promotion. No frozen schema is amended in place.
+remains required even if a package tag was already created. Package publication
+does not establish extension conformance. No frozen schema is amended in place.
 
 The [composition proposal](../specs/contracts/VOCABULARY-COMPOSITION.md) defines
 the candidate bundle shape and semantics; its remaining freeze work is explicit.
-The vocabulary crate's `compatibility_*` tests protect the old schema but do not
-count as implementation or validation of the extension.
+The vocabulary crate's `compatibility_*` tests protect the old schema; passing
+those tests alone does not establish implementation or validation of the extension.
+
+#### Completed standalone foundation
 
 - [x] Implement and test the separate composition catalogue boundary and shared
   raw IR model: composite vocabulary types, variants, exact dependency closure,
@@ -358,6 +364,38 @@ count as implementation or validation of the extension.
 - [x] Expose public composition catalogue facts through compiler-independent
   reader APIs, with exact revision lookup and private-type/debug redaction.
   Complete project/wire/probe/view/provenance integration remains pending.
+- [x] Register byte-pinned standalone positive/negative/boundary/migration
+  catalogue inputs and literal oracles; runtime copies pass without the portable
+  plan. Full source/project/wire and new identity vectors remain pending.
+- [x] Share closed supplied-value materialization with the default validator;
+  validate variant lists and restrictions, preserve optional absence/explicit
+  null/defaulted origins, and keep materialized meaning separate from origin facts.
+- [x] Expose independent reader materialization and canonical reference-type
+  paths through fields, all variant alternatives, lists, and nullable wrappers;
+  redact private/missing roots and reject exhausted traversal/reference/depth
+  limits or cancellation without partial enumeration.
+- [x] Test supplied values and default expansion at independent node, depth,
+  list-item, string-byte, numeric-digit and scale boundaries; test invalid
+  fields/tags/payloads/restrictions, ordering and concurrent request isolation.
+- [x] Run `cargo xtask test all`: 638 Nextest tests, zero skips, plus the
+  compile-fail doctest. Standard `cargo xtask ci pr`, strict Clippy, portable
+  verification and all 59 registered fixture/oracle hash checks pass.
+- [x] Extend and build the vocabulary fuzz harness to exercise bounded
+  supplied-value probes on accepted catalogues. This is build validation, not
+  evidence of a completed fuzz campaign or allocation-fault review.
+
+Evidence: [standalone composition catalogue/value validation](evidence/stage7-contract-core.md#standalone-composition-cataloguevalue-slice-06-10-2026),
+[literal/value tests](../../crates/neutral-vocabulary/tests/composition_values.rs)
+and [independent reader tests](../../crates/neutral-reader/tests/composition.rs).
+These completed items do not activate source reference-value edges, complete
+project companions, codec/probe support, public views or new identity profiles.
+
+#### Remaining full extension gates
+
+Next: finish the source/project IR/wire/identity compatibility and diagnostic
+freeze with literal independent identity vectors before activating new source
+syntax or transport profiles. Existing JSON catalogue fixtures are not `.nir`
+artifacts, and the current binary CBOR codec does not support this extension.
 
 - [ ] Freeze the new bundle schema, source-aligned list/nullable/reference
   composition, semantic defaults/restrictions, compatibility, diagnostic codes,

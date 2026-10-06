@@ -178,6 +178,49 @@ input, unsupported profile, and invalid contract must publish no partial data.
 
 ## Remaining freeze work
 
+### Standalone supplied-value boundary
+
+The catalogue API also accepts closed, already captured values under an explicitly
+selected public vocabulary nominal type. It uses the same type/default/restriction
+validator as bundle defaults; it does not parse source or activate a project profile.
+Required fields reject omission, optional omission remains absent, and defaulted
+omission materializes the validated default. Explicit null never requests a default.
+Unrecognized/duplicate fields, tags, payload types and restriction violations reject
+the whole request. A private root type is not an available public value contract.
+Reference-bearing non-null values remain unavailable at this closed-value boundary;
+it must not invent a target or silently discard reference dependencies.
+
+Successful values expose an immutable canonical value and separately ordered
+occurrence facts: `supplied`, `explicit-null`, `omitted-optional`, or `defaulted`.
+Paths consist only of validated field names, list indices and variant payload steps.
+Defaulted provenance propagates to nested materialized children. No source bytes,
+host paths, fabricated spans, or acquisition locations are attached. These are
+occurrence classifications, not the future project's source-map companion.
+Supplying the same materialized value produces equal meaning but different origin
+facts. Origin facts must never become part of a logical-value transcript.
+
+The independent `value_nodes` budget counts materialization visits (including
+nullable wrapper checks and absent field states) cumulatively per catalogue/default
+validation or supplied-value request. It derives from the existing total-node policy
+and intersects the 1,000,000 hard ceiling. Existing per-value string-byte, numeric
+digit/scale, list-item and field budgets apply equally to caller-supplied values.
+Work/depth/cancellation remain independent. Bounded result/origin reservations
+report `NEU-COM-018` on allocation failure; invalid supplied values use
+`NEU-COM-017`, distinct from invalid bundle defaults (`NEU-COM-016`).
+This does not complete the whole-pipeline allocation-fault review.
+
+Public reader APIs may enumerate reference **type** dependencies in canonical
+field/tag paths, including nullable/list wrappers and unselected alternatives.
+Those facts are not captured binding/reference-value edges or an execution order.
+The per-definition reader traversal accepts nonzero independent visit, reference
+count and depth limits, intersected with catalogue hard ceilings. Its paths label
+record fields, variant alternatives, list-element types and nullable inner types.
+Every alternative is inspected, whether selected by a value or not. References
+are emitted with their exact resolved nominal target; traversal does not expand
+the referenced target or turn a reference cycle into recursive embedded work.
+Public consumers can enumerate all public definitions to obtain the full catalogue
+reference-type dependency set. Cancellation/limits publish no partial enumeration.
+
 The [complete example bundle](../decisions/composition/bundle.json) makes these
 member sets concrete. It is a proposed input, not an active conformance case.
 Before project activation, finish:
@@ -221,6 +264,7 @@ field is nonzero and can be narrowed separately:
 | dependency_edges, total_fields, total_alternatives, total_choices, work | JSON total-node policy | 1,000,000 |
 | alternatives_per_type | field count policy | 1,000,000 |
 | dependency_depth, type_depth, value_depth | nesting policy | 64 layers |
+| value_nodes | JSON total-node policy | 1,000,000 materialization visits |
 | JSON object members | object-member policy | 8 members, the largest closed envelope |
 | JSON nodes/array items | existing per-bundle policy | 1,000,000 |
 
@@ -251,6 +295,8 @@ vocabulary classifications and no captured text/host path:
 | `NEU-COM-014` | Invalid/incompatible/contradictory restriction |
 | `NEU-COM-015` | Duplicate normalized finite choice |
 | `NEU-COM-016` | Invalid closed default |
+| `NEU-COM-017` | Invalid supplied closed value |
+| `NEU-COM-018` | Bounded result/origin allocation failure |
 
 Schema/graph checks precede default materialization; dependency availability,
 revisions and cycles precede nominal target resolution. Compiler diagnostic

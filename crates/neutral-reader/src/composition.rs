@@ -5,12 +5,23 @@
 //! This surface exposes semantic contracts, not source provenance or a decoded
 //! project artifact. It never reparses source, changes identity or grants effects.
 
+use neutral_core::CancellationToken;
+use neutral_ir::composition::ClosedValue;
 use neutral_ir::{
     VocabularyIdentity,
     composition::{CompositionBundle, CompositionDefinition, CompositionDependency},
 };
-use neutral_vocabulary::composition::ValidatedComposition;
+use neutral_vocabulary::composition::{
+    CompositionError, CompositionLimits, ValidatedComposition, ValidatedCompositionValue,
+    materialize_composition_value,
+};
 use std::sync::Arc;
+
+mod references;
+pub use references::{
+    CompositionInspectionLimits, CompositionReferenceError, ReferenceTypeDependency,
+    ReferenceTypeSegment,
+};
 
 /// Safe lookup failures containing no private type names, captured text or host paths.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -106,6 +117,52 @@ impl CompositionCatalogue {
         version: &str,
     ) -> Result<&[CompositionDependency], CompositionLookupError> {
         Ok(&self.bundle(identity, version)?.dependencies)
+    }
+
+    /// Checks supplied closed data and returns meaning plus safe origins using the shared validator.
+    ///
+    /// No compiler linkage, source reparsing, reference-target invention or project-profile
+    /// activation occurs. Errors contain no raw private definition, source bytes or host path.
+    ///
+    /// # Errors
+    /// Rejects unavailable public roots, invalid values, exhausted bounds or cancellation.
+    pub fn materialize(
+        &self,
+        owner: (&str, &str, &str),
+        supplied: &ClosedValue,
+        limits: CompositionLimits,
+        cancellation: &CancellationToken,
+    ) -> Result<ValidatedCompositionValue, CompositionError> {
+        if cancellation.is_cancelled() {
+            return Err(CompositionError::Cancelled);
+        }
+        // Keep absent and private lookup indistinguishable at the public reader
+        // boundary, matching the existing public-type lookup contract.
+        self.public_type(owner.0, owner.1, owner.2)
+            .map_err(|_| CompositionError::UnknownType)?;
+        materialize_composition_value(&self.catalogue, owner, supplied, limits, cancellation)
+    }
+
+    /// Enumerates every declared reference type in one public record or variant.
+    ///
+    /// Includes references in unselected alternatives, lists and nullable wrappers.
+    /// Targets are exact nominal contracts, not acquired or executable binding edges.
+    ///
+    /// # Errors
+    /// Rejects unavailable public roots, zero/exhausted budgets, cancellation or allocation failure.
+    pub fn reference_types(
+        &self,
+        owner: (&str, &str, &str),
+        limits: CompositionInspectionLimits,
+        cancellation: &CancellationToken,
+    ) -> Result<Vec<ReferenceTypeDependency<'_>>, CompositionReferenceError> {
+        if cancellation.is_cancelled() {
+            return Err(CompositionReferenceError::Cancelled);
+        }
+        let definition = self
+            .public_type(owner.0, owner.1, owner.2)
+            .map_err(CompositionReferenceError::Lookup)?;
+        references::inspect(definition, limits, cancellation)
     }
 
     /// Resolves exact ownership before publishing public traversal state.

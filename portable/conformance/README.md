@@ -17,5 +17,8 @@ The scheduled [consumer-readiness requirements](../specs/contracts/CONSUMER-READ
 add composite vocabulary fixtures before `v0.8.0` and consumer-data/authoring
 fixtures before `v0.9.0`. They are not active manifest entries or passing evidence
 until their schemas, literal outcomes, and identity vectors have been reviewed.
+The registered `composition-catalogue` suite covers only explicit standalone
+catalogue acceptance/errors and legacy migration. It does not activate composition
+source projects, new wire/identity profiles, or the full promotion gate.
 Core acceptance and consumer interpretation failures must have separate oracles;
 no backend execution or external product implementation is required.

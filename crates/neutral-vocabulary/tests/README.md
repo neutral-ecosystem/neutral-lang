@@ -14,3 +14,6 @@ behavior; they do not claim support for the proposed composition extension.
 typed defaults/restrictions, variant/public closure, exact dependencies,
 independent limits, cancellation, compatibility leaves and concurrent requests.
 It does not stand in for compiler/IR/wire/probe end-to-end conformance.
+`composition_values.rs` checks byte-pinned literal catalogue cases and shared
+closed supplied-value/default materialization, origins, exact/one-over limits,
+ordering and concurrency. Invalid supplied values cannot bypass bundle restrictions.

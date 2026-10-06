@@ -24,7 +24,7 @@ external_ir_encoding = "NIR-CBOR/1.0-plan"
 [fixture_corpus]
 manifest_path = "portable/conformance/manifest.toml"
 fixture_oracle_review_path = "portable/conformance/fixture-oracle-review.toml"
-status = "stage1 through stage7 identity suites active; vocabulary composition proposals not activated"
+status = "stage1 through stage7 identity and standalone composition catalogue suites active; source/project/wire/identity extension not activated"
 
 [stage2_contract_gate]
 capture_request_path = "portable/specs/contracts/CAPTURE-REQUEST.md"
@@ -38,7 +38,7 @@ status = "implemented"
 
 [stage4_contract_gate]
 public_semantics_path = "portable/specs/contracts/PUBLIC-SEMANTICS.md"
-public_semantics_sha256 = "960f5a532a858622304cbd77020ec720fef0dba64a242902dd060b4062d17710"
+public_semantics_sha256 = "589699267e5efb2a171f05c017dc9431fa2bcc77b797bda6a519e948e7c9bed7"
 status = "stage4-integration-validation-complete"
 
 [stage5_contract_gate]
@@ -71,4 +71,4 @@ status = "ownership-decision-accepted; full-extension-freeze-and-fixture-activat
 [composition_contract_proposal]
 path = "portable/specs/contracts/VOCABULARY-COMPOSITION.md"
 example_path = "portable/specs/decisions/composition/bundle.json"
-status = "standalone-catalogue-boundary-implemented-and-tested; project-identity-wire-oracle-freeze-and-integration-pending"
+status = "standalone-catalogue-and-supplied-value-boundaries-tested; literal-catalogue-inputs-pinned; project-identity-wire-source-freeze-and-integration-pending"

@@ -6,6 +6,7 @@
 
 use libfuzzer_sys::fuzz_target;
 use neutral_core::{CancellationToken, StructuralLimits, VocabularyContentDigest};
+use neutral_ir::composition::{ClosedValue, CompositionBody};
 use neutral_vocabulary::{
     PROJECT_VOCABULARY_ENCODING_VERSION, PROJECT_VOCABULARY_SCHEMA_VERSION,
     VOCABULARY_ENCODING_VERSION, VOCABULARY_SCHEMA_VERSION, VocabularyLimits, VocabularyLock,
@@ -17,6 +18,8 @@ use neutral_vocabulary::{
 const FUZZ_IDENTITY: &str = "Fuzz";
 /// Frozen syntactically valid release used only by the fuzz lock.
 const FUZZ_VERSION: &str = "0.1.0";
+/// Bounds extra supplied-value probes per accepted catalogue, independently of its type count.
+const MAX_MATERIALIZATION_REQUESTS: usize = 4;
 
 fuzz_target!(|bytes: &[u8]| {
     let structural = StructuralLimits::new(1_048_576, 32).expect("fuzz limits must be nonzero");
@@ -53,13 +56,48 @@ fuzz_target!(|bytes: &[u8]| {
         vec![composition::REQUIRED_FEATURE.to_owned()],
     )
     .expect("fuzz composition lock constants must remain valid");
-    let _ = composition::validate_composition_closure(
+    let policy = CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(structural));
+    if let Ok(catalogue) = composition::validate_composition_closure(
         &[CapturedCompositionBundle {
             bytes,
             lock: &composition_lock,
         }],
         &[(FUZZ_IDENTITY, FUZZ_VERSION)],
-        CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(structural)),
+        policy,
         &CancellationToken::new(),
-    );
+    ) {
+        // Exercise bounded expansion/origin paths as soon as a mutated captured
+        // schema remains valid. This is closed-data checking, never compilation.
+        for (bundle, definition) in catalogue
+            .bundles()
+            .iter()
+            .flat_map(|bundle| {
+                bundle
+                    .definitions
+                    .iter()
+                    .filter(|definition| definition.public)
+                    .map(move |definition| (bundle, definition))
+            })
+            .take(MAX_MATERIALIZATION_REQUESTS)
+        {
+            let value = match &definition.body {
+                CompositionBody::Record(_) => ClosedValue::Record(Vec::new()),
+                CompositionBody::Variant(alternatives) => ClosedValue::Variant {
+                    tag: alternatives[0].tag.clone(),
+                    payload: Box::new(ClosedValue::Null),
+                },
+            };
+            let _ = composition::materialize_composition_value(
+                &catalogue,
+                (
+                    bundle.identity.identity(),
+                    bundle.identity.version(),
+                    &definition.name,
+                ),
+                &value,
+                policy,
+                &CancellationToken::new(),
+            );
+        }
+    }
 });
