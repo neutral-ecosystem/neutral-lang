@@ -14,9 +14,9 @@ use std::collections::BTreeMap;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ValidatedCompositionValue {
     /// Canonical materialized meaning, separate from occurrence evidence.
-    value: V,
+    pub(super) value: V,
     /// Ordered safe paths; no invented source span or host information.
-    origins: Vec<ValueOrigin>,
+    pub(super) origins: Vec<ValueOrigin>,
 }
 
 impl ValidatedCompositionValue {
@@ -104,7 +104,7 @@ pub fn materialize_composition_value(
 }
 
 /// Classifies canonical final occurrences without equating optional absence with explicit null.
-fn classify(
+pub(super) fn classify(
     raw: Option<&V>,
     value: Option<&V>,
     inherited_default: bool,
@@ -112,7 +112,10 @@ fn classify(
     origins: &mut Vec<ValueOrigin>,
     budget: &mut Budget<'_>,
 ) -> Result<(), E> {
-    budget.depth(path.len() as u64 + 1, budget.limits.value_depth)?;
+    budget.depth(
+        path.len() as u64 + budget.origin_root_depth,
+        budget.limits.value_depth,
+    )?;
     super::check_count(origins.len() + 1, budget.limits.value_nodes)?;
     let defaulted = inherited_default || (raw.is_none() && value.is_some());
     let kind = if value.is_none() {

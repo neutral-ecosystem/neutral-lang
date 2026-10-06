@@ -33,6 +33,13 @@ profiles. Successful catalogue validation alone is not project acceptance.
 data and keeps safe supplied/null/absent/default origin facts separate from
 materialized meaning. It cannot introduce source-reference targets or effects.
 
+`validate_composition_scope` checks already resolved source record/variant
+contracts against that exact catalogue, using the same closure, default,
+restriction and materialization rules for both nominal origins. Its immutable
+scope applies occurrence-based depth limits and rejects private/dangling types
+and embedded cycles. It is not source parsing, import checking or complete
+project compilation; the successor compiler and codec remain separate work.
+
 ## Command
 
 Use `cargo xtask test all` for complete repository validation, including doctests.

@@ -414,6 +414,34 @@ and [cross-package tests](../../crates/neutral-test-suite/tests/composition_cont
 This is capture/catalogue integration, not source compilation, new project IR,
 wire/probe/view support, or complete logical/derivation/artifact identity.
 
+#### Shared resolved source/vocabulary type scope
+
+- [x] Associate source module-symbol owners with the same raw record/variant
+  bodies used by vocabularies; validate resolved ownership, all type branches,
+  public closure, embedded cycles, restrictions and closed defaults atomically.
+- [x] Share contextual value materialization across both nominal origins,
+  including heterogeneous variant lists and source-to-vocabulary defaults;
+  keep default/supplied origins separate from equivalent materialized meaning.
+- [x] Apply the frozen occurrence-depth rule to the new resolved scope: root
+  zero, one level per record/list/variant child, nullable visits without extra
+  depth. Preserve the standalone catalogue API's existing depth behavior.
+- [x] Expose public resolved source/vocabulary contracts and exact reference-type
+  paths through a compiler-independent reader; redact private/missing roots and
+  private debug information without inventing source spans or binding edges.
+- [x] Validate ordering, invalid tags/payloads/defaults/presence, unselected private
+  types, embedded versus reference cycles, aggregate/per-module/choice/default
+  visit boundaries, Unicode/list restrictions, cancellation and concurrent isolation.
+- [x] Run complete workspace tests and standard CI: 699 Nextest tests, zero
+  skips, both compile-fail doctests and strict Clippy pass. Portable verification
+  and all 64 fixture/oracle pairs pass without manifest or freeze updates.
+
+Evidence: [shared resolved composition scope](evidence/stage7-contract-core.md#shared-resolved-composition-scope-06-10-2026),
+[type/value tests](../../crates/neutral-vocabulary/tests/composition_scope.rs)
+and [independent reader tests](../../crates/neutral-reader/tests/composition_scope.rs).
+This validates resolved contracts, not `.neu` parsing/import resolution, source
+binding reuse/ref semantics, compiled project IR, encoded artifacts or public views.
+No frozen suite/profile/vector is activated or rewritten by this sub-step.
+
 #### Remaining full extension gates
 
 Next: implement the frozen source/project IR/wire/identity boundaries and compare

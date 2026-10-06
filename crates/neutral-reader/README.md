@@ -66,6 +66,12 @@ compiled-project identity profiles.
 contracts or reparsing bytes. Only the validator can construct that catalogue;
 sharing does not bypass validation or expose mutable private contracts.
 
+`CompositionTypeCatalogue` additionally inspects a validated resolved scope of
+source- and vocabulary-owned records/variants. It filters private source types,
+shares closed-value validation and enumerates exact reference-type dependencies
+without compiler linkage. This is a type catalogue, not complete successor
+project IR, a public view or source provenance.
+
 ## Command
 
 Use `cargo xtask test all` for complete repository validation, including doctests.

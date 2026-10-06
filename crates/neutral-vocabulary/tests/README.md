@@ -17,3 +17,8 @@ It does not stand in for compiler/IR/wire/probe end-to-end conformance.
 `composition_values.rs` checks byte-pinned literal catalogue cases and shared
 closed supplied-value/default materialization, origins, exact/one-over limits,
 ordering and concurrency. Invalid supplied values cannot bypass bundle restrictions.
+
+`composition_scope.rs` exercises resolved source/vocabulary contracts together:
+shared variant/default/value semantics, public closure, recursive/reference types,
+canonical ordering, independent aggregate/occurrence limits and cancellation.
+These are resolved-model tests, not source parser or successor wire conformance.

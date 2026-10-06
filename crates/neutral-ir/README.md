@@ -52,6 +52,9 @@ The [composition model](src/composition.rs) shares raw composite vocabulary
 contracts and closed defaults with validators and future readers. It preserves
 absence/null distinctions and exact numeric comparison; construction does not
 establish validity or extend frozen project schemas.
+`SourceCompositionDefinition` associates that same record/variant body with an
+exact module-symbol owner; it does not introduce a second variant model or
+confer source/compiler validity merely through construction.
 Its [profile selectors](src/composition/profile.rs) are shared across capture,
 vocabulary and consumers. `captured_composition_closure` constructs a separately
 typed successor capture identity using the same bounded framing machinery;

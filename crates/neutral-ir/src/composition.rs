@@ -6,7 +6,9 @@
 //! their captured representation before publishing an immutable catalogue. They
 //! do not extend the frozen project IR or its encoding/identity profiles.
 
-use crate::{ExactNumber, VocabularyIdentity, project_interface::ProjectPublicType};
+use crate::{
+    ExactNumber, ModuleSymbolIdentity, VocabularyIdentity, project_interface::ProjectPublicType,
+};
 use std::cmp::Ordering;
 
 pub mod profile;
@@ -140,6 +142,19 @@ pub struct CompositionDefinition {
     pub public: bool,
     /// Complete record or variant contract.
     pub body: CompositionBody,
+}
+
+/// A source-owned raw record or variant using the same contracts as vocabulary declarations.
+///
+/// Construction does not confer validity or activate a project profile. The shared
+/// composition scope checks ownership, all payload branches, defaults and closure
+/// before independent readers may inspect these definitions.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SourceCompositionDefinition {
+    /// Exact module-symbol owner, never a source alias, host path or graph-local ID.
+    pub owner: ModuleSymbolIdentity,
+    /// Common record/variant body; its name must equal the owner's declaration name.
+    pub definition: CompositionDefinition,
 }
 
 /// A direct canonical bundle dependency, never a source-local alias or locator.

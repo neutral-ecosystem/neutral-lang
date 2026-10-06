@@ -15,6 +15,7 @@ pub(crate) fn run_active_test_filter(suite: &str) -> Result<(), String> {
     test_execution::run_filter(suite)
 }
 
+// FIXME: fix the hardcoded flag in the run_cargo calls below
 /// Runs the built CLI and probe command-shell smoke checks.
 pub(crate) fn run_shell_smoke() -> Result<(), String> {
     run_cargo(&[

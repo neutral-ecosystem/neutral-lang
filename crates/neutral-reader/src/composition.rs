@@ -18,10 +18,12 @@ use neutral_vocabulary::composition::{
 use std::sync::Arc;
 
 mod references;
+mod scope;
 pub use references::{
     CompositionInspectionLimits, CompositionReferenceError, ReferenceTypeDependency,
     ReferenceTypeSegment,
 };
+pub use scope::CompositionTypeCatalogue;
 
 /// Safe lookup failures containing no private type names, captured text or host paths.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

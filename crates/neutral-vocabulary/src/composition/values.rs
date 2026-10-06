@@ -4,7 +4,7 @@
 
 use super::{Budget, CompositionError as E};
 use neutral_ir::{
-    ExactNumber,
+    ExactNumber, ModuleSymbolIdentity,
     composition::{
         ClosedValue as V, CompositionBody, CompositionBundle, CompositionDefinition,
         CompositionField, FieldPresence, FieldRestrictions, compare_exact_numbers,
@@ -13,8 +13,94 @@ use neutral_ir::{
 };
 use std::{cmp::Ordering, collections::BTreeMap};
 
-/// Immutable lookup for contextual nominal owners while materializing defaults.
-pub(super) type Catalogue<'a> = BTreeMap<(&'a str, &'a str, &'a str), &'a CompositionDefinition>;
+/// Immutable lookup shared by both declaration origins, with explicit depth semantics.
+#[derive(Default)]
+pub(super) struct Catalogue<'a> {
+    /// Existing vocabulary tuples, with no aliases or source-owner conversions.
+    vocabularies: BTreeMap<(&'a str, &'a str, &'a str), &'a CompositionDefinition>,
+    /// Source module-symbol owners, populated only by the validated scope boundary.
+    pub(super) sources: BTreeMap<&'a ModuleSymbolIdentity, &'a CompositionDefinition>,
+    /// Project /2 counts occurrence depth, not nullable/nominal interpretation layers.
+    pub(super) project_depth: bool,
+}
+
+impl<'a> Catalogue<'a> {
+    /// Starts an empty standalone catalogue without selecting project /2.
+    pub(super) fn new() -> Self {
+        Self::default()
+    }
+
+    /// Returns the total number of exact nominal owners across both origins.
+    pub(super) fn len(&self) -> usize {
+        self.vocabularies.len() + self.sources.len()
+    }
+
+    /// Inserts one vocabulary definition while preserving its exact owner tuple.
+    pub(super) fn insert(
+        &mut self,
+        owner: (&'a str, &'a str, &'a str),
+        definition: &'a CompositionDefinition,
+    ) {
+        self.vocabularies.insert(owner, definition);
+    }
+
+    /// Looks up one exact vocabulary nominal without trying another origin.
+    pub(super) fn get(&self, owner: &(&str, &str, &str)) -> Option<&'a CompositionDefinition> {
+        self.vocabularies.get(owner).copied()
+    }
+
+    /// Resolves a nominal while charging key inspection before ordered lookup.
+    pub(super) fn resolve(
+        &self,
+        ty: &T,
+        budget: &mut Budget<'_>,
+    ) -> Result<&'a CompositionDefinition, E> {
+        match ty {
+            T::Nominal(owner) => {
+                budget.key(
+                    owner.module().module_name().len() + owner.declaration_name().len(),
+                    self.len(),
+                )?;
+                self.sources.get(owner).copied().ok_or(E::UnknownType)
+            }
+            T::VocabularyNominal {
+                identity,
+                version,
+                name,
+            } => {
+                budget.key(identity.len() + version.len() + name.len(), self.len())?;
+                self.get(&(identity, version, name)).ok_or(E::UnknownType)
+            }
+            _ => Err(E::UnknownType),
+        }
+    }
+}
+
+impl<'a> FromIterator<((&'a str, &'a str, &'a str), &'a CompositionDefinition)> for Catalogue<'a> {
+    /// Builds the unchanged standalone vocabulary lookup used by default validation.
+    fn from_iter<
+        I: IntoIterator<Item = ((&'a str, &'a str, &'a str), &'a CompositionDefinition)>,
+    >(
+        iter: I,
+    ) -> Self {
+        Self {
+            vocabularies: iter.into_iter().collect(),
+            ..Self::default()
+        }
+    }
+}
+
+/// Enumerates both definition kinds without allocating a temporary type vector.
+pub(super) fn definition_types(definition: &CompositionDefinition) -> impl Iterator<Item = &T> {
+    let (fields, alternatives) = match &definition.body {
+        CompositionBody::Record(fields) => (fields.as_slice(), &[][..]),
+        CompositionBody::Variant(alternatives) => (&[][..], alternatives.as_slice()),
+    };
+    fields
+        .iter()
+        .map(|field| &field.ty)
+        .chain(alternatives.iter().map(|alternative| &alternative.ty))
+}
 
 /// Validates every restriction/default, even on private unused types, before publishing a catalogue.
 pub(super) fn validate_defaults(
@@ -119,7 +205,7 @@ fn scalar_size(value: &V) -> u64 {
 }
 
 /// Rejects contradictory/inapplicable bounds and canonicalizes finite scalar choices.
-fn validate_restrictions(
+pub(super) fn validate_restrictions(
     field: &CompositionField,
     budget: &mut Budget<'_>,
 ) -> Result<FieldRestrictions, E> {
@@ -191,7 +277,7 @@ fn validate_restrictions(
 }
 
 /// Checks an already typed present value against inclusive bounds and finite choices.
-fn check_restrictions(
+pub(super) fn check_restrictions(
     restrictions: &FieldRestrictions,
     value: &V,
     budget: &mut Budget<'_>,
@@ -263,7 +349,13 @@ pub(super) fn materialize(
         return if matches!(value, V::Null) {
             Ok(V::Null)
         } else {
-            materialize(value, inner, catalogue, budget, depth + 1)
+            materialize(
+                value,
+                inner,
+                catalogue,
+                budget,
+                depth + u64::from(!catalogue.project_depth),
+            )
         };
     }
     if scalar_matches(value, ty) {
@@ -301,22 +393,16 @@ pub(super) fn materialize(
             }
             Ok(V::List(result))
         }
-        (
-            _,
-            T::VocabularyNominal {
-                identity,
-                version,
-                name,
-            },
-        ) => {
-            budget.key(identity.len() + version.len() + name.len(), catalogue.len())?;
-            let definition = catalogue
-                .get(&(identity.as_str(), version.as_str(), name.as_str()))
-                .ok_or(E::UnknownType)?;
+        (_, T::VocabularyNominal { .. } | T::Nominal(_)) => {
+            let definition = catalogue.resolve(ty, budget)?;
             match (&definition.body, value) {
-                (CompositionBody::Record(fields), V::Record(values)) => {
-                    materialize_record(values, fields, catalogue, budget, depth + 1)
-                }
+                (CompositionBody::Record(fields), V::Record(values)) => materialize_record(
+                    values,
+                    fields,
+                    catalogue,
+                    budget,
+                    depth + u64::from(!catalogue.project_depth),
+                ),
                 (CompositionBody::Variant(alternatives), V::Variant { tag, payload }) => {
                     if tag.len() as u64 > budget.limits.json.string_bytes {
                         return Err(E::Limit);

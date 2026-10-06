@@ -4,9 +4,11 @@
 
 mod closure;
 mod decode;
+mod scope;
 mod supplied;
 mod values;
 
+pub use scope::{ValidatedCompositionScope, validate_composition_scope};
 pub use supplied::{ValidatedCompositionValue, materialize_composition_value};
 
 use crate::{VocabularyError, VocabularyLimits, VocabularyLock};
@@ -304,6 +306,8 @@ struct Budget<'a> {
     edges: u64,
     /// Cumulative materialization visits, independent of aggregate work.
     value_nodes: u64,
+    /// Standalone origins start at one; explicitly selected project /2 starts at zero.
+    origin_root_depth: u64,
 }
 
 impl<'a> Budget<'a> {
@@ -319,6 +323,7 @@ impl<'a> Budget<'a> {
             choices: 0,
             edges: 0,
             value_nodes: 0,
+            origin_root_depth: 1,
         }
     }
     /// Charges work and observes cancellation before proportional semantic operations.

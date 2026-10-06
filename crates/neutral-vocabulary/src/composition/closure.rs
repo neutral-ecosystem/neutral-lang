@@ -2,11 +2,8 @@
 
 //! Canonical dependency, visibility, and embedded-type graph validation.
 
-use super::{Budget, CompositionError as E};
-use neutral_ir::{
-    composition::{CompositionBody, CompositionBundle, CompositionDefinition},
-    project_interface::ProjectPublicType as T,
-};
+use super::{Budget, CompositionError as E, values::definition_types};
+use neutral_ir::{composition::CompositionBundle, project_interface::ProjectPublicType as T};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Canonical vocabulary/revision/type identity, never a source alias.
@@ -137,14 +134,6 @@ fn validate_root_cover(
         return Err(E::ExtraBundle);
     }
     Ok(())
-}
-
-/// Enumerates complete field/alternative payload types without inspecting selected values.
-fn definition_types(definition: &CompositionDefinition) -> Vec<&T> {
-    match &definition.body {
-        CompositionBody::Record(fields) => fields.iter().map(|f| &f.ty).collect(),
-        CompositionBody::Variant(alternatives) => alternatives.iter().map(|a| &a.ty).collect(),
-    }
 }
 
 /// Rejects embedded recursion with iterative enter/leave states rather than call-stack traversal.

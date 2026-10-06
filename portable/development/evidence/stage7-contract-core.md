@@ -247,3 +247,56 @@ formatting, documentation generation and repository checks pass.
 `cargo xtask portable verify` and `cargo xtask fixtures check` pass with all
 64 fixture/oracle pairs and zero manifest/freeze updates. No new coverage,
 mutation, full fuzz campaign or release qualification result is claimed.
+
+## Shared resolved composition scope (06-10-2026)
+
+`SourceCompositionDefinition` associates an exact source module-symbol owner with
+the same `CompositionDefinition` record/variant body used by vocabulary declarations.
+`validate_composition_scope` accepts already resolved source contracts and an
+immutable validated vocabulary catalogue. It validates owner grammar/profile,
+canonical definition/member/tag order, presence/default consistency, wrapper/ref
+shapes, every nominal target, public/external closure and all embedded cycles.
+Unselected alternatives and private unused declarations participate. Lists and
+nullable wrappers do not hide embedding; nominal reference cycles remain legal.
+Vocabulary definitions cannot acquire source owners through this API.
+
+Default, restriction and closed supplied-value validation use one common engine
+for both origins. Source-owned records can embed exact public vocabulary variants;
+heterogeneous variant lists retain order and check each selected payload. Unknown
+tags, incompatible payloads, incomplete records, invalid unused defaults and
+contradictory presence fail before publication. Normalized finite choices and
+inclusive exact numeric/Unicode-scalar/list-length checks reuse existing code.
+Canonical materialized meaning remains separate from safe supplied/null/omitted/
+defaulted origin paths; no source span or host information is invented.
+
+The scope independently bounds source/vocabulary type/field/alternative/choice
+totals, per-module types, wrapper/value depth, scalar retention, cumulative default
+materialization visits and work. Raw defaults/types are preflighted before
+recursive consumers or cloning retained restrictions. Existing capture remains
+responsible for exact bytes, locks and dependency depth; this scope does not
+recapture a previously accepted catalogue. Root occurrence depth starts at zero,
+record/list/variant children add one, nullable checks spend visits without adding
+depth, and nominal lookup does not double-charge depth. Standalone catalogue
+materialization retains its previous depth policy and all its tests.
+
+`CompositionTypeCatalogue` opens the validated scope without compiler linkage.
+It enumerates only public source contracts, shares exact public vocabulary lookup,
+materializes closed values through the common engine and inspects every declared
+reference-type branch/wrapper. Missing/private source roots share the same lookup,
+value and reference failures. Debug output contains counts only. Complete project
+public-view closure, binding edges and source attribution are not implemented here.
+
+This slice does **not** parse source declarations, check captured import/alias
+visibility, resolve source value reuse/non-null references, compile successor
+project IR, encode/decode `.nir`, derive public views or complete logical/derivation/
+artifact identities. The remaining eight full extension gates stay open. Contract,
+oracle, vector and manifest bytes/pins are unchanged; the suite remains frozen.
+
+Validation: 24 new resolved-model tests and six compiler-independent reader tests
+pass. `cargo xtask test all` and `cargo xtask ci pr` pass 699 Nextest tests,
+zero skips, plus both compile-fail doctests. Strict workspace Clippy, formatting,
+documentation generation, dependency and repository checks pass.
+`cargo xtask portable verify` and `cargo xtask fixtures check` pass; all 64
+fixture/oracle pairs retain their pins with zero manifest/freeze updates.
+No coverage, mutation, full fuzz, allocation-fault, clean/cache or release gate
+is newly claimed by these resolved-model tests.
