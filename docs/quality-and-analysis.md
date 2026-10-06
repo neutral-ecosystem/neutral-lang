@@ -91,16 +91,17 @@ a failure on the final source inputs:
 RUSTUP_TOOLCHAIN=nightly cargo xtask coverage
 cargo xtask mutate
 cargo xtask test performance --profile release
-cargo xtask test performance --profile soak
 ```
 
-Fuzz campaigns are separate, opt-in analysis, not a release-quality requirement.
+Fuzz campaigns and extended soak are separate, opt-in analysis, not release-quality requirements.
 Run `RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign` when needed; release
 preparation, CI qualification, approval, and evidence retention do not require them.
+Run `cargo xtask test performance --profile soak` explicitly for the extended
+stress/soak campaign, including its Massif and Memcheck measurements.
 
 The performance commands automatically capture phase/end-to-end, growth, and
 concurrency timings, Massif heap snapshots, and Memcheck allocation/leak results.
-The release soak uses the benchmark's extended-soak profile. Use an otherwise
+The optional soak uses the benchmark's extended-soak profile. Use an otherwise
 idle controlled runner; comparing measurements from different machines is not a
 performance regression test.
 

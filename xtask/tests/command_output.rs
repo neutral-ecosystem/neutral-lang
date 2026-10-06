@@ -29,10 +29,10 @@ fn help_has_uniform_rows_and_lifecycle() {
     let output = invoke(&["--help"]);
     assert!(output.status.success());
     let (stdout, stderr) = streams(&output);
-    assert!(stdout.lines().all(|line| line.starts_with("[info] HELP  ")));
+    assert!(stdout.lines().all(|line| line.starts_with("HELP  ")));
     assert!(stdout.contains("cargo xtask"));
-    assert!(stderr.starts_with("[info] START xtask --help\n"));
-    assert!(stderr.contains("[info] PASS  xtask --help ("));
+    assert!(stderr.starts_with("START xtask --help\n"));
+    assert!(stderr.contains("PASS  xtask --help ("));
 }
 
 /// Parse failures produce one categorized error, not duplicate failure summaries.
@@ -42,9 +42,9 @@ fn invalid_command_has_one_failure() {
     assert!(!output.status.success());
     let (stdout, stderr) = streams(&output);
     assert_eq!(stdout, "");
-    assert!(stderr.starts_with("[info] START xtask not-a-command\n"));
-    assert_eq!(stderr.matches("[error] FAIL").count(), 1);
-    assert!(!stderr.contains("[info] PASS"));
+    assert!(stderr.starts_with("START xtask not-a-command\n"));
+    assert_eq!(stderr.matches("FAIL").count(), 1);
+    assert!(!stderr.contains("PASS"));
 }
 
 /// The tag command retains a bare manifest-derived value on stdout.
@@ -54,8 +54,8 @@ fn release_tag_keeps_machine_stdout() {
     assert!(output.status.success());
     let (stdout, stderr) = streams(&output);
     assert_eq!(stdout, format!("v{}\n", env!("CARGO_PKG_VERSION")));
-    assert!(stderr.starts_with("[info] START xtask release tag\n"));
-    assert!(stderr.contains("[info] PASS  xtask release tag ("));
+    assert!(stderr.starts_with("START xtask release tag\n"));
+    assert!(stderr.contains("PASS  xtask release tag ("));
 }
 
 /// Ordinary commands leave stdout free for script use and use styled human rows.
@@ -65,9 +65,13 @@ fn version_show_uses_uniform_stderr() {
     assert!(output.status.success());
     let (stdout, stderr) = streams(&output);
     assert_eq!(stdout, "");
-    assert!(stderr.lines().all(|line| line.starts_with("[info] ")));
-    assert!(stderr.contains("[info] INFO  package-release"));
-    assert!(stderr.contains("[info] PASS  xtask version show ("));
+    assert!(stderr.lines().all(|line| {
+        ["START ", "INFO  ", "PASS  "]
+            .iter()
+            .any(|label| line.starts_with(label))
+    }));
+    assert!(stderr.contains("INFO  package-release"));
+    assert!(stderr.contains("PASS  xtask version show ("));
 }
 
 /// Environment evidence keeps the documented manifest prefix and valid JSON body.
@@ -79,6 +83,6 @@ fn environment_manifest_keeps_machine_stdout() {
     let json = stdout.strip_prefix("[manifest] ").expect("manifest prefix");
     let value: serde_json::Value = serde_json::from_str(json).expect("manifest JSON");
     assert!(value.is_object());
-    assert!(stderr.starts_with("[info] START xtask environment manifest\n"));
-    assert!(stderr.contains("[info] PASS  xtask environment manifest ("));
+    assert!(stderr.starts_with("START xtask environment manifest\n"));
+    assert!(stderr.contains("PASS  xtask environment manifest ("));
 }

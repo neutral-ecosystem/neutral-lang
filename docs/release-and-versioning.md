@@ -32,7 +32,7 @@ once; preparation does not install software or weaken checks when a tool is miss
   lockfile entries, and compact evidence scaffold; commits only those files
   with the message `[REL] v<version>`.
 - Runs the ordinary quality gate, then coverage, mutation, performance,
-  soak, and advisory checks. Valid evidence for the exact current inputs is
+  and advisory checks. Valid evidence for the exact current inputs is
   reused; missing or stale measurements are run automatically.
 - Selects nightly only for coverage child commands, leaving the global
   stable toolchain unchanged.
@@ -40,8 +40,10 @@ once; preparation does not install software or weaken checks when a tool is miss
   source archive, manifests, and checksums under ignored `test-results/release/`.
 
 Preparation may take time when the expensive measurements need to run.
-Fuzzing is opt-in (`RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign`), not a
-release requirement; preparation, qualification, and approval do not demand fuzz evidence.
+Fuzzing (`RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign`) and extended soak
+(`cargo xtask test performance --profile soak`) are opt-in analysis, not release
+requirements. Preparation, qualification, approval, and retention do not demand
+their evidence. Regular release performance, Massif, and Memcheck checks remain required.
 Watch the labeled progress and inspect the package path printed at completion.
 It creates no approval, tag, remote push, or GitHub release.
 

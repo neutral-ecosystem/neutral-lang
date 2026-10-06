@@ -84,15 +84,15 @@ Full coverage-guided fuzzing, LLVM coverage, and mutation analysis require their
 documented external Cargo tools. Missing tools fail their command; bounded fuzz
 regression tests are never reported as a full fuzz campaign.
 
-Human output uses shared `[info]`, `[warn]`, and `[error]` reporting on stderr,
-with aligned `START`, `RUN`, `PASS`, `FAIL`, `CMD`, and `FILE` labels. Capable
+Human output uses aligned `START`, `RUN`, `PASS`, `FAIL`, `WARN`, `INFO`, `CMD`,
+and `FILE` labels on stderr, without bracketed severity prefixes. Capable
 terminals color these statuses; redirected logs are plain by default.
 `CARGO_TERM_COLOR=always|never|auto` overrides automatic color selection;
 nonempty `NO_COLOR` disables color, including inherited Cargo/nextest output.
 Captured measurement reports are always color-free. Every command, including
 help and script-facing commands, prints lifecycle summaries on stderr. Statuses
 are explicit at each call site, not guessed from message wording; every line in
-a multiline diagnostic gets a category. Failures produce one final contextual
+a multiline diagnostic gets a status label. Failures produce one final contextual
 error instead of duplicate command-failure summaries. Workflows number their
 steps, and measured tools
 show elapsed-time heartbeats while retaining complete stdout/stderr reports.

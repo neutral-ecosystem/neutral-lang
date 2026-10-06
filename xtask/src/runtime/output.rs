@@ -11,31 +11,27 @@ use std::{
 
 /// Emits a categorized informational line without panicking on a closed pipe.
 pub(crate) fn info(message: impl fmt::Display) {
-    emit(crate::constants::INFO, "INFO", &message.to_string());
+    emit("INFO", &message.to_string());
 }
 
 /// Announces a command or workflow step before work begins.
 pub(crate) fn start(message: impl fmt::Display) {
-    emit(crate::constants::INFO, "START", &message.to_string());
+    emit("START", &message.to_string());
 }
 
 /// Reports successful completion using the shared success style.
 pub(crate) fn pass(message: impl fmt::Display) {
-    emit(crate::constants::INFO, "PASS", &message.to_string());
+    emit("PASS", &message.to_string());
 }
 
 /// Announces an invoked subprocess without changing its native output.
 pub(crate) fn invocation(program: &str, arguments: &[&str]) {
-    emit(crate::constants::INFO, "CMD", &command(program, arguments));
+    emit("CMD", &command(program, arguments));
 }
 
 /// Identifies a generated file or directory using a workspace-relative path.
 pub(crate) fn file(label: &str, value: &Path) {
-    emit(
-        crate::constants::INFO,
-        "FILE",
-        &format!("{label}: {}", path(value)),
-    );
+    emit("FILE", &format!("{label}: {}", path(value)));
 }
 
 /// Writes consistently styled help to stdout, tolerating a closed reader.
@@ -45,12 +41,7 @@ pub(crate) fn help(message: &str) {
         let _ = writeln!(
             stream,
             "{}",
-            format_row(
-                crate::constants::INFO,
-                "HELP",
-                line,
-                color_enabled_on(io::stdout().is_terminal())
-            )
+            format_row("HELP", line, color_enabled_on(io::stdout().is_terminal()))
         );
     }
 }
@@ -66,23 +57,19 @@ pub(crate) fn machine(message: impl fmt::Display) -> Result<(), String> {
 
 /// Emits a categorized warning without panicking on a closed pipe.
 pub(crate) fn warn(message: impl fmt::Display) {
-    emit(crate::constants::WARN, "WARN", &message.to_string());
+    emit("WARN", &message.to_string());
 }
 
 /// Emits a categorized failure without panicking on a closed pipe.
 pub fn error(message: impl fmt::Display) {
-    emit(crate::constants::ERROR, "FAIL", &message.to_string());
+    emit("FAIL", &message.to_string());
 }
 
 /// Writes a uniformly formatted human line on stderr with optional terminal color.
-fn emit(category: &str, action: &str, message: &str) {
+fn emit(action: &str, message: &str) {
     let mut stream = io::stderr().lock();
     for line in message.lines() {
-        let _ = writeln!(
-            stream,
-            "{}",
-            format_row(category, action, line, color_enabled())
-        );
+        let _ = writeln!(stream, "{}", format_row(action, line, color_enabled()));
     }
 }
 
@@ -125,10 +112,9 @@ pub(crate) fn child_color() -> &'static str {
     if color_enabled() { "always" } else { "never" }
 }
 
-/// Renders a progress row through the same category, alignment, and color palette.
+/// Renders a progress row through the same status, alignment, and color palette.
 pub(crate) fn progress(message: &str, completed: bool) -> String {
     format_row(
-        crate::constants::INFO,
         if completed { "PASS" } else { "RUN" },
         message,
         color_enabled(),
@@ -136,8 +122,8 @@ pub(crate) fn progress(message: &str, completed: bool) -> String {
 }
 
 /// Applies fixed-width labels and semantic colors, never relying on color alone.
-fn format_row(category: &str, action: &str, message: &str, color: bool) -> String {
-    let row = format!("{category} {action:<5} {message}");
+fn format_row(action: &str, message: &str, color: bool) -> String {
+    let row = format!("{action:<5} {message}");
     if !color {
         return row;
     }
@@ -149,7 +135,7 @@ fn format_row(category: &str, action: &str, message: &str, color: bool) -> Strin
         "CMD" | "FILE" => "2",
         _ => "34",
     };
-    format!("\x1b[{code}m{category} {action:<5}\x1b[0m {message}")
+    format!("\x1b[{code}m{action:<5}\x1b[0m {message}")
 }
 
 /// Formats elapsed time in compact units instead of large millisecond counts.

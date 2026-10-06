@@ -333,10 +333,10 @@ No version bump, approval, tag, or release is implied.
 
 ### Promote to `v0.8.0`
 
-- [ ] Complete the vocabulary composition extension gate below; existing
+- [x] Complete the vocabulary composition extension gate below; existing
   Stage 7 identity evidence does not cover these newly scheduled requirements.
-- [ ] Confirm Stage 7 checklist, manifest, and traceability are complete.
-- [ ] Release `v0.8.0`; update the ledger to `released`.
+- [x] Confirm Stage 7 checklist, manifest, and traceability are complete.
+- [x] Release `v0.8.0`; update the ledger to `released`.
 
 ### `v0.8.0` — vocabulary composition extension gate
 

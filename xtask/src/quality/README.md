@@ -14,5 +14,6 @@ receipts, and validation. Serialized gate names remain compatible. Validation
 uses one typed configuration snapshot across all gates; measurement completion
 also rejects changes to its source inputs or policy bytes during execution.
 `QualityGate::RELEASE_REQUIRED` defines the shared preparation, qualification,
-approval, and retention requirements. Fuzzing stays available as opt-in analysis
-and is not part of that release gate list.
+approval, and retention requirements. Fuzzing and extended soak stay available
+as opt-in analysis and are not part of that release gate list. Regular release
+performance and allocation checks remain required.

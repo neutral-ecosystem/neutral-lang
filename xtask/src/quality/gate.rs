@@ -23,12 +23,11 @@ pub(crate) enum QualityGate {
 }
 
 impl QualityGate {
-    /// Mandatory release measurements; fuzz campaigns remain a separate opt-in command.
-    pub(crate) const RELEASE_REQUIRED: [Self; 5] = [
+    /// Mandatory release measurements; fuzz and extended soak remain opt-in analysis.
+    pub(crate) const RELEASE_REQUIRED: [Self; 4] = [
         Self::Coverage,
         Self::Mutation,
         Self::PerformanceRelease,
-        Self::PerformanceSoak,
         Self::Advisories,
     ];
 

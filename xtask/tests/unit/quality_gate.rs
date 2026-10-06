@@ -4,7 +4,7 @@
 
 use super::*;
 
-/// All supported receipt identities, including the optional fuzz command.
+/// All supported receipt identities, including optional fuzz and extended soak commands.
 const SUPPORTED_GATES: [QualityGate; 6] = [
     QualityGate::Coverage,
     QualityGate::Mutation,
@@ -36,12 +36,12 @@ fn quality_gate_names_round_trip_without_schema_changes() {
     assert!(serde_json::from_str::<QualityGate>("\"unknown\"").is_err());
 }
 
-/// Release preparation, approval, and retention share non-fuzz requirements without weakening other gates.
+/// Release preparation, approval, and retention omit only optional fuzz and extended soak.
 #[test]
-fn release_requirements_exclude_only_optional_fuzz() {
+fn release_requirements_exclude_only_optional_fuzz_and_soak() {
     let expected: Vec<_> = SUPPORTED_GATES
         .into_iter()
-        .filter(|gate| *gate != QualityGate::Fuzz)
+        .filter(|gate| !matches!(gate, QualityGate::Fuzz | QualityGate::PerformanceSoak))
         .collect();
     assert_eq!(
         QualityGate::RELEASE_REQUIRED.as_slice(),

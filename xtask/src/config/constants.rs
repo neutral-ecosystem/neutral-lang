@@ -57,12 +57,6 @@ pub const UNAME_COMMAND: &str = "uname";
 pub const CARGO_ENCODED_RUSTDOCFLAGS: &str = "CARGO_ENCODED_RUSTDOCFLAGS";
 /// Cargo metadata placeholder replaced while generating the rustdoc landing page.
 pub const CARGO_METADATA_PLACEHOLDER: &str = "__NEUTRAL_CARGO_METADATA__";
-/// Informational output category prefix.
-pub const INFO: &str = "[info]";
-/// Error output category prefix.
-pub const ERROR: &str = "[error]";
-/// Warning output category prefix.
-pub const WARN: &str = "[warn]";
 /// Machine-readable manifest output category prefix.
 pub const MANIFEST: &str = "[manifest]";
 /// Generated workspace rustdoc landing-page filename.
