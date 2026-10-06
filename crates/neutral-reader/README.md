@@ -62,6 +62,9 @@ list/nullable wrappers. `materialize` checks closed supplied values with the
 vocabulary validator and exposes safe origin classifications, not invented source
 spans or binding edges. This component does not imply support in the existing project codec or
 compiled-project identity profiles.
+`from_shared` accepts an immutable already-validated catalogue without copying
+contracts or reparsing bytes. Only the validator can construct that catalogue;
+sharing does not bypass validation or expose mutable private contracts.
 
 ## Command
 

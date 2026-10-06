@@ -50,11 +50,12 @@ pub use module_graph::{
     build_module_graph,
 };
 pub use project_capture::{
-    CAPTURE_REQUEST_VERSION, CapturedProject, CapturedProjectRequest,
-    CapturedProjectRequestBuilder, CapturedProjectSource, CapturedProjectVocabulary,
-    CapturedSourceInput, CapturedVocabularyInput, ProjectCaptureControls, ProjectCaptureError,
+    CAPTURE_REQUEST_VERSION, CapturedCompositionProject, CapturedCompositionProjectRequest,
+    CapturedProject, CapturedProjectRequest, CapturedProjectRequestBuilder, CapturedProjectSource,
+    CapturedProjectVocabulary, CapturedSourceInput, CapturedVocabularyInput,
+    CompositionCaptureFailure, ProjectCaptureControls, ProjectCaptureError,
     ProjectCaptureLimitValues, ProjectCaptureLimits, ProjectCaptureResourceFacts, ProjectHostError,
-    capture_project,
+    capture_composition_project, capture_project,
 };
 pub use project_vocabulary::{
     ProjectVocabularySet, ProjectVocabularyValidationError, validate_project_vocabularies,

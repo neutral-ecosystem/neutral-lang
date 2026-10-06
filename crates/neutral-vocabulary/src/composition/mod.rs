@@ -15,11 +15,11 @@ use neutral_ir::composition::CompositionBundle;
 use std::collections::BTreeMap;
 
 /// New logical composition schema, independent of package versions.
-pub const SCHEMA_VERSION: &str = "2.0";
+pub const SCHEMA_VERSION: &str = neutral_ir::composition::profile::VOCABULARY_SCHEMA_VERSION;
 /// Reused strict JSON encoding; its representation is unchanged.
 pub const ENCODING_VERSION: &str = crate::PROJECT_VOCABULARY_ENCODING_VERSION;
 /// Exact structural feature required by every composition-schema bundle.
-pub const REQUIRED_FEATURE: &str = "vocabulary-composition-v2";
+pub const REQUIRED_FEATURE: &str = neutral_ir::composition::profile::VOCABULARY_COMPOSITION_FEATURE;
 /// Maximum recursive semantic layers, intersected with caller limits.
 pub const MAX_DEPTH: u64 = crate::MAX_VOCABULARY_NESTING_DEPTH;
 /// Hard aggregate item/work ceiling, independent of semantic restrictions.
@@ -30,7 +30,7 @@ pub const MAX_CAPTURED_BYTES: u64 = 67_108_864;
 pub const MAX_OBJECT_MEMBERS: u64 = 8;
 
 /// Caller policy for independent composition and dependency resource budgets.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CompositionLimits {
     /// Existing strict per-bundle JSON, scalar, type and field budgets.
     pub json: VocabularyLimits,
@@ -90,8 +90,11 @@ impl CompositionLimits {
         }
     }
 
-    /// Rejects zero budgets rather than silently disabling a resource gate.
-    fn validate(self) -> Result<(), CompositionError> {
+    /// Checks policy before processing input, rather than silently disabling a resource gate.
+    ///
+    /// # Errors
+    /// Returns [`CompositionError::InvalidLimits`] if any composition budget is zero.
+    pub fn validate(self) -> Result<(), CompositionError> {
         if [
             self.bundles,
             self.captured_bytes,

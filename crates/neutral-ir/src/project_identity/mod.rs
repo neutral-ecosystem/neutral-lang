@@ -9,6 +9,7 @@ mod logical;
 
 pub use captured::{
     CapturedIdentityInput, CapturedIdentitySource, CapturedIdentityVocabulary, captured_closure,
+    captured_composition_closure,
 };
 pub use derived::{
     ArtifactIdentityInput, ArtifactKind, DerivationContext, artifact_identity, derivation_identity,
@@ -118,6 +119,10 @@ identity!(
     "Exact supplied source and vocabulary closure identity."
 );
 identity!(
+    CompositionCapturedClosureIdentity,
+    "Exact composition-profile capture identity; not interchangeable with captured identity /1."
+);
+identity!(
     LogicalProjectIdentity,
     "Complete logical meaning, excluding capture and processing evidence."
 );
@@ -138,10 +143,24 @@ fn transcript<I>(
     body: impl FnOnce(&mut framing::Writer<'_>) -> Result<(), IdentityError>,
     wrap: impl FnOnce(SemanticDigest) -> I,
 ) -> Result<IdentityTranscript<I>, IdentityError> {
+    transcript_profile(domain, IDENTITY_PROFILE, limits, cancellation, body, wrap)
+}
+
+/// Shares unchanged NHT framing while callers explicitly select frozen profile/domain pairs.
+///
+/// This helper is private: public callers cannot invent or override protocol selectors.
+fn transcript_profile<I>(
+    domain: &str,
+    profile: &str,
+    limits: IdentityLimits,
+    cancellation: &CancellationToken,
+    body: impl FnOnce(&mut framing::Writer<'_>) -> Result<(), IdentityError>,
+    wrap: impl FnOnce(SemanticDigest) -> I,
+) -> Result<IdentityTranscript<I>, IdentityError> {
     let mut writer = framing::Writer::new(limits, cancellation)?;
     writer.frame(NHT_ENVELOPE, |writer| {
         writer.frame(domain, |writer| {
-            writer.leaf("identity-profile", IDENTITY_PROFILE.as_bytes())?;
+            writer.leaf("identity-profile", profile.as_bytes())?;
             body(writer)
         })
     })?;

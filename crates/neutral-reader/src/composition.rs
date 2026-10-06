@@ -63,9 +63,16 @@ impl CompositionCatalogue {
     /// Opens validated contracts without compiler linkage or source reparsing.
     #[must_use]
     pub fn new(catalogue: ValidatedComposition) -> Self {
-        Self {
-            catalogue: Arc::new(catalogue),
-        }
+        Self::from_shared(Arc::new(catalogue))
+    }
+
+    /// Opens an immutable validated catalogue without copying contracts or linking the compiler.
+    ///
+    /// Validation cannot be bypassed: raw composition structures cannot construct
+    /// [`ValidatedComposition`]. Sharing does not expose mutable catalogue access.
+    #[must_use]
+    pub fn from_shared(catalogue: Arc<ValidatedComposition>) -> Self {
+        Self { catalogue }
     }
 
     /// Enumerates exact canonical identity/revision/schema/feature/content facts in order.

@@ -44,6 +44,16 @@ and disconnected modules, materialized reuse, identity-only references, exact
 source/vocabulary companions, and resource facts. Failures never publish partial
 IR. This library API does not activate the standalone v1 compiler profile.
 
+The separate [composition capture](src/project_capture/composition.rs) API,
+`capture_composition_project`, requires an explicit successor envelope and exact
+features. It validates complete transitive locks, schemas, public type closure,
+defaults and restrictions, then shares immutable contracts with independent
+readers. Repeated local aliases refer to one canonical lock; dependencies never
+become implicit source aliases. Replay preserves exact bytes and both policies.
+Its separately typed captured identity matches the frozen successor transcript.
+This capture-only output cannot enter `compile_project`: source variants,
+complete successor IR, logical identities and binary transport are not yet active.
+
 Within one clean project compilation, semantic analysis hands its private parsed
 units to lowering instead of parsing them again. This request-local handoff does
 not expose syntax internals or retain data between requests; the explicit cache

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Frozen /2 design inputs; deliberately not compiler/codec activation evidence.
+//! Frozen /2 design inputs plus capture-only integration, not complete compiler/codec activation.
 
 use neutral_core::{
     CancellationToken, SemanticDigest, SourceContentDigest, StructuralLimits,
@@ -17,6 +17,8 @@ use std::{
     process::{Command, Stdio},
 };
 
+mod capture;
+
 /// Runtime-owned immutable vector copy, not a generated measurement report.
 const VECTORS: &str = include_str!("vectors.json");
 /// Runtime-owned literal request families; compiler expectations remain frozen-only.
@@ -26,6 +28,49 @@ const REQUESTS: &[&str] = &[
     include_str!("boundary.json"),
     include_str!("migration.json"),
 ];
+
+/// Constructs exact locks from pinned fixture facts, never from generated expected outputs.
+fn locks(case: &Value) -> Vec<VocabularyLock> {
+    case["capture"]["vocabularies"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|input| {
+            VocabularyLock::new(
+                input["identity"].as_str().unwrap(),
+                input["version"].as_str().unwrap(),
+                input["encoding_version"].as_str().unwrap(),
+                input["schema_version"].as_str().unwrap(),
+                VocabularyContentDigest::parse_text(&format!(
+                    "sha256:{}",
+                    input["digest"].as_str().unwrap()
+                ))
+                .unwrap(),
+                input["features"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|v| v.as_str().unwrap().to_owned())
+                    .collect(),
+            )
+            .unwrap()
+        })
+        .collect()
+}
+
+/// Applies only the independent policy overrides supplied by a reviewed fixture.
+fn limits_for(case: &Value) -> CompositionLimits {
+    let mut limits = CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(
+        StructuralLimits::new(65_536, 64).unwrap(),
+    ));
+    if let Some(value) = case["composition_limits"]["alternatives_per_type"].as_u64() {
+        limits.alternatives_per_type = value;
+    }
+    if let Some(value) = case["composition_limits"]["dependency_edges"].as_u64() {
+        limits.dependency_edges = value;
+    }
+    limits
+}
 /// Containers in the frozen NHT grammar, independently walked rather than re-encoded.
 const CONTAINERS: &[&str] = &[
     "neutral-nht-v1",
@@ -391,29 +436,7 @@ fn conformance_composition_contract_catalogue_oracles_execute_without_portable()
             if inputs.is_empty() {
                 continue;
             }
-            let locks = inputs
-                .iter()
-                .map(|input| {
-                    VocabularyLock::new(
-                        input["identity"].as_str().unwrap(),
-                        input["version"].as_str().unwrap(),
-                        input["encoding_version"].as_str().unwrap(),
-                        input["schema_version"].as_str().unwrap(),
-                        VocabularyContentDigest::parse_text(&format!(
-                            "sha256:{}",
-                            input["digest"].as_str().unwrap()
-                        ))
-                        .unwrap(),
-                        input["features"]
-                            .as_array()
-                            .unwrap()
-                            .iter()
-                            .map(|v| v.as_str().unwrap().to_owned())
-                            .collect(),
-                    )
-                    .unwrap()
-                })
-                .collect::<Vec<_>>();
+            let locks = locks(case);
             let captured = inputs
                 .iter()
                 .zip(&locks)
@@ -428,15 +451,7 @@ fn conformance_composition_contract_catalogue_oracles_execute_without_portable()
                 .iter()
                 .map(|v| (v[0].as_str().unwrap(), v[1].as_str().unwrap()))
                 .collect::<Vec<_>>();
-            let mut limits = CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(
-                StructuralLimits::new(65_536, 64).unwrap(),
-            ));
-            if let Some(value) = case["composition_limits"]["alternatives_per_type"].as_u64() {
-                limits.alternatives_per_type = value;
-            }
-            if let Some(value) = case["composition_limits"]["dependency_edges"].as_u64() {
-                limits.dependency_edges = value;
-            }
+            let limits = limits_for(case);
             let actual =
                 validate_composition_closure(&captured, &roots, limits, &CancellationToken::new());
             let expected = case["catalogue_outcome"].as_str().unwrap();

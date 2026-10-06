@@ -393,6 +393,27 @@ and [independent reader tests](../../crates/neutral-reader/tests/composition.rs)
 These completed items do not activate source reference-value edges, complete
 project companions, codec/probe support, public views or new identity profiles.
 
+#### Explicit capture and captured-identity integration
+
+- [x] Add a separate `neutral.capture/v2` API with exact required features,
+  independent composition controls and no old-compiler fallback/downcast.
+- [x] Validate exact source/bundle integrity and complete transitive lock cover
+  before publication; retain module-local repeated aliases and exact replay.
+- [x] Share validated catalogues with the independent reader without copying
+  contracts; inspect restrictions, defaults, public types and reference-type paths.
+- [x] Implement separately typed captured identity /2 and compare production
+  transcript bytes/digest with the frozen literal vector, including exact/one-over
+  byte/frame bounds. Preserve existing /1 transcripts and vectors.
+- [x] Validate this slice with `cargo xtask test all` and `cargo xtask ci pr`:
+  669 Nextest tests, zero skips, and two compile-fail doctests pass. Portable
+  verification and all 64 fixture/oracle checks pass without changing frozen inputs.
+
+Evidence: [capture and captured-identity integration](evidence/stage7-contract-core.md#composition-capture-and-captured-identity-integration-06-10-2026),
+[capture tests](../../crates/neutral-compiler/tests/project_capture/composition.rs)
+and [cross-package tests](../../crates/neutral-test-suite/tests/composition_contract/capture.rs).
+This is capture/catalogue integration, not source compilation, new project IR,
+wire/probe/view support, or complete logical/derivation/artifact identity.
+
 #### Remaining full extension gates
 
 Next: implement the frozen source/project IR/wire/identity boundaries and compare

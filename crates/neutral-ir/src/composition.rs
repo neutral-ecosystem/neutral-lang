@@ -9,6 +9,8 @@
 use crate::{ExactNumber, VocabularyIdentity, project_interface::ProjectPublicType};
 use std::cmp::Ordering;
 
+pub mod profile;
+
 /// Whether omission rejects, remains absent, or materializes a closed default.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FieldPresence {

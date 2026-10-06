@@ -192,3 +192,58 @@ oracle, and hostile decoder/allocation-fault/fuzz/clean-cache validation. The
 new suite remains `frozen`, not `required`. Before activation, verify its existing
 pins and all production comparisons; synchronization is not permission to rewrite
 accepted expectations. No version, release, tag, commit or push was performed.
+
+## Composition capture and captured-identity integration (06-10-2026)
+
+The compiler now exposes `CapturedCompositionProjectRequest` and
+`capture_composition_project` as a distinct capture-only boundary. Exact envelope,
+profile and sorted feature selection precede zero controls and cancellation.
+Shared integrity/header checks preserve capture /1 behavior; successor capture
+adds per-member/line cancellation, aggregate composition count/byte ceilings before
+proportional catalogue work, and exact transitive schema/type/default/restriction
+validation. Repeated identities with distinct module-local aliases share one lock;
+duplicate aliases reject, and dependency bundles are never implicit source aliases.
+No path, URL, host resolver, environment access, acquisition or partial publication
+is introduced. Replay retains exact bytes, asserted digests, features and both policies.
+
+The separate output type cannot enter `compile_project` or expose a public downcast
+to capture /1. Successful capture checks headers and catalogue facts, **not source
+variant/value semantics**. Raw complete catalogue facts remain available to their
+capturing owner; `CompositionCatalogue::from_shared` independently exposes only its
+existing public inspection/materialization APIs. Private/missing lookups remain
+indistinguishable. Reference paths include every alternative and composed wrapper;
+these are type dependencies, not resolved source binding edges or invented spans.
+
+IR owns shared profile selectors and the bounded
+`captured_composition_closure` implementation. `CompositionCapturedClosureIdentity`
+is distinct from /1 captured identity. Common capture-field framing is reused with
+explicit private profile/domain selection, leaving all old transcript bytes unchanged.
+The frozen production comparison matches the captured baseline's exact 682 bytes,
+23 frames and literal SHA-256. Exact/one-over limits, zeros, cancellation, unsupported
+features, canonical capture order, changed source evidence and replay are tested.
+This does not implement successor logical, derivation, interface or artifact identities.
+
+Cross-package tests execute all 26 registered catalogue cases through capture, then
+check diamond deduplication, exact dependencies, complete restrictions/defaults,
+optional absence, legacy leaf adaptation, privacy and reference paths through the
+compiler-independent reader. Catalogue-only cases use an explicit synthetic test
+source declaring their reviewed roots; source-bearing cases preserve literal byte
+pins. Source semantic expectations are deliberately not claimed as executed.
+Capture duplicate/conflicting locks return `NEU-CAP-010` at integrity; standalone
+catalogue validation returns `NEU-COM-005`. The full-project oracle's outcome remains
+unchanged and pending comparison at the future project boundary. Existing /1 member
+and schema failure precedence remains unchanged, with no retry through composition.
+
+Full extension checkboxes remain open: both-origin source variants and composition
+semantics, source reference-value resolution, successor complete IR/companions and
+attribution, codec/probe/public views, remaining identity partitions, actual clean/cache
+execution, hostile decoder/allocation-fault review and fuzz campaigns. The frozen suite
+is not activated and no expected inputs, vectors, contract hashes or thresholds changed.
+
+Validation: `cargo xtask test all` and `cargo xtask ci pr` pass 669 Nextest tests
+with zero skips, plus both compile-fail doctests (no resolver on old capture;
+no successor-capture downcast into old compilation). Strict workspace Clippy,
+formatting, documentation generation and repository checks pass.
+`cargo xtask portable verify` and `cargo xtask fixtures check` pass with all
+64 fixture/oracle pairs and zero manifest/freeze updates. No new coverage,
+mutation, full fuzz campaign or release qualification result is claimed.

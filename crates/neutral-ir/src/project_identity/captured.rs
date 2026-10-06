@@ -3,10 +3,12 @@
 //! Exact capture facts; source contents are represented by verified byte digests.
 
 use super::{
-    CAPTURED_DOMAIN, CapturedClosureIdentity, IdentityError, IdentityLimits, IdentityTranscript,
+    CAPTURED_DOMAIN, CapturedClosureIdentity, CompositionCapturedClosureIdentity, IdentityError,
+    IdentityLimits, IdentityTranscript,
     framing::{Writer, ordered},
-    transcript,
+    transcript, transcript_profile,
 };
+use crate::composition::profile;
 use neutral_core::{CancellationToken, SourceContentDigest, VocabularyContentDigest};
 
 /// Borrowed source facts from a successfully frozen capture, never host paths.
@@ -62,61 +64,108 @@ pub fn captured_closure(
         CAPTURED_DOMAIN,
         limits,
         cancellation,
+        |writer| capture_body(writer, input),
+        CapturedClosureIdentity,
+    )
+}
+
+/// Hashes verified successor capture facts in the frozen /2 profile and domain.
+///
+/// Features are required explicitly, in exact canonical order. This only projects
+/// capture facts; it neither validates source semantics nor constructs logical,
+/// derivation, interface or artifact identities. Old /1 framing is unchanged.
+///
+/// # Errors
+/// Rejects unsupported profile/features, noncanonical input, independent bounds or cancellation.
+pub fn captured_composition_closure(
+    input: &CapturedIdentityInput<'_>,
+    required_features: &[String],
+    limits: IdentityLimits,
+    cancellation: &CancellationToken,
+) -> Result<IdentityTranscript<CompositionCapturedClosureIdentity>, IdentityError> {
+    if input.profile != neutral_core::profile::V1_SOURCE_PROFILE
+        || !required_features
+            .iter()
+            .map(String::as_str)
+            .eq(profile::REQUIRED_FEATURES.iter().copied())
+    {
+        return Err(IdentityError::InvalidInput);
+    }
+    transcript_profile(
+        profile::CAPTURED_DOMAIN,
+        profile::IDENTITY_PROFILE,
+        limits,
+        cancellation,
         |writer| {
-            if input.profile.is_empty() || input.sources.is_empty() {
-                return Err(IdentityError::InvalidInput);
-            }
-            writer.items(input.sources.len())?;
-            writer.items(input.vocabularies.len())?;
-            for source in input.sources {
-                writer.text(source.module)?;
-                writer.text(source.source_id)?;
-                if source.source_id.chars().any(char::is_control) {
-                    return Err(IdentityError::InvalidInput);
-                }
-            }
-            let mut source_ids = Vec::new();
-            source_ids
-                .try_reserve(input.sources.len())
-                .map_err(|_| IdentityError::Limit)?;
-            source_ids.extend(input.sources.iter().map(|source| source.source_id));
-            source_ids.sort_unstable();
-            writer.check()?;
-            ordered(source_ids)?;
-            for vocabulary in input.vocabularies {
-                writer.text(vocabulary.identity)?;
-            }
-            ordered(input.sources.iter().map(|source| source.module))?;
-            ordered(
-                input
-                    .vocabularies
-                    .iter()
-                    .map(|vocabulary| vocabulary.identity),
-            )?;
-            writer.leaf("profile", input.profile.as_bytes())?;
-            writer.frame("sources", |writer| {
-                for source in input.sources {
-                    if source.module.is_empty() || source.source_id.is_empty() {
-                        return Err(IdentityError::InvalidInput);
-                    }
-                    writer.frame("source", |writer| {
-                        writer.leaf("module", source.module.as_bytes())?;
-                        writer.leaf("source-id", source.source_id.as_bytes())?;
-                        writer.leaf("digest", &source.digest.as_bytes())?;
-                        writer.number("byte-length", source.byte_len)
-                    })?;
-                }
-                Ok(())
-            })?;
-            writer.frame("vocabularies", |writer| {
-                for vocabulary in input.vocabularies {
-                    vocabulary_transcript(writer, vocabulary)?;
+            capture_body(writer, input)?;
+            writer.items(required_features.len())?;
+            writer.frame("features", |writer| {
+                for feature in required_features {
+                    writer.leaf("feature", feature.as_bytes())?;
                 }
                 Ok(())
             })
         },
-        CapturedClosureIdentity,
+        CompositionCapturedClosureIdentity,
     )
+}
+
+/// Frames unchanged exact capture fields once for both explicitly selected identity profiles.
+fn capture_body(
+    writer: &mut Writer<'_>,
+    input: &CapturedIdentityInput<'_>,
+) -> Result<(), IdentityError> {
+    if input.profile.is_empty() || input.sources.is_empty() {
+        return Err(IdentityError::InvalidInput);
+    }
+    writer.items(input.sources.len())?;
+    writer.items(input.vocabularies.len())?;
+    for source in input.sources {
+        writer.text(source.module)?;
+        writer.text(source.source_id)?;
+        if source.source_id.chars().any(char::is_control) {
+            return Err(IdentityError::InvalidInput);
+        }
+    }
+    let mut source_ids = Vec::new();
+    source_ids
+        .try_reserve(input.sources.len())
+        .map_err(|_| IdentityError::Limit)?;
+    source_ids.extend(input.sources.iter().map(|source| source.source_id));
+    source_ids.sort_unstable();
+    writer.check()?;
+    ordered(source_ids)?;
+    for vocabulary in input.vocabularies {
+        writer.text(vocabulary.identity)?;
+    }
+    ordered(input.sources.iter().map(|source| source.module))?;
+    ordered(
+        input
+            .vocabularies
+            .iter()
+            .map(|vocabulary| vocabulary.identity),
+    )?;
+    writer.leaf("profile", input.profile.as_bytes())?;
+    writer.frame("sources", |writer| {
+        for source in input.sources {
+            if source.module.is_empty() || source.source_id.is_empty() {
+                return Err(IdentityError::InvalidInput);
+            }
+            writer.frame("source", |writer| {
+                writer.leaf("module", source.module.as_bytes())?;
+                writer.leaf("source-id", source.source_id.as_bytes())?;
+                writer.leaf("digest", &source.digest.as_bytes())?;
+                writer.number("byte-length", source.byte_len)
+            })?;
+        }
+        Ok(())
+    })?;
+    writer.frame("vocabularies", |writer| {
+        for vocabulary in input.vocabularies {
+            vocabulary_transcript(writer, vocabulary)?;
+        }
+        Ok(())
+    })
 }
 
 /// Frames every semantic lock field, including byte identity and required features.

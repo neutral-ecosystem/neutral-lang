@@ -52,6 +52,11 @@ The [composition model](src/composition.rs) shares raw composite vocabulary
 contracts and closed defaults with validators and future readers. It preserves
 absence/null distinctions and exact numeric comparison; construction does not
 establish validity or extend frozen project schemas.
+Its [profile selectors](src/composition/profile.rs) are shared across capture,
+vocabulary and consumers. `captured_composition_closure` constructs a separately
+typed successor capture identity using the same bounded framing machinery;
+existing identity transcripts stay unchanged. This does not activate successor
+logical, derivation or artifact identities.
 The [identity writer](src/project_identity/framing.rs) explains bounded in-place
 framing and why malformed canonical order is rejected instead of silently sorted.
 

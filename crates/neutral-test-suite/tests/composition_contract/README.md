@@ -10,3 +10,13 @@ independent test oracle, never compiler, codec or production identity code.
 This checks a frozen design, not implementation availability. Ordinary tests run
 with `cargo xtask test all`; focused runs use `cargo test -p neutral-test-suite
 composition_contract`. Python 3 is required; missing tools fail, not skip.
+
+`capture.rs` additionally runs all registered catalogue cases through the explicit
+compiler capture boundary, then inspects accepted catalogues through the independent
+reader. It checks aliases, transitive locks, restrictions, public reference paths,
+optional origins, old-schema adaptation, replay, permutations and concurrency.
+The production captured-identity transcript is compared with literal bytes/digest
+and exact/one-over framing budgets. Catalogue-only cases get an explicit test
+source declaring their reviewed roots; those are not source-compilation tests.
+Source semantic expectations, complete project IR, binary codec/probe/views,
+logical/derivation/artifact identities and actual cache execution remain pending.
