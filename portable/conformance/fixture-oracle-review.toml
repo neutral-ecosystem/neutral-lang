@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 schema_version = 1
-status = "stage7-contract-core-and-standalone-catalogue-active"
+status = "stage7-core-and-standalone-catalogue-active; composition-contract-frozen-not-activated"
 profile = "1.0"
 
 [[suite]]
@@ -11,7 +11,21 @@ requirements = ["V1-VOC-005", "V1-VOC-006", "V1-VOC-007", "V1-VOC-008", "V1-VOC-
 fixture_families = ["presence-defaults", "variant-collections", "duplicate-choices", "invalid-defaults", "unknown-tags", "public-private-closure", "exact-one-over-alternatives", "schema1-migration"]
 oracle_directory = "portable/conformance/oracles/composition"
 review_date = "2026-10-06"
-exclusions = "source/compiler/project/wire/probe/identity activation and independent new identity vectors remain pending"
+exclusions = "source/compiler/project/wire/probe/identity production activation remains pending; independent /2 design vectors are frozen separately"
+
+[[suite]]
+id = "composition-contract"
+status = "reviewed-frozen-design; production-activation-pending"
+requirements = ["V1-VOC-005", "V1-VOC-006", "V1-VOC-007", "V1-VOC-008", "V1-VOC-009", "V1-VOC-010", "V1-VOC-011", "V1-ID-001", "V1-ID-002", "V1-ID-003", "V1-ID-004"]
+fixture_families = ["both-variant-origins", "heterogeneous-values", "list-nullable-ref", "source-diagnostics", "exact-transitive-diamond-locks", "missing-extra-conflicting-private-cyclic-dependencies", "embedded-recursion", "executable-members", "exact-one-over-alternatives-and-edges", "explicit-legacy-adapter", "old-schema-rejection", "complete-identity-partitions", "semantic-and-evidence-exclusions", "canonical-rejection-vectors"]
+literal_request_cases = 26
+literal_identity_baselines = 5
+literal_identity_variants = 12
+literal_identity_rejections = 8
+oracle_directory = "portable/conformance/oracles/composition"
+review_date = "2026-10-06"
+exclusions = "no source/parser/IR/wire activation or production /2 identity comparison; no full decoder/allocation/fuzz/cache validation claimed"
+activation = "retain pins; pass every compiler-codec-reader-probe-identity oracle; only then promote suite to required"
 
 # v1 fixture bytes and expected outcomes are added by their owning stage.
 # Empty inventories are intentional until the corresponding contract gate is

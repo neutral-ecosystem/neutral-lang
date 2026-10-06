@@ -27,11 +27,13 @@ rules for values, records, lists, source literals, or v0 vocabulary encoding.
 - [CONSUMER-READINESS.md](CONSUMER-READINESS.md): scheduled `v0.8.0` composite
   vocabulary schema and `v0.9.0` project-neutral reader/authoring data boundaries;
   schema and fixture review must precede activation.
-- [VARIANTS.md](VARIANTS.md): accepted source/vocabulary ownership decision and
-  proposed shared variant grammar, typing, public closure, and fixture shapes;
-  not active syntax or a replacement for the full composition schema freeze.
-- [VOCABULARY-COMPOSITION.md](VOCABULARY-COMPOSITION.md): concrete proposed
+- [VARIANTS.md](VARIANTS.md): frozen shared source/vocabulary variant grammar,
+  typing, nominal ownership and public closure; source activation remains pending.
+- [VOCABULARY-COMPOSITION.md](VOCABULARY-COMPOSITION.md): frozen schema `2.0`
   bundle member sets, composite types, presence/default/restriction semantics,
-  and exact dependency closure; identity/wire/limit/oracle freeze remains pending.
+  and exact dependency closure; standalone validation is separate from activation.
+- [COMPOSITION-PROFILE.md](COMPOSITION-PROFILE.md): frozen /2 capture, migration,
+  diagnostics/attribution, independent bounds, IR/wire and identity grammar;
+  reviewed literal requests/vectors do not establish production implementation.
 - [v1-checklist.md](v1-checklist.md): implementation and conformance completion
   checklist, kept separate from design acceptance.

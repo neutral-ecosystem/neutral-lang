@@ -37,3 +37,7 @@ mod project_identity;
 #[cfg(test)]
 #[path = "../tests/source_pipeline/mod.rs"]
 mod source_pipeline;
+
+#[cfg(test)]
+#[path = "../tests/composition_contract/mod.rs"]
+mod composition_contract;

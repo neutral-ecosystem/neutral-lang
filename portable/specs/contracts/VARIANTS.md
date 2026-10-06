@@ -2,7 +2,7 @@
 
 # Closed tagged variants
 
-Status: accepted ownership decision; proposed contract and fixtures, not active syntax
+Status: frozen shared contract, 06-10-2026; not active source syntax
 
 V1-VOC-009 supports **both** source-declared and vocabulary-declared nominal
 variants. They share one resolved type/value model and validation algorithm;
@@ -12,7 +12,7 @@ bundle, wire, source, or identity profile in place.
 
 ## Source declarations
 
-Proposed declaration grammar:
+Frozen declaration grammar (explicit composition-capable capture /2 only):
 
 ```text
 variant_declaration = ["public"] "variant" UpperName "{" alternatives "}"
@@ -42,7 +42,8 @@ public Outcome answer = {
 }
 ```
 
-`variant` is contextual at a declaration start under the new active capability.
+`variant` is contextual at a declaration start under explicitly selected
+`tagged-variants-v1` from [COMPOSITION-PROFILE](COMPOSITION-PROFILE.md).
 Do not add it to the frozen v0 protected-name set or reinterpret existing
 bindings named `variant`. `neu "0.1"` never accepts variant declarations.
 Public/private visibility, imported type qualification, alias resolution,
@@ -78,8 +79,8 @@ Member selectors remain the separately scheduled Stage 8 boundary.
 
 ## Vocabulary declarations
 
-The new reviewed composition schema gains a closed variant definition alongside
-record definitions. Its proposed variant member set is exactly `kind`, `name`,
+The frozen composition schema has a closed variant definition alongside
+record definitions. Its variant member set is exactly `kind`, `name`,
 `public`, and `alternatives`; each alternative has exactly `tag` and `type`:
 
 ```json
@@ -94,11 +95,11 @@ record definitions. Its proposed variant member set is exactly `kind`, `name`,
 }
 ```
 
-This is a proposed **type entry**, not a complete accepted bundle envelope.
-The [composition proposal](VOCABULARY-COMPOSITION.md) defines its complete
+This is a **type entry**, not a complete bundle envelope.
+The [composition contract](VOCABULARY-COMPOSITION.md) defines its complete
 envelope and the shared recursive type object shapes.
-The new composition schema/version and exact required-feature selection must
-be frozen with V1-VOC-005..011 before activation. The existing project schema
+The composition schema/version and exact feature selection are frozen separately
+from implementation and activation. The existing project schema
 `1.0` still accepts only its closed record definition; neither a `kind` nor an
 `alternatives` member may become valid there. v0 bundle behavior is unchanged.
 
@@ -126,8 +127,9 @@ resolved nominal owner; matching declaration text is not an implicit conversion.
 
 Embedded-type cycle analysis traverses every alternative, including branches
 not selected by a binding. Nullable/list wrappers do not hide embedded cycles.
-Typed-reference edges are distinguished from embedding edges; recursive
-reference types never relax the existing value/reference-cycle rules.
+Typed-reference edges are distinguished from embedding edges. Reference identity
+cycles are not evaluation cycles; ordinary reuse/non-reference value cycles still
+reject. A reference never embeds, evaluates or expands its target.
 
 The new identity profile includes the complete sorted alternative catalogue,
 public visibility, resolved payload types/defaults/restrictions, selected tag,
@@ -148,19 +150,19 @@ origins without treating any alternative as executable.
 Require independent bounds for alternatives per variant, total alternatives,
 type/value depth, nodes, strings, references, and output bytes. Validate before
 proportional allocation; arithmetic/allocation failures and cancellation must
-not publish partial variants. Exact ceilings, diagnostic codes, version
-selectors, and literal transcript vectors remain part of the full extension
-freeze, not inferred from these examples.
+not publish partial variants. Exact ceilings, diagnostic codes, version selectors
+and transcript grammar are specified in [COMPOSITION-PROFILE](COMPOSITION-PROFILE.md),
+not inferred from examples.
 
 ## Fixture and activation gate
 
-The [proposed variant fixtures](../decisions/variants/README.md) cover
+The [original design examples](../decisions/variants/README.md) cover
 both origins, imported public source variants, mixed collections, wrong tags,
 wrong payloads, duplicate tags, and private signature closure. They are not
-registered as active conformance or passing compiler evidence yet.
+active conformance or passing compiler evidence yet. Their literal source bytes
+are now captured in the registered `composition-contract` request corpus with
+fixed positive/error oracles and immutable identity vectors.
 
-Before activating them, finish the full schema/compatibility/diagnostic/limit
-freeze; add complete locked bundle requests and literal oracles; pin their
-bytes in the manifest; and add identity vectors. Then implement the shared
+Before activating that frozen suite, implement the shared
 model through compiler, IR, wire, independent reader/probe, views, and cache
 equivalence. Parser-only support does not close V1-VOC-009 or promotion.

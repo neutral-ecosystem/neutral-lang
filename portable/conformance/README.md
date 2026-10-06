@@ -20,5 +20,10 @@ until their schemas, literal outcomes, and identity vectors have been reviewed.
 The registered `composition-catalogue` suite covers only explicit standalone
 catalogue acceptance/errors and legacy migration. It does not activate composition
 source projects, new wire/identity profiles, or the full promotion gate.
+The `composition-contract` suite is registered and byte-pinned with status
+`frozen`. Its 26 request cases and /2 identity vectors are reviewed requirements,
+not passing compiler/codec evidence. Runtime copies validate catalogue outcomes,
+literal integrity and independent oracle framing. Full production comparison and
+hostile/fault/cache validation must pass before its status becomes `required`.
 Core acceptance and consumer interpretation failures must have separate oracles;
 no backend execution or external product implementation is required.

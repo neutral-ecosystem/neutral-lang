@@ -2,7 +2,7 @@
 
 # Vocabulary composition and consumer readiness
 
-Status: scheduled requirements; schemas and fixture oracles await gate review
+Status: composition contract/oracles frozen; implementation and authoring gate review pending
 
 This supplement schedules language infrastructure for `v0.8.0` and `v0.9.0`.
 It does not activate syntax, change an accepted encoding, or introduce an
@@ -25,9 +25,10 @@ Module SCC acceptance never implies acceptance of an execution or expression cyc
 
 The Stage 7 extension gate must close these requirements before promotion:
 
-The [composition proposal](VOCABULARY-COMPOSITION.md) specifies concrete JSON
+The [composition contract](VOCABULARY-COMPOSITION.md) specifies concrete JSON
 member sets, presence/default/restriction semantics, and dependency closure.
-Its remaining freeze work is explicit; it is not an activated schema.
+[COMPOSITION-PROFILE](COMPOSITION-PROFILE.md) and pinned literal requests/vectors
+complete design and registration; the full project extension is not activated.
 
 - **V1-VOC-005:** A newly versioned bundle schema supports bounded composition
   of scalar/nominal field types with lists, nullable values, and typed references.
@@ -51,7 +52,7 @@ Its remaining freeze work is explicit; it is not an activated schema.
   new profile/version before publishing artifacts; retain all old vectors.
 - **V1-VOC-009:** Support both source-declared and vocabulary-declared closed
   tagged variants for heterogeneous typed values and collections, using one
-  resolved semantic model. See the [variant contract proposal](VARIANTS.md).
+  resolved semantic model. See the [frozen variant contract](VARIANTS.md).
   Freeze source forms, nominal alternative identity, tag and
   payload typing, admissible nesting, public closure, and structural limits.
   Missing/duplicate/unknown tags, wrong payloads, and invalid field combinations

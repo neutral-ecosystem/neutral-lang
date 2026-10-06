@@ -137,3 +137,58 @@ and independent probe/view integration, frozen new identity transcripts and lite
 independent vectors, actual clean/cache equivalence, and complete hostile/allocation
 validation. The full extension and promotion-conformance checklist remains open;
 creating a package tag does not substitute for these requirements.
+
+## Composition contract and literal registration (06-10-2026)
+
+This closes only the two contract-freeze and fixture/vector-registration items.
+The [schema/default/restriction contract](../../specs/contracts/VOCABULARY-COMPOSITION.md),
+[shared variant rules](../../specs/contracts/VARIANTS.md), and
+[composition profile](../../specs/contracts/COMPOSITION-PROFILE.md) are frozen
+with exact file hashes. Explicit capture /2 features select successor project
+IR/result/view/identity profiles; no package version or failed old parse selects
+them. Compatibility, source diagnostic precedence/recovery, safe attribution,
+public/embedded/reference closure and independent limit counting are specified.
+The successor binary layout is a requirement, not a codec availability claim.
+
+The manifest adds five frozen fixture records: four request families and one
+identity corpus. Together they register 26 literal positive/negative/boundary/
+migration cases with exact embedded source/bundle byte digests and transitive
+locks. Cases cover both variant origins, imported variants, heterogeneous values,
+composed list/nullable/reference types, default/absence behavior, source error
+classifications, diamond/missing/extra/conflicting/private/cyclic dependencies,
+embedded recursion, executable members, exact/one-over alternatives and edges,
+and explicit old-schema adapter/relabel rejection. Catalogue outcomes execute
+against the existing standalone validator; future source outcomes remain frozen
+requirements, not passing compiler tests.
+
+The new identity corpus freezes five complete captured/logical/derivation/project-
+artifact/view-artifact transcript byte strings and SHA-256 digests, twelve
+semantic/control variations and eight literal rejection vectors. Variations
+include unused defaults, restrictions, exact fractional/sign/scale choices,
+optional absence versus null, selected variants, heterogeneous list order,
+visibility, nested list/nullable/reference contracts, canonical dependencies and
+exact revisions. Roots/presentation/occurrence facts are excluded from complete
+meaning. The test-only Python oracle extends only unchanged independent /1
+primitives; a separate Rust length-prefix walker/hash check verifies the literal
+frames/digests. Tests do not generate or bless expected outputs. /1 vectors are
+unchanged and protected by their original byte digest.
+
+All runtime copies live under the owning test crate, without portable-path reads.
+The separate oracle also pins each copied fixture's file digest, preventing
+runtime/plan drift after archival. Missing Python fails instead of skipping.
+Independent exact-byte/frame boundaries, zero controls, cancellation, normalized
+numbers, canonical ordering and invalid reference targets are tested.
+
+Validation: `cargo xtask test all` and standard `cargo xtask ci pr` pass 646
+Nextest tests, zero skipped, plus the compile-fail doctest. Strict Clippy,
+formatting, repository link/ownership checks, portable verification and
+`cargo xtask fixtures check` pass with 64 registered fixture/oracle pairs.
+Contract, reference-oracle, vector, manifest and review hashes are retained in
+`freeze.toml`; routine command logs remain ignored generated output.
+
+Activation remains blocked on full source/compiler/project/IR/codec/independent
+reader/probe/view implementation, production comparison to every new vector and
+oracle, and hostile decoder/allocation-fault/fuzz/clean-cache validation. The
+new suite remains `frozen`, not `required`. Before activation, verify its existing
+pins and all production comparisons; synchronization is not permission to rewrite
+accepted expectations. No version, release, tag, commit or push was performed.

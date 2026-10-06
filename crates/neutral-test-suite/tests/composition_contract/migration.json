@@ -1,0 +1,81 @@
+{
+  "scope": "frozen-contract-inputs; project-not-activated",
+  "cases": [
+    {
+      "id": "legacy-leaf-explicit-adapter",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [],
+        "vocabularies": [
+          {
+            "identity": "Adapter",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Adapter\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [\n    {\n      \"identity\": \"Fixture\",\n      \"version\": \"1.0.0\"\n    }\n  ],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"old\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Fixture\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "d6a95eb1bef22d1606764d1c769dd3beb9e78d75fb3f2fe02455437e6d5fbd60",
+            "byte_len": 691
+          },
+          {
+            "identity": "Fixture",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "1.0",
+            "features": [],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"1.0\",\n  \"identity\": \"Fixture\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [],\n  \"types\": [\n    {\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"count\",\n          \"type\": \"num\"\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "64f6b15ea7daaa60b04473ec9b572a44e2da440b025dd589ad349c2cc9b3fe9d",
+            "byte_len": 345
+          }
+        ]
+      },
+      "roots": [
+        [
+          "Adapter",
+          "1.0.0"
+        ]
+      ],
+      "catalogue_outcome": "accepted",
+      "project_outcome": "accepted",
+      "project_code": null
+    },
+    {
+      "id": "new-shape-relabelled-old-schema",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [],
+        "vocabularies": [
+          {
+            "identity": "Leaf",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "1.0",
+            "features": [],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"1.0\",\n  \"identity\": \"Leaf\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [],\n  \"dependencies\": [],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": []\n    }\n  ]\n}\n",
+            "digest": "1daaa22cab7dbf6f4000b5004264f9b4352e39dfe8e2dab0eed77d5e8e7b66e3",
+            "byte_len": 310
+          }
+        ]
+      },
+      "roots": [
+        [
+          "Leaf",
+          "1.0.0"
+        ]
+      ],
+      "catalogue_outcome": "NEU-COM-001",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COM-001"
+    }
+  ]
+}

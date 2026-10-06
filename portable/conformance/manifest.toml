@@ -73,6 +73,48 @@ oracle = "portable/conformance/oracles/composition/migration-legacy-leaf.toml"
 oracle_sha256 = "8e82e65283fcb55140f8350f417cac6ca397592611bee4129cd1dcd6f7d75d3f"
 
 [[suite]]
+id = "composition-contract"
+profile = "vocabulary-schema-2.0; neutral.project-identity/2"
+active_from_stage = 7
+status = "frozen"
+scope = "reviewed-design-inputs; compiler-codec-reader-probe-identity-production-activation-pending"
+
+[[case]]
+id = "V1-VOC-COMPOSITION-CONTRACT-POSITIVE"
+fixture = "portable/specs/fixtures/composition/positive/requests.json"
+fixture_sha256 = "e614f6334f5396624230a218771f555e07ac014e08d404efcc4b9d51687d06da"
+oracle = "portable/conformance/oracles/composition/contract.json"
+oracle_sha256 = "d0eb6e84a1f86bfda295a439fb5bf28219982643f8f62a7ff413d088cef88e2d"
+
+[[case]]
+id = "V1-VOC-COMPOSITION-CONTRACT-NEGATIVE"
+fixture = "portable/specs/fixtures/composition/negative/requests.json"
+fixture_sha256 = "6f17d764cde18986e505c63f4990405ffd0a19f1cbb180b1535f5f41e1492e73"
+oracle = "portable/conformance/oracles/composition/contract.json"
+oracle_sha256 = "d0eb6e84a1f86bfda295a439fb5bf28219982643f8f62a7ff413d088cef88e2d"
+
+[[case]]
+id = "V1-VOC-COMPOSITION-CONTRACT-BOUNDARY"
+fixture = "portable/specs/fixtures/composition/boundary/requests.json"
+fixture_sha256 = "bdc3a8ccdb7fd612f968f8592fb6d5206d21fef7f3f7e17bc94d4221a17ed619"
+oracle = "portable/conformance/oracles/composition/contract.json"
+oracle_sha256 = "d0eb6e84a1f86bfda295a439fb5bf28219982643f8f62a7ff413d088cef88e2d"
+
+[[case]]
+id = "V1-VOC-COMPOSITION-CONTRACT-MIGRATION"
+fixture = "portable/specs/fixtures/composition/migration/requests.json"
+fixture_sha256 = "f8df80977bd240607cc801cdf37f1bffa81e3bfdfc1068eb3de697353dc5c3bf"
+oracle = "portable/conformance/oracles/composition/contract.json"
+oracle_sha256 = "d0eb6e84a1f86bfda295a439fb5bf28219982643f8f62a7ff413d088cef88e2d"
+
+[[case]]
+id = "V1-ID-COMPOSITION-LITERAL-VECTORS"
+fixture = "portable/specs/fixtures/composition/vectors.json"
+fixture_sha256 = "4f1c8d2da91fd145be7938dae3e6791b8622a7ad2c68f6880776835912a6bf6f"
+oracle = "portable/conformance/oracles/composition/contract.json"
+oracle_sha256 = "d0eb6e84a1f86bfda295a439fb5bf28219982643f8f62a7ff413d088cef88e2d"
+
+[[suite]]
 id = "inherited-v0"
 profile = "0.1"
 active_from_stage = 1

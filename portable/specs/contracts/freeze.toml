@@ -24,7 +24,7 @@ external_ir_encoding = "NIR-CBOR/1.0-plan"
 [fixture_corpus]
 manifest_path = "portable/conformance/manifest.toml"
 fixture_oracle_review_path = "portable/conformance/fixture-oracle-review.toml"
-status = "stage1 through stage7 identity and standalone composition catalogue suites active; source/project/wire/identity extension not activated"
+status = "stage1 through stage7 identity and standalone catalogue suites active; composition-contract inputs frozen and pinned, full extension not activated"
 
 [stage2_contract_gate]
 capture_request_path = "portable/specs/contracts/CAPTURE-REQUEST.md"
@@ -63,12 +63,33 @@ status = "scheduled; schema-protocol-and-fixture-review-required"
 vocabulary_composition_target = "v0.8.0"
 consumer_authoring_target = "v0.9.0"
 
-[variant_contract_proposal]
-path = "portable/specs/contracts/VARIANTS.md"
+[variant_contract_gate]
+variant_path = "portable/specs/contracts/VARIANTS.md"
+variant_sha256 = "07a79c1983b6c6977943f099b01085cbfd6ce3016805fb396a6aefbb52d62517"
 declaration_origins = ["source", "vocabulary"]
-status = "ownership-decision-accepted; full-extension-freeze-and-fixture-activation-pending"
+status = "frozen-design; source-implementation-and-activation-pending"
 
-[composition_contract_proposal]
-path = "portable/specs/contracts/VOCABULARY-COMPOSITION.md"
+[composition_contract_gate]
+composition_path = "portable/specs/contracts/VOCABULARY-COMPOSITION.md"
+composition_sha256 = "7d3c8d85c9285cc2c641cdf53002cfdafb792e5de09825b7878639fb1f7a9c9b"
+profile_path = "portable/specs/contracts/COMPOSITION-PROFILE.md"
+profile_sha256 = "88b1256dc3c8103ae7c1ffdfd75b065d9054fd8dcd9d8ae70ec84380d9e3eec5"
 example_path = "portable/specs/decisions/composition/bundle.json"
-status = "standalone-catalogue-and-supplied-value-boundaries-tested; literal-catalogue-inputs-pinned; project-identity-wire-source-freeze-and-integration-pending"
+example_sha256 = "cf012da5a5c468dc89ad9bcf4a680520c7f8620fea121ca7c6015cfe37c7d062"
+vectors_path = "portable/specs/fixtures/composition/vectors.json"
+vectors_sha256 = "4f1c8d2da91fd145be7938dae3e6791b8622a7ad2c68f6880776835912a6bf6f"
+oracle_path = "portable/conformance/oracles/composition/contract.json"
+oracle_sha256 = "d0eb6e84a1f86bfda295a439fb5bf28219982643f8f62a7ff413d088cef88e2d"
+reference_path = "crates/neutral-test-suite/tests/composition_contract/reference.py"
+reference_sha256 = "4a47cc4c18be53bf347ef14b4f5d38084cd8a8c1a760bea18d1c17c230fd0e19"
+manifest_path = "portable/conformance/manifest.toml"
+manifest_sha256 = "537b338a9e5f7f5f57f495de279ac35b2870ab5daf4a402fef714d58bd36f3b0"
+review_path = "portable/conformance/fixture-oracle-review.toml"
+review_sha256 = "13b6d22eb28a0c02e362a1fcd97878d10a850dc3d84ea959bffddb0f49933de4"
+review_date = "2026-10-06"
+identity_profile = "neutral.project-identity/2"
+request_version = "neutral.capture/v2"
+ir_schema = "neutral.project-ir/2"
+wire_format = "NIR-PROJECT-CBOR/2"
+status = "contract-and-fixture-gates-frozen; standalone-foundation-tested; full-project-integration-and-validation-pending"
+activation = "verify-existing-pins-and-all-production-oracle-comparisons-before-changing-suite-to-required"

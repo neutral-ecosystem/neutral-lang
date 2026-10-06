@@ -349,8 +349,10 @@ this additional contract -> implementation -> integration -> validation gate
 remains required even if a package tag was already created. Package publication
 does not establish extension conformance. No frozen schema is amended in place.
 
-The [composition proposal](../specs/contracts/VOCABULARY-COMPOSITION.md) defines
-the candidate bundle shape and semantics; its remaining freeze work is explicit.
+The [composition contract](../specs/contracts/VOCABULARY-COMPOSITION.md) and
+[profile supplement](../specs/contracts/COMPOSITION-PROFILE.md) freeze bundle,
+source/diagnostic, successor IR/wire and identity requirements. Literal inputs
+are pinned separately from production activation.
 The vocabulary crate's `compatibility_*` tests protect the old schema; passing
 those tests alone does not establish implementation or validation of the extension.
 
@@ -366,7 +368,8 @@ those tests alone does not establish implementation or validation of the extensi
   Complete project/wire/probe/view/provenance integration remains pending.
 - [x] Register byte-pinned standalone positive/negative/boundary/migration
   catalogue inputs and literal oracles; runtime copies pass without the portable
-  plan. Full source/project/wire and new identity vectors remain pending.
+  plan. Full source/project/wire activation remains pending; successor identity
+  design vectors are registered separately below.
 - [x] Share closed supplied-value materialization with the default validator;
   validate variant lists and restrictions, preserve optional absence/explicit
   null/defaulted origins, and keep materialized meaning separate from origin facts.
@@ -392,16 +395,19 @@ project companions, codec/probe support, public views or new identity profiles.
 
 #### Remaining full extension gates
 
-Next: finish the source/project IR/wire/identity compatibility and diagnostic
-freeze with literal independent identity vectors before activating new source
-syntax or transport profiles. Existing JSON catalogue fixtures are not `.nir`
+Next: implement the frozen source/project IR/wire/identity boundaries and compare
+every production result against the registered inputs/oracles before activation.
+Existing JSON catalogue fixtures are not `.nir`
 artifacts, and the current binary CBOR codec does not support this extension.
 
-- [ ] Freeze the new bundle schema, source-aligned list/nullable/reference
+- [x] Freeze the new bundle schema, source-aligned list/nullable/reference
   composition, semantic defaults/restrictions, compatibility, diagnostic codes,
   public closure, recursive-type rules, and independent bounds.
-- [ ] Register literal positive/negative/boundary/migration fixtures and new
+- [x] Register literal positive/negative/boundary/migration fixtures and new
   identity vectors before implementation; pin reviewed inputs at activation.
+  Evidence: [freeze and fixture/vector review](evidence/stage7-contract-core.md#composition-contract-and-literal-registration-06-10-2026).
+  The `composition-contract` suite remains frozen, not required; existing
+  standalone APIs do not establish compiler/codec/profile activation.
 - [ ] Implement composition, closed defaults, finite choices, numeric and
   string/list length restrictions through compiler, IR, encoding, and reader.
 - [ ] Expose complete new contract facts and reference dependencies through
@@ -414,8 +420,8 @@ artifacts, and the current binary CBOR codec does not support this extension.
   semantic typing, IR, wire, reader, and identity; reject wrong/unknown tags and
   payloads and validate heterogeneous typed collections.
   Both source declarations and vocabulary declarations are required, sharing
-  one semantic model; the [contract proposal](../specs/contracts/VARIANTS.md)
-  and proposed fixtures record the accepted ownership decision, not completion.
+  one semantic model; the [frozen contract](../specs/contracts/VARIANTS.md)
+  and registered fixtures record requirements, not implementation completion.
 - [ ] Freeze and implement cross-vocabulary public type dependencies and exact
   transitive lock closure, including diamond/conflicting/private/missing/cyclic
   dependency rules without compilation-time acquisition.

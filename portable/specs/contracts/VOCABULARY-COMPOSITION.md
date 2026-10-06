@@ -2,7 +2,7 @@
 
 # Vocabulary composition extension
 
-Status: standalone catalogue boundary implemented; project activation and identity/wire freeze pending
+Status: frozen schema/semantic contract, 06-10-2026; standalone boundary implemented, project activation pending
 
 This document specifies the catalogue contract slice for V1-VOC-005..011.
 The separate `neutral_vocabulary::composition` API validates this bundle shape;
@@ -10,7 +10,9 @@ the compiler does not yet accept it as a project input. It is not proof that
 the promotion gate is complete. Existing
 [project vocabulary](VOCABULARY.md), project IR, wire, and identity contracts
 remain unchanged. [Variants](VARIANTS.md) supplies the shared source/vocabulary
-variant rules. The extension has no executor, acquisition, or callback channel.
+variant rules. [COMPOSITION-PROFILE](COMPOSITION-PROFILE.md) freezes successor
+selection, diagnostics, source attribution, limits, IR/wire and identity rules.
+The extension has no executor, acquisition, or callback channel.
 
 ## Explicit selection and compatibility
 
@@ -26,9 +28,10 @@ source-required lock cover, and lack of semantic defaults/restrictions. A `2.0`
 bundle cannot be disguised as `1.0` by changing a feature list. v0 behavior and
 all accepted literal vectors remain immutable.
 
-The proposed new project IR schema, transport and identity profile are separate
+The new project IR schema, transport and identity profile are separate
 contracts, not edits to their existing versions. Their exact layouts and literal
-vectors must be frozen before this proposal is activated. Projects using these
+vectors are registered as frozen design inputs, not active production support.
+Projects using these
 forms require an advertised composition-capable producer and reader; source
 variants additionally require the advertised tagged-variant capability. Merely
 recognizing a source header or JSON schema is not implementation availability.
@@ -46,7 +49,7 @@ entries even if their JSON representations differ.
 Each dependency has exactly `identity` and `version`. Each record type has
 exactly `kind: "record"`, `name`, `public`, and `fields`. Each variant type has
 exactly `kind: "variant"`, `name`, `public`, and `alternatives`, as specified by
-the variant proposal. Public is Boolean; type names are unique across kinds.
+the variant contract. Public is Boolean; type names are unique across kinds.
 Record field names and variant tags obey existing non-protected snake-name
 rules. No field or alternative can add executable or presentation metadata.
 
@@ -176,7 +179,7 @@ ceiling; there is no unbounded fallback. Every independent counter needs exact
 and one-over tests. Allocation/arithmetic failure, cancellation, malformed
 input, unsupported profile, and invalid contract must publish no partial data.
 
-## Remaining freeze work
+## Standalone boundaries and activation requirements
 
 ### Standalone supplied-value boundary
 
@@ -222,20 +225,20 @@ Public consumers can enumerate all public definitions to obtain the full catalog
 reference-type dependency set. Cancellation/limits publish no partial enumeration.
 
 The [complete example bundle](../decisions/composition/bundle.json) makes these
-member sets concrete. It is a proposed input, not an active conformance case.
-Before project activation, finish:
+member sets concrete. Its exact bytes also appear in frozen captured requests
+and [identity vectors](../fixtures/composition/vectors.json). The
+[profile supplement](COMPOSITION-PROFILE.md) resolves the former freeze questions;
+the manifest and freeze record pin contracts, literal positive/negative/boundary/
+migration requests, oracles and runtime-owned copies.
 
-1. Complete compiler diagnostic precedence/recovery, precise source-attribution
-   fallback rules and allocation-fault review. Catalogue budgets and safe
-   boundary diagnostic codes are specified below and implemented separately.
-2. Complete project IR/wire version selectors/layouts and new transcript tags,
-   exact independent positive/adversarial digest vectors, and migration matrix.
-3. Captured project envelopes, exact lock digests, literal rejection/oracle
-   files, boundary fixtures, and manifest activation with runtime execution copies.
-
-The Stage 7 checklist remains unchecked until those artifacts, implementation,
-public integration, and full validation exist. Compatibility tests in the
-vocabulary crate protect the old schema while this design is completed.
+Before activation, implement the specified source, captured project, IR/wire,
+identity, reader/probe and public-view boundaries; compare production output to
+every registered oracle/vector; complete allocation-fault, hostile decoding and
+clean/cache validation. Change the frozen suite to `required` only when all
+those checks pass, verifying existing pins first. Hash synchronization is not
+approval to alter frozen expectations. A required semantic change needs a new
+contract/profile and new vectors. The two design/registration checklist items
+can close independently; the complete Stage 7 promotion gate remains open.
 
 ## Implemented catalogue boundary
 

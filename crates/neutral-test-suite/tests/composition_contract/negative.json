@@ -1,0 +1,713 @@
+{
+  "scope": "frozen-contract-inputs; project-not-activated",
+  "cases": [
+    {
+      "id": "source-duplicate-tag",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [
+          {
+            "module": "example",
+            "source_id": "source:example",
+            "source_utf8": "neu \"1.0\"\nmodule example\n\nvariant Outcome { string success, num success }\n",
+            "digest": "319f6ad0b312abb42d189acc3eb2307b6808458c45d980837953952fd5e2961c",
+            "byte_len": 74
+          }
+        ],
+        "vocabularies": []
+      },
+      "roots": [],
+      "catalogue_outcome": "accepted",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COMP-002"
+    },
+    {
+      "id": "source-extra-member",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [
+          {
+            "module": "example",
+            "source_id": "source:example",
+            "source_utf8": "neu \"1.0\"\nmodule example\n\nvariant Outcome { string success, num failure }\nOutcome answer = { tag: \"success\", payload: \"complete\", extra: true, }\n",
+            "digest": "c394a9308e6768aedf1e3316c28d6ab8c045469905edf8c420470f95ac80776d",
+            "byte_len": 145
+          }
+        ],
+        "vocabularies": []
+      },
+      "roots": [],
+      "catalogue_outcome": "accepted",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COMP-002"
+    },
+    {
+      "id": "source-missing-payload",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [
+          {
+            "module": "example",
+            "source_id": "source:example",
+            "source_utf8": "neu \"1.0\"\nmodule example\n\nvariant Outcome { string success, num failure }\nOutcome answer = { tag: \"success\", }\n",
+            "digest": "b9698dbbd2a7c56a3d8b5a6bd90776aa8d9a61229729e507149bad6e8c869206",
+            "byte_len": 111
+          }
+        ],
+        "vocabularies": []
+      },
+      "roots": [],
+      "catalogue_outcome": "accepted",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COMP-002"
+    },
+    {
+      "id": "source-public-private-payload",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [
+          {
+            "module": "example",
+            "source_id": "source:example",
+            "source_utf8": "neu \"1.0\"\nmodule example\n\nrecord Internal { num count }\npublic variant Outcome { string success, Internal hidden }\npublic Outcome answer = { tag: \"success\", payload: \"complete\", }\n",
+            "digest": "828dc5b16e48151b5e6a2084b2d7d0f4f70773eb4c974c5038f28cfb21afe4aa",
+            "byte_len": 180
+          }
+        ],
+        "vocabularies": []
+      },
+      "roots": [],
+      "catalogue_outcome": "accepted",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COMP-007"
+    },
+    {
+      "id": "source-unknown-tag",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [
+          {
+            "module": "example",
+            "source_id": "source:example",
+            "source_utf8": "neu \"1.0\"\nmodule example\n\nvariant Outcome { string success, num failure }\nOutcome answer = { tag: \"unknown\", payload: \"complete\", }\n",
+            "digest": "f5ac672e546fbf7e73bfb3c5872e45012305f0a3d3f1cdb2beecbb7f1eeedb22",
+            "byte_len": 132
+          }
+        ],
+        "vocabularies": []
+      },
+      "roots": [],
+      "catalogue_outcome": "accepted",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COMP-003"
+    },
+    {
+      "id": "source-wrong-payload",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [
+          {
+            "module": "example",
+            "source_id": "source:example",
+            "source_utf8": "neu \"1.0\"\nmodule example\n\nvariant Outcome { string success, num failure }\nOutcome answer = { tag: \"failure\", payload: \"not a number\", }\n",
+            "digest": "e63948e9819a7abfbadecc5b931589cf2b9d24b723c5434a86203bc3e3e93984",
+            "byte_len": 136
+          }
+        ],
+        "vocabularies": []
+      },
+      "roots": [],
+      "catalogue_outcome": "accepted",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COMP-004"
+    },
+    {
+      "id": "missing-transitive-lock",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [
+          {
+            "module": "example",
+            "source_id": "source:example",
+            "source_utf8": "neu \"1.0\"\nmodule example\nuse Root as root\npublic root::Item item = {}\n",
+            "digest": "08df6be8a9de215fd56cb123f4c1ba8ef15bed8b4ca70d7df77188309624358d",
+            "byte_len": 70
+          }
+        ],
+        "vocabularies": [
+          {
+            "identity": "Root",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Root\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [\n    {\n      \"identity\": \"Left\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"identity\": \"Right\",\n      \"version\": \"1.0.0\"\n    }\n  ],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"left\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Left\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        },\n        {\n          \"name\": \"right\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Right\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "fb87ff547942547b6dc2f41ca1ffe31ceb21ec12a59d4a7aa230db82437bb98e",
+            "byte_len": 1016
+          },
+          {
+            "identity": "Left",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Left\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [\n    {\n      \"identity\": \"Leaf\",\n      \"version\": \"1.0.0\"\n    }\n  ],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"leaf\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Leaf\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "4a5edba055387066fd681df61aa80264aacc97679c7d3563a464ccd29bdb024c",
+            "byte_len": 683
+          },
+          {
+            "identity": "Right",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Right\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [\n    {\n      \"identity\": \"Leaf\",\n      \"version\": \"1.0.0\"\n    }\n  ],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"leaf\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Leaf\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "ee01ed8293ad64d1b9d56d2260235ad030d9beff59d75f08c76eb06e6c22e15c",
+            "byte_len": 684
+          }
+        ]
+      },
+      "roots": [
+        [
+          "Root",
+          "1.0.0"
+        ]
+      ],
+      "catalogue_outcome": "NEU-COM-006",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COM-006"
+    },
+    {
+      "id": "extra-lock",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [
+          {
+            "module": "example",
+            "source_id": "source:example",
+            "source_utf8": "neu \"1.0\"\nmodule example\nuse Root as root\npublic root::Item item = {}\n",
+            "digest": "08df6be8a9de215fd56cb123f4c1ba8ef15bed8b4ca70d7df77188309624358d",
+            "byte_len": 70
+          }
+        ],
+        "vocabularies": [
+          {
+            "identity": "Root",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Root\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [\n    {\n      \"identity\": \"Left\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"identity\": \"Right\",\n      \"version\": \"1.0.0\"\n    }\n  ],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"left\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Left\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        },\n        {\n          \"name\": \"right\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Right\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "fb87ff547942547b6dc2f41ca1ffe31ceb21ec12a59d4a7aa230db82437bb98e",
+            "byte_len": 1016
+          },
+          {
+            "identity": "Left",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Left\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [\n    {\n      \"identity\": \"Leaf\",\n      \"version\": \"1.0.0\"\n    }\n  ],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"leaf\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Leaf\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "4a5edba055387066fd681df61aa80264aacc97679c7d3563a464ccd29bdb024c",
+            "byte_len": 683
+          },
+          {
+            "identity": "Right",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Right\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [\n    {\n      \"identity\": \"Leaf\",\n      \"version\": \"1.0.0\"\n    }\n  ],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"leaf\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Leaf\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "ee01ed8293ad64d1b9d56d2260235ad030d9beff59d75f08c76eb06e6c22e15c",
+            "byte_len": 684
+          },
+          {
+            "identity": "Leaf",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Leaf\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": []\n    }\n  ]\n}\n",
+            "digest": "621523ac9eff68b899b97e6634f9606467d3b5df62c109c7a2ae0d8efa14f614",
+            "byte_len": 345
+          },
+          {
+            "identity": "Extra",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Extra\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": []\n    }\n  ]\n}\n",
+            "digest": "50057f1a694c24a331fe5ede0dcd8c95ce1940be56e32158a8191237d2cac19a",
+            "byte_len": 346
+          }
+        ]
+      },
+      "roots": [
+        [
+          "Root",
+          "1.0.0"
+        ]
+      ],
+      "catalogue_outcome": "NEU-COM-007",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COM-007"
+    },
+    {
+      "id": "conflicting-revision",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [
+          {
+            "module": "example",
+            "source_id": "source:example",
+            "source_utf8": "neu \"1.0\"\nmodule example\nuse Root as root\npublic root::Item item = {}\n",
+            "digest": "08df6be8a9de215fd56cb123f4c1ba8ef15bed8b4ca70d7df77188309624358d",
+            "byte_len": 70
+          }
+        ],
+        "vocabularies": [
+          {
+            "identity": "Root",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Root\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [\n    {\n      \"identity\": \"Left\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"identity\": \"Right\",\n      \"version\": \"1.0.0\"\n    }\n  ],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"left\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Left\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        },\n        {\n          \"name\": \"right\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Right\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "fb87ff547942547b6dc2f41ca1ffe31ceb21ec12a59d4a7aa230db82437bb98e",
+            "byte_len": 1016
+          },
+          {
+            "identity": "Left",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Left\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [\n    {\n      \"identity\": \"Leaf\",\n      \"version\": \"1.0.0\"\n    }\n  ],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"leaf\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Leaf\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "4a5edba055387066fd681df61aa80264aacc97679c7d3563a464ccd29bdb024c",
+            "byte_len": 683
+          },
+          {
+            "identity": "Right",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Right\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [\n    {\n      \"identity\": \"Leaf\",\n      \"version\": \"1.0.0\"\n    }\n  ],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"leaf\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Leaf\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "ee01ed8293ad64d1b9d56d2260235ad030d9beff59d75f08c76eb06e6c22e15c",
+            "byte_len": 684
+          },
+          {
+            "identity": "Leaf",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Leaf\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": []\n    }\n  ]\n}\n",
+            "digest": "621523ac9eff68b899b97e6634f9606467d3b5df62c109c7a2ae0d8efa14f614",
+            "byte_len": 345
+          },
+          {
+            "identity": "Leaf",
+            "version": "1.0.1",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Leaf\",\n  \"version\": \"1.0.1\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": []\n    }\n  ]\n}\n",
+            "digest": "57be8283923b4f9229911f8df0e59d4fbae21e60a1fc05cebb1a08e908d6fde0",
+            "byte_len": 345
+          }
+        ]
+      },
+      "roots": [
+        [
+          "Root",
+          "1.0.0"
+        ]
+      ],
+      "catalogue_outcome": "NEU-COM-005",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COM-005"
+    },
+    {
+      "id": "private-external-target",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [
+          {
+            "module": "example",
+            "source_id": "source:example",
+            "source_utf8": "neu \"1.0\"\nmodule example\nuse Root as root\npublic root::Item item = {}\n",
+            "digest": "08df6be8a9de215fd56cb123f4c1ba8ef15bed8b4ca70d7df77188309624358d",
+            "byte_len": 70
+          }
+        ],
+        "vocabularies": [
+          {
+            "identity": "Root",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Root\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [\n    {\n      \"identity\": \"Left\",\n      \"version\": \"1.0.0\"\n    },\n    {\n      \"identity\": \"Right\",\n      \"version\": \"1.0.0\"\n    }\n  ],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"left\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Left\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        },\n        {\n          \"name\": \"right\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Right\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "fb87ff547942547b6dc2f41ca1ffe31ceb21ec12a59d4a7aa230db82437bb98e",
+            "byte_len": 1016
+          },
+          {
+            "identity": "Left",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Left\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [\n    {\n      \"identity\": \"Leaf\",\n      \"version\": \"1.0.0\"\n    }\n  ],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"leaf\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Leaf\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "4a5edba055387066fd681df61aa80264aacc97679c7d3563a464ccd29bdb024c",
+            "byte_len": 683
+          },
+          {
+            "identity": "Right",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Right\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [\n    {\n      \"identity\": \"Leaf\",\n      \"version\": \"1.0.0\"\n    }\n  ],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"leaf\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Leaf\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "ee01ed8293ad64d1b9d56d2260235ad030d9beff59d75f08c76eb06e6c22e15c",
+            "byte_len": 684
+          },
+          {
+            "identity": "Leaf",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Leaf\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": false,\n      \"fields\": []\n    }\n  ]\n}\n",
+            "digest": "346be96061bdff79bbe7f6441251730ddc956435725ff0a3805228d966355536",
+            "byte_len": 346
+          }
+        ]
+      },
+      "roots": [
+        [
+          "Root",
+          "1.0.0"
+        ]
+      ],
+      "catalogue_outcome": "NEU-COM-010",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COM-010"
+    },
+    {
+      "id": "dependency-cycle",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [],
+        "vocabularies": [
+          {
+            "identity": "Left",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Left\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [\n    {\n      \"identity\": \"Right\",\n      \"version\": \"1.0.0\"\n    }\n  ],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"right\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Right\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "3f6562af8fa5c97814bea1754b8ca01ca8fe1dfe7dc9b3f7130ed42d338752e5",
+            "byte_len": 686
+          },
+          {
+            "identity": "Right",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Right\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [\n    {\n      \"identity\": \"Left\",\n      \"version\": \"1.0.0\"\n    }\n  ],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"left\",\n          \"type\": {\n            \"kind\": \"external\",\n            \"identity\": \"Left\",\n            \"version\": \"1.0.0\",\n            \"name\": \"Item\"\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "170c3fc5418d344d55a5197ce8b57853d3295f94980d4c5d854f120f737c799f",
+            "byte_len": 684
+          }
+        ]
+      },
+      "roots": [
+        [
+          "Left",
+          "1.0.0"
+        ]
+      ],
+      "catalogue_outcome": "NEU-COM-009",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COM-009"
+    },
+    {
+      "id": "embedded-list-nullable-cycle",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [],
+        "vocabularies": [
+          {
+            "identity": "Cycle",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Cycle\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"child\",\n          \"type\": {\n            \"kind\": \"list\",\n            \"element\": {\n              \"kind\": \"nullable\",\n              \"inner\": {\n                \"kind\": \"nominal\",\n                \"name\": \"Item\"\n              }\n            }\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "d96b4f6f582dcac8572cddda01dbb3e402c6e152346cc2e492f7e79d1b1fe450",
+            "byte_len": 704
+          }
+        ]
+      },
+      "roots": [
+        [
+          "Cycle",
+          "1.0.0"
+        ]
+      ],
+      "catalogue_outcome": "NEU-COM-012",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COM-012"
+    },
+    {
+      "id": "executable-member",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [],
+        "vocabularies": [
+          {
+            "identity": "Leaf",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"Leaf\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [],\n  \"types\": [\n    {\n      \"kind\": \"record\",\n      \"name\": \"Item\",\n      \"public\": true,\n      \"fields\": []\n    }\n  ],\n  \"execute\": \"unavailable\"\n}\n",
+            "digest": "851751231663faa1f1aef99077c148b7c7bfb625475809717359bdcff89f1363",
+            "byte_len": 373
+          }
+        ]
+      },
+      "roots": [
+        [
+          "Leaf",
+          "1.0.0"
+        ]
+      ],
+      "catalogue_outcome": "NEU-COM-001",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COM-001"
+    },
+    {
+      "id": "required-reference-omitted",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [
+          {
+            "module": "example",
+            "source_id": "source:example",
+            "source_utf8": "neu \"1.0\"\nmodule example\nuse ExampleDomain as domain\npublic variant State { num failed, string ready }\npublic State status = { tag: \"ready\", payload: \"ok\" }\npublic domain::Outcome choice = { tag: \"success\", payload: \"complete\" }\npublic domain::Request request = { selected: ref(choice) }\npublic List<State> states = [status, { tag: \"failed\", payload: 3 }]\npublic domain::Request invalid = {}\n",
+            "digest": "f995a091b48368eb61e4d4093c7edf9acf3e10c55861dcdcdf870c5f172b7107",
+            "byte_len": 392
+          }
+        ],
+        "vocabularies": [
+          {
+            "identity": "ExampleDomain",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"ExampleDomain\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [],\n  \"types\": [\n    {\n      \"kind\": \"variant\",\n      \"name\": \"Outcome\",\n      \"public\": true,\n      \"alternatives\": [\n        {\n          \"tag\": \"success\",\n          \"type\": { \"kind\": \"string\" }\n        },\n        {\n          \"tag\": \"failure\",\n          \"type\": { \"kind\": \"num\" }\n        }\n      ]\n    },\n    {\n      \"kind\": \"record\",\n      \"name\": \"Request\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"attempts\",\n          \"type\": { \"kind\": \"num\" },\n          \"presence\": \"defaulted\",\n          \"restrictions\": {\n            \"choices\": [\n              { \"kind\": \"num\", \"value\": \"1\" },\n              { \"kind\": \"num\", \"value\": \"3\" }\n            ],\n            \"minimum\": \"1\",\n            \"maximum\": \"3\"\n          },\n          \"default\": { \"kind\": \"num\", \"value\": \"3\" }\n        },\n        {\n          \"name\": \"label\",\n          \"type\": {\n            \"kind\": \"nullable\",\n            \"inner\": { \"kind\": \"string\" }\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": { \"max_length\": \"32\" }\n        },\n        {\n          \"name\": \"outcomes\",\n          \"type\": {\n            \"kind\": \"list\",\n            \"element\": { \"kind\": \"nominal\", \"name\": \"Outcome\" }\n          },\n          \"presence\": \"defaulted\",\n          \"restrictions\": { \"max_length\": \"16\" },\n          \"default\": {\n            \"kind\": \"list\",\n            \"items\": [\n              {\n                \"kind\": \"variant\",\n                \"tag\": \"success\",\n                \"payload\": { \"kind\": \"string\", \"value\": \"complete\" }\n              }\n            ]\n          }\n        },\n        {\n          \"name\": \"selected\",\n          \"type\": {\n            \"kind\": \"ref\",\n            \"target\": { \"kind\": \"nominal\", \"name\": \"Outcome\" }\n          },\n          \"presence\": \"required\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "cf012da5a5c468dc89ad9bcf4a680520c7f8620fea121ca7c6015cfe37c7d062",
+            "byte_len": 2063
+          }
+        ]
+      },
+      "roots": [
+        [
+          "ExampleDomain",
+          "1.0.0"
+        ]
+      ],
+      "catalogue_outcome": "accepted",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COMP-005"
+    },
+    {
+      "id": "wrong-reference-type",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [
+          {
+            "module": "example",
+            "source_id": "source:example",
+            "source_utf8": "neu \"1.0\"\nmodule example\nuse ExampleDomain as domain\npublic variant State { num failed, string ready }\npublic State status = { tag: \"ready\", payload: \"ok\" }\npublic domain::Outcome choice = { tag: \"success\", payload: \"complete\" }\npublic domain::Request request = { selected: ref(choice) }\npublic List<State> states = [status, { tag: \"failed\", payload: 3 }]\npublic domain::Request invalid = { selected: ref(status) }\n",
+            "digest": "9d135ef3441b13450f143988ec9a678313826a56c21b03f5c3006daa431471dd",
+            "byte_len": 415
+          }
+        ],
+        "vocabularies": [
+          {
+            "identity": "ExampleDomain",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"ExampleDomain\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [],\n  \"types\": [\n    {\n      \"kind\": \"variant\",\n      \"name\": \"Outcome\",\n      \"public\": true,\n      \"alternatives\": [\n        {\n          \"tag\": \"success\",\n          \"type\": { \"kind\": \"string\" }\n        },\n        {\n          \"tag\": \"failure\",\n          \"type\": { \"kind\": \"num\" }\n        }\n      ]\n    },\n    {\n      \"kind\": \"record\",\n      \"name\": \"Request\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"attempts\",\n          \"type\": { \"kind\": \"num\" },\n          \"presence\": \"defaulted\",\n          \"restrictions\": {\n            \"choices\": [\n              { \"kind\": \"num\", \"value\": \"1\" },\n              { \"kind\": \"num\", \"value\": \"3\" }\n            ],\n            \"minimum\": \"1\",\n            \"maximum\": \"3\"\n          },\n          \"default\": { \"kind\": \"num\", \"value\": \"3\" }\n        },\n        {\n          \"name\": \"label\",\n          \"type\": {\n            \"kind\": \"nullable\",\n            \"inner\": { \"kind\": \"string\" }\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": { \"max_length\": \"32\" }\n        },\n        {\n          \"name\": \"outcomes\",\n          \"type\": {\n            \"kind\": \"list\",\n            \"element\": { \"kind\": \"nominal\", \"name\": \"Outcome\" }\n          },\n          \"presence\": \"defaulted\",\n          \"restrictions\": { \"max_length\": \"16\" },\n          \"default\": {\n            \"kind\": \"list\",\n            \"items\": [\n              {\n                \"kind\": \"variant\",\n                \"tag\": \"success\",\n                \"payload\": { \"kind\": \"string\", \"value\": \"complete\" }\n              }\n            ]\n          }\n        },\n        {\n          \"name\": \"selected\",\n          \"type\": {\n            \"kind\": \"ref\",\n            \"target\": { \"kind\": \"nominal\", \"name\": \"Outcome\" }\n          },\n          \"presence\": \"required\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "cf012da5a5c468dc89ad9bcf4a680520c7f8620fea121ca7c6015cfe37c7d062",
+            "byte_len": 2063
+          }
+        ]
+      },
+      "roots": [
+        [
+          "ExampleDomain",
+          "1.0.0"
+        ]
+      ],
+      "catalogue_outcome": "accepted",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COMP-004"
+    },
+    {
+      "id": "length-restriction",
+      "capture": {
+        "profile": "1.0",
+        "required_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "sources": [
+          {
+            "module": "example",
+            "source_id": "source:example",
+            "source_utf8": "neu \"1.0\"\nmodule example\nuse ExampleDomain as domain\npublic variant State { num failed, string ready }\npublic State status = { tag: \"ready\", payload: \"ok\" }\npublic domain::Outcome choice = { tag: \"success\", payload: \"complete\" }\npublic domain::Request request = { selected: ref(choice) }\npublic List<State> states = [status, { tag: \"failed\", payload: 3 }]\npublic domain::Request invalid = { selected: ref(choice), label: \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\" }\n",
+            "digest": "f63a82cc80fa3c0e102e760749ce7842ec39554a42012f0638551962941cb9bc",
+            "byte_len": 459
+          }
+        ],
+        "vocabularies": [
+          {
+            "identity": "ExampleDomain",
+            "version": "1.0.0",
+            "encoding_version": "1.0",
+            "schema_version": "2.0",
+            "features": [
+              "vocabulary-composition-v2"
+            ],
+            "bundle_utf8": "{\n  \"format\": \"neutral-vocabulary-bundle\",\n  \"encoding_version\": \"1.0\",\n  \"schema_version\": \"2.0\",\n  \"identity\": \"ExampleDomain\",\n  \"version\": \"1.0.0\",\n  \"required_features\": [\n    \"vocabulary-composition-v2\"\n  ],\n  \"dependencies\": [],\n  \"types\": [\n    {\n      \"kind\": \"variant\",\n      \"name\": \"Outcome\",\n      \"public\": true,\n      \"alternatives\": [\n        {\n          \"tag\": \"success\",\n          \"type\": { \"kind\": \"string\" }\n        },\n        {\n          \"tag\": \"failure\",\n          \"type\": { \"kind\": \"num\" }\n        }\n      ]\n    },\n    {\n      \"kind\": \"record\",\n      \"name\": \"Request\",\n      \"public\": true,\n      \"fields\": [\n        {\n          \"name\": \"attempts\",\n          \"type\": { \"kind\": \"num\" },\n          \"presence\": \"defaulted\",\n          \"restrictions\": {\n            \"choices\": [\n              { \"kind\": \"num\", \"value\": \"1\" },\n              { \"kind\": \"num\", \"value\": \"3\" }\n            ],\n            \"minimum\": \"1\",\n            \"maximum\": \"3\"\n          },\n          \"default\": { \"kind\": \"num\", \"value\": \"3\" }\n        },\n        {\n          \"name\": \"label\",\n          \"type\": {\n            \"kind\": \"nullable\",\n            \"inner\": { \"kind\": \"string\" }\n          },\n          \"presence\": \"optional\",\n          \"restrictions\": { \"max_length\": \"32\" }\n        },\n        {\n          \"name\": \"outcomes\",\n          \"type\": {\n            \"kind\": \"list\",\n            \"element\": { \"kind\": \"nominal\", \"name\": \"Outcome\" }\n          },\n          \"presence\": \"defaulted\",\n          \"restrictions\": { \"max_length\": \"16\" },\n          \"default\": {\n            \"kind\": \"list\",\n            \"items\": [\n              {\n                \"kind\": \"variant\",\n                \"tag\": \"success\",\n                \"payload\": { \"kind\": \"string\", \"value\": \"complete\" }\n              }\n            ]\n          }\n        },\n        {\n          \"name\": \"selected\",\n          \"type\": {\n            \"kind\": \"ref\",\n            \"target\": { \"kind\": \"nominal\", \"name\": \"Outcome\" }\n          },\n          \"presence\": \"required\",\n          \"restrictions\": {}\n        }\n      ]\n    }\n  ]\n}\n",
+            "digest": "cf012da5a5c468dc89ad9bcf4a680520c7f8620fea121ca7c6015cfe37c7d062",
+            "byte_len": 2063
+          }
+        ]
+      },
+      "roots": [
+        [
+          "ExampleDomain",
+          "1.0.0"
+        ]
+      ],
+      "catalogue_outcome": "accepted",
+      "project_outcome": "rejected",
+      "project_code": "NEU-COMP-006"
+    }
+  ]
+}

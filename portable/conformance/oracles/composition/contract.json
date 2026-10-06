@@ -1,0 +1,221 @@
+{
+  "schema": "neutral.composition-contract-oracle/1",
+  "status": "frozen; compiler-codec-identity-production-not-activated",
+  "requirements": [
+    "V1-VOC-005",
+    "V1-VOC-006",
+    "V1-VOC-007",
+    "V1-VOC-008",
+    "V1-VOC-009",
+    "V1-VOC-010",
+    "V1-VOC-011",
+    "V1-ID-001",
+    "V1-ID-002",
+    "V1-ID-003",
+    "V1-ID-004"
+  ],
+  "families": {
+    "positive": [
+      {
+        "id": "both-origins-heterogeneous-list-default-absence-reference",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "accepted",
+        "project_code": null
+      },
+      {
+        "id": "imported-source-variant",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "accepted",
+        "project_code": null
+      },
+      {
+        "id": "exact-diamond-closure",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "accepted",
+        "project_code": null
+      },
+      {
+        "id": "list-nullable-reference-unselected-alternative",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "accepted",
+        "project_code": null
+      }
+    ],
+    "negative": [
+      {
+        "id": "source-duplicate-tag",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COMP-002"
+      },
+      {
+        "id": "source-extra-member",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COMP-002"
+      },
+      {
+        "id": "source-missing-payload",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COMP-002"
+      },
+      {
+        "id": "source-public-private-payload",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COMP-007"
+      },
+      {
+        "id": "source-unknown-tag",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COMP-003"
+      },
+      {
+        "id": "source-wrong-payload",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COMP-004"
+      },
+      {
+        "id": "missing-transitive-lock",
+        "catalogue_outcome": "NEU-COM-006",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COM-006"
+      },
+      {
+        "id": "extra-lock",
+        "catalogue_outcome": "NEU-COM-007",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COM-007"
+      },
+      {
+        "id": "conflicting-revision",
+        "catalogue_outcome": "NEU-COM-005",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COM-005"
+      },
+      {
+        "id": "private-external-target",
+        "catalogue_outcome": "NEU-COM-010",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COM-010"
+      },
+      {
+        "id": "dependency-cycle",
+        "catalogue_outcome": "NEU-COM-009",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COM-009"
+      },
+      {
+        "id": "embedded-list-nullable-cycle",
+        "catalogue_outcome": "NEU-COM-012",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COM-012"
+      },
+      {
+        "id": "executable-member",
+        "catalogue_outcome": "NEU-COM-001",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COM-001"
+      },
+      {
+        "id": "required-reference-omitted",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COMP-005"
+      },
+      {
+        "id": "wrong-reference-type",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COMP-004"
+      },
+      {
+        "id": "length-restriction",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COMP-006"
+      }
+    ],
+    "boundary": [
+      {
+        "id": "alternatives-exact",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "accepted",
+        "project_code": null,
+        "composition_limits": {
+          "alternatives_per_type": 2
+        }
+      },
+      {
+        "id": "alternatives-one-over",
+        "catalogue_outcome": "NEU-COM-003",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COM-003",
+        "composition_limits": {
+          "alternatives_per_type": 1
+        }
+      },
+      {
+        "id": "dependency-edges-exact",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "accepted",
+        "project_code": null,
+        "composition_limits": {
+          "dependency_edges": 4
+        }
+      },
+      {
+        "id": "dependency-edges-one-over",
+        "catalogue_outcome": "NEU-COM-003",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COM-003",
+        "composition_limits": {
+          "dependency_edges": 3
+        }
+      }
+    ],
+    "migration": [
+      {
+        "id": "legacy-leaf-explicit-adapter",
+        "catalogue_outcome": "accepted",
+        "project_outcome": "accepted",
+        "project_code": null
+      },
+      {
+        "id": "new-shape-relabelled-old-schema",
+        "catalogue_outcome": "NEU-COM-001",
+        "project_outcome": "rejected",
+        "project_code": "NEU-COM-001"
+      }
+    ]
+  },
+  "identity": {
+    "profile": "neutral.project-identity/2",
+    "baseline_layers": [
+      "captured",
+      "logical",
+      "derivation",
+      "artifact-project",
+      "artifact-view"
+    ],
+    "logical_variants": 12,
+    "rejection_vectors": 8,
+    "comparison": "exact-complete-transcript-bytes-and-sha256",
+    "failure_classes": [
+      "Limit",
+      "InvalidInput",
+      "Cancelled"
+    ],
+    "production_comparison": "required-before-activation"
+  },
+  "fixture_digests": {
+    "positive": "e614f6334f5396624230a218771f555e07ac014e08d404efcc4b9d51687d06da",
+    "negative": "6f17d764cde18986e505c63f4990405ffd0a19f1cbb180b1535f5f41e1492e73",
+    "boundary": "bdc3a8ccdb7fd612f968f8592fb6d5206d21fef7f3f7e17bc94d4221a17ed619",
+    "migration": "f8df80977bd240607cc801cdf37f1bffa81e3bfdfc1068eb3de697353dc5c3bf",
+    "vectors": "4f1c8d2da91fd145be7938dae3e6791b8622a7ad2c68f6880776835912a6bf6f"
+  }
+}
