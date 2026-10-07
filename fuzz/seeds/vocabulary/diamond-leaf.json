@@ -1,0 +1,14 @@
+{
+  "format": "neutral-vocabulary-bundle",
+  "encoding_version": "1.0",
+  "schema_version": "2.0",
+  "identity": "Leaf",
+  "version": "0.1.0",
+  "required_features": ["vocabulary-composition-v2"],
+  "dependencies": [],
+  "types": [{
+    "kind": "record", "name": "Item", "public": true,
+    "fields": [{"name": "id", "type": {"kind": "num"},
+      "presence": "required", "restrictions": {}}]
+  }]
+}

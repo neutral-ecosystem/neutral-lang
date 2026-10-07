@@ -7,6 +7,7 @@ use super::{
     CompositionReferenceError, ReferenceTypeDependency, references,
 };
 use neutral_core::CancellationToken;
+use neutral_core::allocation::Shared as Arc;
 use neutral_ir::{
     ModuleSymbolIdentity,
     composition::{ClosedValue, CompositionDefinition, SourceCompositionDefinition},
@@ -15,7 +16,6 @@ use neutral_ir::{
 use neutral_vocabulary::composition::{
     CompositionError, CompositionLimits, ValidatedCompositionScope, ValidatedCompositionValue,
 };
-use std::sync::Arc;
 
 /// Public-only reader over a validated resolved source/vocabulary type scope.
 ///

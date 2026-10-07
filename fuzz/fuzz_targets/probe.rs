@@ -8,6 +8,7 @@ use libfuzzer_sys::fuzz_target;
 use neutral_core::CancellationToken;
 use neutral_encoding::{DecodeLimits, decode};
 use neutral_probe::summarize;
+mod composition_support;
 
 fuzz_target!(|bytes: &[u8]| {
     if let Ok(document) = decode(bytes, DecodeLimits::hard(), &CancellationToken::new()) {
@@ -20,4 +21,14 @@ fuzz_target!(|bytes: &[u8]| {
         None,
         &CancellationToken::new(),
     );
+    for input in [bytes, &composition_support::mutated_seed(bytes)] {
+        let _ = neutral_probe::composition::inspect_composition_encoded(
+            input,
+            DecodeLimits::hard(),
+            neutral_encoding::project::hard_project_limits(),
+            composition_support::limits(),
+            None,
+            &CancellationToken::new(),
+        );
+    }
 });

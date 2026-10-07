@@ -1,0 +1,15 @@
+{
+  "format": "neutral-vocabulary-bundle",
+  "encoding_version": "1.0",
+  "schema_version": "2.0",
+  "identity": "Left",
+  "version": "0.1.0",
+  "required_features": ["vocabulary-composition-v2"],
+  "dependencies": [{"identity": "Leaf", "version": "0.1.0"}],
+  "types": [{
+    "kind": "record", "name": "Item", "public": true,
+    "fields": [{"name": "leaf", "type": {"kind": "ref", "target": {
+      "kind": "external", "identity": "Leaf", "version": "0.1.0", "name": "Item"
+    }}, "presence": "required", "restrictions": {}}]
+  }]
+}

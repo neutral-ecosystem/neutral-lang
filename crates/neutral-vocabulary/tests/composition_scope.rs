@@ -2,6 +2,7 @@
 
 //! Both nominal origins share type closure, closed defaults, restrictions and value semantics.
 
+use neutral_core::allocation::Shared as Arc;
 use neutral_core::{
     CancellationToken, StructuralLimits, VocabularyContentDigest, profile::V1_SOURCE_PROFILE,
 };
@@ -22,7 +23,11 @@ use neutral_vocabulary::{
         validate_composition_scope,
     },
 };
-use std::sync::Arc;
+
+/// Creates fallible successor shared ownership for fixtures; allocation failure fails the test.
+fn shared<T>(value: T) -> Arc<T> {
+    Arc::try_new(value).unwrap()
+}
 
 /// Finite default test policy; individual tests narrow only the bound under review.
 fn limits() -> CompositionLimits {
@@ -33,7 +38,7 @@ fn limits() -> CompositionLimits {
 
 /// Empty but validated vocabulary closure for source-only type scopes.
 fn empty() -> Arc<ValidatedComposition> {
-    Arc::new(validate_composition_closure(&[], &[], limits(), &CancellationToken::new()).unwrap())
+    shared(validate_composition_closure(&[], &[], limits(), &CancellationToken::new()).unwrap())
 }
 
 /// Exact source owner independent of package versions, paths or aliases.
@@ -121,7 +126,7 @@ fn vocabulary() -> Arc<ValidatedComposition> {
         vec![composition::REQUIRED_FEATURE.to_owned()],
     )
     .unwrap();
-    Arc::new(
+    shared(
         validate_composition_closure(
             &[CapturedCompositionBundle { bytes, lock: &lock }],
             &[("Fixture", "1.0.0")],
@@ -767,7 +772,7 @@ fn composition_scope_private_roots_and_debug_are_redacted() {
 /// Concurrent calls retain request-local work, origin and cancellation state.
 #[test]
 fn composition_scope_concurrent_materialization_is_isolated() {
-    let scope = Arc::new(scope(vec![outcome("example", "Outcome", true)], limits()).unwrap());
+    let scope = shared(scope(vec![outcome("example", "Outcome", true)], limits()).unwrap());
     std::thread::scope(|threads| {
         let handles: Vec<_> = (0..8)
             .map(|index| {

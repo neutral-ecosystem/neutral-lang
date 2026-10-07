@@ -23,6 +23,8 @@ repository = "https://github.com/neutral-ecosystem/neutral-lang"
 
 [workspace.dependencies]
 sha2 = "0.10.9"
+trybox = { version = "0.1.2", default-features = false }
+triomphe = { version = "0.1.16", default-features = false, features = ["std"] }
 
 [workspace.lints.rust]
 missing_docs = "warn"

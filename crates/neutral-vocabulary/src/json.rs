@@ -44,12 +44,23 @@ fn parse_with_cancellation(
     limits: VocabularyLimits,
     cancellation: Option<&CancellationToken>,
 ) -> Result<JsonValue, VocabularyError> {
+    parse_observed(text, limits, cancellation, &mut |_| Ok(()))
+}
+
+/// Drives the real decoder with private reservation checkpoints for deterministic fault tests.
+fn parse_observed<'a>(
+    text: &'a str,
+    limits: VocabularyLimits,
+    cancellation: Option<&'a CancellationToken>,
+    reservation: &'a mut dyn FnMut(usize) -> Result<(), VocabularyError>,
+) -> Result<JsonValue, VocabularyError> {
     let mut parser = Parser {
         text,
         index: 0,
         limits,
         nodes: 0,
         cancellation,
+        reservation,
     };
     parser.skip_whitespace();
     parser.check_cancelled()?;
@@ -75,9 +86,40 @@ struct Parser<'a> {
     nodes: u64,
     /// Optional composition-request cancellation; legacy callers supply none.
     cancellation: Option<&'a CancellationToken>,
+    /// Request-local reservation observer, never global allocator state or public authority.
+    reservation: &'a mut dyn FnMut(usize) -> Result<(), VocabularyError>,
 }
 
 impl Parser<'_> {
+    /// Reserves collection growth fallibly after cancellation and before retaining another child.
+    fn reserve<T>(&mut self, output: &mut Vec<T>) -> Result<(), VocabularyError> {
+        self.check_cancelled()?;
+        (self.reservation)(std::mem::size_of::<T>())?;
+        self.check_cancelled()?;
+        output
+            .try_reserve(1)
+            .map_err(|_| VocabularyError::JsonLimitExceeded)
+    }
+
+    /// Checks decoded byte limits before allocating or appending the next UTF-8 scalar.
+    fn push_character(&mut self, output: &mut String, ch: char) -> Result<(), VocabularyError> {
+        self.check_cancelled()?;
+        let bytes = ch.len_utf8();
+        let length = output
+            .len()
+            .checked_add(bytes)
+            .ok_or(VocabularyError::JsonLimitExceeded)?;
+        if length as u64 > self.limits.string_bytes() {
+            return Err(VocabularyError::JsonLimitExceeded);
+        }
+        (self.reservation)(bytes)?;
+        self.check_cancelled()?;
+        output
+            .try_reserve(bytes)
+            .map_err(|_| VocabularyError::JsonLimitExceeded)?;
+        output.push(ch);
+        Ok(())
+    }
     /// Checks a cancellation signal without changing any frozen non-cancellable caller.
     fn check_cancelled(&self) -> Result<(), VocabularyError> {
         if self
@@ -140,6 +182,7 @@ impl Parser<'_> {
             if u64::try_from(items.len()).unwrap_or(u64::MAX) >= self.limits.array_items() {
                 return Err(VocabularyError::JsonLimitExceeded);
             }
+            self.reserve(&mut items)?;
             items.push(self.parse_value(depth.saturating_add(1))?);
             self.skip_whitespace();
             if self.consume_byte(b']') {
@@ -176,6 +219,7 @@ impl Parser<'_> {
                 return Err(VocabularyError::MalformedJson);
             }
             self.skip_whitespace();
+            self.reserve(&mut members)?;
             let value = self.parse_value(depth.saturating_add(1))?;
             members.push((name, value));
             self.skip_whitespace();
@@ -210,7 +254,7 @@ impl Parser<'_> {
                 0x00..=0x1f => return Err(VocabularyError::MalformedJson),
                 0x20..=0x7f => {
                     self.index += 1;
-                    output.push(char::from(byte));
+                    self.push_character(&mut output, char::from(byte))?;
                 }
                 _ => {
                     let character = self.text[self.index..]
@@ -218,7 +262,7 @@ impl Parser<'_> {
                         .next()
                         .ok_or(VocabularyError::MalformedJson)?;
                     self.index += character.len_utf8();
-                    output.push(character);
+                    self.push_character(&mut output, character)?;
                 }
             }
             if u64::try_from(output.len()).unwrap_or(u64::MAX) > self.limits.string_bytes() {
@@ -230,15 +274,15 @@ impl Parser<'_> {
     /// Decodes one JSON escape into a bounded output string.
     fn parse_escape(&mut self, output: &mut String) -> Result<(), VocabularyError> {
         let escaped = self.take_byte().ok_or(VocabularyError::MalformedJson)?;
-        match escaped {
-            b'"' => output.push('"'),
-            b'\\' => output.push('\\'),
-            b'/' => output.push('/'),
-            b'b' => output.push('\u{0008}'),
-            b'f' => output.push('\u{000c}'),
-            b'n' => output.push('\n'),
-            b'r' => output.push('\r'),
-            b't' => output.push('\t'),
+        let character = match escaped {
+            b'"' => '"',
+            b'\\' => '\\',
+            b'/' => '/',
+            b'b' => '\u{0008}',
+            b'f' => '\u{000c}',
+            b'n' => '\n',
+            b'r' => '\r',
+            b't' => '\t',
             b'u' => {
                 let first = self.parse_hex_quad()?;
                 let scalar = if (0xd800..=0xdbff).contains(&first) {
@@ -255,11 +299,11 @@ impl Parser<'_> {
                 } else {
                     u32::from(first)
                 };
-                output.push(char::from_u32(scalar).ok_or(VocabularyError::MalformedJson)?);
+                char::from_u32(scalar).ok_or(VocabularyError::MalformedJson)?
             }
             _ => return Err(VocabularyError::MalformedJson),
-        }
-        Ok(())
+        };
+        self.push_character(output, character)
     }
 
     /// Parses exactly four lowercase or uppercase JSON hexadecimal digits.

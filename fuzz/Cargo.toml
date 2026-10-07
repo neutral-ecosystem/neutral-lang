@@ -18,6 +18,7 @@ neutral-core = { path = "../crates/neutral-core" }
 neutral-ir = { path = "../crates/neutral-ir" }
 neutral-encoding = { path = "../crates/neutral-encoding" }
 neutral-probe = { path = "../crates/neutral-probe" }
+neutral-reader = { path = "../crates/neutral-reader" }
 neutral-vocabulary = { path = "../crates/neutral-vocabulary" }
 
 [[bin]]

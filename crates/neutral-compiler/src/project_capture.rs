@@ -3,11 +3,12 @@
 //! Complete, bounded, and effect-free project capture for the v1 profile.
 
 use crate::module_graph::{ModuleGraph, ModuleGraphFailure, build_module_graph};
+use neutral_core::allocation::Shared as Arc;
 use neutral_core::{
     CancellationToken, SourceContentDigest, VocabularyContentDigest, profile::LanguageProfile,
 };
 use neutral_vocabulary::VocabularyLock;
-use std::{collections::BTreeSet, sync::Arc};
+use std::collections::BTreeSet;
 
 mod composition;
 pub use composition::{
@@ -318,11 +319,11 @@ impl CapturedProjectRequest {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CapturedProjectSource {
     /// Request-scoped source ID.
-    source_id: Arc<str>,
+    source_id: Arc<String>,
     /// Qualified logical module ID.
-    module_id: Arc<str>,
+    module_id: Arc<String>,
     /// Exact immutable source bytes.
-    bytes: Arc<[u8]>,
+    bytes: Arc<Vec<u8>>,
     /// Exact source-byte identity.
     digest: SourceContentDigest,
 }
@@ -346,6 +347,11 @@ impl CapturedProjectSource {
         &self.bytes
     }
 
+    /// Shares already frozen bytes with private syntax caches without allocating another payload.
+    pub(crate) fn shared_bytes(&self) -> Arc<Vec<u8>> {
+        Arc::clone(&self.bytes)
+    }
+
     /// Returns the exact source-byte identity.
     #[must_use]
     pub const fn digest(&self) -> SourceContentDigest {
@@ -357,7 +363,7 @@ impl CapturedProjectSource {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CapturedProjectVocabulary {
     /// Exact immutable bundle bytes.
-    bytes: Arc<[u8]>,
+    bytes: Arc<Vec<u8>>,
     /// Exact immutable semantic lock.
     lock: VocabularyLock,
 }
@@ -427,9 +433,9 @@ pub struct CapturedProject {
     /// Exact project profile.
     profile: LanguageProfile,
     /// All supplied sources in `(module ID, source ID)` order.
-    sources: Arc<[CapturedProjectSource]>,
+    sources: Arc<Vec<CapturedProjectSource>>,
     /// All exact vocabularies in canonical-identity order.
-    vocabularies: Arc<[CapturedProjectVocabulary]>,
+    vocabularies: Arc<Vec<CapturedProjectVocabulary>>,
     /// Complete deterministic limits, excluding mutable cancellation state.
     limits: ProjectCaptureLimits,
     /// Exact accepted resource facts.
@@ -842,33 +848,45 @@ fn freeze_project(
             .map(|vocabulary| length(vocabulary.bytes.len()))
             .sum(),
     };
-    sources.sort_by(|(left, _), (right, _)| {
+    sources.sort_unstable_by(|(left, _), (right, _)| {
         (&left.module_id, &left.source_id).cmp(&(&right.module_id, &right.source_id))
     });
-    let sources: Vec<_> = std::mem::take(sources)
-        .into_iter()
-        .map(|(source, digest)| CapturedProjectSource {
-            source_id: Arc::from(source.source_id),
-            module_id: Arc::from(source.module_id),
-            bytes: Arc::from(source.bytes),
+    let mut frozen_sources = Vec::new();
+    frozen_sources
+        .try_reserve_exact(sources.len())
+        .map_err(|_| ProjectCaptureError::LimitExceeded)?;
+    for (source, digest) in std::mem::take(sources) {
+        capture_cancelled(Some(cancellation))?;
+        frozen_sources.push(CapturedProjectSource {
+            source_id: Arc::try_new(source.source_id)
+                .map_err(|_| ProjectCaptureError::LimitExceeded)?,
+            module_id: Arc::try_new(source.module_id)
+                .map_err(|_| ProjectCaptureError::LimitExceeded)?,
+            bytes: Arc::try_new(source.bytes).map_err(|_| ProjectCaptureError::LimitExceeded)?,
             digest,
-        })
-        .collect();
-    vocabularies.sort_by(|left, right| left.lock.identity().cmp(right.lock.identity()));
-    let vocabularies: Vec<_> = vocabularies
-        .into_iter()
-        .map(|vocabulary| CapturedProjectVocabulary {
-            bytes: Arc::from(vocabulary.bytes),
+        });
+    }
+    vocabularies.sort_unstable_by(|left, right| left.lock.identity().cmp(right.lock.identity()));
+    let mut frozen_vocabularies = Vec::new();
+    frozen_vocabularies
+        .try_reserve_exact(vocabularies.len())
+        .map_err(|_| ProjectCaptureError::LimitExceeded)?;
+    for vocabulary in vocabularies {
+        capture_cancelled(Some(cancellation))?;
+        frozen_vocabularies.push(CapturedProjectVocabulary {
+            bytes: Arc::try_new(vocabulary.bytes)
+                .map_err(|_| ProjectCaptureError::LimitExceeded)?,
             lock: vocabulary.lock,
-        })
-        .collect();
+        });
+    }
     if cancellation.is_cancelled() {
         return Err(ProjectCaptureError::Cancelled);
     }
     Ok(CapturedProject {
         profile,
-        sources: Arc::from(sources),
-        vocabularies: Arc::from(vocabularies),
+        sources: Arc::try_new(frozen_sources).map_err(|_| ProjectCaptureError::LimitExceeded)?,
+        vocabularies: Arc::try_new(frozen_vocabularies)
+            .map_err(|_| ProjectCaptureError::LimitExceeded)?,
         limits,
         resource_facts,
     })

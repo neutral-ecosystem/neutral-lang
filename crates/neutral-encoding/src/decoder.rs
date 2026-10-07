@@ -73,6 +73,8 @@ fn parse_section_profile(
         nodes: 0,
         cancellation,
         canonical,
+        allocations: 0,
+        allocation_fault: None,
     };
     let value = parser.value(1)?;
     if parser.position != bytes.len() {
@@ -83,6 +85,10 @@ fn parse_section_profile(
 
 /// Stateful parser that checks bounds before every allocation.
 struct Parser<'a> {
+    /// Request-local reservation count for tests, never a global allocator override.
+    allocations: usize,
+    /// One private synthetic allocation failure or cancellation checkpoint.
+    allocation_fault: Option<(usize, bool)>,
     /// Exact section bytes.
     bytes: &'a [u8],
     /// Next unread section-relative position.
@@ -100,6 +106,27 @@ struct Parser<'a> {
 }
 
 impl Parser<'_> {
+    /// Checks cancellation before fallible storage growth; tests interrupt the same boundary.
+    fn reserve<T>(&mut self, values: &mut Vec<T>, count: usize) -> Result<(), DecodeError> {
+        self.check_cancelled()?;
+        {
+            let current = self.allocations;
+            self.allocations += 1;
+            if let Some((index, cancel)) = self.allocation_fault
+                && index == current
+            {
+                if cancel {
+                    self.cancellation.cancel();
+                    return Err(self.error(DecodeErrorClass::Cancelled));
+                }
+                return Err(self.error(DecodeErrorClass::EncodedSizeLimit));
+            }
+        }
+        values
+            .try_reserve(count)
+            .map_err(|_| self.error(DecodeErrorClass::EncodedSizeLimit))?;
+        self.check_cancelled()
+    }
     /// Parses one value under depth, traversal, and cancellation limits.
     fn value(&mut self, depth: usize) -> Result<LocatedValue, DecodeError> {
         self.check_cancelled()?;
@@ -150,6 +177,10 @@ impl Parser<'_> {
         let length = self.container_length(additional)?;
         let mut values = Vec::new();
         for _ in 0..length {
+            if self.nodes >= self.limits.maximum_traversal_nodes() {
+                return Err(self.error(DecodeErrorClass::EncodedSizeLimit));
+            }
+            self.reserve(&mut values, 1)?;
             values.push(self.value(depth + 1)?);
         }
         Ok(values)
@@ -164,6 +195,15 @@ impl Parser<'_> {
         let length = self.container_length(additional)?;
         let mut members = Vec::new();
         for _ in 0..length {
+            if self
+                .limits
+                .maximum_traversal_nodes()
+                .saturating_sub(self.nodes)
+                < 2
+            {
+                return Err(self.error(DecodeErrorClass::EncodedSizeLimit));
+            }
+            self.reserve(&mut members, 1)?;
             let key = self.value(depth + 1)?;
             let CborValue::Text(key) = key.value else {
                 return Err(Self::error_at(DecodeErrorClass::MalformedCbor, key.offset));
@@ -203,7 +243,9 @@ impl Parser<'_> {
             .position
             .checked_add(length)
             .ok_or_else(|| self.error(DecodeErrorClass::EncodedSizeLimit))?;
-        let value = self.bytes[self.position..end].to_vec();
+        let mut value = Vec::new();
+        self.reserve(&mut value, length)?;
+        value.extend_from_slice(&self.bytes[self.position..end]);
         self.position = end;
         Ok(value)
     }

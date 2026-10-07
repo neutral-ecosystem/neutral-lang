@@ -117,7 +117,12 @@ impl Inspector<'_> {
         value: &CompositionValue<R>,
         reference: impl Fn(&R) -> Option<&ModuleSymbolIdentity>,
     ) -> Result<(), CompositionShapeError> {
-        let mut stack = vec![(value, 0_u64)];
+        self.step(1)?;
+        let mut stack = Vec::new();
+        stack
+            .try_reserve(1)
+            .map_err(|_| CompositionShapeError::Limit)?;
+        stack.push((value, 0_u64));
         while let Some((value, depth)) = stack.pop() {
             self.step(1)?;
             if depth > self.policy.value_depth.min(PROJECT_MAX_DEPTH as u64) {

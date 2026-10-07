@@ -38,10 +38,10 @@ mod project_vocabulary;
 mod semantics;
 
 pub use frontend::{
-    CompositionCompileFailure, ProjectCacheLimits, ProjectCacheStats, ProjectCompilationCache,
-    ProjectCompileFailure, ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic,
-    ProjectSemanticFailure, ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind,
-    analyze_project_semantics, compile_composition_project, compile_project,
+    CompositionCompilationCache, CompositionCompileFailure, ProjectCacheLimits, ProjectCacheStats,
+    ProjectCompilationCache, ProjectCompileFailure, ProjectDependency, ProjectDependencyKind,
+    ProjectSemanticDiagnostic, ProjectSemanticFailure, ProjectSemanticModel, ProjectSymbol,
+    ProjectSymbolKind, analyze_project_semantics, compile_composition_project, compile_project,
     composition_diagnostics, project_lowering_diagnostics, project_semantics_diagnostics,
 };
 

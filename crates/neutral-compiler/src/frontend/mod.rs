@@ -18,14 +18,17 @@ mod project_semantics;
 
 pub use project_semantics::diagnostics as project_semantics_diagnostics;
 pub use project_semantics::{
-    CompositionCompileFailure, ProjectCacheLimits, ProjectCacheStats, ProjectCompilationCache,
-    ProjectCompileFailure, ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic,
-    ProjectSemanticFailure, ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind,
-    analyze_project_semantics, compile_composition_project, compile_project,
+    CompositionCompilationCache, CompositionCompileFailure, ProjectCacheLimits, ProjectCacheStats,
+    ProjectCompilationCache, ProjectCompileFailure, ProjectDependency, ProjectDependencyKind,
+    ProjectSemanticDiagnostic, ProjectSemanticFailure, ProjectSemanticModel, ProjectSymbol,
+    ProjectSymbolKind, analyze_project_semantics, compile_composition_project, compile_project,
     composition_diagnostics, project_lowering_diagnostics,
 };
 
-pub(crate) use graph_syntax::{GraphImport, GraphSyntaxErrorKind, scan_graph_source};
+pub(crate) use graph_syntax::scan_graph_source_bounded;
+pub(crate) use graph_syntax::{
+    GraphImport, GraphSourceSyntax, GraphSyntaxErrorKind, scan_graph_source,
+};
 
 /// Raw lexing result with nonsemantic trivia kept separate from parser tokens.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -63,6 +66,55 @@ struct Token {
     kind: TokenKind,
     /// Exact half-open span in the original captured bytes.
     span: ByteSpan,
+}
+
+impl neutral_core::allocation::TryClone for Token {
+    /// Copies owned token spellings fallibly; punctuation and source spans never allocate.
+    fn try_clone(&self) -> Result<Self, neutral_core::allocation::AllocationError> {
+        let kind = match &self.kind {
+            TokenKind::Identifier(s) => TokenKind::Identifier(s.try_clone()?),
+            TokenKind::ProtectedName(s) => TokenKind::ProtectedName(s.try_clone()?),
+            TokenKind::Number(s) => TokenKind::Number(s.try_clone()?),
+            TokenKind::StringLiteral(s) => TokenKind::StringLiteral(DecodedString {
+                value: s.value.try_clone()?,
+                had_escape: s.had_escape,
+            }),
+            // All remaining token variants retain only nonallocating punctuation/newline facts.
+            kind @ (TokenKind::Neu
+            | TokenKind::Module
+            | TokenKind::Use
+            | TokenKind::Record
+            | TokenKind::List
+            | TokenKind::RefType
+            | TokenKind::RefValue
+            | TokenKind::Num
+            | TokenKind::StringType
+            | TokenKind::BoolType
+            | TokenKind::True
+            | TokenKind::False
+            | TokenKind::Null
+            | TokenKind::Equals
+            | TokenKind::Question
+            | TokenKind::OpenBrace
+            | TokenKind::CloseBrace
+            | TokenKind::Colon
+            | TokenKind::DoubleColon
+            | TokenKind::Less
+            | TokenKind::Greater
+            | TokenKind::OpenBracket
+            | TokenKind::CloseBracket
+            | TokenKind::OpenParen
+            | TokenKind::CloseParen
+            | TokenKind::Comma
+            | TokenKind::PhysicalLineEnd(_)
+            | TokenKind::LineEnd
+            | TokenKind::EndOfFile) => kind.clone(),
+        };
+        Ok(Self {
+            kind,
+            span: self.span,
+        })
+    }
 }
 
 /// Token categories required by the active source and scalar slices.

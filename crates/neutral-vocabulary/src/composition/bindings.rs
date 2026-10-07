@@ -2,10 +2,14 @@
 
 //! Atomic, resolved binding validation; no source parser, wire decoder or acquisition.
 
+use neutral_core::allocation::TryClone;
+
 use super::{
     Budget, CompositionError as E, CompositionLimits, ValidatedCompositionScope, check_count,
     closure, scope, supplied, values,
 };
+use neutral_core::allocation::Shared as Arc;
+use neutral_core::ordered::OrderedMap as BTreeMap;
 use neutral_core::{CancellationToken, profile::V1_SOURCE_PROFILE};
 use neutral_ir::{
     ModuleSymbolIdentity,
@@ -16,7 +20,6 @@ use neutral_ir::{
     language::{is_protected_name, is_snake_name},
     project_interface::ProjectPublicType as T,
 };
-use std::{collections::BTreeMap, sync::Arc};
 
 /// Immutable materialized binding and its separate, occurrence-sensitive safe facts.
 #[derive(Clone, Eq, PartialEq)]
@@ -179,7 +182,12 @@ pub fn validate_composition_bindings(
         }
         scope::preflight_type(&binding.ty, &mut budget)?;
         check_type_visibility(&binding.ty, binding, &catalogue, &mut budget)?;
-        if index.insert(owner, binding).is_some() {
+        budget.step(index.len() as u64)?;
+        if index
+            .insert(owner, binding)
+            .map_err(|_| E::Allocation)?
+            .is_some()
+        {
             return Err(E::InvalidContract);
         }
     }
@@ -224,16 +232,16 @@ pub fn validate_composition_bindings(
                 )?;
                 references.try_reserve(1).map_err(|_| E::Allocation)?;
                 references.push(CompositionBindingReference {
-                    path: origin.path.clone(),
-                    target: target.clone(),
+                    path: origin.path.try_clone().map_err(|_| E::Allocation)?,
+                    target: target.try_clone().map_err(|_| E::Allocation)?,
                 });
             }
         }
         result.push(ValidatedCompositionBinding {
             binding: CompositionBinding {
-                owner: binding.owner.clone(),
+                owner: binding.owner.try_clone().map_err(|_| E::Allocation)?,
                 public: binding.public,
-                ty: binding.ty.clone(),
+                ty: binding.ty.try_clone().map_err(|_| E::Allocation)?,
                 value,
             },
             origins,
@@ -283,8 +291,12 @@ fn recheck_scope<'a>(
     closure::validate(scope.catalogue().bundles(), &roots, budget)?;
     let mut module_types = BTreeMap::new();
     for source in scope.sources() {
+        budget.step(module_types.len() as u64)?;
         super::charge(
-            module_types.entry(source.owner.module()).or_insert(0),
+            module_types
+                .entry(source.owner.module())
+                .map_err(|_| E::Allocation)?
+                .or_insert(0),
             1,
             limits.json.types(),
         )?;

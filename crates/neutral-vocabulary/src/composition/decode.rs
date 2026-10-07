@@ -9,6 +9,7 @@ use super::{
 use crate::{
     JsonValue as J, ProjectVocabularyType, VocabularyError, json, schema, validation as v,
 };
+use neutral_core::ordered::OrderedSet as BTreeSet;
 use neutral_ir::{
     ExactNumber, VocabularyIdentity,
     composition::{
@@ -18,7 +19,10 @@ use neutral_ir::{
     },
     project_interface::ProjectPublicType as T,
 };
-use std::collections::BTreeSet;
+
+#[cfg(test)]
+#[path = "../../tests/composition/decode.rs"]
+mod tests;
 
 /// Decodes one exact lock into a raw contract; global closure/default validation follows.
 pub(super) fn bundle(
@@ -80,7 +84,7 @@ pub(super) fn bundle(
     }
     let features = v::array(v::member(root, "required_features")?)?;
     check_count(features.len(), budget.limits.json.features())?;
-    if features != [J::String(REQUIRED_FEATURE.to_owned())] {
+    if !matches!(features, [J::String(feature)] if feature == REQUIRED_FEATURE) {
         return Err(VocabularyError::UnknownRequiredFeature.into());
     }
     if input.lock.required_features() != [REQUIRED_FEATURE] {
@@ -93,7 +97,7 @@ pub(super) fn bundle(
     )?;
     let definitions = definitions(v::member(root, "types")?, input.lock, budget)?;
     Ok(CompositionBundle {
-        identity: identity(input),
+        identity: identity(input, budget)?,
         dependencies,
         definitions,
     })
@@ -115,7 +119,7 @@ fn dependencies(
         raw_dependencies.len() as u64,
         budget.limits.dependency_edges,
     )?;
-    let mut dependencies = Vec::new();
+    let mut dependencies = budget.storage(raw_dependencies.len())?;
     let mut seen = BTreeSet::new();
     for raw in raw_dependencies {
         budget.step(1)?;
@@ -127,16 +131,16 @@ fn dependencies(
         if !schema::is_upper_name(identity)
             || !schema::is_exact_release_version(version)
             || identity == owner
-            || !seen.insert(identity)
+            || !budget.unique(&mut seen, identity)?
         {
             return Err(E::InvalidDependency);
         }
         dependencies.push(CompositionDependency {
-            identity: identity.to_owned(),
-            version: version.to_owned(),
+            identity: budget.owned(identity)?,
+            version: budget.owned(version)?,
         });
     }
-    dependencies.sort();
+    dependencies.sort_unstable();
     Ok(dependencies)
 }
 
@@ -153,7 +157,7 @@ fn definitions(
         raw_types.len() as u64,
         budget.limits.total_types,
     )?;
-    let mut definitions = Vec::new();
+    let mut definitions = budget.storage(raw_types.len())?;
     let mut names = BTreeSet::new();
     for raw in raw_types {
         budget.step(1)?;
@@ -170,7 +174,7 @@ fn definitions(
         if !schema::is_upper_name(name) || schema::is_protected_name(name) {
             return Err(VocabularyError::InvalidTypeName.into());
         }
-        if !names.insert(name) {
+        if !budget.unique(&mut names, name)? {
             return Err(VocabularyError::DuplicateType.into());
         }
         let body = if kind == "record" {
@@ -179,25 +183,32 @@ fn definitions(
             variant(v::member(fields, "alternatives")?, lock, budget)?
         };
         definitions.push(CompositionDefinition {
-            name: name.to_owned(),
+            name: budget.owned(name)?,
             public: v::boolean(fields, "public")?,
             body,
         });
     }
-    definitions.sort_by(|a, b| a.name.cmp(&b.name));
+    definitions.sort_unstable_by(|a, b| a.name.cmp(&b.name));
     Ok(definitions)
 }
 
 /// Copies exact captured facts into the shared raw identity container.
-fn identity(input: CapturedCompositionBundle<'_>) -> VocabularyIdentity {
-    VocabularyIdentity::new(
-        input.lock.identity(),
-        input.lock.version(),
-        input.lock.schema_version(),
-        input.lock.encoding_version(),
+fn identity(
+    input: CapturedCompositionBundle<'_>,
+    budget: &mut Budget<'_>,
+) -> Result<VocabularyIdentity, E> {
+    let mut features = budget.storage(input.lock.required_features().len())?;
+    for feature in input.lock.required_features() {
+        features.push(budget.owned(feature)?);
+    }
+    Ok(VocabularyIdentity::new(
+        budget.owned(input.lock.identity())?,
+        budget.owned(input.lock.version())?,
+        budget.owned(input.lock.schema_version())?,
+        budget.owned(input.lock.encoding_version())?,
         input.lock.content_digest(),
-        input.lock.required_features().to_vec(),
-    )
+        features,
+    ))
 }
 
 /// Adapts existing schema leaf contracts without changing their parser or meaning.
@@ -211,7 +222,7 @@ fn legacy_bundle(
         legacy.types().len() as u64,
         budget.limits.total_types,
     )?;
-    let mut definitions = Vec::new();
+    let mut definitions = budget.storage(legacy.types().len())?;
     for ty in legacy.types() {
         budget.step(1)?;
         charge(
@@ -219,39 +230,37 @@ fn legacy_bundle(
             ty.fields().len() as u64,
             budget.limits.total_fields,
         )?;
-        let fields = ty
-            .fields()
-            .iter()
-            .map(|field| {
-                let ty = match field.ty() {
-                    ProjectVocabularyType::Num => T::Num,
-                    ProjectVocabularyType::String => T::String,
-                    ProjectVocabularyType::Bool => T::Bool,
-                    ProjectVocabularyType::Url => T::Url,
-                    ProjectVocabularyType::Path => T::Path,
-                    ProjectVocabularyType::Nominal(name) => T::VocabularyNominal {
-                        identity: legacy.identity().to_owned(),
-                        version: legacy.version().to_owned(),
-                        name: name.clone(),
-                    },
-                };
-                CompositionField {
-                    name: field.name().to_owned(),
-                    ty,
-                    presence: FieldPresence::Required,
-                    restrictions: FieldRestrictions::default(),
-                    default: None,
-                }
-            })
-            .collect();
+        let mut fields = budget.storage(ty.fields().len())?;
+        for field in ty.fields() {
+            budget.step(1)?;
+            let ty = match field.ty() {
+                ProjectVocabularyType::Num => T::Num,
+                ProjectVocabularyType::String => T::String,
+                ProjectVocabularyType::Bool => T::Bool,
+                ProjectVocabularyType::Url => T::Url,
+                ProjectVocabularyType::Path => T::Path,
+                ProjectVocabularyType::Nominal(name) => T::VocabularyNominal {
+                    identity: budget.owned(legacy.identity())?,
+                    version: budget.owned(legacy.version())?,
+                    name: budget.owned(name)?,
+                },
+            };
+            fields.push(CompositionField {
+                name: budget.owned(field.name())?,
+                ty,
+                presence: FieldPresence::Required,
+                restrictions: FieldRestrictions::default(),
+                default: None,
+            });
+        }
         definitions.push(CompositionDefinition {
-            name: ty.name().to_owned(),
+            name: budget.owned(ty.name())?,
             public: ty.is_public(),
             body: CompositionBody::Record(fields),
         });
     }
     Ok(CompositionBundle {
-        identity: identity(input),
+        identity: identity(input, budget)?,
         dependencies: Vec::new(),
         definitions,
     })
@@ -270,7 +279,7 @@ fn record(
         raw.len() as u64,
         budget.limits.total_fields,
     )?;
-    let mut fields = Vec::new();
+    let mut fields = budget.storage(raw.len())?;
     let mut names = BTreeSet::new();
     for item in raw {
         budget.step(1)?;
@@ -292,11 +301,11 @@ fn record(
         if !schema::is_snake_name(name) || schema::is_protected_name(name) {
             return Err(VocabularyError::InvalidFieldName.into());
         }
-        if !names.insert(name) {
+        if !budget.unique(&mut names, name)? {
             return Err(VocabularyError::DuplicateField.into());
         }
         fields.push(CompositionField {
-            name: name.to_owned(),
+            name: budget.owned(name)?,
             ty: ty(v::member(field, "type")?, lock, budget, 1)?,
             presence,
             restrictions: restrictions(v::member(field, "restrictions")?, budget)?,
@@ -307,7 +316,7 @@ fn record(
             },
         });
     }
-    fields.sort_by(|a, b| a.name.cmp(&b.name));
+    fields.sort_unstable_by(|a, b| a.name.cmp(&b.name));
     Ok(CompositionBody::Record(fields))
 }
 
@@ -327,7 +336,7 @@ fn variant(
         raw.len() as u64,
         budget.limits.total_alternatives,
     )?;
-    let mut alternatives = Vec::new();
+    let mut alternatives = budget.storage(raw.len())?;
     let mut tags = BTreeSet::new();
     for item in raw {
         budget.step(1)?;
@@ -335,15 +344,18 @@ fn variant(
         v::exact_members(fields, &["tag", "type"])?;
         let tag = v::string(fields, "tag")?;
         budget.key(tag.len(), raw.len())?;
-        if !schema::is_snake_name(tag) || schema::is_protected_name(tag) || !tags.insert(tag) {
+        if !schema::is_snake_name(tag)
+            || schema::is_protected_name(tag)
+            || !budget.unique(&mut tags, tag)?
+        {
             return Err(E::InvalidContract);
         }
         alternatives.push(CompositionAlternative {
-            tag: tag.to_owned(),
+            tag: budget.owned(tag)?,
             ty: ty(v::member(fields, "type")?, lock, budget, 1)?,
         });
     }
-    alternatives.sort_by(|a, b| a.tag.cmp(&b.tag));
+    alternatives.sort_unstable_by(|a, b| a.tag.cmp(&b.tag));
     Ok(CompositionBody::Variant(alternatives))
 }
 
@@ -384,9 +396,9 @@ fn ty(raw: &J, lock: &crate::VocabularyLock, budget: &mut Budget<'_>, depth: u64
                 return Err(E::InvalidContract);
             }
             Ok(T::VocabularyNominal {
-                identity: identity.to_owned(),
-                version: version.to_owned(),
-                name: name.to_owned(),
+                identity: budget.owned(identity)?,
+                version: budget.owned(version)?,
+                name: budget.owned(name)?,
             })
         }
         "list" | "nullable" | "ref" => {
@@ -398,10 +410,12 @@ fn ty(raw: &J, lock: &crate::VocabularyLock, budget: &mut Budget<'_>, depth: u64
             v::exact_members(fields, &["kind", member])?;
             let inner = ty(v::member(fields, member)?, lock, budget, depth + 1)?;
             match kind {
-                "list" => Ok(T::List(Box::new(inner))),
-                "nullable" if !matches!(inner, T::Nullable(_)) => Ok(T::Nullable(Box::new(inner))),
+                "list" => Ok(T::List(budget.boxed(inner)?)),
+                "nullable" if !matches!(inner, T::Nullable(_)) => {
+                    Ok(T::Nullable(budget.boxed(inner)?))
+                }
                 "ref" if matches!(inner, T::VocabularyNominal { .. }) => {
-                    Ok(T::Ref(Box::new(inner)))
+                    Ok(T::Ref(budget.boxed(inner)?))
                 }
                 _ => Err(E::InvalidContract),
             }
@@ -463,11 +477,11 @@ fn restrictions(raw: &J, budget: &mut Budget<'_>) -> Result<FieldRestrictions, E
                     raw.len() as u64,
                     budget.limits.total_choices,
                 )?;
-                result.choices = Some(
-                    raw.iter()
-                        .map(|raw| closed(raw, budget, 1))
-                        .collect::<Result<Vec<_>, _>>()?,
-                );
+                let mut choices = budget.storage(raw.len())?;
+                for item in raw {
+                    choices.push(closed(item, budget, 1)?);
+                }
+                result.choices = Some(choices);
             }
             "minimum" | "maximum" => {
                 let J::String(text) = raw else {
@@ -499,9 +513,9 @@ fn closed(raw: &J, budget: &mut Budget<'_>, depth: u64) -> Result<V, E> {
             Ok(match kind {
                 "num" => V::Number(number(v::string(fields, "value")?, budget)?),
                 "bool" => V::Bool(v::boolean(fields, "value")?),
-                "string" => V::String(v::string(fields, "value")?.to_owned()),
-                "url" => V::Url(v::string(fields, "value")?.to_owned()),
-                _ => V::Path(v::string(fields, "value")?.to_owned()),
+                "string" => V::String(budget.owned(v::string(fields, "value")?)?),
+                "url" => V::Url(budget.owned(v::string(fields, "value")?)?),
+                _ => V::Path(budget.owned(v::string(fields, "value")?)?),
             })
         }
         "null" => {
@@ -512,18 +526,18 @@ fn closed(raw: &J, budget: &mut Budget<'_>, depth: u64) -> Result<V, E> {
             v::exact_members(fields, &["kind", "items"])?;
             let raw = v::array(v::member(fields, "items")?)?;
             check_count(raw.len(), budget.limits.json.array_items())?;
-            Ok(V::List(
-                raw.iter()
-                    .map(|raw| closed(raw, budget, depth + 1))
-                    .collect::<Result<Vec<_>, _>>()?,
-            ))
+            let mut items = budget.storage(raw.len())?;
+            for item in raw {
+                items.push(closed(item, budget, depth + 1)?);
+            }
+            Ok(V::List(items))
         }
         "record" => {
             v::exact_members(fields, &["kind", "fields"])?;
             let raw = v::array(v::member(fields, "fields")?)?;
             check_count(raw.len(), budget.limits.json.fields())?;
             let mut seen = BTreeSet::new();
-            let mut values = Vec::new();
+            let mut values = budget.storage(raw.len())?;
             let field_count = raw.len();
             for raw in raw {
                 budget.step(1)?;
@@ -531,22 +545,24 @@ fn closed(raw: &J, budget: &mut Budget<'_>, depth: u64) -> Result<V, E> {
                 v::exact_members(fields, &["name", "value"])?;
                 let name = v::string(fields, "name")?;
                 budget.key(name.len(), field_count)?;
-                if !seen.insert(name) {
+                if !budget.unique(&mut seen, name)? {
                     return Err(E::InvalidDefault);
                 }
                 values.push((
-                    name.to_owned(),
+                    budget.owned(name)?,
                     Some(closed(v::member(fields, "value")?, budget, depth + 1)?),
                 ));
             }
-            values.sort_by(|a, b| a.0.cmp(&b.0));
+            values.sort_unstable_by(|a, b| a.0.cmp(&b.0));
             Ok(V::Record(values))
         }
         "variant" => {
             v::exact_members(fields, &["kind", "tag", "payload"])?;
+            let tag = budget.owned(v::string(fields, "tag")?)?;
+            let payload = closed(v::member(fields, "payload")?, budget, depth + 1)?;
             Ok(V::Variant {
-                tag: v::string(fields, "tag")?.to_owned(),
-                payload: Box::new(closed(v::member(fields, "payload")?, budget, depth + 1)?),
+                tag,
+                payload: budget.boxed(payload)?,
             })
         }
         _ => Err(E::InvalidDefault),

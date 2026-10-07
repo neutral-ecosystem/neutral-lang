@@ -32,7 +32,9 @@ mod cache;
 mod composition;
 pub use cache::{ProjectCacheLimits, ProjectCacheStats, ProjectCompilationCache};
 pub use composition::codes as composition_diagnostics;
-pub use composition::{CompositionCompileFailure, compile_composition_project};
+pub use composition::{
+    CompositionCompilationCache, CompositionCompileFailure, compile_composition_project,
+};
 
 #[cfg(test)]
 #[path = "../../tests/project_semantics/mod.rs"]
@@ -282,6 +284,25 @@ enum TypeExpr {
     Ref(Box<Self>),
     /// One outer nullability layer.
     Nullable(Box<Self>),
+}
+
+impl neutral_core::allocation::TryClone for TypeExpr {
+    /// Copies bounded syntax types and every recursive wrapper fallibly for successor cache retention.
+    fn try_clone(&self) -> Result<Self, neutral_core::allocation::AllocationError> {
+        Ok(match self {
+            Self::Num => Self::Num,
+            Self::String => Self::String,
+            Self::Bool => Self::Bool,
+            Self::Url => Self::Url,
+            Self::Path => Self::Path,
+            Self::Nominal(alias, name, span) => {
+                Self::Nominal(alias.try_clone()?, name.try_clone()?, *span)
+            }
+            Self::List(inner) => Self::List(inner.try_clone()?),
+            Self::Ref(inner) => Self::Ref(inner.try_clone()?),
+            Self::Nullable(inner) => Self::Nullable(inner.try_clone()?),
+        })
+    }
 }
 
 /// Private declaration body used to resolve all roots as a set.
@@ -1040,17 +1061,31 @@ fn append_field(
 
 /// Parses exactly one type expression from token syntax.
 fn parse_complete_type(tokens: &[Token]) -> Option<TypeExpr> {
-    let mut index = 0;
-    let ty = parse_type(tokens, &mut index, 0)?;
-    (index == tokens.len()).then_some(ty)
+    parse_complete_type_fallible(tokens).ok().flatten()
 }
 
-/// Parses one recursive core, nominal, list, ref, or nullable type.
-fn parse_type(tokens: &[Token], index: &mut usize, depth: usize) -> Option<TypeExpr> {
+/// Separates malformed grammar from allocation failure when copying a complete successor type.
+fn parse_complete_type_fallible(
+    tokens: &[Token],
+) -> Result<Option<TypeExpr>, neutral_core::allocation::AllocationError> {
+    let mut index = 0;
+    let ty = parse_type_fallible(tokens, &mut index, 0)?;
+    Ok(ty.filter(|_| index == tokens.len()))
+}
+
+/// Bounds recursive grammar before fallibly retaining spelling or wrapper storage.
+fn parse_type_fallible(
+    tokens: &[Token],
+    index: &mut usize,
+    depth: usize,
+) -> Result<Option<TypeExpr>, neutral_core::allocation::AllocationError> {
+    use neutral_core::allocation::{boxed, text};
     if depth > MAX_PROJECT_INTERFACE_TYPE_DEPTH {
-        return None;
+        return Ok(None);
     }
-    let first = tokens.get(*index)?;
+    let Some(first) = tokens.get(*index) else {
+        return Ok(None);
+    };
     *index += 1;
     let mut ty = match &first.kind {
         TokenKind::Num => TypeExpr::Num,
@@ -1064,14 +1099,16 @@ fn parse_type(tokens: &[Token], index: &mut usize, depth: usize) -> Option<TypeE
                 Some(TokenKind::DoubleColon)
             ) {
                 *index += 1;
-                let second = tokens.get(*index)?;
+                let Some(second) = tokens.get(*index) else {
+                    return Ok(None);
+                };
                 let TokenKind::Identifier(target) = &second.kind else {
-                    return None;
+                    return Ok(None);
                 };
                 *index += 1;
-                TypeExpr::Nominal(Some(name.clone()), target.clone(), second.span)
+                TypeExpr::Nominal(Some(text(name)?), text(target)?, second.span)
             } else {
-                TypeExpr::Nominal(None, name.clone(), first.span)
+                TypeExpr::Nominal(None, text(name)?, first.span)
             }
         }
         TokenKind::List | TokenKind::RefType => {
@@ -1079,33 +1116,36 @@ fn parse_type(tokens: &[Token], index: &mut usize, depth: usize) -> Option<TypeE
                 tokens.get(*index).map(|token| &token.kind),
                 Some(TokenKind::Less)
             ) {
-                return None;
+                return Ok(None);
             }
             *index += 1;
-            let inner = Box::new(parse_type(tokens, index, depth + 1)?);
+            let Some(inner) = parse_type_fallible(tokens, index, depth + 1)? else {
+                return Ok(None);
+            };
             if !matches!(
                 tokens.get(*index).map(|token| &token.kind),
                 Some(TokenKind::Greater)
             ) {
-                return None;
+                return Ok(None);
             }
             *index += 1;
+            let inner = boxed(inner)?;
             if matches!(first.kind, TokenKind::List) {
                 TypeExpr::List(inner)
             } else {
                 TypeExpr::Ref(inner)
             }
         }
-        _ => return None,
+        _ => return Ok(None),
     };
     if matches!(
         tokens.get(*index).map(|token| &token.kind),
         Some(TokenKind::Question)
     ) {
         *index += 1;
-        ty = TypeExpr::Nullable(Box::new(ty));
+        ty = TypeExpr::Nullable(boxed(ty)?);
     }
-    Some(ty)
+    Ok(Some(ty))
 }
 
 /// Checks complete inherited contextual-value syntax, including qualified names.

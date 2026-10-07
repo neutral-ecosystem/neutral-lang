@@ -4,6 +4,8 @@
 
 use super::{CompositionReadError as E, ValidatedCompositionProject};
 use neutral_core::CancellationToken;
+use neutral_core::allocation::{TryClone, copy_slice, text};
+use neutral_core::ordered::OrderedSet as BTreeSet;
 use neutral_ir::{
     ModuleSymbolIdentity,
     composition::{
@@ -15,7 +17,6 @@ use neutral_ir::{
     },
     project_interface::ProjectPublicType as T,
 };
-use std::collections::{BTreeMap, BTreeSet};
 
 /// Explicit post-compilation selection, never a capture or compiler input.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -119,8 +120,9 @@ impl Closure<'_> {
                 version,
                 name,
             } => {
-                let key = (identity.clone(), version.clone(), name.clone());
-                if self.types.insert(key.clone()) {
+                self.shift(self.types.len())?;
+                let key = (owned(identity)?, owned(version)?, owned(name)?);
+                if self.types.insert(copy(&key)?).map_err(|_| E::Limit)? {
                     self.pending_types.try_reserve(1).map_err(|_| E::Limit)?;
                     self.pending_types.push(key);
                 }
@@ -166,11 +168,12 @@ impl Closure<'_> {
     /// Includes public source definitions and actual binding-reference targets, never ordinary reuse provenance.
     fn source(&mut self, owner: &ModuleSymbolIdentity) -> Result<(), E> {
         self.step()?;
-        if !self.sources.insert(owner.clone()) {
+        self.shift(self.sources.len())?;
+        if !self.sources.insert(copy(owner)?).map_err(|_| E::Limit)? {
             return Ok(());
         }
         self.pending.try_reserve(1).map_err(|_| E::Limit)?;
-        self.pending.push(owner.clone());
+        self.pending.push(copy(owner)?);
         Ok(())
     }
     /// Expands one queued public declaration without recursively following binding references.
@@ -203,9 +206,11 @@ impl Closure<'_> {
     /// Includes exact transitive bundle locks even when a dependency has no selected type.
     fn bundle(&mut self, identity: &str, version: &str) -> Result<(), E> {
         self.step()?;
+        self.shift(self.bundles.len())?;
         if !self
             .bundles
-            .insert((identity.to_owned(), version.to_owned()))
+            .insert((owned(identity)?, owned(version)?))
+            .map_err(|_| E::Limit)?
         {
             return Ok(());
         }
@@ -219,6 +224,14 @@ impl Closure<'_> {
         for dependency in &bundle.dependencies {
             self.bundle(&dependency.identity, &dependency.version)?;
         }
+        Ok(())
+    }
+    /// Charges worst-case sorted-index shifts before fallible insertion.
+    fn shift(&mut self, count: usize) -> Result<(), E> {
+        if self.cancel.is_cancelled() {
+            return Err(E::Cancelled);
+        }
+        self.work = self.work.checked_sub(count as u64).ok_or(E::Limit)?;
         Ok(())
     }
 }
@@ -257,14 +270,15 @@ impl ValidatedCompositionProject {
         if key_bytes > self.effective_composition_limits().work {
             return Err(E::Limit);
         }
-        let public = ir
-            .declarations
-            .iter()
-            .filter(|d| d.public)
-            .map(|d| (&d.identity, d))
-            .collect::<BTreeMap<_, _>>();
-        let roots = request.roots.iter().cloned().collect::<BTreeSet<_>>();
-        if roots.len() != request.roots.len() || roots.iter().any(|r| !public.contains_key(r)) {
+        let mut roots = copy_slice(&request.roots).map_err(|_| E::Limit)?;
+        roots.sort_unstable();
+        if roots.windows(2).any(|pair| pair[0] == pair[1])
+            || roots.iter().any(|r| {
+                !ir.declarations
+                    .binary_search_by(|d| d.identity.cmp(r))
+                    .is_ok_and(|i| ir.declarations[i].public)
+            })
+        {
             return Err(E::Semantic);
         }
         let mut closure = Closure {
@@ -299,92 +313,117 @@ impl ValidatedCompositionProject {
 /// Copies only interpretation closure and redacts every source/private implementation companion.
 fn project_view(
     closure: &mut Closure<'_>,
-    roots: BTreeSet<ModuleSymbolIdentity>,
+    roots: Vec<ModuleSymbolIdentity>,
 ) -> Result<CompositionView, E> {
     let ir = closure.project.complete_ir();
-    let declarations = ir
-        .declarations
-        .iter()
-        .filter(|d| closure.sources.contains(&d.identity))
-        .cloned()
-        .collect();
-    let vocabularies = ir
-        .vocabularies
-        .iter()
-        .filter(|b| {
-            closure.bundles.contains(&(
-                b.identity.identity().to_owned(),
-                b.identity.version().to_owned(),
-            ))
-        })
-        .map(|b| CompositionBundle {
-            identity: b.identity.clone(),
-            dependencies: b.dependencies.clone(),
-            definitions: b
-                .definitions
-                .iter()
-                .filter(|d| {
-                    d.public
-                        && closure.types.contains(&(
-                            b.identity.identity().to_owned(),
-                            b.identity.version().to_owned(),
-                            d.name.clone(),
-                        ))
-                })
-                .cloned()
-                .collect(),
-        })
-        .collect();
-    let origins = ir
-        .origins
-        .iter()
-        .filter(|o| closure.sources.contains(&o.binding))
-        .map(|o| {
-            let mut origin = o.clone();
-            origin.attribution = match &o.attribution {
-                Some(A::Vocabulary {
-                    identity,
-                    version,
-                    type_name,
-                    field_name,
-                    ..
-                }) if closure.types.contains(&(
-                    identity.clone(),
-                    version.clone(),
-                    type_name.clone(),
-                )) =>
-                {
-                    Some(A::Vocabulary {
-                        identity: identity.clone(),
-                        version: version.clone(),
-                        type_name: type_name.clone(),
-                        field_name: field_name.clone(),
-                        span: None,
-                    })
-                }
-                _ => None,
-            };
-            origin
-        })
-        .collect();
-    let references = closure
-        .project
-        .bindings()
-        .bindings()
-        .iter()
-        .filter(|b| closure.sources.contains(&b.binding().owner))
-        .flat_map(|b| {
-            b.references()
-                .iter()
-                .map(|r| (b.binding().owner.clone(), r.clone()))
-        })
-        .collect();
+    let mut declarations = Vec::new();
+    for d in &ir.declarations {
+        if !closure.sources.contains(&d.identity) {
+            continue;
+        }
+        closure.step()?;
+        push(&mut declarations, copy(d)?)?;
+    }
+    let mut vocabularies = Vec::new();
+    for b in &ir.vocabularies {
+        closure.step()?;
+        if !closure.bundles.iter().any(|(identity, version)| {
+            identity == b.identity.identity() && version == b.identity.version()
+        }) {
+            continue;
+        }
+        let mut definitions = Vec::new();
+        for d in &b.definitions {
+            closure.step()?;
+            if d.public
+                && has_type(
+                    closure,
+                    b.identity.identity(),
+                    b.identity.version(),
+                    &d.name,
+                )
+            {
+                push(&mut definitions, copy(d)?)?;
+            }
+        }
+        push(
+            &mut vocabularies,
+            CompositionBundle {
+                identity: copy(&b.identity)?,
+                dependencies: copy(&b.dependencies)?,
+                definitions,
+            },
+        )?;
+    }
+    let mut origins = Vec::new();
+    for o in &ir.origins {
+        if !closure.sources.contains(&o.binding) {
+            continue;
+        }
+        closure.step()?;
+        let attribution = match &o.attribution {
+            Some(A::Vocabulary {
+                identity,
+                version,
+                type_name,
+                field_name,
+                ..
+            }) if has_type(closure, identity, version, type_name) => Some(A::Vocabulary {
+                identity: owned(identity)?,
+                version: owned(version)?,
+                type_name: owned(type_name)?,
+                field_name: owned(field_name)?,
+                span: None,
+            }),
+            _ => None,
+        };
+        push(
+            &mut origins,
+            CompositionOrigin {
+                binding: copy(&o.binding)?,
+                path: copy(&o.path)?,
+                kind: o.kind,
+                attribution,
+            },
+        )?;
+    }
+    let mut references = Vec::new();
+    for b in closure.project.bindings().bindings() {
+        if !closure.sources.contains(&b.binding().owner) {
+            continue;
+        }
+        for r in b.references() {
+            closure.step()?;
+            push(&mut references, (copy(&b.binding().owner)?, copy(r)?))?;
+        }
+    }
     closure.step()?;
     Ok(CompositionView {
-        roots: roots.into_iter().collect(),
+        roots,
         declarations,
         vocabularies,
         origins,
         references,
     })
+}
+/// Checks nominal membership using borrowed spellings without allocating temporary tuple keys.
+fn has_type(closure: &Closure<'_>, identity: &str, version: &str, name: &str) -> bool {
+    closure
+        .types
+        .iter()
+        .any(|(i, v, n)| i == identity && v == version && n == name)
+}
+/// Copies preflighted retained data without permitting allocator-abort ownership constructors.
+fn copy<T: TryClone>(value: &T) -> Result<T, E> {
+    value.try_clone().map_err(|_| E::Limit)
+}
+/// Retains one bounded logical spelling through a fallible string reservation.
+fn owned(value: &str) -> Result<String, E> {
+    text(value).map_err(|_| E::Limit)
+}
+/// Reserves unpublished view retention before appending, never exposing a partial view.
+fn push<T>(values: &mut Vec<T>, value: T) -> Result<(), E> {
+    values.try_reserve(1).map_err(|_| E::Limit)?;
+    values.push(value);
+    Ok(())
 }

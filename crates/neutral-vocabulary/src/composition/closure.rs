@@ -3,8 +3,8 @@
 //! Canonical dependency, visibility, and embedded-type graph validation.
 
 use super::{Budget, CompositionError as E, values::definition_types};
+use neutral_core::ordered::{OrderedMap as BTreeMap, OrderedSet as BTreeSet};
 use neutral_ir::{composition::CompositionBundle, project_interface::ProjectPublicType as T};
-use std::collections::{BTreeMap, BTreeSet};
 
 /// Canonical vocabulary/revision/type identity, never a source alias.
 type TypeKey<'a> = (&'a str, &'a str, &'a str);
@@ -15,10 +15,13 @@ pub(super) fn validate(
     roots: &[(&str, &str)],
     budget: &mut Budget<'_>,
 ) -> Result<(), E> {
-    let owners = bundles
-        .iter()
-        .map(|bundle| (bundle.identity.identity(), bundle))
-        .collect::<BTreeMap<_, _>>();
+    let mut owners = BTreeMap::new();
+    for bundle in bundles {
+        budget.step(owners.len() as u64 + 1)?;
+        owners
+            .insert(bundle.identity.identity(), bundle)
+            .map_err(|_| E::Allocation)?;
+    }
     // Check complete dependency availability/revisions/cycles before resolving
     // type targets, so a missing locked owner is not misclassified as a type typo.
     let mut heights = BTreeMap::new();
@@ -29,23 +32,28 @@ pub(super) fn validate(
     for bundle in bundles {
         for definition in &bundle.definitions {
             budget.step(1)?;
-            types.insert(
-                (
-                    bundle.identity.identity(),
-                    bundle.identity.version(),
-                    definition.name.as_str(),
-                ),
-                definition,
-            );
+            budget.step(types.len() as u64)?;
+            types
+                .insert(
+                    (
+                        bundle.identity.identity(),
+                        bundle.identity.version(),
+                        definition.name.as_str(),
+                    ),
+                    definition,
+                )
+                .map_err(|_| E::Allocation)?;
         }
     }
     let mut embedded = BTreeMap::<TypeKey<'_>, BTreeSet<TypeKey<'_>>>::new();
     for bundle in bundles {
-        let dependencies = bundle
-            .dependencies
-            .iter()
-            .map(|d| (d.identity.as_str(), d.version.as_str()))
-            .collect::<BTreeMap<_, _>>();
+        let mut dependencies = BTreeMap::new();
+        for d in &bundle.dependencies {
+            budget.step(dependencies.len() as u64 + 1)?;
+            dependencies
+                .insert(d.identity.as_str(), d.version.as_str())
+                .map_err(|_| E::Allocation)?;
+        }
         let mut used = BTreeSet::new();
         for definition in &bundle.definitions {
             let key = (
@@ -53,9 +61,10 @@ pub(super) fn validate(
                 bundle.identity.version(),
                 definition.name.as_str(),
             );
-            let targets = embedded.entry(key).or_default();
+            budget.step(embedded.len() as u64)?;
+            let targets = embedded.entry(key).map_err(|_| E::Allocation)?.or_default();
             for ty in definition_types(definition) {
-                let mut stack = vec![(ty, false)];
+                let mut stack = initial_stack((ty, false))?;
                 while let Some((ty, reference)) = stack.pop() {
                     budget.step(1)?;
                     match ty {
@@ -72,7 +81,8 @@ pub(super) fn validate(
                                 if dependencies.get(identity.as_str()) != Some(&version.as_str()) {
                                     return Err(E::InvalidDependency);
                                 }
-                                used.insert(identity.as_str());
+                                budget.step(used.len() as u64)?;
+                                used.insert(identity.as_str()).map_err(|_| E::Allocation)?;
                                 if !target_definition.public {
                                     return Err(E::PrivateType);
                                 }
@@ -81,7 +91,8 @@ pub(super) fn validate(
                                 return Err(E::PrivateType);
                             }
                             if !reference {
-                                targets.insert(target);
+                                budget.step(targets.len() as u64)?;
+                                targets.insert(target).map_err(|_| E::Allocation)?;
                             }
                         }
                         T::Nominal(_) => return Err(E::UnknownType),
@@ -108,11 +119,17 @@ fn validate_root_cover(
 ) -> Result<(), E> {
     let mut required = BTreeSet::new();
     let mut root_versions = BTreeMap::new();
-    let mut stack = roots.to_vec();
+    let mut stack = Vec::new();
+    stack
+        .try_reserve_exact(roots.len())
+        .map_err(|_| E::Allocation)?;
+    stack.extend_from_slice(roots);
     while let Some((identity, version)) = stack.pop() {
         budget.step(1)?;
+        budget.step(root_versions.len() as u64)?;
         if root_versions
             .insert(identity, version)
+            .map_err(|_| E::Allocation)?
             .is_some_and(|previous| previous != version)
         {
             return Err(E::DuplicateBundle);
@@ -121,7 +138,11 @@ fn validate_root_cover(
         if bundle.identity.version() != version {
             return Err(E::MissingDependency);
         }
-        if required.insert(identity) {
+        budget.step(required.len() as u64)?;
+        if required.insert(identity).map_err(|_| E::Allocation)? {
+            stack
+                .try_reserve(bundle.dependencies.len())
+                .map_err(|_| E::Allocation)?;
             stack.extend(
                 bundle
                     .dependencies
@@ -144,20 +165,25 @@ fn reject_embedded_cycles<'a>(
     let mut done = BTreeSet::new();
     for root in graph.keys() {
         let mut visiting = BTreeSet::new();
-        let mut stack = vec![(*root, false)];
+        let mut stack = initial_stack((*root, false))?;
         while let Some((key, leaving)) = stack.pop() {
             budget.step(1)?;
             if leaving {
+                budget.step(visiting.len() as u64 + done.len() as u64)?;
                 visiting.remove(&key);
-                done.insert(key);
+                done.insert(key).map_err(|_| E::Allocation)?;
                 continue;
             }
             if done.contains(&key) {
                 continue;
             }
-            if !visiting.insert(key) {
+            budget.step(visiting.len() as u64)?;
+            if !visiting.insert(key).map_err(|_| E::Allocation)? {
                 return Err(E::EmbeddedCycle);
             }
+            stack
+                .try_reserve(1 + graph.get(&key).map_or(0, BTreeSet::len))
+                .map_err(|_| E::Allocation)?;
             stack.push((key, true));
             if let Some(targets) = graph.get(&key) {
                 stack.extend(targets.iter().map(|target| (*target, false)));
@@ -175,7 +201,7 @@ fn dependency_height<'a>(
     budget: &mut Budget<'_>,
 ) -> Result<(), E> {
     let mut visiting = BTreeSet::new();
-    let mut stack = vec![(root, false)];
+    let mut stack = initial_stack((root, false))?;
     while let Some((name, leaving)) = stack.pop() {
         budget.step(1)?;
         let bundle = owners.get(name).ok_or(E::MissingDependency)?;
@@ -190,16 +216,21 @@ fn dependency_height<'a>(
             if height > budget.limits.dependency_depth.min(super::MAX_DEPTH) {
                 return Err(E::Limit);
             }
-            heights.insert(name, height);
+            budget.step(heights.len() as u64 + visiting.len() as u64)?;
+            heights.insert(name, height).map_err(|_| E::Allocation)?;
             visiting.remove(name);
             continue;
         }
         if heights.contains_key(name) {
             continue;
         }
-        if !visiting.insert(name) {
+        budget.step(visiting.len() as u64)?;
+        if !visiting.insert(name).map_err(|_| E::Allocation)? {
             return Err(E::DependencyCycle);
         }
+        stack
+            .try_reserve(1 + bundle.dependencies.len())
+            .map_err(|_| E::Allocation)?;
         stack.push((name, true));
         for dependency in &bundle.dependencies {
             let child = owners
@@ -212,4 +243,12 @@ fn dependency_height<'a>(
         }
     }
     Ok(())
+}
+
+/// Starts an iterative traversal with one fallible allocation rather than an infallible vector literal.
+fn initial_stack<T>(value: T) -> Result<Vec<T>, E> {
+    let mut stack = Vec::new();
+    stack.try_reserve_exact(1).map_err(|_| E::Allocation)?;
+    stack.push(value);
+    Ok(stack)
 }

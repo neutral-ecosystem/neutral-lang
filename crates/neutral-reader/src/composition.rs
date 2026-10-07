@@ -7,6 +7,7 @@
 //! It never reparses source, changes identity or grants effects.
 
 use neutral_core::CancellationToken;
+use neutral_core::allocation::Shared as Arc;
 use neutral_ir::composition::ClosedValue;
 use neutral_ir::{
     VocabularyIdentity,
@@ -16,7 +17,6 @@ use neutral_vocabulary::composition::{
     CompositionError, CompositionLimits, ValidatedComposition, ValidatedCompositionValue,
     materialize_composition_value,
 };
-use std::sync::Arc;
 
 mod bindings;
 mod project;
@@ -81,9 +81,13 @@ impl std::fmt::Debug for CompositionCatalogue {
 
 impl CompositionCatalogue {
     /// Opens validated contracts without compiler linkage or source reparsing.
-    #[must_use]
-    pub fn new(catalogue: ValidatedComposition) -> Self {
-        Self::from_shared(Arc::new(catalogue))
+    ///
+    /// # Errors
+    /// Returns [`CompositionError::Allocation`] if shared ownership cannot be allocated.
+    pub fn new(catalogue: ValidatedComposition) -> Result<Self, CompositionError> {
+        Ok(Self::from_shared(
+            Arc::try_new(catalogue).map_err(|_| CompositionError::Allocation)?,
+        ))
     }
 
     /// Opens an immutable validated catalogue without copying contracts or linking the compiler.

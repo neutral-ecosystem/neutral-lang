@@ -7,6 +7,7 @@ use super::{
     SCHEMA_VERSION, ValidatedComposition, check_count, closure, scope, values,
 };
 use neutral_core::CancellationToken;
+use neutral_core::allocation::TryClone;
 use neutral_ir::{
     composition::{CompositionBody, CompositionBundle, FieldPresence, FieldRestrictions},
     language::{is_exact_release_version, is_upper_name},
@@ -104,7 +105,10 @@ pub fn validate_composition_model(
     normalized
         .try_reserve(bundles.len())
         .map_err(|_| E::Allocation)?;
-    normalized.extend_from_slice(bundles);
+    for bundle in bundles {
+        budget.step(1)?;
+        normalized.push(bundle.try_clone().map_err(|_| E::Allocation)?);
+    }
     values::validate_defaults_policy(&mut normalized, &mut budget, true)?;
     if normalized != bundles {
         return Err(E::InvalidContract);

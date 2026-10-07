@@ -4,6 +4,7 @@
 
 mod bindings;
 mod closure;
+mod copy;
 mod decode;
 mod model;
 mod scope;
@@ -21,7 +22,6 @@ pub use values::check_composition_field_restrictions;
 use crate::{VocabularyError, VocabularyLimits, VocabularyLock};
 use neutral_core::{CancellationToken, VocabularyContentDigest};
 use neutral_ir::composition::CompositionBundle;
-use std::collections::BTreeMap;
 
 /// New logical composition schema, independent of package versions.
 pub const SCHEMA_VERSION: &str = neutral_ir::composition::profile::VOCABULARY_SCHEMA_VERSION;
@@ -308,7 +308,7 @@ pub fn validate_composition_closure(
     check_count(inputs.len(), limits.bundles)?;
     check_count(roots.len(), limits.bundles)?;
     let mut bytes = 0_u64;
-    let mut owners = BTreeMap::new();
+    let mut owners = neutral_core::ordered::OrderedMap::new();
     for input in inputs {
         budget.step(input.bytes.len() as u64 + 1)?;
         bytes = bytes
@@ -317,8 +317,11 @@ pub fn validate_composition_closure(
         if bytes > limits.captured_bytes.min(MAX_CAPTURED_BYTES) {
             return Err(CompositionError::Limit);
         }
+        budget.step(owners.len() as u64)?;
+        budget.allocation()?;
         if owners
             .insert(input.lock.identity(), input.lock.version())
+            .map_err(|_| CompositionError::Allocation)?
             .is_some()
         {
             return Err(CompositionError::DuplicateBundle);
@@ -329,11 +332,11 @@ pub fn validate_composition_closure(
             return Err(VocabularyError::DigestMismatch.into());
         }
     }
-    let mut bundles = inputs
-        .iter()
-        .map(|input| decode::bundle(*input, &mut budget))
-        .collect::<Result<Vec<_>, _>>()?;
-    bundles.sort_by(|left, right| left.identity.identity().cmp(right.identity.identity()));
+    let mut bundles = budget.storage(inputs.len())?;
+    for input in inputs {
+        bundles.push(decode::bundle(*input, &mut budget)?);
+    }
+    bundles.sort_unstable_by(|left, right| left.identity.identity().cmp(right.identity.identity()));
     closure::validate(&bundles, roots, &mut budget)?;
     values::validate_defaults(&mut bundles, &mut budget)?;
     budget.step(1)?;
@@ -342,6 +345,10 @@ pub fn validate_composition_closure(
 
 /// Per-request semantic budget; no process-global state can leak across requests.
 struct Budget<'a> {
+    /// Request-local reservation checkpoint count, never process-global.
+    allocations: usize,
+    /// Deterministic allocation failure or cancellation at one private checkpoint.
+    allocation_fault: Option<(usize, bool)>,
     /// Complete caller policy.
     limits: CompositionLimits,
     /// Cancellation signal shared by all phases.
@@ -368,6 +375,8 @@ impl<'a> Budget<'a> {
     /// Starts isolated counters for one captured closure.
     fn new(limits: CompositionLimits, cancellation: &'a CancellationToken) -> Self {
         Self {
+            allocations: 0,
+            allocation_fault: None,
             limits,
             cancellation,
             work: 0,
@@ -386,6 +395,65 @@ impl<'a> Budget<'a> {
             return Err(CompositionError::Cancelled);
         }
         charge(&mut self.work, amount, self.limits.work)
+    }
+
+    /// Checks cancellation/work before an allocation and supports isolated private fault tests.
+    fn allocation(&mut self) -> Result<(), CompositionError> {
+        self.step(1)?;
+        {
+            let current = self.allocations;
+            self.allocations += 1;
+            if let Some((index, cancel)) = self.allocation_fault
+                && index == current
+            {
+                if cancel {
+                    self.cancellation.cancel();
+                    return Err(CompositionError::Cancelled);
+                }
+                return Err(CompositionError::Allocation);
+            }
+        }
+        Ok(())
+    }
+
+    /// Reserves complete outer storage after the caller has checked its independent count.
+    fn storage<T>(&mut self, count: usize) -> Result<Vec<T>, CompositionError> {
+        self.allocation()?;
+        let mut result = Vec::new();
+        result
+            .try_reserve_exact(count)
+            .map_err(|_| CompositionError::Allocation)?;
+        self.step(0)?;
+        Ok(result)
+    }
+
+    /// Copies bounded exact UTF-8 bytes without infallible string growth.
+    fn owned(&mut self, value: &str) -> Result<String, CompositionError> {
+        self.allocation()?;
+        let result =
+            neutral_core::allocation::text(value).map_err(|_| CompositionError::Allocation)?;
+        self.step(0)?;
+        Ok(result)
+    }
+
+    /// Reserves a recursive wrapper after the caller has checked depth and shape.
+    fn boxed<T>(&mut self, value: T) -> Result<Box<T>, CompositionError> {
+        self.allocation()?;
+        let result =
+            neutral_core::allocation::boxed(value).map_err(|_| CompositionError::Allocation)?;
+        self.step(0)?;
+        Ok(result)
+    }
+
+    /// Charges ordered insertion shifts before reserving and retaining unique membership.
+    fn unique<K: Ord>(
+        &mut self,
+        set: &mut neutral_core::ordered::OrderedSet<K>,
+        key: K,
+    ) -> Result<bool, CompositionError> {
+        self.step(set.len() as u64)?;
+        self.allocation()?;
+        set.insert(key).map_err(|_| CompositionError::Allocation)
     }
     /// Intersects recursion policy with the stack-safe hard ceiling.
     fn depth(&mut self, depth: u64, limit: u64) -> Result<(), CompositionError> {

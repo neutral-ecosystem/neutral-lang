@@ -320,9 +320,17 @@ pub(crate) fn tuple<const N: usize>(v: &LocatedValue) -> Result<&[LocatedValue; 
 /// Reads a collection without trusting unvalidated container lengths.
 pub(crate) fn read_list<T>(
     v: &LocatedValue,
-    item: impl FnMut(&LocatedValue) -> Result<T, DecodeError>,
+    mut item: impl FnMut(&LocatedValue) -> Result<T, DecodeError>,
 ) -> Result<Vec<T>, DecodeError> {
-    array(v)?.iter().map(item).collect()
+    let items = array(v)?;
+    let mut result = Vec::new();
+    result
+        .try_reserve_exact(items.len())
+        .map_err(|_| failure(DecodeErrorClass::EncodedSizeLimit))?;
+    for value in items {
+        result.push(item(value)?);
+    }
+    Ok(result)
 }
 /// Borrows UTF-8 text from one lexically validated value.
 pub(crate) fn text(v: &LocatedValue) -> Result<&str, DecodeError> {
@@ -334,7 +342,8 @@ pub(crate) fn text(v: &LocatedValue) -> Result<&str, DecodeError> {
 }
 /// Copies one bounded schema string.
 pub(crate) fn owned_text(v: &LocatedValue) -> Result<String, DecodeError> {
-    Ok(text(v)?.to_owned())
+    neutral_core::allocation::text(text(v)?)
+        .map_err(|_| failure(DecodeErrorClass::EncodedSizeLimit))
 }
 /// Reads an unsigned integer without coercion.
 pub(crate) fn unsigned(v: &LocatedValue) -> Result<u64, DecodeError> {
@@ -371,12 +380,18 @@ pub(crate) fn digest(v: &LocatedValue) -> Result<[u8; 32], DecodeError> {
 /// Reads one exact module identity; the independent reader checks grammar/profile.
 pub(crate) fn read_module(v: &LocatedValue) -> Result<LogicalModuleIdentity, DecodeError> {
     let a = tuple::<2>(v)?;
-    Ok(LogicalModuleIdentity::new(text(&a[0])?, text(&a[1])?))
+    Ok(LogicalModuleIdentity::new(
+        owned_text(&a[0])?,
+        owned_text(&a[1])?,
+    ))
 }
 /// Reads one exact declaration identity.
 pub(crate) fn read_symbol(v: &LocatedValue) -> Result<ModuleSymbolIdentity, DecodeError> {
     let a = tuple::<2>(v)?;
-    Ok(ModuleSymbolIdentity::new(read_module(&a[0])?, text(&a[1])?))
+    Ok(ModuleSymbolIdentity::new(
+        read_module(&a[0])?,
+        owned_text(&a[1])?,
+    ))
 }
 /// Reads an ordered original-byte span; ownership is independently validated.
 pub(crate) fn read_location(v: &LocatedValue) -> Result<SourceLocation, DecodeError> {
@@ -418,7 +433,8 @@ pub(crate) fn read_type(v: &LocatedValue, depth: usize) -> Result<ProjectPublicT
             name: owned_text(&a[3])?,
         },
         (tag::LIST | tag::REF_TYPE | kind::NULLABLE, 2) => {
-            let inner = Box::new(read_type(&a[1], depth + 1)?);
+            let inner = neutral_core::allocation::boxed(read_type(&a[1], depth + 1)?)
+                .map_err(|_| failure(DecodeErrorClass::EncodedSizeLimit))?;
             match tag {
                 tag::LIST => T::List(inner),
                 tag::REF_TYPE => T::Ref(inner),

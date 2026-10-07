@@ -4,7 +4,7 @@
 
 use super::{Token, TokenKind, lexer};
 use crate::language::{graph_names, names};
-use neutral_core::{ByteSpan, profile::V1_SOURCE_PROFILE};
+use neutral_core::{ByteSpan, CancellationToken, allocation::text, profile::V1_SOURCE_PROFILE};
 
 /// One parsed, source-accounted logical import.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -54,14 +54,28 @@ pub(crate) fn scan_graph_source(
     expected_module: &str,
     import_limit: u64,
 ) -> Result<GraphSourceSyntax, GraphSyntaxError> {
-    let lexed = lexer::lex(bytes).map_err(|error| GraphSyntaxError {
-        kind: if forbidden_line_at(bytes, error.span.start()) {
-            GraphSyntaxErrorKind::ForbiddenImport
-        } else {
-            GraphSyntaxErrorKind::InvalidSyntax
-        },
-        span: error.span,
-    })?;
+    scan_graph_source_bounded(bytes, expected_module, import_limit, usize::MAX, None)
+}
+
+/// Scans graph grammar with cancellation-aware fallible lexical and syntax retention.
+pub(crate) fn scan_graph_source_bounded(
+    bytes: &[u8],
+    expected_module: &str,
+    import_limit: u64,
+    string_bytes: usize,
+    cancel: Option<&CancellationToken>,
+) -> Result<GraphSourceSyntax, GraphSyntaxError> {
+    let lexed =
+        lexer::lex_bounded(bytes, string_bytes, cancel).map_err(|error| GraphSyntaxError {
+            kind: if matches!(error.kind, super::FrontendErrorKind::RecordLimitExceeded) {
+                GraphSyntaxErrorKind::LimitExceeded
+            } else if forbidden_line_at(bytes, error.span.start()) {
+                GraphSyntaxErrorKind::ForbiddenImport
+            } else {
+                GraphSyntaxErrorKind::InvalidSyntax
+            },
+            span: error.span,
+        })?;
     let mut result = GraphSourceSyntax {
         header_span: span(0, 0),
         imports: Vec::new(),
@@ -70,6 +84,9 @@ pub(crate) fn scan_graph_source(
     let mut phase = 0_u8;
     let mut start = 0_usize;
     for (index, token) in lexed.tokens.iter().enumerate() {
+        if cancel.is_some_and(CancellationToken::is_cancelled) {
+            return Err(retention(token.span));
+        }
         if !matches!(
             token.kind,
             TokenKind::PhysicalLineEnd(_) | TokenKind::EndOfFile
@@ -110,7 +127,7 @@ fn scan_line(
     }
     if *phase == 1 {
         if !matches!(line[0].kind, TokenKind::Module)
-            || parse_module_name(&line[1..]).as_deref() != Some(expected_module)
+            || parse_module_name(&line[1..])?.as_deref() != Some(expected_module)
         {
             return Err(invalid(line_span));
         }
@@ -154,7 +171,13 @@ fn scan_line(
                 span: line_span,
             });
         }
-        result.vocabulary_aliases.push(alias.clone());
+        result
+            .vocabulary_aliases
+            .try_reserve(1)
+            .map_err(|_| retention(line_span))?;
+        result
+            .vocabulary_aliases
+            .push(text(alias).map_err(|_| retention(line_span))?);
         return Ok(());
     }
     if matches!(&line[0].kind, TokenKind::Identifier(word) if word == graph_names::PUBLIC)
@@ -179,6 +202,10 @@ fn scan_line(
                 span: line_span,
             });
         }
+        result
+            .imports
+            .try_reserve(1)
+            .map_err(|_| retention(line_span))?;
         result.imports.push(parsed);
         return Ok(());
     }
@@ -210,7 +237,7 @@ fn parse_import(line: &[Token]) -> Result<GraphImport, GraphSyntaxError> {
     while end + 1 < line.len() && matches!(line[end].kind, TokenKind::DoubleColon) {
         end += 2;
     }
-    let target = parse_module_name(&line[1..end]).ok_or_else(|| invalid(line_span))?;
+    let target = parse_module_name(&line[1..end])?.ok_or_else(|| invalid(line_span))?;
     let [
         Token {
             kind: TokenKind::Identifier(as_word),
@@ -229,31 +256,37 @@ fn parse_import(line: &[Token]) -> Result<GraphImport, GraphSyntaxError> {
     }
     Ok(GraphImport {
         target,
-        alias: alias.clone(),
+        alias: text(alias).map_err(|_| retention(line_span))?,
         span: line_span,
     })
 }
 
 /// Reads a qualified module ID from alternating name and `::` tokens.
-fn parse_module_name(tokens: &[Token]) -> Option<String> {
+fn parse_module_name(tokens: &[Token]) -> Result<Option<String>, GraphSyntaxError> {
     if tokens.is_empty() || tokens.len().is_multiple_of(2) {
-        return None;
+        return Ok(None);
     }
-    let mut parts = Vec::new();
+    let mut result = String::new();
     for (index, token) in tokens.iter().enumerate() {
         if index % 2 == 0 {
             let TokenKind::Identifier(name) = &token.kind else {
-                return None;
+                return Ok(None);
             };
             if !valid_graph_name(name) {
-                return None;
+                return Ok(None);
             }
-            parts.push(name.as_str());
+            result
+                .try_reserve(name.len())
+                .map_err(|_| retention(token.span))?;
+            result.push_str(name);
         } else if !matches!(token.kind, TokenKind::DoubleColon) {
-            return None;
+            return Ok(None);
+        } else {
+            result.try_reserve(2).map_err(|_| retention(token.span))?;
+            result.push_str("::");
         }
     }
-    Some(parts.join("::"))
+    Ok(Some(result))
 }
 
 /// Applies the exact ASCII snake-name grammar and excludes language keywords.
@@ -278,13 +311,24 @@ fn forbidden_line_at(bytes: &[u8], offset: u64) -> bool {
         .iter()
         .rposition(|byte| matches!(byte, b'\n' | b'\r'))
         .map_or(0, |index| index + 1);
-    let prefix = bytes[start..end]
+    let prefix = &bytes[start..end];
+    let first = prefix
         .iter()
-        .copied()
-        .skip_while(|byte| matches!(byte, b' ' | b'\t'))
-        .collect::<Vec<_>>();
+        .position(|byte| !matches!(byte, b' ' | b'\t'))
+        .unwrap_or(prefix.len());
+    let prefix = &prefix[first..];
     prefix.starts_with(graph_names::IMPORT.as_bytes())
-        || prefix.starts_with(format!("{} {}", graph_names::PUBLIC, graph_names::IMPORT).as_bytes())
+        || prefix
+            .strip_prefix(graph_names::PUBLIC.as_bytes())
+            .and_then(|tail| tail.strip_prefix(b" "))
+            .is_some_and(|tail| tail.starts_with(graph_names::IMPORT.as_bytes()))
+}
+/// Classifies failed private graph retention without allocating diagnostic text.
+fn retention(span: ByteSpan) -> GraphSyntaxError {
+    GraphSyntaxError {
+        kind: GraphSyntaxErrorKind::LimitExceeded,
+        span,
+    }
 }
 
 /// Creates one stable invalid-syntax error at the original-byte location.

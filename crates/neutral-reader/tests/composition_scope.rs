@@ -2,6 +2,7 @@
 
 //! Independent public source/vocabulary type inspection, with no compiler dependency.
 
+use neutral_core::allocation::Shared as Arc;
 use neutral_core::{CancellationToken, StructuralLimits, profile::V1_SOURCE_PROFILE};
 use neutral_ir::{
     LogicalModuleIdentity, ModuleSymbolIdentity,
@@ -22,7 +23,11 @@ use neutral_vocabulary::{
         validate_composition_scope,
     },
 };
-use std::sync::Arc;
+
+/// Creates fallible successor shared ownership for fixtures; allocation failure fails the test.
+fn shared<T>(value: T) -> Arc<T> {
+    Arc::try_new(value).unwrap()
+}
 
 /// Common finite independent validation policy.
 fn limits() -> CompositionLimits {
@@ -41,7 +46,7 @@ fn owner(name: &str) -> ModuleSymbolIdentity {
 
 /// Opens a valid scope containing public scalar/ref variants and one private unused contract.
 fn reader() -> CompositionTypeCatalogue {
-    let catalogue = Arc::new(
+    let catalogue = shared(
         validate_composition_closure(&[], &[], limits(), &CancellationToken::new()).unwrap(),
     );
     let definitions = [
@@ -85,7 +90,7 @@ fn reader() -> CompositionTypeCatalogue {
     let scope =
         validate_composition_scope(catalogue, definitions, limits(), &CancellationToken::new())
             .unwrap();
-    CompositionTypeCatalogue::from_shared(Arc::new(scope))
+    CompositionTypeCatalogue::from_shared(shared(scope))
 }
 
 /// Independent traversal policy for all unselected variant/reference wrappers.

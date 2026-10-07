@@ -36,6 +36,8 @@ pub(crate) fn check_boundaries() -> Result<(), String> {
             "digest",
             "generic-array",
             "sha2",
+            "trybox",
+            "triomphe",
             "typenum",
             "version_check",
         ]),
@@ -59,6 +61,8 @@ pub(crate) fn check_boundaries() -> Result<(), String> {
             "digest",
             "generic-array",
             "sha2",
+            "trybox",
+            "triomphe",
             "typenum",
             "version_check",
         ]),
@@ -161,7 +165,7 @@ pub(crate) fn direct_dependency_policy() -> BTreeMap<&'static str, BTreeSet<&'st
                 constants::NEUTRAL_VOCABULARY,
             ]),
         ),
-        (constants::NEUTRAL_CORE, set(["sha2"])),
+        (constants::NEUTRAL_CORE, set(["sha2", "trybox", "triomphe"])),
         (
             constants::NEUTRAL_ENCODING,
             set([

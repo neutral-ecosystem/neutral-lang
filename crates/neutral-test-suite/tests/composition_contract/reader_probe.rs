@@ -172,7 +172,7 @@ fn integration_composition_attribution_matches_source_subexpressions() {
     )));
     assert!(
         ValidatedCompositionProject::from_ir(
-            Arc::new(hostile),
+            shared(hostile),
             ir.limits,
             limits_for(&source_case(text)),
             &CancellationToken::new()
@@ -255,7 +255,7 @@ fn integration_composition_probe_preserves_contracts_and_root_invariance() {
             }
             assert!(
                 ValidatedCompositionProject::from_ir(
-                    Arc::new(hostile),
+                    shared(hostile),
                     ir.limits,
                     limits_for(case),
                     &CancellationToken::new()

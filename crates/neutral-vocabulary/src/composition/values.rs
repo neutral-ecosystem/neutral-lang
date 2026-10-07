@@ -3,6 +3,8 @@
 //! Shared contextual closed-default and restriction validation with bounded expansion.
 
 use super::{Budget, CompositionError as E};
+use neutral_core::allocation::{TryClone, boxed};
+use neutral_core::ordered::OrderedMap as BTreeMap;
 use neutral_ir::{
     ExactNumber, ModuleSymbolIdentity,
     composition::{
@@ -12,7 +14,7 @@ use neutral_ir::{
     },
     project_interface::ProjectPublicType as T,
 };
-use std::{cmp::Ordering, collections::BTreeMap};
+use std::cmp::Ordering;
 
 /// Immutable lookup shared by both declaration origins, with explicit depth semantics.
 #[derive(Default)]
@@ -41,8 +43,11 @@ impl<'a> Catalogue<'a> {
         &mut self,
         owner: (&'a str, &'a str, &'a str),
         definition: &'a CompositionDefinition,
-    ) {
-        self.vocabularies.insert(owner, definition);
+    ) -> Result<(), E> {
+        self.vocabularies
+            .insert(owner, definition)
+            .map_err(|_| E::Allocation)?;
+        Ok(())
     }
 
     /// Looks up one exact vocabulary nominal without trying another origin.
@@ -77,20 +82,6 @@ impl<'a> Catalogue<'a> {
     }
 }
 
-impl<'a> FromIterator<((&'a str, &'a str, &'a str), &'a CompositionDefinition)> for Catalogue<'a> {
-    /// Builds the unchanged standalone vocabulary lookup used by default validation.
-    fn from_iter<
-        I: IntoIterator<Item = ((&'a str, &'a str, &'a str), &'a CompositionDefinition)>,
-    >(
-        iter: I,
-    ) -> Self {
-        Self {
-            vocabularies: iter.into_iter().collect(),
-            ..Self::default()
-        }
-    }
-}
-
 /// Enumerates both definition kinds without allocating a temporary type vector.
 pub(super) fn definition_types(definition: &CompositionDefinition) -> impl Iterator<Item = &T> {
     let (fields, alternatives) = match &definition.body {
@@ -117,21 +108,20 @@ pub(super) fn validate_defaults_policy(
     budget: &mut Budget<'_>,
     project_depth: bool,
 ) -> Result<(), E> {
-    let mut catalogue = bundles
-        .iter()
-        .flat_map(|bundle| {
-            bundle.definitions.iter().map(move |definition| {
+    let mut catalogue = Catalogue::new();
+    for bundle in bundles.iter() {
+        for definition in &bundle.definitions {
+            budget.step(catalogue.len() as u64 + 1)?;
+            catalogue.insert(
                 (
-                    (
-                        bundle.identity.identity(),
-                        bundle.identity.version(),
-                        definition.name.as_str(),
-                    ),
-                    definition,
-                )
-            })
-        })
-        .collect::<Catalogue<'_>>();
+                    bundle.identity.identity(),
+                    bundle.identity.version(),
+                    definition.name.as_str(),
+                ),
+                definition,
+            )?;
+        }
+    }
     catalogue.project_depth = project_depth;
     let mut finalized = Vec::new();
     for (bundle_index, bundle) in bundles.iter().enumerate() {
@@ -157,6 +147,7 @@ pub(super) fn validate_defaults_policy(
                         Ok::<_, E>(value)
                     })
                     .transpose()?;
+                finalized.try_reserve(1).map_err(|_| E::Allocation)?;
                 finalized.push((
                     bundle_index,
                     definition_index,
@@ -305,16 +296,16 @@ pub(super) fn validate_restrictions(
             .ok_or(E::Limit)?;
         budget.step(sorting)?;
     }
-    let mut result = raw.clone();
+    let mut result = raw.try_clone().map_err(|_| E::Allocation)?;
     if let Some(choices) = &mut result.choices {
-        choices.sort_by(compare_scalars);
+        choices.sort_unstable_by(compare_scalars);
         if choices.windows(2).any(|pair| pair[0] == pair[1]) {
             return Err(E::DuplicateChoice);
         }
         let without_choices = FieldRestrictions {
             choices: None,
-            minimum: raw.minimum.clone(),
-            maximum: raw.maximum.clone(),
+            minimum: raw.minimum.try_clone().map_err(|_| E::Allocation)?,
+            maximum: raw.maximum.try_clone().map_err(|_| E::Allocation)?,
             min_length: raw.min_length,
             max_length: raw.max_length,
         };
@@ -418,7 +409,7 @@ impl ReferencePolicy<std::convert::Infallible> for ClosedReferences {
 }
 
 /// Materializes both closed and binding values with one contextual/default/restriction engine.
-pub(super) fn materialize_with<R: Clone>(
+pub(super) fn materialize_with<R: TryClone>(
     value: &W<R>,
     ty: &T,
     catalogue: &Catalogue<'_>,
@@ -458,12 +449,12 @@ pub(super) fn materialize_with<R: Clone>(
             }
             _ => {}
         }
-        return Ok(value.clone());
+        return value.try_clone().map_err(|_| E::Allocation);
     }
     match (value, ty) {
         (W::Reference(target), T::Ref(inner)) => {
             references.check(target, inner, budget)?;
-            Ok(W::Reference(target.clone()))
+            Ok(W::Reference(target.try_clone().map_err(|_| E::Allocation)?))
         }
         (W::List(values), T::List(inner)) => {
             super::check_count(values.len(), budget.limits.json.array_items)?;
@@ -509,15 +500,16 @@ pub(super) fn materialize_with<R: Clone>(
                         .map_err(|_| E::InvalidDefault)?;
                     let alternative = &alternatives[index];
                     Ok(W::Variant {
-                        tag: tag.clone(),
-                        payload: Box::new(materialize_with(
+                        tag: tag.try_clone().map_err(|_| E::Allocation)?,
+                        payload: boxed(materialize_with(
                             payload,
                             &alternative.ty,
                             catalogue,
                             budget,
                             depth + 1,
                             references,
-                        )?),
+                        )?)
+                        .map_err(|_| E::Allocation)?,
                     })
                 }
                 _ => Err(E::InvalidDefault),
@@ -530,7 +522,7 @@ pub(super) fn materialize_with<R: Clone>(
 }
 
 /// Applies required/optional/defaulted field policies without conflating absence and null.
-fn materialize_record<R: Clone>(
+fn materialize_record<R: TryClone>(
     values: &[(String, Option<W<R>>)],
     fields: &[CompositionField],
     catalogue: &Catalogue<'_>,
@@ -550,7 +542,11 @@ fn materialize_record<R: Clone>(
     for (name, value) in values {
         budget.step(1)?;
         budget.key(name.len(), values.len())?;
-        if supplied.insert(name.as_str(), value).is_some()
+        budget.step(supplied.len() as u64)?;
+        if supplied
+            .insert(name.as_str(), value)
+            .map_err(|_| E::Allocation)?
+            .is_some()
             || fields
                 .binary_search_by(|field| field.name.as_str().cmp(name))
                 .is_err()
@@ -603,7 +599,7 @@ fn materialize_record<R: Clone>(
         if let Some(value) = &value {
             check_restrictions(&restrictions, value, budget)?;
         }
-        result.push((field.name.clone(), value));
+        result.push((field.name.try_clone().map_err(|_| E::Allocation)?, value));
     }
     Ok(W::Record(result))
 }
@@ -613,11 +609,11 @@ fn lift_closed<R>(value: &V, budget: &mut Budget<'_>, depth: u64) -> Result<W<R>
     budget.depth(depth, budget.limits.value_depth)?;
     budget.step(scalar_size(value))?;
     Ok(match value {
-        V::Number(value) => W::Number(value.clone()),
-        V::String(value) => W::String(value.clone()),
+        V::Number(value) => W::Number(value.try_clone().map_err(|_| E::Allocation)?),
+        V::String(value) => W::String(value.try_clone().map_err(|_| E::Allocation)?),
         V::Bool(value) => W::Bool(*value),
-        V::Url(value) => W::Url(value.clone()),
-        V::Path(value) => W::Path(value.clone()),
+        V::Url(value) => W::Url(value.try_clone().map_err(|_| E::Allocation)?),
+        V::Path(value) => W::Path(value.try_clone().map_err(|_| E::Allocation)?),
         V::Null => W::Null,
         V::Reference(never) => match *never {},
         V::List(items) => {
@@ -638,7 +634,7 @@ fn lift_closed<R>(value: &V, budget: &mut Budget<'_>, depth: u64) -> Result<W<R>
             for (name, value) in fields {
                 budget.step(name.len() as u64)?;
                 result.push((
-                    name.clone(),
+                    name.try_clone().map_err(|_| E::Allocation)?,
                     value
                         .as_ref()
                         .map(|value| lift_closed(value, budget, depth + 1))
@@ -650,8 +646,9 @@ fn lift_closed<R>(value: &V, budget: &mut Budget<'_>, depth: u64) -> Result<W<R>
         V::Variant { tag, payload } => {
             budget.step(tag.len() as u64)?;
             W::Variant {
-                tag: tag.clone(),
-                payload: Box::new(lift_closed(payload, budget, depth + 1)?),
+                tag: tag.try_clone().map_err(|_| E::Allocation)?,
+                payload: boxed(lift_closed(payload, budget, depth + 1)?)
+                    .map_err(|_| E::Allocation)?,
             }
         }
     })

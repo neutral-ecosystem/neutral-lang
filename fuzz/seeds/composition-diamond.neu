@@ -1,0 +1,10 @@
+neu "1.0"
+module example
+use Root as root_domain
+use Left as left_domain
+use Right as right_domain
+use Leaf as leaf_domain
+public leaf_domain::Item leaf = { id: 42 }
+public left_domain::Item left = { leaf: ref(leaf) }
+public right_domain::Item right = { leaf: ref(leaf) }
+public root_domain::Item item = { left: ref(left), right: ref(right) }

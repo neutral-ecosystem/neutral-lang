@@ -20,7 +20,7 @@ locked `sha2` version for digest-addressed portable snapshots; this introduces
 no new third-party package or version. The root lock remains the release lock,
 while `fuzz/Cargo.lock` remains an isolated, non-release cargo-fuzz tool lock.
 
-The production graph contains one third-party direct dependency, `sha2`, owned
+The historical production graph contained one third-party direct dependency, `sha2`, owned
 by `neutral-core`; its small transitive cryptographic utility closure is pinned
 by `Cargo.lock`. All other normal edges are workspace contracts and are checked
 by `cargo xtask check`. `neutral-bench` and `neutral-test-suite` use
@@ -39,3 +39,24 @@ for either the 22-dependency production lockfile or the 26-dependency fuzz-tool
 lockfile. The audit database was fetched into an isolated temporary Cargo home;
 release qualification must repeat both scans with the candidate locks and
 retain their machine-readable output.
+
+## Fallible ownership review (08-10-2026)
+
+`neutral-core` adds locked `trybox` 0.1.2 with default features disabled and
+`triomphe` 0.1.16 with only `std` enabled. Source review checks allocation layout,
+null handling, initialization and final destruction. Neither selected backend
+adds a build script, proc macro, native code or runtime dependency. Both contain
+upstream unsafe allocation/reference-counting internals; repository code retains
+its unsafe prohibition and exposes only safe wrappers. This is an explicit change
+to the historical third-party unsafe surface, not a claim that dependencies are
+unsafe-free.
+
+The box wrapper uses only `trybox::or_drop` (including its zero-sized path), never
+its allocating error conversions. Shared ownership uses `triomphe::Arc::try_new`,
+which checks layout/allocation before initialization; infallible constructors,
+raw-pointer APIs and weak ownership are not exposed. Successor APIs migrate to
+the core `Shared<T>` wrapper; old-profile public types remain unchanged.
+Dependency-boundary allowlists include these two reviewed backends. Locked
+advisory scans remain a separate qualification requirement; this source review
+does not refresh the historical audit result above or prove every pipeline
+allocation is fallible.

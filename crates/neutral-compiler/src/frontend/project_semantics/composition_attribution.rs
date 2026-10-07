@@ -2,10 +2,12 @@
 
 //! Fine-grained checked source occurrences and canonical vocabulary default owners.
 
+use super::retain;
 use super::{
     B, E, PROJECT_MAX_DEPTH, Resolver, Root, T, Token, TokenKind, codes, fail, parse_name, profile,
     split,
 };
+use neutral_core::allocation::{TryClone, text};
 use neutral_core::{ByteSpan, SourceLocation};
 use neutral_ir::composition::{
     ValueOriginKind as K, ValuePathSegment as P, project::CompositionAttribution as A,
@@ -76,8 +78,8 @@ fn trace(
     if let Some((name, end)) = parse_name(tokens, 0)
         && end == tokens.len()
     {
-        let owner = resolver.name(root, name.alias.as_deref(), &name.name, name.span, false)?;
-        let target = resolver.roots[&owner].clone();
+        let owner = resolver.name(root, name.alias, name.name, name.span, false)?;
+        let target = retain(resolver.roots[&owner].try_clone())?;
         return trace(resolver, &target, ty, &target.tokens, path, depth + 1);
     }
     let Some((segment, rest)) = path.split_first() else {
@@ -156,14 +158,14 @@ fn field(
             version,
             name: type_name,
         } => Ok(Some(A::Vocabulary {
-            identity: identity.clone(),
-            version: version.clone(),
-            type_name: type_name.clone(),
-            field_name: name.to_owned(),
+            identity: retain(identity.try_clone())?,
+            version: retain(version.try_clone())?,
+            type_name: retain(type_name.try_clone())?,
+            field_name: retain(text(name))?,
             span: None,
         })),
         T::Nominal(owner) => {
-            let definition = resolver.roots[owner].clone();
+            let definition = retain(resolver.roots[owner].try_clone())?;
             for part in split(&definition.tokens)? {
                 let Some(eq) = part
                     .iter()

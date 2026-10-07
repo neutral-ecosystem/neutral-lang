@@ -15,7 +15,9 @@ next profile, reports stable capabilities, centralizes default limits, and
 distinguishes an unavailable recognized profile from an unknown lookalike.
 
 It sits at the bottom of the dependency graph. Its reviewed `sha2` dependency
-implements the frozen exact-byte SHA-256 digest contract; it otherwise must not
+implements the frozen exact-byte SHA-256 digest contract. The allocation boundary
+uses reviewed `trybox` and std-only `triomphe` backends for fallible boxes and
+shared ownership; it otherwise must not
 depend on compiler, reader, CLI, host, automation, or test packages, and it
 must not perform host I/O. Higher layers use these stable value contracts to
 communicate without coupling to a particular source parser or artifact encoding.
@@ -24,6 +26,13 @@ For code orientation, [lib.rs](src/lib.rs) explains exact-byte digests, transcri
 framing, original-byte coordinates, diagnostic ordering, and cooperative
 cancellation. [profile.rs](src/profile.rs) owns discovery and defaults. These are
 primitives; they do not establish that a whole program or external artifact is valid.
+
+[allocation.rs](src/allocation.rs) provides `Shared::try_new`, fallible owned
+copies and boxes. Successor APIs use `Shared<T>` rather than `std::sync::Arc<T>`;
+cloning a shared owner retains the existing allocation. Recursive copies require
+caller depth/work preflight. [ordered.rs](src/ordered.rs) provides fallibly growing
+ordered indexes; callers must budget insertion/removal shifts, not just key lookup.
+These primitives do not make an entire pipeline allocation-safe automatically.
 
 ## Command
 

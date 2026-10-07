@@ -27,5 +27,16 @@ and rejects noncanonical defaults/choices before the complete reader accepts the
 The successor compiler feeds resolved source contracts and bindings through these
 same APIs; the module remains independent of compiler syntax and host services.
 
+`copy` reserves occurrence-path and field-name storage fallibly before copying.
+Private reservation callbacks permit deterministic failure-path tests without a
+global allocator. Materialization uses fallible boxed/recursive copies and ordered
+indexes; graph worklists reserve before growth and charge index shifts to work.
+Successor validated scopes use core `Shared::try_new`, not infallible `Arc::new`.
+The JSON parser tests interruption at each reservation checkpoint. This remains
+partial pipeline hardening. Schema retention now uses request-local fallible
+string/vector/box/membership helpers, with checks before growth and fault injection
+through the same private checkpoints. Legacy schema parsing and remaining producer,
+consumer and companion paths still require allocation review.
+
 This boundary is separate from the frozen project `1.0` validator. A successful
 catalogue is not a compiled project, encoded artifact, or release approval.

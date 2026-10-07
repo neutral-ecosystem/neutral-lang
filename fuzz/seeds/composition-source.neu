@@ -1,0 +1,12 @@
+neu "1.0"
+module example
+public record Inner { num count = 42 }
+public record Node { 
+    Inner inner = {}, 
+    Ref<Node>? next 
+}
+public variant State { Node ready, string failed }
+public Node original = { next: null }
+public Node copied = original
+public State status = { tag: "ready", payload: copied }
+public List<State> states = [status, { tag: "failed", payload: "none" }]

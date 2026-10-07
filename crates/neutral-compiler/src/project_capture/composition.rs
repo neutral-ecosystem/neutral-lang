@@ -15,6 +15,8 @@ use super::{
     validate_sources_cancellable, validate_vocabularies_cancellable,
 };
 use crate::module_graph::{ModuleGraph, ModuleGraphFailure};
+use neutral_core::allocation::Shared as Arc;
+use neutral_core::ordered::OrderedMap;
 use neutral_core::{CancellationToken, profile::LanguageProfile};
 use neutral_ir::project_identity::{
     CapturedIdentityInput, CompositionCapturedClosureIdentity, IdentityError, IdentityLimits,
@@ -25,7 +27,6 @@ use neutral_vocabulary::composition::{
     CapturedCompositionBundle, CompositionError, CompositionLimits, MAX_CAPTURED_BYTES, MAX_WORK,
     ValidatedComposition, validate_composition_closure,
 };
-use std::{collections::BTreeMap, sync::Arc};
 
 /// Closed successor request with explicit feature selection and independent policy.
 ///
@@ -87,9 +88,9 @@ pub struct CapturedCompositionProject {
     /// Independent policy preserved for replay and later compilation.
     composition_limits: CompositionLimits,
     /// Module-local alias -> canonical vocabulary identity; no alias enters a type owner.
-    aliases: BTreeMap<String, BTreeMap<String, String>>,
+    aliases: Arc<OrderedMap<String, OrderedMap<String, String>>>,
     /// Exact selected feature set, immutable and retained independently of source syntax.
-    required_features: Arc<[String]>,
+    required_features: Arc<Vec<String>>,
 }
 
 impl std::fmt::Debug for CapturedCompositionProject {
@@ -131,6 +132,11 @@ impl CapturedCompositionProject {
     #[must_use]
     pub fn required_features(&self) -> &[String] {
         &self.required_features
+    }
+
+    /// Shares the already retained exact feature set without copying host strings.
+    pub(crate) fn shared_features(&self) -> Arc<Vec<String>> {
+        self.required_features.clone()
     }
 
     /// Projects verified input facts into the frozen captured identity /2 transcript.
@@ -302,19 +308,17 @@ fn capture_with_checkpoints(
     checkpoint(ProjectCaptureCheckpoint::Headers);
     capture_cancelled(Some(cancellation))?;
 
-    let locks = envelope
-        .vocabularies
-        .iter()
-        .map(|input| (input.lock.identity(), &input.lock))
-        .collect::<BTreeMap<_, _>>();
     let mut roots = Vec::new();
     roots
         .try_reserve(requirements.len())
         .map_err(|_| CompositionError::Allocation)?;
     for identity in &requirements {
         capture_cancelled(Some(cancellation))?;
-        let lock = locks
-            .get(identity.as_str())
+        let lock = envelope
+            .vocabularies
+            .iter()
+            .map(|input| &input.lock)
+            .find(|lock| lock.identity() == identity)
             .ok_or(ProjectCaptureError::MissingVocabulary)?;
         roots.push((lock.identity(), lock.version()));
     }
@@ -333,17 +337,11 @@ fn capture_with_checkpoints(
     );
     let catalogue =
         validate_composition_closure(&inputs, &roots, request.composition_limits, cancellation)?;
-    let mut aliases = BTreeMap::new();
-    for (source, _) in &sources {
-        capture_cancelled(Some(cancellation))?;
-        let text =
-            std::str::from_utf8(&source.bytes).map_err(|_| ProjectCaptureError::InvalidHeader)?;
-        let local = scan_vocabulary_requirements_policy(text, true, Some(cancellation))?
-            .into_iter()
-            .map(|(identity, alias)| (alias, identity))
-            .collect();
-        aliases.insert(source.module_id.clone(), local);
-    }
+    let aliases = capture_aliases(
+        sources.iter().map(|(source, _)| source),
+        request.composition_limits.work,
+        cancellation,
+    )?;
     checkpoint(ProjectCaptureCheckpoint::Publish);
     capture_cancelled(Some(cancellation))?;
     let captured = freeze_project(
@@ -355,11 +353,49 @@ fn capture_with_checkpoints(
     )?;
     Ok(CapturedCompositionProject {
         captured,
-        catalogue: Arc::new(catalogue),
+        catalogue: Arc::try_new(catalogue).map_err(|_| ProjectCaptureError::LimitExceeded)?,
         composition_limits: request.composition_limits,
-        aliases,
-        required_features: Arc::from(request.required_features),
+        aliases: Arc::try_new(aliases).map_err(|_| ProjectCaptureError::LimitExceeded)?,
+        required_features: Arc::try_new(request.required_features)
+            .map_err(|_| ProjectCaptureError::LimitExceeded)?,
     })
+}
+
+/// Retains module-local aliases fallibly, charging sorted-index shifts before insertion.
+fn capture_aliases<'a>(
+    sources: impl Iterator<Item = &'a super::CapturedSourceInput>,
+    mut work: u64,
+    cancellation: &CancellationToken,
+) -> Result<OrderedMap<String, OrderedMap<String, String>>, ProjectCaptureError> {
+    let mut aliases = OrderedMap::new();
+    for source in sources {
+        capture_cancelled(Some(cancellation))?;
+        let text =
+            std::str::from_utf8(&source.bytes).map_err(|_| ProjectCaptureError::InvalidHeader)?;
+        let mut local = OrderedMap::new();
+        for (identity, alias) in
+            scan_vocabulary_requirements_policy(text, true, Some(cancellation))?
+        {
+            capture_cancelled(Some(cancellation))?;
+            work = work
+                .checked_sub(local.len() as u64 + 1)
+                .ok_or(ProjectCaptureError::LimitExceeded)?;
+            local
+                .insert(alias, identity)
+                .map_err(|_| ProjectCaptureError::LimitExceeded)?;
+        }
+        work = work
+            .checked_sub(aliases.len() as u64 + 1)
+            .ok_or(ProjectCaptureError::LimitExceeded)?;
+        aliases
+            .insert(
+                neutral_core::allocation::text(&source.module_id)
+                    .map_err(|_| ProjectCaptureError::LimitExceeded)?,
+                local,
+            )
+            .map_err(|_| ProjectCaptureError::LimitExceeded)?;
+    }
+    Ok(aliases)
 }
 
 /// Enforces catalogue aggregate count/byte ceilings before proportional capture work.

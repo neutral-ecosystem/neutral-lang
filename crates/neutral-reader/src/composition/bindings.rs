@@ -3,12 +3,12 @@
 //! Public-only resolved binding inspection, independent of compiler/source/wire code.
 
 use super::CompositionTypeCatalogue;
+use neutral_core::allocation::Shared as Arc;
 use neutral_ir::{
     ModuleSymbolIdentity,
     composition::{CompositionBinding, CompositionBindingReference, ValueOrigin},
 };
 use neutral_vocabulary::composition::{ValidatedCompositionBinding, ValidatedCompositionBindings};
-use std::sync::Arc;
 
 /// Safe lookup with no distinction between private and absent binding identities.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

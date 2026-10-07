@@ -16,6 +16,8 @@
 //! own acquisition, higher layers enforce their work budgets, and consumers must
 //! validate external values before treating these contracts as authoritative.
 
+pub mod allocation;
+pub mod ordered;
 pub mod profile;
 
 use sha2::{Digest, Sha256};

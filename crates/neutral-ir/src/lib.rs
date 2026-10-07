@@ -23,6 +23,9 @@ pub mod project;
 pub mod project_identity;
 pub mod project_interface;
 
+/// Fallible owned copies shared by bounded producers and independent validators.
+mod fallible;
+
 use neutral_core::{
     ByteSpan, CoreError, SemanticDigest, SourceContentDigest, StructuralLimits,
     VocabularyContentDigest, nht_frame,
@@ -214,7 +217,8 @@ impl ExactNumber {
         }
         Ok(Self {
             negative,
-            coefficient: coefficient.to_owned(),
+            coefficient: neutral_core::allocation::text(coefficient)
+                .map_err(|_| IrError::ExactNumberLimitExceeded)?,
             scale,
         })
     }
@@ -235,17 +239,21 @@ impl ExactNumber {
         maximum_digits: u64,
         maximum_scale: u64,
     ) -> Result<Self, IrError> {
-        let parsed = parse_source_number(spelling, maximum_digits, maximum_scale)?;
-        let coefficient = parsed.coefficient.trim_start_matches('0');
-        if coefficient.is_empty() {
+        let mut parsed = parse_source_number(spelling, maximum_digits, maximum_scale)?;
+        let leading_zeroes =
+            parsed.coefficient.len() - parsed.coefficient.trim_start_matches('0').len();
+        if leading_zeroes == parsed.coefficient.len() {
+            parsed.coefficient.clear();
+            parsed.coefficient.push('0');
             // All signed/exponent spellings of zero share one canonical value.
             return Ok(Self {
                 negative: false,
-                coefficient: "0".to_owned(),
+                coefficient: parsed.coefficient,
                 scale: 0,
             });
         }
-        let mut coefficient = coefficient.to_owned();
+        parsed.coefficient.drain(..leading_zeroes);
+        let mut coefficient = parsed.coefficient;
         let mut scale = parsed.scale;
         // Removing a coefficient zero multiplies the power of ten by one.
         while coefficient.ends_with('0') {
@@ -386,7 +394,10 @@ fn parse_source_number(
     if scale.unsigned_abs() > maximum_scale {
         return Err(IrError::ExactNumberLimitExceeded);
     }
-    let mut coefficient = String::with_capacity(digit_count);
+    let mut coefficient = String::new();
+    coefficient
+        .try_reserve_exact(digit_count)
+        .map_err(|_| IrError::ExactNumberLimitExceeded)?;
     coefficient.extend(
         spelling[integer.start..integer.end]
             .bytes()

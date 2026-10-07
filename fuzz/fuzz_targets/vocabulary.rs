@@ -5,6 +5,8 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
+mod composition_support;
+mod transitive_support;
 use neutral_core::{CancellationToken, StructuralLimits, VocabularyContentDigest};
 use neutral_ir::composition::{ClosedValue, CompositionBody};
 use neutral_vocabulary::{
@@ -22,6 +24,14 @@ const FUZZ_VERSION: &str = "0.1.0";
 const MAX_MATERIALIZATION_REQUESTS: usize = 4;
 
 fuzz_target!(|bytes: &[u8]| {
+    transitive_support::run(bytes);
+    let _ = neutral_encoding::composition::decode_composition_project(
+        &composition_support::mutated_seed(bytes),
+        neutral_encoding::DecodeLimits::hard(),
+        neutral_encoding::project::hard_project_limits(),
+        composition_support::limits(),
+        &CancellationToken::new(),
+    );
     let structural = StructuralLimits::new(1_048_576, 32).expect("fuzz limits must be nonzero");
     let lock = VocabularyLock::new(
         FUZZ_IDENTITY,

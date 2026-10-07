@@ -18,12 +18,28 @@ const UTF8_BOM: &[u8; 3] = b"\xef\xbb\xbf";
 /// Physical line boundaries remain tokens because the later layout pass, not the
 /// raw lexer, decides where statement boundaries are legal.
 pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
+    lex_bounded(source, usize::MAX, None)
+}
+
+/// Lexes successor source with pre-growth scalar bounds and in-loop cancellation.
+pub(super) fn lex_bounded(
+    source: &[u8],
+    string_bytes: usize,
+    cancellation: Option<&neutral_core::CancellationToken>,
+) -> Result<LexedSource, FrontendError> {
+    let policy = Retention {
+        string_bytes,
+        cancellation,
+    };
     validate_source_text(source)?;
     let mut tokens = Vec::new();
     let mut trivia = Vec::new();
     let mut index = usize::from(source.starts_with(UTF8_BOM)) * UTF8_BOM.len();
 
     while index < source.len() {
+        policy.check(index)?;
+        policy.reserve(&mut tokens, 1, index)?;
+        policy.reserve(&mut trivia, 1, index)?;
         match source[index] {
             b' ' | b'\t' => {
                 let end = consume_while(source, index, |value| matches!(value, b' ' | b'\t'));
@@ -73,16 +89,19 @@ pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
                 index = end;
             }
             b'/' if source.get(index + 1) == Some(&b'*') => {
-                let (end, line_ends) = block_comment(source, index)?;
+                let (end, line_ends) = block_comment(source, index, policy)?;
                 trivia.push(Trivia {
                     kind: TriviaKind::BlockComment,
                     span: span(index, end),
                 });
+                tokens
+                    .try_reserve(line_ends.len())
+                    .map_err(|_| FrontendError::record_limit_exceeded(span(index, end)))?;
                 tokens.extend(line_ends);
                 index = end;
             }
             b'"' => {
-                let (next, value) = string_literal(source, index)?;
+                let (next, value) = string_literal(source, index, policy)?;
                 tokens.push(token(TokenKind::StringLiteral(value), index, next));
                 index = next;
             }
@@ -104,6 +123,10 @@ pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
         }
     }
 
+    policy.check(source.len())?;
+    tokens
+        .try_reserve(1)
+        .map_err(|_| FrontendError::record_limit_exceeded(span(source.len(), source.len())))?;
     tokens.push(token(TokenKind::EndOfFile, source.len(), source.len()));
     Ok(LexedSource { tokens, trivia })
 }
@@ -176,10 +199,18 @@ fn word_token(text: String) -> TokenKind {
 }
 
 /// Reads one non-nesting block comment and retains any physical line endings.
-fn block_comment(source: &[u8], start: usize) -> Result<(usize, Vec<Token>), FrontendError> {
+fn block_comment(
+    source: &[u8],
+    start: usize,
+    policy: Retention<'_>,
+) -> Result<(usize, Vec<Token>), FrontendError> {
     let mut index = start + 2;
     let mut line_ends = Vec::new();
     while index < source.len() {
+        policy.check(index)?;
+        line_ends
+            .try_reserve(1)
+            .map_err(|_| FrontendError::record_limit_exceeded(span(index, index)))?;
         if source.get(index) == Some(&b'*') && source.get(index + 1) == Some(&b'/') {
             return Ok((index + 2, line_ends));
         }
@@ -239,18 +270,23 @@ fn validate_source_text(source: &[u8]) -> Result<(), FrontendError> {
 }
 
 /// Reads one simple, unescaped string literal without crossing a physical line.
-fn string_literal(source: &[u8], start: usize) -> Result<(usize, DecodedString), FrontendError> {
+fn string_literal(
+    source: &[u8],
+    start: usize,
+    policy: Retention<'_>,
+) -> Result<(usize, DecodedString), FrontendError> {
     let mut index = start + 1;
     let mut value = String::new();
     let mut had_escape = false;
     while let Some(byte) = source.get(index).copied() {
+        policy.check(index)?;
         match byte {
             b'"' => {
                 return Ok((index + 1, DecodedString { value, had_escape }));
             }
             b'\\' => {
                 had_escape = true;
-                index = decode_escape(source, index, &mut value)?;
+                index = decode_escape(source, index, &mut value, policy)?;
             }
             b'\n' | b'\r' => {
                 return Err(FrontendError::unterminated_string_literal(span(
@@ -264,7 +300,7 @@ fn string_literal(source: &[u8], start: usize) -> Result<(usize, DecodedString),
                 )));
             }
             byte if byte.is_ascii() => {
-                value.push(char::from(byte));
+                policy.push(&mut value, char::from(byte), index)?;
                 index += 1;
             }
             _ => {
@@ -278,7 +314,7 @@ fn string_literal(source: &[u8], start: usize) -> Result<(usize, DecodedString),
                 if character.is_control() {
                     return Err(FrontendError::invalid_string_literal(span(index, end)));
                 }
-                value.push(character);
+                policy.push(&mut value, character, index)?;
                 index = end;
             }
         }
@@ -290,7 +326,12 @@ fn string_literal(source: &[u8], start: usize) -> Result<(usize, DecodedString),
 }
 
 /// Decodes one frozen string escape and returns the next unread byte offset.
-fn decode_escape(source: &[u8], start: usize, value: &mut String) -> Result<usize, FrontendError> {
+fn decode_escape(
+    source: &[u8],
+    start: usize,
+    value: &mut String,
+    policy: Retention<'_>,
+) -> Result<usize, FrontendError> {
     let Some(escaped) = source.get(start + 1).copied() else {
         return Err(FrontendError::unterminated_string_literal(span(
             start,
@@ -304,7 +345,7 @@ fn decode_escape(source: &[u8], start: usize, value: &mut String) -> Result<usiz
         b'r' => '\r',
         b't' => '\t',
         b'0' => '\0',
-        b'u' => return decode_unicode_escape(source, start, value),
+        b'u' => return decode_unicode_escape(source, start, value, policy),
         _ => {
             return Err(FrontendError::invalid_string_literal(span(
                 start,
@@ -312,7 +353,7 @@ fn decode_escape(source: &[u8], start: usize, value: &mut String) -> Result<usiz
             )));
         }
     };
-    value.push(character);
+    policy.push(value, character, start)?;
     Ok(start + 2)
 }
 
@@ -321,6 +362,7 @@ fn decode_unicode_escape(
     source: &[u8],
     start: usize,
     value: &mut String,
+    policy: Retention<'_>,
 ) -> Result<usize, FrontendError> {
     if source.get(start + 2) != Some(&b'{') {
         return Err(FrontendError::invalid_string_literal(span(
@@ -339,12 +381,13 @@ fn decode_unicode_escape(
             (end + 1).min(source.len()),
         )));
     }
-    let digits = ascii_text(&source[digits_start..end], digits_start)?;
-    let scalar = u32::from_str_radix(&digits, 16)
+    let digits = std::str::from_utf8(&source[digits_start..end])
+        .map_err(|_| FrontendError::invalid_string_literal(span(start, end)))?;
+    let scalar = u32::from_str_radix(digits, 16)
         .ok()
         .and_then(char::from_u32)
         .ok_or_else(|| FrontendError::invalid_string_literal(span(start, end + 1)))?;
-    value.push(scalar);
+    policy.push(value, scalar, start)?;
     Ok(end + 1)
 }
 
@@ -362,7 +405,60 @@ fn ascii_text(bytes: &[u8], start: usize) -> Result<String, FrontendError> {
     if !bytes.is_ascii() {
         return Err(FrontendError::other(span(start, start + bytes.len())));
     }
-    Ok(String::from_utf8_lossy(bytes).into_owned())
+    let text = std::str::from_utf8(bytes)
+        .map_err(|_| FrontendError::other(span(start, start + bytes.len())))?;
+    neutral_core::allocation::text(text)
+        .map_err(|_| FrontendError::record_limit_exceeded(span(start, start + bytes.len())))
+}
+
+/// Request-local lexer retention policy; legacy callers keep their existing scalar policy.
+#[derive(Clone, Copy)]
+struct Retention<'a> {
+    /// Maximum decoded UTF-8 scalar bytes before reserving string growth.
+    string_bytes: usize,
+    /// Optional successor cancellation signal checked inside comments and strings.
+    cancellation: Option<&'a neutral_core::CancellationToken>,
+}
+impl Retention<'_> {
+    /// Checks cancellation before fallibly reserving bounded token/trivia storage.
+    fn reserve<T>(
+        self,
+        values: &mut Vec<T>,
+        count: usize,
+        index: usize,
+    ) -> Result<(), FrontendError> {
+        self.check(index)?;
+        values
+            .try_reserve(count)
+            .map_err(|_| FrontendError::record_limit_exceeded(span(index, index)))
+    }
+    /// Observes cancellation before any proportional retention or scan step.
+    fn check(self, index: usize) -> Result<(), FrontendError> {
+        if self
+            .cancellation
+            .is_some_and(neutral_core::CancellationToken::is_cancelled)
+        {
+            Err(FrontendError::record_limit_exceeded(span(index, index)))
+        } else {
+            Ok(())
+        }
+    }
+    /// Checks prospective scalar length before a fallible reservation and nonallocating push.
+    fn push(self, value: &mut String, character: char, index: usize) -> Result<(), FrontendError> {
+        self.check(index)?;
+        if value
+            .len()
+            .checked_add(character.len_utf8())
+            .is_none_or(|bytes| bytes > self.string_bytes)
+        {
+            return Err(FrontendError::record_limit_exceeded(span(index, index)));
+        }
+        value
+            .try_reserve(character.len_utf8())
+            .map_err(|_| FrontendError::record_limit_exceeded(span(index, index)))?;
+        value.push(character);
+        Ok(())
+    }
 }
 
 /// Creates one raw token over an exact original-byte span.

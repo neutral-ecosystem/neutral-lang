@@ -66,6 +66,12 @@ compiled-project identity profiles.
 contracts or reparsing bytes. Only the validator can construct that catalogue;
 sharing does not bypass validation or expose mutable private contracts.
 
+Successor composition APIs share validated state through
+`neutral_core::allocation::Shared<T>`. Construct it with `Shared::try_new(value)`;
+`CompositionCatalogue::new(value)` also returns an allocation-aware `Result`.
+Existing old-profile shared-owner APIs retain their original types. This changes
+host ownership plumbing, not source syntax, wire formats or identity transcripts.
+
 `CompositionTypeCatalogue` additionally inspects a validated resolved scope of
 source- and vocabulary-owned records/variants. It filters private source types,
 shares closed-value validation and enumerates exact reference-type dependencies

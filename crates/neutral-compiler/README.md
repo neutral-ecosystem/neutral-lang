@@ -70,8 +70,15 @@ retain exact canonical identity/revision/type/field owners, without fabricated
 bundle spans. Attribution unavailable after materialized vocabulary reuse remains
 explicitly absent. The independent reader checks these companions; its public
 view removes source/private implementation evidence. The standalone probe reads
-successor artifacts, but this API does not activate CLI compilation or a
-composition compilation cache.
+successor artifacts, but this API does not activate CLI compilation.
+
+`CompositionCompilationCache` is a separate caller-owned syntax cache with explicit
+`ProjectCacheLimits` retention bounds and observable `ProjectCacheStats`. It reuses
+only exact bytes/module/feature context, checking bytes even when digests match.
+Every request rebuilds vocabulary/default resolution, graph, semantics, values,
+identities and source companions under current controls. Failed or cancelled runs
+leave the previous successful generation intact; removed/over-budget units are
+not retained. It never persists semantic authority or accepts external entries.
 
 Within one clean project compilation, semantic analysis hands its private parsed
 units to lowering instead of parsing them again. This request-local handoff does

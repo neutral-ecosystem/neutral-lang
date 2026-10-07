@@ -1,0 +1,23 @@
+{
+  "format": "neutral-vocabulary-bundle",
+  "encoding_version": "1.0",
+  "schema_version": "2.0",
+  "identity": "Root",
+  "version": "0.1.0",
+  "required_features": ["vocabulary-composition-v2"],
+  "dependencies": [
+    {"identity": "Left", "version": "0.1.0"},
+    {"identity": "Right", "version": "0.1.0"}
+  ],
+  "types": [{
+    "kind": "record", "name": "Item", "public": true,
+    "fields": [
+      {"name": "left", "type": {"kind": "ref", "target": {
+        "kind": "external", "identity": "Left", "version": "0.1.0", "name": "Item"
+      }}, "presence": "required", "restrictions": {}},
+      {"name": "right", "type": {"kind": "ref", "target": {
+        "kind": "external", "identity": "Right", "version": "0.1.0", "name": "Item"
+      }}, "presence": "required", "restrictions": {}}
+    ]
+  }]
+}

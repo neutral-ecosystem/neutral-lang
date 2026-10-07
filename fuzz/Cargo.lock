@@ -131,6 +131,8 @@ name = "neutral-core"
 version = "0.8.0"
 dependencies = [
  "sha2",
+ "triomphe",
+ "trybox",
 ]
 
 [[package]]
@@ -153,6 +155,7 @@ dependencies = [
  "neutral-encoding",
  "neutral-ir",
  "neutral-probe",
+ "neutral-reader",
  "neutral-vocabulary",
 ]
 
@@ -211,6 +214,18 @@ name = "shlex"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
+
+[[package]]
+name = "triomphe"
+version = "0.1.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b40688ea6389c8171614b25491f71d4a27946e0c7ce2da1c6de27e25abf1a0ae"
+
+[[package]]
+name = "trybox"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff79c0d8cb778aeae16f06b64e7f7844c6fe653e61a912563e56276729ba1af0"
 
 [[package]]
 name = "typenum"

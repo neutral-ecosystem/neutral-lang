@@ -12,6 +12,7 @@ use crate::{
         write_location, write_module, write_numbers, write_symbol, write_type,
     },
 };
+use neutral_core::allocation::Shared as Arc;
 use neutral_core::{
     ByteSpan, CancellationToken, SemanticDigest, SourceContentDigest, VocabularyContentDigest,
 };
@@ -35,7 +36,6 @@ use neutral_ir::{
 };
 use neutral_reader::composition::{CompositionReadError, ValidatedCompositionProject};
 use neutral_vocabulary::composition::CompositionLimits;
-use std::{collections::BTreeMap, sync::Arc};
 
 /// Encodes independently validated complete data using the frozen successor tuple grammar.
 ///
@@ -99,7 +99,13 @@ pub fn decode_composition_project(
     if bytes.len() as u64 > ir.limits.artifact_bytes {
         return Err(failure(C::EncodedSizeLimit));
     }
-    ValidatedCompositionProject::from_ir(Arc::new(ir), project, composition, cancel).map_err(|e| {
+    ValidatedCompositionProject::from_ir(
+        Arc::try_new(ir).map_err(|_| failure(C::EncodedSizeLimit))?,
+        project,
+        composition,
+        cancel,
+    )
+    .map_err(|e| {
         failure(match e {
             CompositionReadError::Cancelled => C::Cancelled,
             CompositionReadError::Limit => C::EncodedSizeLimit,
@@ -241,7 +247,8 @@ fn read_value<R: Reference>(v: &LocatedValue, depth: usize) -> Result<V<R>, D> {
         })?),
         ("variant", 3) => V::Variant {
             tag: owned_text(&a[1])?,
-            payload: Box::new(read_value(&a[2], depth + 1)?),
+            payload: neutral_core::allocation::boxed(read_value(&a[2], depth + 1)?)
+                .map_err(|_| failure(C::EncodedSizeLimit))?,
         },
         _ => return Err(schema(v)),
     })
@@ -277,7 +284,11 @@ fn write_restrictions(w: &mut CborWriter, r: &FieldRestrictions) -> Result<(), E
     })?;
     for n in [&r.minimum, &r.maximum] {
         write_option(w, n.as_ref(), |w, n| {
-            write_value::<ClosedReference>(w, &V::Number(n.clone()), 0)
+            w.array(4)?;
+            w.text(neutral_ir::language::NUM)?;
+            w.boolean(n.is_negative())?;
+            w.text(n.coefficient())?;
+            w.signed(n.scale())
         })?;
     }
     for n in [&r.min_length, &r.max_length] {
@@ -418,13 +429,11 @@ fn write_ir(w: &mut CborWriter, ir: &Ir) -> Result<(), E> {
         w.text(b.identity.version())?;
         w.text(b.identity.schema_version())?;
         write_list(w, b.identity.required_features(), |w, s| w.text(s))?;
-        let names = b
-            .definitions
-            .iter()
-            .filter(|d| d.public)
-            .map(|d| d.name.clone())
-            .collect::<Vec<_>>();
-        write_list(w, &names, |w, s| w.text(s))
+        w.array(b.definitions.iter().filter(|d| d.public).count())?;
+        for definition in b.definitions.iter().filter(|d| d.public) {
+            w.text(&definition.name)?;
+        }
+        Ok(())
     })?;
     w.bytes(&ir.interface_digest.as_bytes())?;
     write_companions(w, ir)?;
@@ -600,25 +609,35 @@ fn read_vocabularies(
     p: &[LocatedValue; 16],
     vocabulary_sources: &[ProjectVocabularySource],
 ) -> Result<Vec<CompositionBundle>, D> {
-    let mut definitions: BTreeMap<(String, String), Vec<CompositionDefinition>> = BTreeMap::new();
+    // Wire definitions are already ordered by exact owner/name. Group once in
+    // linear order instead of allocating a tree or cloning ownership keys.
+    let raw_definitions = array(&p[3])?;
+    let mut definitions: Vec<((&str, &str), Vec<CompositionDefinition>)> = Vec::new();
+    definitions
+        .try_reserve_exact(raw_definitions.len())
+        .map_err(|_| failure(C::EncodedSizeLimit))?;
     let mut previous = None;
-    for d in array(&p[3])? {
+    for d in raw_definitions {
         let a = tuple::<5>(d)?;
-        let owner = (owned_text(&a[0])?, owned_text(&a[1])?);
+        let owner = (text(&a[0])?, text(&a[1])?);
         let name = owned_text(&a[2])?;
-        let key = (owner.clone(), name.clone());
+        let key = (owner, text(&a[2])?);
         if previous.as_ref().is_some_and(|p| p >= &key) {
             return Err(schema(d));
         }
         previous = Some(key);
-        definitions
-            .entry(owner)
-            .or_default()
-            .push(CompositionDefinition {
-                name,
-                public: boolean(&a[3])?,
-                body: read_body(&a[4])?,
-            });
+        if definitions.last().is_none_or(|last| last.0 != owner) {
+            definitions.push((owner, Vec::new()));
+        }
+        let group = &mut definitions.last_mut().ok_or_else(|| schema(d))?.1;
+        group
+            .try_reserve(1)
+            .map_err(|_| failure(C::EncodedSizeLimit))?;
+        group.push(CompositionDefinition {
+            name,
+            public: boolean(&a[3])?,
+            body: read_body(&a[4])?,
+        });
     }
     let dependencies = read_list(&p[12], |v| {
         let a = tuple::<3>(v)?;
@@ -638,7 +657,11 @@ fn read_vocabularies(
     if catalogues.len() != dependencies.len() || catalogues.len() != vocabulary_sources.len() {
         return Err(schema(&p[4]));
     }
+    let mut definitions = definitions.into_iter().peekable();
     let mut vocabularies = Vec::new();
+    vocabularies
+        .try_reserve_exact(catalogues.len())
+        .map_err(|_| failure(C::EncodedSizeLimit))?;
     for ((c, dep), source) in catalogues.iter().zip(dependencies).zip(vocabulary_sources) {
         let a = tuple::<5>(c)?;
         let identity = owned_text(&a[0])?;
@@ -649,9 +672,12 @@ fn read_vocabularies(
         {
             return Err(schema(c));
         }
-        let defs = definitions
-            .remove(&(identity.clone(), version.clone()))
-            .unwrap_or_default();
+        let owner = (identity.as_str(), version.as_str());
+        let defs = if definitions.peek().is_some_and(|entry| entry.0 == owner) {
+            definitions.next().ok_or_else(|| schema(c))?.1
+        } else {
+            Vec::new()
+        };
         let public = read_list(&a[4], owned_text)?;
         if !defs
             .iter()
@@ -666,7 +692,8 @@ fn read_vocabularies(
                 identity,
                 version,
                 owned_text(&a[2])?,
-                neutral_vocabulary::composition::ENCODING_VERSION,
+                neutral_core::allocation::text(neutral_vocabulary::composition::ENCODING_VERSION)
+                    .map_err(|_| failure(C::EncodedSizeLimit))?,
                 source.digest,
                 read_list(&a[3], owned_text)?,
             ),
@@ -674,7 +701,7 @@ fn read_vocabularies(
             definitions: defs,
         });
     }
-    if !definitions.is_empty() {
+    if definitions.next().is_some() {
         return Err(schema(&p[4]));
     }
     Ok(vocabularies)
@@ -771,7 +798,8 @@ fn read_ir(v: &LocatedValue) -> Result<Ir, D> {
     })?;
     let vocabularies = read_vocabularies(p, &vocabulary_sources)?;
     Ok(Ir {
-        schema: profile::PROJECT_IR_SCHEMA.to_owned(),
+        schema: neutral_core::allocation::text(profile::PROJECT_IR_SCHEMA)
+            .map_err(|_| failure(C::EncodedSizeLimit))?,
         modules,
         declarations,
         vocabularies,

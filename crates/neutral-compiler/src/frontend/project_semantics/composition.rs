@@ -3,10 +3,11 @@
 //! Explicit capture/2 source typing; the old parser and compiler entry points stay unchanged.
 
 use super::{
-    Token, TokenKind, TypeExpr, is_requirement_or_import, lexer, parse_complete_type, parse_name,
-    parse_reference,
+    Token, TokenKind, TypeExpr, is_requirement_or_import, lexer, parse_complete_type_fallible,
 };
-use crate::{CapturedCompositionProject, ModuleGraph};
+use crate::CapturedCompositionProject;
+use neutral_core::allocation::{Shared as Arc, TryClone, boxed, copy_slice, text};
+use neutral_core::ordered::{OrderedMap as BTreeMap, OrderedSet as BTreeSet};
 use neutral_core::{
     ByteSpan, CancellationToken, SemanticDigest, SourceLocation, profile::V1_SOURCE_PROFILE,
 };
@@ -33,10 +34,6 @@ use neutral_vocabulary::composition::{
     CompositionError, ValidatedCompositionScope, validate_composition_bindings,
     validate_composition_scope,
 };
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-};
 
 /// Safe successor compilation failure; no variant publishes partial logical output.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -55,9 +52,66 @@ impl CompositionCompileFailure {
 }
 /// Short request-local diagnostic result name.
 type E = CompositionCompileFailure;
+/// Borrowed source name; resolving a qualifier never allocates temporary spellings.
+struct BorrowedOccurrence<'a> {
+    /// Source-local qualifier, if present.
+    alias: Option<&'a str>,
+    /// Exact declaration spelling.
+    name: &'a str,
+    /// Original occurrence for checked diagnostics.
+    span: ByteSpan,
+}
+/// Recognizes a local or qualified name without copying token storage.
+fn parse_name(tokens: &[Token], index: usize) -> Option<(BorrowedOccurrence<'_>, usize)> {
+    let first = tokens.get(index)?;
+    let TokenKind::Identifier(name) = &first.kind else {
+        return None;
+    };
+    if matches!(
+        tokens.get(index + 1).map(|t| &t.kind),
+        Some(TokenKind::DoubleColon)
+    ) {
+        let second = tokens.get(index + 2)?;
+        let TokenKind::Identifier(target) = &second.kind else {
+            return None;
+        };
+        Some((
+            BorrowedOccurrence {
+                alias: Some(name),
+                name: target,
+                span: second.span,
+            },
+            index + 3,
+        ))
+    } else {
+        Some((
+            BorrowedOccurrence {
+                alias: None,
+                name,
+                span: first.span,
+            },
+            index + 1,
+        ))
+    }
+}
+/// Recognizes a reference's borrowed target without retaining an intermediate name.
+fn parse_reference(tokens: &[Token], index: usize) -> Option<(BorrowedOccurrence<'_>, usize)> {
+    if !matches!(tokens.get(index + 1)?.kind, TokenKind::OpenParen) {
+        return None;
+    }
+    let (name, end) = parse_name(tokens, index + 2)?;
+    matches!(tokens.get(end)?.kind, TokenKind::CloseParen).then_some((name, end + 1))
+}
 /// Checked occurrence locations; raw source stays private to the compiler.
 #[path = "composition_attribution.rs"]
 mod attribution;
+/// Exact-source syntax reuse; every request still rebuilds complete semantics and companions.
+#[path = "composition_cache.rs"]
+mod cache;
+/// Fallibly retained successor topology, independent of old-profile public shared-owner types.
+#[path = "composition_graph.rs"]
+mod graph;
+pub use cache::CompositionCompilationCache;
 /// Source diagnostic spellings; package releases never select them.
 #[path = "composition_codes.rs"]
 pub mod codes;
@@ -81,12 +135,27 @@ struct Root {
     variant: bool,
 }
 
+impl neutral_core::allocation::TryClone for Root {
+    /// Copies preflighted syntax into a new cache generation without infallible recursive clones.
+    fn try_clone(&self) -> Result<Self, neutral_core::allocation::AllocationError> {
+        Ok(Self {
+            owner: self.owner.try_clone()?,
+            public: self.public,
+            location: self.location,
+            ty: self.ty.try_clone()?,
+            fields: self.fields.try_clone()?,
+            tokens: self.tokens.try_clone()?,
+            variant: self.variant,
+        })
+    }
+}
+
 /// Request-local resolver; no filesystem, URL acquisition, ambient environment or persistent cache.
 struct Resolver<'a> {
     /// Complete explicit captured closure.
     captured: &'a CapturedCompositionProject,
     /// Independently graph-checked explicit imports/aliases.
-    graph: ModuleGraph,
+    graph: graph::Graph,
     /// Canonical parsed declarations, including private/disconnected units.
     roots: BTreeMap<ModuleSymbolIdentity, Root>,
     /// Exact resolved binding signatures.
@@ -118,21 +187,70 @@ pub fn compile_composition_project(
     captured: &CapturedCompositionProject,
     cancel: &CancellationToken,
 ) -> Result<Arc<Ir>, E> {
-    let graph = captured.module_graph(cancel).map_err(|failure| E {
-        code: match failure
-            .diagnostics()
-            .first()
-            .map(crate::module_graph::ModuleGraphDiagnostic::code)
-        {
-            Some(crate::module_graph::diagnostics::CANCELLED) => codes::CANCELLED,
-            Some(crate::module_graph::diagnostics::LIMIT_EXCEEDED) => codes::LIMIT,
-            _ => codes::INVALID_SOURCE,
-        },
-        location: failure
-            .diagnostics()
-            .first()
-            .and_then(crate::module_graph::ModuleGraphDiagnostic::source_location),
-    })?;
+    compile_with_parser(captured, cancel, &mut |source| {
+        parse(source, captured, cancel)
+    })
+}
+
+/// Shares the complete clean pipeline with cache-backed private parsing, never cached semantic authority.
+fn compile_with_parser(
+    captured: &CapturedCompositionProject,
+    cancel: &CancellationToken,
+    parser: &mut impl FnMut(&crate::CapturedProjectSource) -> Result<Vec<Root>, E>,
+) -> Result<Arc<Ir>, E> {
+    compile_observed(captured, cancel, parser, &mut |_| Ok(()))
+}
+
+/// Private phase boundaries for cooperative publication checks and deterministic fault tests.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum Phase {
+    /// Complete import/SCC validation before private parsing.
+    Graph,
+    /// Real or exact-cache source parser invocation.
+    Parse,
+    /// Resolve source signatures and nominal owners.
+    Signatures,
+    /// Check embedded/public contract closure before defaults.
+    InitialScope,
+    /// Materialize source-owned closed defaults.
+    Defaults,
+    /// Recheck finalized source and vocabulary contracts together.
+    FinalScope,
+    /// Resolve complete immutable binding initializers.
+    Values,
+    /// Validate materialized values, restrictions and typed references.
+    Bindings,
+    /// Construct complete IR and independently retained companions.
+    Assemble,
+    /// Final atomic publication, also guarding pending cache generations.
+    Publish,
+}
+
+/// Runs a private observer and checks cancellation on both sides of a phase boundary.
+fn checkpoint(
+    phase: Phase,
+    cancel: &CancellationToken,
+    observer: &mut impl FnMut(Phase) -> Result<(), E>,
+) -> Result<(), E> {
+    if cancel.is_cancelled() {
+        return Err(fail(codes::CANCELLED, None));
+    }
+    observer(phase)?;
+    if cancel.is_cancelled() {
+        return Err(fail(codes::CANCELLED, None));
+    }
+    Ok(())
+}
+
+/// Executes every complete-project phase with no public hooks or partial-output publication.
+fn compile_observed(
+    captured: &CapturedCompositionProject,
+    cancel: &CancellationToken,
+    parser: &mut impl FnMut(&crate::CapturedProjectSource) -> Result<Vec<Root>, E>,
+    observer: &mut impl FnMut(Phase) -> Result<(), E>,
+) -> Result<Arc<Ir>, E> {
+    checkpoint(Phase::Graph, cancel, observer)?;
+    let graph = graph::build(captured, cancel)?;
     let mut resolver = Resolver {
         captured,
         graph,
@@ -146,52 +264,65 @@ pub fn compile_composition_project(
         cancel,
     };
     resolver.step(1, None)?;
+    checkpoint(Phase::Parse, cancel, observer)?;
     for source in captured.sources() {
         resolver.step(source.bytes().len() as u64, None)?;
-        for root in parse(source)? {
+        for root in parser(source)? {
             if resolver.roots.len() as u64 >= captured.limits().values().declarations {
                 return Err(fail(codes::LIMIT, Some(root.location)));
             }
+            resolver.step(resolver.roots.len() as u64 + 1, Some(root.location))?;
+            let location = root.location;
             if resolver
                 .roots
-                .insert(root.owner.clone(), root.clone())
+                .insert(retain(root.owner.try_clone())?, root)
+                .map_err(|_| fail(codes::LIMIT, Some(location)))?
                 .is_some()
             {
-                return Err(fail(codes::DUPLICATE_MEMBER, Some(root.location)));
+                return Err(fail(codes::DUPLICATE_MEMBER, Some(location)));
             }
         }
     }
-    let roots = resolver.roots.values().cloned().collect::<Vec<_>>();
+    let roots = resolver.retained_roots()?;
+    checkpoint(Phase::Signatures, cancel, observer)?;
     resolver.signatures(&roots)?;
     // Visibility and embedded closure precede all source default/value interpretation.
+    checkpoint(Phase::InitialScope, cancel, observer)?;
     validate_composition_scope(
         captured.catalogue(),
-        resolver.definitions.clone(),
+        retain(resolver.definitions.try_clone())?,
         captured.composition_limits(),
         cancel,
     )
     .map_err(|e| contract(&e, None))?;
+    checkpoint(Phase::Defaults, cancel, observer)?;
     resolver.source_defaults(&roots)?;
-    let scope = Arc::new(
+    checkpoint(Phase::FinalScope, cancel, observer)?;
+    let scope = Arc::try_new(
         validate_composition_scope(
             captured.catalogue(),
-            resolver.definitions.clone(),
+            retain(resolver.definitions.try_clone())?,
             captured.composition_limits(),
             cancel,
         )
         .map_err(|e| contract(&e, None))?,
-    );
-    resolver.definitions = scope.sources().to_vec();
+    )
+    .map_err(|_| fail(codes::LIMIT, None))?;
+    resolver.definitions = retain(copy_slice(scope.sources()))?;
+    checkpoint(Phase::Values, cancel, observer)?;
     let mut bindings = Vec::new();
     for root in roots.iter().filter(|r| r.ty.is_some()) {
         let value = resolver.binding(&root.owner, 0)?;
+        resolver.step(1, Some(root.location))?;
+        reserve(&mut bindings, 1)?;
         bindings.push(CompositionBinding {
-            owner: root.owner.clone(),
+            owner: retain(root.owner.try_clone())?,
             public: root.public,
-            ty: resolver.types[&root.owner].clone(),
+            ty: retain(resolver.types[&root.owner].try_clone())?,
             value,
         });
     }
+    checkpoint(Phase::Bindings, cancel, observer)?;
     let bindings = validate_composition_bindings(
         scope.clone(),
         &bindings,
@@ -199,7 +330,10 @@ pub fn compile_composition_project(
         cancel,
     )
     .map_err(|e| contract(&e, None))?;
-    assemble(&mut resolver, &scope, &bindings)
+    checkpoint(Phase::Assemble, cancel, observer)?;
+    let ir = assemble(&mut resolver, &scope, &bindings)?;
+    checkpoint(Phase::Publish, cancel, observer)?;
+    Ok(ir)
 }
 
 /// Builds complete canonical logical data and separately retained source/resource companions.
@@ -220,7 +354,7 @@ fn assemble(
         sources,
         vocabulary_sources,
     } = captured_companions(resolver)?;
-    complete_provenance(resolver, &declarations, bindings);
+    complete_provenance(resolver, &declarations, bindings)?;
     let limits = ProjectLimits {
         modules: cap.source_units,
         declarations: cap.declarations,
@@ -234,14 +368,14 @@ fn assemble(
     };
     let facts = captured.resource_facts();
     let mut ir = Ir {
-        schema: profile::PROJECT_IR_SCHEMA.to_owned(),
+        schema: retain(text(profile::PROJECT_IR_SCHEMA))?,
         modules,
         declarations,
-        vocabularies: scope.catalogue().bundles().to_vec(),
+        vocabularies: retain(copy_slice(scope.catalogue().bundles()))?,
         interface_digest: SemanticDigest::from_raw_bytes([0; 32]),
         sources,
         source_maps: maps,
-        provenance: resolver.provenance.clone(),
+        provenance: std::mem::take(&mut resolver.provenance),
         limits,
         resources: ProjectResourceFacts {
             source_units: facts.source_units(),
@@ -293,7 +427,7 @@ fn assemble(
     })?
     .identity();
     resolver.step(1, None)?;
-    Ok(Arc::new(ir))
+    Arc::try_new(ir).map_err(|_| fail(codes::LIMIT, None))
 }
 
 /// Completes canonical source type and reference edges after all values have been validated.
@@ -301,38 +435,40 @@ fn complete_provenance(
     resolver: &mut Resolver<'_>,
     declarations: &[CompositionDeclaration],
     bindings: &neutral_vocabulary::composition::ValidatedCompositionBindings,
-) {
+) -> Result<(), E> {
     for d in declarations {
-        let root = &resolver.roots[&d.identity];
-        let types = match &d.signature {
-            S::Binding(t) => vec![t],
-            S::Definition(B::Record(fs)) => fs.iter().map(|f| &f.ty).collect(),
-            S::Definition(B::Variant(as_)) => as_.iter().map(|a| &a.ty).collect(),
-        };
-        for t in types {
-            type_edges(
-                &d.identity,
-                t,
-                false,
-                root.location,
-                &mut resolver.provenance,
-            );
+        let location = resolver.roots[&d.identity].location;
+        match &d.signature {
+            S::Binding(t) => type_edges(&d.identity, t, false, location, resolver)?,
+            S::Definition(B::Record(fs)) => {
+                for f in fs {
+                    type_edges(&d.identity, &f.ty, false, location, resolver)?;
+                }
+            }
+            S::Definition(B::Variant(alternatives)) => {
+                for a in alternatives {
+                    type_edges(&d.identity, &a.ty, false, location, resolver)?;
+                }
+            }
         }
     }
     for b in bindings.bindings() {
         for r in b.references() {
+            resolver.step(1, None)?;
+            reserve(&mut resolver.provenance, 1)?;
             resolver.provenance.push(ProjectProvenance {
-                from: b.binding().owner.clone(),
-                to: r.target.clone(),
+                from: retain(b.binding().owner.try_clone())?,
+                to: retain(r.target.try_clone())?,
                 kind: Edge::Reference,
                 location: resolver.roots[&b.binding().owner].location,
             });
         }
     }
-    resolver.provenance.sort_by(|a, b| {
+    resolver.provenance.sort_unstable_by(|a, b| {
         (&a.from, a.kind, &a.to, a.location).cmp(&(&b.from, b.kind, &b.to, b.location))
     });
     resolver.provenance.dedup();
+    resolver.step(1, None)
 }
 
 /// Canonical source declarations with separate occurrence and coverage companions.
@@ -353,7 +489,7 @@ fn declarations(
     let mut declarations = Vec::new();
     let mut maps = Vec::new();
     let mut origins = Vec::new();
-    let roots = resolver.roots.values().cloned().collect::<Vec<_>>();
+    let roots = resolver.retained_roots()?;
     for root in &roots {
         let (signature, value) = if root.ty.is_some() {
             let b = bindings
@@ -362,9 +498,11 @@ fn declarations(
                 .find(|b| b.binding().owner == root.owner)
                 .ok_or_else(|| fail(codes::INCOMPATIBLE_VALUE, Some(root.location)))?;
             for o in b.origins() {
+                resolver.step(1, Some(root.location))?;
+                reserve(&mut origins, 1)?;
                 origins.push(CompositionOrigin {
-                    binding: root.owner.clone(),
-                    path: o.path.clone(),
+                    binding: retain(root.owner.try_clone())?,
+                    path: retain(o.path.try_clone())?,
                     kind: o.kind,
                     attribution: attribution::origin(
                         resolver,
@@ -376,8 +514,8 @@ fn declarations(
                 });
             }
             (
-                S::Binding(b.binding().ty.clone()),
-                Some(b.binding().value.clone()),
+                S::Binding(retain(b.binding().ty.try_clone())?),
+                Some(retain(b.binding().value.try_clone())?),
             )
         } else {
             let d = scope
@@ -385,16 +523,19 @@ fn declarations(
                 .iter()
                 .find(|d| d.owner == root.owner)
                 .ok_or_else(|| fail(codes::INCOMPATIBLE_VALUE, Some(root.location)))?;
-            (S::Definition(d.definition.body.clone()), None)
+            (S::Definition(retain(d.definition.body.try_clone())?), None)
         };
+        resolver.step(1, Some(root.location))?;
+        reserve(&mut declarations, 1)?;
+        reserve(&mut maps, 1)?;
         declarations.push(CompositionDeclaration {
-            identity: root.owner.clone(),
+            identity: retain(root.owner.try_clone())?,
             public: root.public,
             signature,
             value,
         });
         maps.push(ProjectSourceMap {
-            declaration: root.owner.clone(),
+            declaration: retain(root.owner.try_clone())?,
             location: root.location,
         });
     }
@@ -416,52 +557,63 @@ struct CapturedCompanions {
 /// Derives checked captured companions without acquiring any input.
 fn captured_companions(resolver: &Resolver<'_>) -> Result<CapturedCompanions, E> {
     let captured = resolver.captured;
-    let modules = captured
-        .sources()
-        .iter()
-        .map(|s| {
-            let mut imports = resolver
-                .graph
-                .edges()
-                .iter()
-                .filter(|e| e.from() == s.module_id())
-                .map(|e| e.target().to_owned())
-                .collect::<Vec<_>>();
-            imports.sort();
-            ProjectModule {
-                identity: LogicalModuleIdentity::new(V1_SOURCE_PROFILE, s.module_id()),
-                imports,
+    let mut modules = Vec::new();
+    let mut sources = Vec::new();
+    reserve(&mut modules, captured.sources().len())?;
+    reserve(&mut sources, captured.sources().len())?;
+    for s in captured.sources() {
+        if resolver.cancel.is_cancelled() {
+            return Err(fail(codes::CANCELLED, None));
+        }
+        let mut imports = Vec::new();
+        for e in resolver
+            .graph
+            .edges()
+            .iter()
+            .filter(|e| e.from() == s.module_id())
+        {
+            if resolver.cancel.is_cancelled() {
+                return Err(fail(codes::CANCELLED, None));
             }
-        })
-        .collect::<Vec<_>>();
-    let sources = captured
-        .sources()
-        .iter()
-        .map(|s| ProjectSource {
-            module: s.module_id().to_owned(),
-            source_id: s.source_id().to_owned(),
+            reserve(&mut imports, 1)?;
+            imports.push(retain(text(e.target()))?);
+        }
+        imports.sort_unstable();
+        modules.push(ProjectModule {
+            identity: LogicalModuleIdentity::new(
+                retain(text(V1_SOURCE_PROFILE))?,
+                retain(text(s.module_id()))?,
+            ),
+            imports,
+        });
+        sources.push(ProjectSource {
+            module: retain(text(s.module_id()))?,
+            source_id: retain(text(s.source_id()))?,
             digest: s.digest(),
             byte_len: s.bytes().len() as u64,
-        })
-        .collect::<Vec<_>>();
-    let vocabulary_sources = captured
-        .catalogue()
-        .bundles()
-        .iter()
-        .map(|b| {
-            let source = captured
-                .vocabularies()
-                .iter()
-                .find(|v| v.lock().identity() == b.identity.identity())
-                .ok_or_else(|| fail(codes::INCOMPATIBLE_VALUE, None))?;
-            Ok(ProjectVocabularySource {
-                identity: b.identity.identity().to_owned(),
-                version: b.identity.version().to_owned(),
-                digest: b.identity.content_digest(),
-                byte_len: source.bytes().len() as u64,
-            })
-        })
-        .collect::<Result<Vec<_>, E>>()?;
+        });
+    }
+    let mut vocabulary_sources = Vec::new();
+    reserve(
+        &mut vocabulary_sources,
+        captured.catalogue().bundles().len(),
+    )?;
+    for b in captured.catalogue().bundles() {
+        if resolver.cancel.is_cancelled() {
+            return Err(fail(codes::CANCELLED, None));
+        }
+        let source = captured
+            .vocabularies()
+            .iter()
+            .find(|v| v.lock().identity() == b.identity.identity())
+            .ok_or_else(|| fail(codes::INCOMPATIBLE_VALUE, None))?;
+        vocabulary_sources.push(ProjectVocabularySource {
+            identity: retain(text(b.identity.identity()))?,
+            version: retain(text(b.identity.version()))?,
+            digest: b.identity.content_digest(),
+            byte_len: source.bytes().len() as u64,
+        });
+    }
     Ok(CapturedCompanions {
         modules,
         sources,
@@ -469,26 +621,54 @@ fn captured_companions(resolver: &Resolver<'_>) -> Result<CapturedCompanions, E>
     })
 }
 impl Resolver<'_> {
+    /// Retains bounded syntax for mutable semantic traversal without infallible deep copies.
+    fn retained_roots(&mut self) -> Result<Vec<Root>, E> {
+        let work = self.roots.values().try_fold(0_u64, |sum, root| {
+            sum.checked_add(root.tokens.len() as u64)
+                .and_then(|sum| {
+                    sum.checked_add(root.location.span().end() - root.location.span().start())
+                })
+                .and_then(|sum| sum.checked_add(symbol_work(&root.owner) + 1))
+                .ok_or_else(|| fail(codes::LIMIT, Some(root.location)))
+        })?;
+        self.step(work, None)?;
+        let mut roots = Vec::new();
+        reserve(&mut roots, self.roots.len())?;
+        for root in self.roots.values() {
+            if self.cancel.is_cancelled() {
+                return Err(fail(codes::CANCELLED, Some(root.location)));
+            }
+            roots.push(retain(root.try_clone())?);
+        }
+        self.step(1, None)?;
+        Ok(roots)
+    }
     /// Resolves all source signature owners before any value evaluation.
     fn signatures(&mut self, roots: &[Root]) -> Result<(), E> {
         // Resolve every signature before interpreting a default or initializer.
         for root in roots {
             if let Some(ty) = &root.ty {
                 let ty = self.ty(root, ty)?;
-                self.types.insert(root.owner.clone(), ty);
+                self.step(self.types.len() as u64 + 1, Some(root.location))?;
+                self.types
+                    .insert(retain(root.owner.try_clone())?, ty)
+                    .map_err(|_| fail(codes::LIMIT, Some(root.location)))?;
             } else {
                 let mut fields = Vec::new();
                 let mut alternatives = Vec::new();
                 for (name, ty) in &root.fields {
                     let ty = self.ty(root, ty)?;
+                    self.step(1, Some(root.location))?;
                     if root.variant {
+                        reserve(&mut alternatives, 1)?;
                         alternatives.push(CompositionAlternative {
-                            tag: name.clone(),
+                            tag: retain(name.try_clone())?,
                             ty,
                         });
                     } else {
+                        reserve(&mut fields, 1)?;
                         fields.push(CompositionField {
-                            name: name.clone(),
+                            name: retain(name.try_clone())?,
                             ty,
                             presence: FieldPresence::Required,
                             restrictions: FieldRestrictions::default(),
@@ -496,12 +676,13 @@ impl Resolver<'_> {
                         });
                     }
                 }
-                fields.sort_by(|a, b| a.name.cmp(&b.name));
-                alternatives.sort_by(|a, b| a.tag.cmp(&b.tag));
+                fields.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+                alternatives.sort_unstable_by(|a, b| a.tag.cmp(&b.tag));
+                reserve(&mut self.definitions, 1)?;
                 self.definitions.push(SourceCompositionDefinition {
-                    owner: root.owner.clone(),
+                    owner: retain(root.owner.try_clone())?,
                     definition: CompositionDefinition {
-                        name: root.owner.declaration_name().to_owned(),
+                        name: retain(text(root.owner.declaration_name()))?,
                         public: root.public,
                         body: if root.variant {
                             B::Variant(alternatives)
@@ -537,14 +718,18 @@ impl Resolver<'_> {
                         .iter()
                         .find(|d| d.owner == root.owner)
                         .and_then(|d| match &d.definition.body {
-                            B::Record(fs) => {
-                                fs.iter().find(|f| f.name == *name).map(|f| f.ty.clone())
-                            }
+                            B::Record(fs) => fs.iter().find(|f| f.name == *name).map(|f| &f.ty),
                             B::Variant(_) => None,
                         })
                         .ok_or_else(|| fail(codes::INVALID_SOURCE, Some(root.location)))?;
+                    let ty = retain(ty.try_clone())?;
                     let value = self.value(root, &ty, &member[eq + 1..], true, 0)?;
-                    defaults.push((root.owner.clone(), name.clone(), closed(value)?));
+                    reserve(&mut defaults, 1)?;
+                    defaults.push((
+                        retain(root.owner.try_clone())?,
+                        retain(name.try_clone())?,
+                        closed(value)?,
+                    ));
                 }
             }
         }
@@ -599,7 +784,7 @@ impl Resolver<'_> {
                 .edges()
                 .iter()
                 .find(|e| e.from() == module && e.alias() == alias)
-                .map(crate::module_graph::GraphEdge::target)
+                .map(graph::Import::target)
                 .ok_or_else(|| {
                     fail(
                         codes::INCOMPATIBLE_VALUE,
@@ -609,8 +794,10 @@ impl Resolver<'_> {
         } else {
             module
         };
-        let owner =
-            ModuleSymbolIdentity::new(LogicalModuleIdentity::new(V1_SOURCE_PROFILE, target), name);
+        let owner = ModuleSymbolIdentity::new(
+            LogicalModuleIdentity::new(retain(text(V1_SOURCE_PROFILE))?, retain(text(target))?),
+            retain(text(name))?,
+        );
         let declaration = self.roots.get(&owner).ok_or_else(|| {
             fail(
                 codes::INCOMPATIBLE_VALUE,
@@ -634,9 +821,9 @@ impl Resolver<'_> {
             TypeExpr::Bool => T::Bool,
             TypeExpr::Url => T::Url,
             TypeExpr::Path => T::Path,
-            TypeExpr::List(t) => T::List(Box::new(self.ty(root, t)?)),
-            TypeExpr::Ref(t) => T::Ref(Box::new(self.ty(root, t)?)),
-            TypeExpr::Nullable(t) => T::Nullable(Box::new(self.ty(root, t)?)),
+            TypeExpr::List(t) => T::List(retain(boxed(self.ty(root, t)?))?),
+            TypeExpr::Ref(t) => T::Ref(retain(boxed(self.ty(root, t)?))?),
+            TypeExpr::Nullable(t) => T::Nullable(retain(boxed(self.ty(root, t)?))?),
             TypeExpr::Nominal(alias, name, span) => {
                 if let Some(v) = alias.as_deref().and_then(|a| {
                     self.captured
@@ -656,9 +843,9 @@ impl Resolver<'_> {
                         ));
                     }
                     T::VocabularyNominal {
-                        identity: v.identity().to_owned(),
-                        version: v.version().to_owned(),
-                        name: name.clone(),
+                        identity: retain(text(v.identity()))?,
+                        version: retain(text(v.version()))?,
+                        name: retain(name.try_clone())?,
                     }
                 } else {
                     let owner = self.name(root, alias.as_deref(), name, *span, true)?;
@@ -699,8 +886,12 @@ impl Resolver<'_> {
         if work > remaining {
             return Err(fail(codes::LIMIT, None));
         }
-        let copied = body.clone();
-        self.step(work, None)?;
+        self.work = self
+            .work
+            .checked_add(work)
+            .ok_or_else(|| fail(codes::LIMIT, None))?;
+        let copied = retain(body.try_clone())?;
+        self.step(1, None)?;
         Ok(copied)
     }
     /// Resolves ordinary reuse with explicit cycle/depth guards; references do not evaluate targets.
@@ -712,20 +903,28 @@ impl Resolver<'_> {
         if let Some(v) = self.values.get(owner) {
             let work = value_clone_work(v, self.cancel, symbol_work)?;
             self.step(work, None)?;
-            return Ok(self.values[owner].clone());
+            return retain(self.values[owner].try_clone());
         }
-        if !self.active.insert(owner.clone()) {
+        self.step(self.active.len() as u64 + 1, None)?;
+        if !self
+            .active
+            .insert(retain(owner.try_clone())?)
+            .map_err(|_| fail(codes::LIMIT, None))?
+        {
             return Err(fail(codes::REUSE_CYCLE, Some(self.roots[owner].location)));
         }
-        let root = self.roots[owner].clone();
-        let ty = self.types[owner].clone();
+        let root = retain(self.roots[owner].try_clone())?;
+        let ty = retain(self.types[owner].try_clone())?;
         let value = self.value(&root, &ty, &root.tokens, false, 0)?;
+        self.step(self.active.len() as u64 + self.values.len() as u64, None)?;
         self.active.remove(owner);
         self.step(
             value_clone_work(&value, self.cancel, symbol_work)?,
             Some(root.location),
         )?;
-        self.values.insert(owner.clone(), value.clone());
+        self.values
+            .insert(retain(owner.try_clone())?, retain(value.try_clone())?)
+            .map_err(|_| fail(codes::LIMIT, None))?;
         Ok(value)
     }
     /// Types exact scalar literals without host numeric or inert-location coercion.
@@ -776,26 +975,26 @@ impl Resolver<'_> {
                     return Err(fail(codes::INCOMPATIBLE_VALUE, Some(location)));
                 }
                 Ok(match ty {
-                    T::Url => V::Url(s.value.clone()),
-                    T::Path => V::Path(s.value.clone()),
-                    T::Nullable(inner) if matches!(**inner, T::Url) => V::Url(s.value.clone()),
-                    T::Nullable(inner) if matches!(**inner, T::Path) => V::Path(s.value.clone()),
-                    _ => V::String(s.value.clone()),
+                    T::Url => V::Url(retain(s.value.try_clone())?),
+                    T::Path => V::Path(retain(s.value.try_clone())?),
+                    T::Nullable(inner) if matches!(**inner, T::Url) => {
+                        V::Url(retain(s.value.try_clone())?)
+                    }
+                    T::Nullable(inner) if matches!(**inner, T::Path) => {
+                        V::Path(retain(s.value.try_clone())?)
+                    }
+                    _ => V::String(retain(s.value.try_clone())?),
                 })
             }
             _ => Err(fail(codes::INVALID_SOURCE, Some(location))),
         }
     }
-    /// Types a closed contextual record/variant object with complete member checks.
-    fn record_value(
+    /// Indexes borrowed object members with charged shifts and fallible storage.
+    fn record_members<'a>(
         &mut self,
-        root: &Root,
-        ty: &T,
-        tokens: &[Token],
-        closed: bool,
-        depth: usize,
-    ) -> Result<V, E> {
-        let location = SourceLocation::new(root.location.source(), tokens[0].span);
+        tokens: &'a [Token],
+        location: SourceLocation,
+    ) -> Result<BTreeMap<&'a str, &'a [Token]>, E> {
         let mut members = BTreeMap::new();
         for field in split(&tokens[1..tokens.len() - 1])? {
             let [
@@ -812,10 +1011,29 @@ impl Resolver<'_> {
             else {
                 return Err(fail(codes::INVALID_SOURCE, Some(location)));
             };
-            if members.insert(name.as_str(), rest).is_some() {
+            self.step(members.len() as u64 + 1, Some(location))?;
+            if members
+                .insert(name.as_str(), rest)
+                .map_err(|_| fail(codes::LIMIT, Some(location)))?
+                .is_some()
+            {
                 return Err(fail(codes::DUPLICATE_MEMBER, Some(location)));
             }
         }
+        Ok(members)
+    }
+
+    /// Types a closed contextual record/variant object with complete member checks.
+    fn record_value(
+        &mut self,
+        root: &Root,
+        ty: &T,
+        tokens: &[Token],
+        closed: bool,
+        depth: usize,
+    ) -> Result<V, E> {
+        let location = SourceLocation::new(root.location.source(), tokens[0].span);
+        let members = self.record_members(tokens, location)?;
         match self.body(ty)? {
             B::Record(fields) => {
                 if !closed
@@ -850,7 +1068,8 @@ impl Resolver<'_> {
                             }
                         })?;
                     }
-                    value.push((name.to_owned(), Some(v)));
+                    reserve(&mut value, 1)?;
+                    value.push((retain(text(name))?, Some(v)));
                 }
                 Ok(V::Record(value))
             }
@@ -887,8 +1106,8 @@ impl Resolver<'_> {
                     depth + 1,
                 )?;
                 Ok(V::Variant {
-                    tag: tag.value.clone(),
-                    payload: Box::new(payload),
+                    tag: retain(tag.value.try_clone())?,
+                    payload: retain(boxed(payload))?,
                 })
             }
         }
@@ -921,7 +1140,7 @@ impl Resolver<'_> {
             if closed {
                 return Err(fail(codes::INCOMPATIBLE_VALUE, Some(location)));
             }
-            let target = self.name(root, name.alias.as_deref(), &name.name, name.span, false)?;
+            let target = self.name(root, name.alias, name.name, name.span, false)?;
             let expected = if let T::Nullable(inner) = ty {
                 inner.as_ref()
             } else {
@@ -944,13 +1163,14 @@ impl Resolver<'_> {
             if closed {
                 return Err(fail(codes::INCOMPATIBLE_VALUE, Some(location)));
             }
-            let target = self.name(root, name.alias.as_deref(), &name.name, name.span, false)?;
+            let target = self.name(root, name.alias, name.name, name.span, false)?;
             if self.types.get(&target) != Some(ty) {
                 return Err(fail(codes::INCOMPATIBLE_VALUE, Some(location)));
             }
+            reserve(&mut self.provenance, 1)?;
             self.provenance.push(ProjectProvenance {
-                from: root.owner.clone(),
-                to: target.clone(),
+                from: retain(root.owner.try_clone())?,
+                to: retain(target.try_clone())?,
                 kind: Edge::Value,
                 location,
             });
@@ -982,6 +1202,7 @@ impl Resolver<'_> {
             };
             let mut values = Vec::new();
             for item in split(&tokens[1..tokens.len() - 1])? {
+                reserve(&mut values, 1)?;
                 values.push(self.value(root, inner, item, closed, depth + 1)?);
             }
             return Ok(V::List(values));
@@ -996,11 +1217,23 @@ impl Resolver<'_> {
 }
 
 /// Parses declarations once while preserving physical statement and original-byte boundaries.
-fn parse(source: &crate::CapturedProjectSource) -> Result<Vec<Root>, E> {
-    let tokens = lexer::lex(source.bytes())
+fn parse(
+    source: &crate::CapturedProjectSource,
+    captured: &CapturedCompositionProject,
+    cancel: &CancellationToken,
+) -> Result<Vec<Root>, E> {
+    let string_limit =
+        usize::try_from(captured.composition_limits().json.string_bytes()).unwrap_or(usize::MAX);
+    let tokens = lexer::lex_bounded(source.bytes(), string_limit, Some(cancel))
         .map_err(|e| {
             fail(
-                codes::INVALID_SOURCE,
+                if cancel.is_cancelled() {
+                    codes::CANCELLED
+                } else if matches!(e.kind, super::super::FrontendErrorKind::RecordLimitExceeded) {
+                    codes::LIMIT
+                } else {
+                    codes::INVALID_SOURCE
+                },
                 Some(SourceLocation::new(source.digest(), e.span)),
             )
         })?
@@ -1010,6 +1243,9 @@ fn parse(source: &crate::CapturedProjectSource) -> Result<Vec<Root>, E> {
     let mut depth = 0;
     let mut headers = 0;
     for token in tokens {
+        if cancel.is_cancelled() {
+            return Err(fail(codes::CANCELLED, None));
+        }
         if matches!(
             token.kind,
             TokenKind::EndOfFile | TokenKind::PhysicalLineEnd(_)
@@ -1018,7 +1254,15 @@ fn parse(source: &crate::CapturedProjectSource) -> Result<Vec<Root>, E> {
                 if headers < 2 {
                     headers += 1;
                 } else if !is_requirement_or_import(&statement) {
-                    roots.push(parse_declaration(source, &statement)?);
+                    if roots.len() as u64 >= captured.limits().values().declarations {
+                        return Err(fail(codes::LIMIT, None));
+                    }
+                    roots.try_reserve(1).map_err(|_| fail(codes::LIMIT, None))?;
+                    roots.push(parse_declaration(
+                        source,
+                        &statement,
+                        captured.composition_limits(),
+                    )?);
                 }
                 statement.clear();
             }
@@ -1043,6 +1287,9 @@ fn parse(source: &crate::CapturedProjectSource) -> Result<Vec<Root>, E> {
                 Some(SourceLocation::new(source.digest(), token.span)),
             ));
         }
+        statement
+            .try_reserve(1)
+            .map_err(|_| fail(codes::LIMIT, None))?;
         statement.push(token);
     }
     if !statement.is_empty() {
@@ -1068,8 +1315,13 @@ fn value_clone_work<R>(
     cancel: &CancellationToken,
     reference: impl Fn(&R) -> u64,
 ) -> Result<u64, E> {
+    if cancel.is_cancelled() {
+        return Err(fail(codes::CANCELLED, None));
+    }
     let mut work = 0_u64;
-    let mut stack = vec![value];
+    let mut stack = Vec::new();
+    reserve(&mut stack, 1)?;
+    stack.push(value);
     while let Some(value) = stack.pop() {
         if cancel.is_cancelled() {
             return Err(fail(codes::CANCELLED, None));
@@ -1103,6 +1355,7 @@ fn value_clone_work<R>(
                 bytes
             }
             CompositionValue::Variant { tag, payload } => {
+                reserve(&mut stack, 1)?;
                 stack.push(payload);
                 tag.len() as u64
             }
@@ -1181,7 +1434,11 @@ fn body_clone_work(body: &B, cancel: &CancellationToken) -> Result<u64, E> {
 }
 
 /// Adds contextual variant syntax without reserving `variant` as a binding identifier.
-fn parse_declaration(source: &crate::CapturedProjectSource, tokens: &[Token]) -> Result<Root, E> {
+fn parse_declaration(
+    source: &crate::CapturedProjectSource,
+    tokens: &[Token],
+    limits: neutral_vocabulary::composition::CompositionLimits,
+) -> Result<Root, E> {
     let public = matches!(&tokens[0].kind,TokenKind::Identifier(s) if s==crate::language::graph_names::PUBLIC);
     let start = usize::from(public);
     let variant = matches!(tokens.get(start).map(|t|&t.kind),Some(TokenKind::Identifier(s)) if s==profile::VARIANT);
@@ -1210,20 +1467,33 @@ fn parse_declaration(source: &crate::CapturedProjectSource, tokens: &[Token]) ->
         if variant && body.iter().any(|t| matches!(t.kind, TokenKind::Equals)) {
             return Err(fail(codes::INVALID_SOURCE, Some(location)));
         }
-        let fields = parsed_fields(body)?;
+        let fields = parsed_fields(
+            body,
+            if variant {
+                limits.alternatives_per_type
+            } else {
+                limits.json.fields()
+            },
+        )?;
         if variant && fields.is_empty() {
             return Err(fail(codes::DUPLICATE_MEMBER, Some(location)));
         }
         return Ok(Root {
             owner: ModuleSymbolIdentity::new(
-                LogicalModuleIdentity::new(V1_SOURCE_PROFILE, source.module_id()),
-                name,
+                LogicalModuleIdentity::new(
+                    neutral_core::allocation::text(V1_SOURCE_PROFILE)
+                        .map_err(|_| fail(codes::LIMIT, None))?,
+                    neutral_core::allocation::text(source.module_id())
+                        .map_err(|_| fail(codes::LIMIT, None))?,
+                ),
+                neutral_core::allocation::text(name).map_err(|_| fail(codes::LIMIT, None))?,
             ),
             public,
             location,
             ty: None,
             fields,
-            tokens: body.to_vec(),
+            tokens: neutral_core::allocation::copy_slice(body)
+                .map_err(|_| fail(codes::LIMIT, None))?,
             variant,
         });
     }
@@ -1240,26 +1510,33 @@ fn parse_declaration(source: &crate::CapturedProjectSource, tokens: &[Token]) ->
     if !is_snake_name(name) || is_protected_name(name) {
         return Err(fail(codes::INVALID_SOURCE, Some(location)));
     }
-    let ty = parse_complete_type(&tokens[start..eq - 1])
+    let ty = parse_complete_type_fallible(&tokens[start..eq - 1])
+        .map_err(|_| fail(codes::LIMIT, None))?
         .ok_or_else(|| fail(codes::INVALID_SOURCE, Some(location)))?;
     Ok(Root {
         owner: ModuleSymbolIdentity::new(
-            LogicalModuleIdentity::new(V1_SOURCE_PROFILE, source.module_id()),
-            name,
+            LogicalModuleIdentity::new(
+                neutral_core::allocation::text(V1_SOURCE_PROFILE)
+                    .map_err(|_| fail(codes::LIMIT, None))?,
+                neutral_core::allocation::text(source.module_id())
+                    .map_err(|_| fail(codes::LIMIT, None))?,
+            ),
+            neutral_core::allocation::text(name).map_err(|_| fail(codes::LIMIT, None))?,
         ),
         public,
         location,
         ty: Some(ty),
         fields: Vec::new(),
-        tokens: tokens[eq + 1..].to_vec(),
+        tokens: neutral_core::allocation::copy_slice(&tokens[eq + 1..])
+            .map_err(|_| fail(codes::LIMIT, None))?,
         variant: false,
     })
 }
 
 /// Parses complete source member types without requiring old-profile value terminators.
-fn parsed_fields(tokens: &[Token]) -> Result<Vec<(String, TypeExpr)>, E> {
+fn parsed_fields(tokens: &[Token], limit: u64) -> Result<Vec<(String, TypeExpr)>, E> {
     let mut result = Vec::new();
-    let mut names = BTreeSet::new();
+    let mut names = neutral_core::ordered::OrderedSet::new();
     for member in split(tokens)? {
         let end = member
             .iter()
@@ -1271,15 +1548,30 @@ fn parsed_fields(tokens: &[Token]) -> Result<Vec<(String, TypeExpr)>, E> {
         let TokenKind::Identifier(name) = &member[end - 1].kind else {
             return Err(fail(codes::INVALID_SOURCE, None));
         };
-        if !is_snake_name(name) || is_protected_name(name) || !names.insert(name.clone()) {
+        if result.len() as u64 >= limit {
+            return Err(fail(codes::LIMIT, None));
+        }
+        if !is_snake_name(name)
+            || is_protected_name(name)
+            || !names
+                .insert(name.as_str())
+                .map_err(|_| fail(codes::LIMIT, None))?
+        {
             return Err(fail(codes::DUPLICATE_MEMBER, None));
         }
-        let ty = parse_complete_type(&member[..end - 1])
+        let ty = parse_complete_type_fallible(&member[..end - 1])
+            .map_err(|_| fail(codes::LIMIT, None))?
             .ok_or_else(|| fail(codes::INVALID_SOURCE, None))?;
         if end < member.len() && end + 1 == member.len() {
             return Err(fail(codes::INVALID_SOURCE, None));
         }
-        result.push((name.clone(), ty));
+        result
+            .try_reserve(1)
+            .map_err(|_| fail(codes::LIMIT, None))?;
+        result.push((
+            neutral_core::allocation::text(name).map_err(|_| fail(codes::LIMIT, None))?,
+            ty,
+        ));
     }
     Ok(result)
 }
@@ -1310,6 +1602,9 @@ fn split(tokens: &[Token]) -> Result<Vec<&[Token]>, E> {
             if start == i {
                 return Err(fail(codes::INVALID_SOURCE, None));
             }
+            result
+                .try_reserve(1)
+                .map_err(|_| fail(codes::LIMIT, None))?;
             result.push(&tokens[start..i]);
             start = i + 1;
         }
@@ -1318,6 +1613,9 @@ fn split(tokens: &[Token]) -> Result<Vec<&[Token]>, E> {
         return Err(fail(codes::INVALID_SOURCE, None));
     }
     if start < tokens.len() {
+        result
+            .try_reserve(1)
+            .map_err(|_| fail(codes::LIMIT, None))?;
         result.push(&tokens[start..]);
     }
     Ok(result)
@@ -1334,16 +1632,24 @@ fn closed(v: V) -> Result<ClosedValue, E> {
         V::Null => CompositionValue::Null,
         V::Reference(_) => return Err(fail(codes::INCOMPATIBLE_VALUE, None)),
         V::List(vs) => {
-            CompositionValue::List(vs.into_iter().map(closed).collect::<Result<_, _>>()?)
+            let mut result = Vec::new();
+            reserve(&mut result, vs.len())?;
+            for v in vs {
+                result.push(closed(v)?);
+            }
+            CompositionValue::List(result)
         }
-        V::Record(fs) => CompositionValue::Record(
-            fs.into_iter()
-                .map(|(n, v)| Ok((n, v.map(closed).transpose()?)))
-                .collect::<Result<_, E>>()?,
-        ),
+        V::Record(fs) => {
+            let mut result = Vec::new();
+            reserve(&mut result, fs.len())?;
+            for (n, v) in fs {
+                result.push((n, v.map(closed).transpose()?));
+            }
+            CompositionValue::Record(result)
+        }
         V::Variant { tag, payload } => CompositionValue::Variant {
             tag,
-            payload: Box::new(closed(*payload)?),
+            payload: retain(boxed(closed(*payload)?))?,
         },
     })
 }
@@ -1354,23 +1660,38 @@ fn type_edges(
     ty: &T,
     reference: bool,
     location: SourceLocation,
-    edges: &mut Vec<ProjectProvenance>,
-) {
+    resolver: &mut Resolver<'_>,
+) -> Result<(), E> {
+    resolver.step(1, Some(location))?;
     match ty {
-        T::Nominal(to) => edges.push(ProjectProvenance {
-            from: from.clone(),
-            to: to.clone(),
-            kind: if reference {
-                Edge::ReferenceType
-            } else {
-                Edge::Type
-            },
-            location,
-        }),
-        T::Ref(t) => type_edges(from, t, true, location, edges),
-        T::List(t) | T::Nullable(t) => type_edges(from, t, reference, location, edges),
+        T::Nominal(to) => {
+            reserve(&mut resolver.provenance, 1)?;
+            resolver.provenance.push(ProjectProvenance {
+                from: retain(from.try_clone())?,
+                to: retain(to.try_clone())?,
+                kind: if reference {
+                    Edge::ReferenceType
+                } else {
+                    Edge::Type
+                },
+                location,
+            });
+        }
+        T::Ref(t) => type_edges(from, t, true, location, resolver)?,
+        T::List(t) | T::Nullable(t) => type_edges(from, t, reference, location, resolver)?,
         _ => {}
     }
+    Ok(())
+}
+/// Maps fallible retention failures to the frozen bounded-resource source envelope.
+fn retain<T>(result: Result<T, neutral_core::allocation::AllocationError>) -> Result<T, E> {
+    result.map_err(|_| fail(codes::LIMIT, None))
+}
+/// Reserves unpublished vector growth before insertion, preserving existing state on failure.
+fn reserve<T>(values: &mut Vec<T>, additional: usize) -> Result<(), E> {
+    values
+        .try_reserve(additional)
+        .map_err(|_| fail(codes::LIMIT, None))
 }
 /// Maps shared semantic failures without exposing private contract text.
 fn contract(e: &CompositionError, location: Option<SourceLocation>) -> E {

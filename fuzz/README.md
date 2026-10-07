@@ -39,11 +39,22 @@ regression suite when it represents a real defect.
 
 The vocabulary target exercises the released bundle decoder, the project-bundle
 decoder, and the separate composition closure/default/restriction boundary.
+Source, IR and probe targets also exercise the explicit successor pipeline.
+`composition_support` supplies bounded capture controls and a reviewed source
+seed; wire/probe targets mutate a valid independently encoded successor frame so
+they reach contract/value/origin validation rather than only rejecting magic.
+Source fuzzing independently validates successful compilation and round trips.
+The vocabulary harness also mutates one bundle in a four-bundle diamond with
+exact locks, then drives source compilation, independent encoding/decoding and
+public probe closure. Its unmodified seed must succeed; invalid mutations may
+fail only before complete output. This bounded topology is not exhaustive
+transitive graph coverage or allocator-fault injection; deterministic tests and
+separate review still own those requirements.
 The campaign command supplies tracked seeds from
 `fuzz/seeds/vocabulary/` alongside the ignored mutable corpus. Run
 `cargo xtask fuzz smoke` for deterministic mutations, or select a nightly
 toolchain for `cargo xtask fuzz campaign` to run the configured per-target
-budget. An untraced runner is needed for LeakSanitizer; in a ptraced sandbox,
-set `LSAN_OPTIONS=detect_leaks=0` for the address-sanitized campaign and record
-that leak checking was unavailable there. If a system `ccache` wrapper points
+budget. An untraced runner is needed for LeakSanitizer; a ptraced sandbox's leak
+checker shutdown failure is an environment failure, not passing campaign evidence.
+If a system `ccache` wrapper points
 at a read-only cache, set `CCACHE_DISABLE=1` for that run.

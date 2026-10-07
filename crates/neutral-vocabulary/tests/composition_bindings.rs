@@ -2,6 +2,7 @@
 
 //! Resolved binding values share closed defaults, constraints and invariant identity-only references.
 
+use neutral_core::allocation::Shared as Arc;
 use neutral_core::{
     CancellationToken, StructuralLimits, VocabularyContentDigest, profile::V1_SOURCE_PROFILE,
 };
@@ -22,7 +23,11 @@ use neutral_vocabulary::{
         validate_composition_closure, validate_composition_scope,
     },
 };
-use std::sync::Arc;
+
+/// Creates fallible successor shared ownership for fixtures; allocation failure fails the test.
+fn shared<T>(value: T) -> Arc<T> {
+    Arc::try_new(value).unwrap()
+}
 
 /// Common independent finite policy; cases narrow only the bound they exercise.
 fn limits() -> CompositionLimits {
@@ -67,7 +72,7 @@ fn attempts() -> CompositionField {
 
 /// A public recursive identity-only type and a separate private unused type.
 fn scope() -> Arc<ValidatedCompositionScope> {
-    let catalogue = Arc::new(
+    let catalogue = shared(
         validate_composition_closure(&[], &[], limits(), &CancellationToken::new()).unwrap(),
     );
     let definitions = vec![
@@ -99,7 +104,7 @@ fn scope() -> Arc<ValidatedCompositionScope> {
         ),
         source("Private", false, CompositionBody::Record(vec![])),
     ];
-    Arc::new(
+    shared(
         validate_composition_scope(catalogue, definitions, limits(), &CancellationToken::new())
             .unwrap(),
     )
@@ -320,7 +325,7 @@ fn domain_scope() -> Arc<ValidatedCompositionScope> {
     )
     .unwrap();
     let cancellation = CancellationToken::new();
-    let catalogue = Arc::new(
+    let catalogue = shared(
         validate_composition_closure(
             &[CapturedCompositionBundle { bytes, lock: &lock }],
             &[("ExampleDomain", "1.0.0")],
@@ -329,7 +334,7 @@ fn domain_scope() -> Arc<ValidatedCompositionScope> {
         )
         .unwrap(),
     );
-    Arc::new(
+    shared(
         validate_composition_scope(
             catalogue,
             vec![source(
@@ -518,7 +523,7 @@ fn composition_bindings_exact_and_one_under_limits() {
 #[test]
 fn composition_bindings_concurrent_isolation() {
     let scope = scope();
-    let input = Arc::new(cycle());
+    let input = shared(cycle());
     let expected = validate_composition_bindings(
         Arc::clone(&scope),
         &input,

@@ -68,6 +68,7 @@ fn open(bytes: &[u8]) -> CompositionCatalogue {
         )
         .unwrap(),
     )
+    .unwrap()
 }
 
 /// Creates a public reader over the literal reference-graph fixture.

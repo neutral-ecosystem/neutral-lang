@@ -8,6 +8,7 @@ use neutral_compiler::{
     CapturedVocabularyInput, ProjectCaptureControls, ProjectCaptureLimitValues,
     ProjectCaptureLimits, capture_composition_project, compile_composition_project,
 };
+use neutral_core::allocation::Shared as Arc;
 use neutral_core::profile::LanguageProfile;
 use neutral_encoding::{
     DecodeLimits,
@@ -18,9 +19,18 @@ use neutral_ir::{
     project::{PROJECT_MAX_DEPTH, ProjectLimits},
 };
 use neutral_reader::composition::ValidatedCompositionProject;
-use std::{fmt::Write as _, sync::Arc};
+use std::fmt::Write as _;
+#[path = "graphs.rs"]
+mod graphs;
+#[path = "hardening.rs"]
+mod hardening;
 #[path = "reader_probe.rs"]
 mod reader_probe;
+
+/// Creates fallible successor shared ownership for fixtures; allocation failure fails the test.
+fn shared<T>(value: T) -> Arc<T> {
+    Arc::try_new(value).unwrap()
+}
 
 /// Finite request-local policy independent of ambient machine paths or package releases.
 fn capture_limits() -> ProjectCaptureLimits {
@@ -370,7 +380,7 @@ fn security_composition_reader_rechecks_materialized_contracts_and_companions() 
     for ir in mutations {
         assert!(
             ValidatedCompositionProject::from_ir(
-                Arc::new(ir),
+                shared(ir),
                 valid.limits,
                 limits_for(case),
                 &CancellationToken::new()

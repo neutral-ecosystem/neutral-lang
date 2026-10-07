@@ -144,3 +144,68 @@ fn decoded_text_and_container_limits_are_exact() {
         Err(VocabularyError::JsonLimitExceeded)
     );
 }
+
+/// Reservation errors and cancellation at every real JSON growth boundary never publish partial trees.
+#[test]
+fn security_json_growth_faults_and_mid_parse_cancellation_are_atomic() {
+    let text = r#"{"label":"é\uD83D\uDE00","items":[null,{"x":"\\"}]}"#;
+    let mut checkpoints = 0;
+    let expected = parse_observed(text, limits(), None, &mut |_| {
+        checkpoints += 1;
+        Ok(())
+    })
+    .unwrap();
+    assert!(checkpoints > 10);
+    for fail_at in 0..checkpoints {
+        let mut visited = 0;
+        assert_eq!(
+            parse_observed(text, limits(), None, &mut |_| {
+                let fail = visited == fail_at;
+                visited += 1;
+                if fail {
+                    Err(VocabularyError::JsonLimitExceeded)
+                } else {
+                    Ok(())
+                }
+            }),
+            Err(VocabularyError::JsonLimitExceeded)
+        );
+        assert_eq!(visited, fail_at + 1);
+        let token = CancellationToken::new();
+        let mut visited = 0;
+        assert_eq!(
+            parse_observed(text, limits(), Some(&token), &mut |_| {
+                if visited == fail_at {
+                    token.cancel();
+                }
+                visited += 1;
+                Ok(())
+            }),
+            Err(VocabularyError::Cancelled)
+        );
+        assert_eq!(visited, fail_at + 1);
+    }
+    assert_eq!(parse(text, limits()).unwrap(), expected);
+}
+
+/// A one-over Unicode scalar is rejected before attempting any growth for that scalar.
+#[test]
+fn security_json_string_limit_precedes_scalar_reservation() {
+    let bounded = VocabularyLimits::from_structural(
+        StructuralLimits::new(4096, 16)
+            .unwrap()
+            .with_string_bytes(4)
+            .unwrap(),
+    );
+    for text in [r#""😀a""#, r#""\uD83D\uDE00a""#] {
+        let mut copied = Vec::new();
+        assert_eq!(
+            parse_observed(text, bounded, None, &mut |bytes| {
+                copied.push(bytes);
+                Ok(())
+            }),
+            Err(VocabularyError::JsonLimitExceeded)
+        );
+        assert_eq!(copied, [4]);
+    }
+}

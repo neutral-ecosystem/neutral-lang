@@ -17,7 +17,6 @@ use crate::{
     project_interface::ProjectPublicEdgeKind,
 };
 use neutral_core::{CancellationToken, SemanticDigest, profile::V1_SOURCE_PROFILE};
-use std::collections::BTreeSet;
 
 /// Frames complete successor meaning without accepting source evidence as logical content.
 ///
@@ -97,27 +96,37 @@ fn build<I>(
             vocabulary_types(w, ir, public)?;
             catalogues(w, ir)?;
             dependencies(w, ir)?;
-            let visible = ir
-                .declarations
-                .iter()
-                .filter(|d| d.public)
-                .map(|d| &d.identity)
-                .collect::<BTreeSet<_>>();
-            let edges = ir
-                .provenance
-                .iter()
-                .filter(|e| {
-                    visible.contains(&e.from)
-                        && visible.contains(&e.to)
-                        && matches!(
-                            e.kind,
-                            ProjectPublicEdgeKind::Type
-                                | ProjectPublicEdgeKind::ReferenceType
-                                | ProjectPublicEdgeKind::Reference
-                        )
-                })
-                .map(|e| (&e.from, e.kind, &e.to))
-                .collect::<BTreeSet<_>>();
+            // Borrow canonical declarations rather than allocating a visibility index.
+            let visible = |owner: &crate::ModuleSymbolIdentity| {
+                ir.declarations
+                    .binary_search_by(|d| d.identity.cmp(owner))
+                    .is_ok_and(|index| ir.declarations[index].public)
+            };
+            w.items(ir.provenance.len())?;
+            let mut edges = Vec::new();
+            for e in &ir.provenance {
+                w.check()?;
+                if visible(&e.from)
+                    && visible(&e.to)
+                    && matches!(
+                        e.kind,
+                        ProjectPublicEdgeKind::Type
+                            | ProjectPublicEdgeKind::ReferenceType
+                            | ProjectPublicEdgeKind::Reference
+                    )
+                {
+                    for owner in [&e.from, &e.to] {
+                        w.text(owner.module().module_name())?;
+                        w.text(owner.declaration_name())?;
+                    }
+                    edges.try_reserve(1).map_err(|_| E::Limit)?;
+                    edges.push((&e.from, e.kind, &e.to));
+                }
+            }
+            // Multiple source occurrences contribute one semantic edge, unchanged from the set projection.
+            edges.sort_unstable();
+            edges.dedup();
+            w.check()?;
             w.frame("public-edges", |w| {
                 for (from, kind, to) in edges {
                     w.frame("edge", |w| {
@@ -295,7 +304,7 @@ fn restrictions(w: &mut Writer<'_>, r: &FieldRestrictions) -> Result<(), E> {
         })?;
         for (tag, bound) in [("minimum", &r.minimum), ("maximum", &r.maximum)] {
             w.frame(tag, |w| match bound {
-                Some(n) => value::<std::convert::Infallible>(w, &V::Number(n.clone()), 0),
+                Some(n) => number(w, n),
                 None => w.leaf("absent", &[]),
             })?;
         }
@@ -306,6 +315,15 @@ fn restrictions(w: &mut Writer<'_>, r: &FieldRestrictions) -> Result<(), E> {
             })?;
         }
         Ok(())
+    })
+}
+
+/// Frames borrowed exact numbers without constructing an allocating temporary value.
+fn number(w: &mut Writer<'_>, n: &crate::ExactNumber) -> Result<(), E> {
+    w.frame("num", |w| {
+        w.leaf("negative", &[u8::from(n.is_negative())])?;
+        w.leaf("coefficient", n.coefficient().as_bytes())?;
+        w.leaf("scale", &n.scale().to_be_bytes())
     })
 }
 
@@ -335,11 +353,7 @@ fn value<R: Reference>(w: &mut Writer<'_>, v: &V<R>, depth: usize) -> Result<(),
     match v {
         V::Null => w.leaf("null", &[]),
         V::Bool(b) => w.leaf("bool", &[u8::from(*b)]),
-        V::Number(n) => w.frame("num", |w| {
-            w.leaf("negative", &[u8::from(n.is_negative())])?;
-            w.leaf("coefficient", n.coefficient().as_bytes())?;
-            w.leaf("scale", &n.scale().to_be_bytes())
-        }),
+        V::Number(n) => number(w, n),
         V::String(s) => w.leaf("string", s.as_bytes()),
         V::Url(s) => w.leaf("url", s.as_bytes()),
         V::Path(s) => w.leaf("path", s.as_bytes()),

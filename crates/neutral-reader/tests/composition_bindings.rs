@@ -2,6 +2,7 @@
 
 //! Independent reader inspection of checked public binding values and reference dependencies.
 
+use neutral_core::allocation::Shared as Arc;
 use neutral_core::{CancellationToken, StructuralLimits, profile::V1_SOURCE_PROFILE};
 use neutral_ir::{
     LogicalModuleIdentity, ModuleSymbolIdentity,
@@ -21,7 +22,11 @@ use neutral_vocabulary::{
         validate_composition_scope,
     },
 };
-use std::sync::Arc;
+
+/// Creates fallible successor shared ownership for fixtures; allocation failure fails the test.
+fn shared<T>(value: T) -> Arc<T> {
+    Arc::try_new(value).unwrap()
+}
 
 /// Exact logical identity without compiler, source bytes or host information.
 fn owner(name: &str) -> ModuleSymbolIdentity {
@@ -37,9 +42,8 @@ fn reader() -> CompositionBindingCatalogue {
     let limits = CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(
         StructuralLimits::new(65_536, 64).unwrap(),
     ));
-    let catalogue =
-        Arc::new(validate_composition_closure(&[], &[], limits, &cancellation).unwrap());
-    let scope = Arc::new(
+    let catalogue = shared(validate_composition_closure(&[], &[], limits, &cancellation).unwrap());
+    let scope = shared(
         validate_composition_scope(
             catalogue,
             vec![SourceCompositionDefinition {
@@ -84,7 +88,7 @@ fn reader() -> CompositionBindingCatalogue {
             value: V::String("private_value".to_owned()),
         },
     ];
-    CompositionBindingCatalogue::from_shared(Arc::new(
+    CompositionBindingCatalogue::from_shared(shared(
         validate_composition_bindings(scope, &bindings, limits, &cancellation).unwrap(),
     ))
 }

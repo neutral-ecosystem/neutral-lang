@@ -2,6 +2,8 @@
 
 //! Independent complete successor validation, before any encoded artifact becomes authority.
 
+use neutral_core::allocation::{Shared as Arc, TryClone, boxed, text};
+use neutral_core::ordered::{OrderedMap as BTreeMap, OrderedSet as BTreeSet};
 use neutral_core::{CancellationToken, profile::V1_SOURCE_PROFILE};
 use neutral_ir::{
     ModuleSymbolIdentity,
@@ -22,10 +24,6 @@ use neutral_ir::{
 use neutral_vocabulary::composition::{
     CompositionError, CompositionLimits, ValidatedCompositionBindings,
     validate_composition_bindings, validate_composition_model, validate_composition_scope,
-};
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
 };
 
 /// Safe whole-project failures; no supplied text, private names or host paths are retained.
@@ -112,40 +110,36 @@ impl ValidatedCompositionProject {
         }
         check_comparison_work(&ir, composition.policy().work)?;
         modules(&ir)?;
-        let catalogue = Arc::new(
+        let catalogue = Arc::try_new(
             validate_composition_model(&ir.vocabularies, composition, cancellation)
                 .map_err(|e| error(&e))?,
-        );
-        let (sources, mut raw) = declarations(&ir)?;
-        let expected_sources = sources.clone();
-        let scope = Arc::new(
+        )
+        .map_err(|_| E::Limit)?;
+        let (sources, mut raw) = declarations(&ir, cancellation)?;
+        let expected_sources = sources.try_clone().map_err(|_| E::Limit)?;
+        let scope = Arc::try_new(
             validate_composition_scope(catalogue, sources, composition, cancellation)
                 .map_err(|e| error(&e))?,
-        );
+        )
+        .map_err(|_| E::Limit)?;
         if scope.sources() != expected_sources {
             return Err(E::Semantic);
         }
-        let mut origin_index = BTreeMap::new();
-        for origin in &ir.origins {
-            if origin_index
-                .insert((&origin.binding, origin.path.as_slice()), origin)
-                .is_some()
-            {
-                return Err(E::Companion);
-            }
-        }
+        let origin_index = index_origins(&ir, composition.work, cancellation)?;
         for binding in &mut raw {
             binding.value = supplied(
                 &binding.owner,
                 &binding.value,
                 &mut Vec::new(),
                 &origin_index,
+                cancellation,
             )?;
         }
-        let bindings = Arc::new(
+        let bindings = Arc::try_new(
             validate_composition_bindings(scope, &raw, composition, cancellation)
                 .map_err(|e| error(&e))?,
-        );
+        )
+        .map_err(|_| E::Limit)?;
         let mut origins = ir.origins.iter();
         let mut attribution_work = composition.work;
         for binding in bindings.bindings() {
@@ -228,10 +222,19 @@ fn check_interface(
 /// Checks canonical complete declaration categories before retaining any semantic clones.
 fn declarations(
     ir: &CompositionProjectIr,
+    cancellation: &CancellationToken,
 ) -> Result<(Vec<SourceCompositionDefinition>, Vec<CompositionBinding>), E> {
     let mut sources = Vec::new();
     let mut raw = Vec::new();
+    sources
+        .try_reserve_exact(ir.declarations.len())
+        .map_err(|_| E::Limit)?;
+    raw.try_reserve_exact(ir.declarations.len())
+        .map_err(|_| E::Limit)?;
     for (i, d) in ir.declarations.iter().enumerate() {
+        if cancellation.is_cancelled() {
+            return Err(E::Cancelled);
+        }
         if i > 0 && ir.declarations[i - 1].identity >= d.identity {
             return Err(E::Semantic);
         }
@@ -252,24 +255,53 @@ fn declarations(
                     return Err(E::Semantic);
                 }
                 sources.push(SourceCompositionDefinition {
-                    owner: d.identity.clone(),
+                    owner: d.identity.try_clone().map_err(|_| E::Limit)?,
                     definition: CompositionDefinition {
-                        name: d.identity.declaration_name().to_owned(),
+                        name: text(d.identity.declaration_name()).map_err(|_| E::Limit)?,
                         public: d.public,
-                        body: body.clone(),
+                        body: body.try_clone().map_err(|_| E::Limit)?,
                     },
                 });
             }
             (S::Binding(ty), Some(value)) => raw.push(CompositionBinding {
-                owner: d.identity.clone(),
+                owner: d.identity.try_clone().map_err(|_| E::Limit)?,
                 public: d.public,
-                ty: ty.clone(),
-                value: value.clone(),
+                ty: ty.try_clone().map_err(|_| E::Limit)?,
+                value: value.try_clone().map_err(|_| E::Limit)?,
             }),
             _ => return Err(E::Semantic),
         }
     }
     Ok((sources, raw))
+}
+
+/// Exact borrowed origin occurrences with fallibly reserved ordered membership.
+type OriginIndex<'a> = neutral_core::ordered::OrderedMap<
+    (&'a ModuleSymbolIdentity, &'a [P]),
+    &'a neutral_ir::composition::project::CompositionOrigin,
+>;
+
+/// Charges index shifts and observes cancellation before retaining companion membership.
+fn index_origins<'a>(
+    ir: &'a CompositionProjectIr,
+    mut work: u64,
+    cancellation: &CancellationToken,
+) -> Result<OriginIndex<'a>, E> {
+    let mut index = OriginIndex::new();
+    for origin in &ir.origins {
+        if cancellation.is_cancelled() {
+            return Err(E::Cancelled);
+        }
+        work = work.checked_sub(index.len() as u64).ok_or(E::Limit)?;
+        if index
+            .insert((&origin.binding, origin.path.as_slice()), origin)
+            .map_err(|_| E::Limit)?
+            .is_some()
+        {
+            return Err(E::Companion);
+        }
+    }
+    Ok(index)
 }
 
 /// Converts shared contract failures into a source-independent, non-disclosing envelope.
@@ -316,11 +348,12 @@ fn supplied(
     owner: &ModuleSymbolIdentity,
     value: &V,
     path: &mut Vec<P>,
-    origins: &BTreeMap<
-        (&ModuleSymbolIdentity, &[P]),
-        &neutral_ir::composition::project::CompositionOrigin,
-    >,
+    origins: &OriginIndex<'_>,
+    cancellation: &CancellationToken,
 ) -> Result<V, E> {
+    if cancellation.is_cancelled() {
+        return Err(E::Cancelled);
+    }
     if !origins.contains_key(&(owner, path.as_slice())) {
         return Err(E::Companion);
     }
@@ -330,17 +363,25 @@ fn supplied(
                 return Err(E::Semantic);
             }
             let mut result = Vec::new();
+            result
+                .try_reserve_exact(fields.len())
+                .map_err(|_| E::Limit)?;
             for (name, value) in fields {
-                path.push(P::Field(name.clone()));
+                if cancellation.is_cancelled() {
+                    return Err(E::Cancelled);
+                }
+                path.try_reserve(1).map_err(|_| E::Limit)?;
+                path.push(P::Field(text(name).map_err(|_| E::Limit)?));
                 let origin = origins.get(&(owner, path.as_slice())).ok_or(E::Companion)?;
                 if !matches!(origin.kind, K::Defaulted | K::OmittedOptional) {
                     result.push((
-                        name.clone(),
+                        text(name).map_err(|_| E::Limit)?,
                         Some(supplied(
                             owner,
                             value.as_ref().ok_or(E::Companion)?,
                             path,
                             origins,
+                            cancellation,
                         )?),
                     ));
                 }
@@ -350,23 +391,28 @@ fn supplied(
         }
         V::List(values) => {
             let mut result = Vec::new();
+            result
+                .try_reserve_exact(values.len())
+                .map_err(|_| E::Limit)?;
             for (i, v) in values.iter().enumerate() {
+                path.try_reserve(1).map_err(|_| E::Limit)?;
                 path.push(P::Element(i as u64));
-                result.push(supplied(owner, v, path, origins)?);
+                result.push(supplied(owner, v, path, origins, cancellation)?);
                 path.pop();
             }
             V::List(result)
         }
         V::Variant { tag, payload } => {
+            path.try_reserve(1).map_err(|_| E::Limit)?;
             path.push(P::Payload);
-            let payload = supplied(owner, payload, path, origins)?;
+            let payload = supplied(owner, payload, path, origins, cancellation)?;
             path.pop();
             V::Variant {
-                tag: tag.clone(),
-                payload: Box::new(payload),
+                tag: text(tag).map_err(|_| E::Limit)?,
+                payload: boxed(payload).map_err(|_| E::Limit)?,
             }
         }
-        _ => value.clone(),
+        _ => value.try_clone().map_err(|_| E::Limit)?,
     })
 }
 
@@ -570,7 +616,9 @@ fn source_attribution(
         return Ok(());
     }
     let mut seen = BTreeSet::new();
-    let mut pending = vec![&origin.binding];
+    let mut pending = Vec::new();
+    pending.try_reserve(1).map_err(|_| E::Limit)?;
+    pending.push(&origin.binding);
     while let Some(owner) = pending.pop() {
         if cancel.is_cancelled() {
             return Err(E::Cancelled);
@@ -578,7 +626,8 @@ fn source_attribution(
         *work = work
             .checked_sub(ir.provenance.len() as u64 + ir.declarations.len() as u64 + 1)
             .ok_or(E::Limit)?;
-        if !seen.insert(owner) {
+        charge_index(work, seen.len(), cancel)?;
+        if !seen.insert(owner).map_err(|_| E::Limit)? {
             continue;
         }
         if ir
@@ -607,12 +656,13 @@ fn companions(
     limits: ProjectLimits,
     cancel: &CancellationToken,
 ) -> Result<(), E> {
-    source_companions(ir)?;
-    let index = ir
-        .declarations
-        .iter()
-        .map(|d| (&d.identity, d))
-        .collect::<BTreeMap<_, _>>();
+    let mut work = ir.composition_limits.work;
+    source_companions(ir, &mut work, cancel)?;
+    let mut index = BTreeMap::new();
+    for d in &ir.declarations {
+        charge_index(&mut work, index.len(), cancel)?;
+        index.insert(&d.identity, d).map_err(|_| E::Limit)?;
+    }
     let mut actual = BTreeSet::new();
     let mut previous = None;
     for edge in &ir.provenance {
@@ -635,22 +685,33 @@ fn companions(
             return Err(E::Companion);
         }
         previous = Some(key);
-        actual.insert((&edge.from, edge.kind, &edge.to));
+        charge_index(&mut work, actual.len(), cancel)?;
+        actual
+            .insert((&edge.from, edge.kind, &edge.to))
+            .map_err(|_| E::Limit)?;
     }
     let mut expected = BTreeSet::new();
     for d in &ir.declarations {
-        let types = match &d.signature {
-            S::Binding(ty) => vec![ty],
-            S::Definition(B::Record(fields)) => fields.iter().map(|f| &f.ty).collect(),
-            S::Definition(B::Variant(alts)) => alts.iter().map(|a| &a.ty).collect(),
-        };
-        for ty in types {
-            type_edges(&d.identity, ty, false, &mut expected);
+        match &d.signature {
+            S::Binding(ty) => type_edges(&d.identity, ty, false, &mut expected, &mut work, cancel)?,
+            S::Definition(B::Record(fields)) => {
+                for f in fields {
+                    type_edges(&d.identity, &f.ty, false, &mut expected, &mut work, cancel)?;
+                }
+            }
+            S::Definition(B::Variant(alts)) => {
+                for a in alts {
+                    type_edges(&d.identity, &a.ty, false, &mut expected, &mut work, cancel)?;
+                }
+            }
         }
     }
     for b in bindings.bindings() {
         for r in b.references() {
-            expected.insert((&b.binding().owner, Edge::Reference, &r.target));
+            charge_index(&mut work, expected.len(), cancel)?;
+            expected
+                .insert((&b.binding().owner, Edge::Reference, &r.target))
+                .map_err(|_| E::Limit)?;
         }
     }
     if expected
@@ -669,6 +730,7 @@ fn companions(
                     ir,
                     from.module().module_name(),
                     to.module().module_name(),
+                    &mut work,
                     cancel,
                 )?)
         {
@@ -688,25 +750,34 @@ fn companions(
         }
     }
     // Ordinary reuse evaluates; identity references deliberately do not enter this cycle check.
-    check_reuse_cycles(&actual, cancel)?;
+    check_reuse_cycles(&actual, &mut work, cancel)?;
     resource_facts(ir, limits)
 }
 
 /// Recomputes aggregate captured and retained counts instead of trusting advertised facts.
 fn resource_facts(ir: &CompositionProjectIr, limits: ProjectLimits) -> Result<(), E> {
-    let sum = |values: Vec<u64>| {
-        values
-            .into_iter()
-            .try_fold(0_u64, u64::checked_add)
-            .ok_or(E::Limit)
-    };
     let facts = ProjectResourceFacts {
         source_units: ir.sources.len() as u64,
-        source_bytes: sum(ir.sources.iter().map(|s| s.byte_len).collect())?,
+        source_bytes: ir
+            .sources
+            .iter()
+            .map(|s| s.byte_len)
+            .try_fold(0_u64, u64::checked_add)
+            .ok_or(E::Limit)?,
         vocabulary_units: ir.vocabulary_sources.len() as u64,
-        vocabulary_bytes: sum(ir.vocabulary_sources.iter().map(|s| s.byte_len).collect())?,
+        vocabulary_bytes: ir
+            .vocabulary_sources
+            .iter()
+            .map(|s| s.byte_len)
+            .try_fold(0_u64, u64::checked_add)
+            .ok_or(E::Limit)?,
         declarations: ir.declarations.len() as u64,
-        import_edges: sum(ir.modules.iter().map(|m| m.imports.len() as u64).collect())?,
+        import_edges: ir
+            .modules
+            .iter()
+            .map(|m| m.imports.len() as u64)
+            .try_fold(0_u64, u64::checked_add)
+            .ok_or(E::Limit)?,
         value_nodes: ir.composition_resources.retained_value_nodes,
     };
     if facts != ir.resources {
@@ -721,7 +792,11 @@ fn resource_facts(ir: &CompositionProjectIr, limits: ProjectLimits) -> Result<()
 }
 
 /// Checks source accounting, original-byte coverage and exact vocabulary evidence ownership.
-fn source_companions(ir: &CompositionProjectIr) -> Result<(), E> {
+fn source_companions(
+    ir: &CompositionProjectIr,
+    work: &mut u64,
+    cancel: &CancellationToken,
+) -> Result<(), E> {
     if ir.source_maps.len() != ir.declarations.len()
         || ir.vocabulary_sources.len() != ir.vocabularies.len()
     {
@@ -729,9 +804,10 @@ fn source_companions(ir: &CompositionProjectIr) -> Result<(), E> {
     }
     let mut ids = BTreeSet::new();
     for (s, m) in ir.sources.iter().zip(&ir.modules) {
+        charge_index(work, ids.len(), cancel)?;
         if s.module != m.identity.module_name()
             || s.source_id.is_empty()
-            || !ids.insert(&s.source_id)
+            || !ids.insert(&s.source_id).map_err(|_| E::Limit)?
             || s.byte_len == 0
         {
             return Err(E::Companion);
@@ -849,22 +925,31 @@ fn contains_reuse(
 /// Checks ordinary value dependencies in linear graph work; identity-only references may cycle.
 fn check_reuse_cycles(
     edges: &BTreeSet<(&ModuleSymbolIdentity, Edge, &ModuleSymbolIdentity)>,
+    work: &mut u64,
     cancel: &CancellationToken,
 ) -> Result<(), E> {
     let mut incoming = BTreeMap::new();
     let mut outgoing: BTreeMap<_, Vec<_>> = BTreeMap::new();
     for (from, kind, to) in edges {
         if *kind == Edge::Value {
-            incoming.entry(*from).or_insert(0_usize);
-            *incoming.entry(*to).or_insert(0) += 1;
-            outgoing.entry(*from).or_default().push(*to);
+            charge_index(work, incoming.len() * 2 + outgoing.len(), cancel)?;
+            incoming
+                .entry(*from)
+                .map_err(|_| E::Limit)?
+                .or_insert(0_usize);
+            *incoming.entry(*to).map_err(|_| E::Limit)?.or_insert(0) += 1;
+            let targets = outgoing.entry(*from).map_err(|_| E::Limit)?.or_default();
+            targets.try_reserve(1).map_err(|_| E::Limit)?;
+            targets.push(*to);
         }
     }
-    let mut ready = incoming
-        .iter()
-        .filter(|(_, count)| **count == 0)
-        .map(|(key, _)| *key)
-        .collect::<Vec<_>>();
+    let mut ready = Vec::new();
+    ready.try_reserve(incoming.len()).map_err(|_| E::Limit)?;
+    for (key, count) in &incoming {
+        if *count == 0 {
+            ready.push(*key);
+        }
+    }
     let mut count = 0;
     while let Some(node) = ready.pop() {
         if cancel.is_cancelled() {
@@ -893,23 +978,31 @@ fn type_edges<'a>(
     ty: &'a T,
     reference: bool,
     edges: &mut BTreeSet<(&'a ModuleSymbolIdentity, Edge, &'a ModuleSymbolIdentity)>,
-) {
+    work: &mut u64,
+    cancel: &CancellationToken,
+) -> Result<(), E> {
+    charge_index(work, edges.len(), cancel)?;
     match ty {
         T::Nominal(to) => {
-            edges.insert((
-                from,
-                if reference {
-                    Edge::ReferenceType
-                } else {
-                    Edge::Type
-                },
-                to,
-            ));
+            edges
+                .insert((
+                    from,
+                    if reference {
+                        Edge::ReferenceType
+                    } else {
+                        Edge::Type
+                    },
+                    to,
+                ))
+                .map_err(|_| E::Limit)?;
         }
-        T::Ref(inner) => type_edges(from, inner, true, edges),
-        T::List(inner) | T::Nullable(inner) => type_edges(from, inner, reference, edges),
+        T::Ref(inner) => type_edges(from, inner, true, edges, work, cancel)?,
+        T::List(inner) | T::Nullable(inner) => {
+            type_edges(from, inner, reference, edges, work, cancel)?;
+        }
         _ => {}
     }
+    Ok(())
 }
 
 /// Checks logical reachability without acquiring imports or interpreting host locations.
@@ -917,9 +1010,12 @@ fn reachable(
     ir: &CompositionProjectIr,
     from: &str,
     to: &str,
+    work: &mut u64,
     cancel: &CancellationToken,
 ) -> Result<bool, E> {
-    let mut stack = vec![from];
+    let mut stack = Vec::new();
+    stack.try_reserve(1).map_err(|_| E::Limit)?;
+    stack.push(from);
     let mut seen = BTreeSet::new();
     while let Some(name) = stack.pop() {
         if cancel.is_cancelled() {
@@ -928,7 +1024,8 @@ fn reachable(
         if name == to {
             return Ok(true);
         }
-        if !seen.insert(name) {
+        charge_index(work, seen.len() + ir.modules.len(), cancel)?;
+        if !seen.insert(name).map_err(|_| E::Limit)? {
             continue;
         }
         let module = ir
@@ -936,7 +1033,18 @@ fn reachable(
             .iter()
             .find(|m| m.identity.module_name() == name)
             .ok_or(E::Semantic)?;
+        stack
+            .try_reserve(module.imports.len())
+            .map_err(|_| E::Limit)?;
         stack.extend(module.imports.iter().map(String::as_str));
     }
     Ok(false)
+}
+/// Charges sorted-index movement before reservation or expansion and checks cancellation.
+fn charge_index(work: &mut u64, count: usize, cancel: &CancellationToken) -> Result<(), E> {
+    if cancel.is_cancelled() {
+        return Err(E::Cancelled);
+    }
+    *work = work.checked_sub(count as u64 + 1).ok_or(E::Limit)?;
+    Ok(())
 }

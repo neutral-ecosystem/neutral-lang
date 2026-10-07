@@ -6,6 +6,8 @@ use super::{
     Budget, CompositionError as E, CompositionLimits, ValidatedComposition,
     ValidatedCompositionValue, charge, check_count, supplied, values,
 };
+use neutral_core::allocation::Shared as Arc;
+use neutral_core::ordered::{OrderedMap as BTreeMap, OrderedSet as BTreeSet};
 use neutral_core::{CancellationToken, profile::V1_SOURCE_PROFILE};
 use neutral_ir::{
     ModuleSymbolIdentity,
@@ -15,10 +17,6 @@ use neutral_ir::{
     },
     language::{is_protected_name, is_snake_name, is_upper_name},
     project_interface::ProjectPublicType as T,
-};
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
 };
 
 /// Immutable resolved contracts for both source and vocabulary nominal owners.
@@ -134,8 +132,12 @@ pub fn validate_composition_scope(
     let mut module_types = BTreeMap::new();
     for source in &sources {
         validate_owner(&source.owner, &mut budget)?;
+        budget.step(module_types.len() as u64)?;
         charge(
-            module_types.entry(source.owner.module()).or_insert(0),
+            module_types
+                .entry(source.owner.module())
+                .map_err(|_| E::Allocation)?
+                .or_insert(0),
             1,
             limits.json.types(),
         )?;
@@ -163,7 +165,7 @@ pub fn validate_composition_scope(
             sources.len(),
         )?;
     }
-    sources.sort_by(|a, b| a.owner.cmp(&b.owner));
+    sources.sort_unstable_by(|a, b| a.owner.cmp(&b.owner));
     if sources
         .windows(2)
         .any(|pair| pair[0].owner == pair[1].owner)
@@ -172,9 +174,9 @@ pub fn validate_composition_scope(
     }
     for source in &mut sources {
         match &mut source.definition.body {
-            CompositionBody::Record(fields) => fields.sort_by(|a, b| a.name.cmp(&b.name)),
+            CompositionBody::Record(fields) => fields.sort_unstable_by(|a, b| a.name.cmp(&b.name)),
             CompositionBody::Variant(alternatives) => {
-                alternatives.sort_by(|a, b| a.tag.cmp(&b.tag));
+                alternatives.sort_unstable_by(|a, b| a.tag.cmp(&b.tag));
             }
         }
     }
@@ -342,7 +344,11 @@ fn member<'a>(
     if name.len() as u64 > budget.limits.json.string_bytes() {
         return Err(E::Limit);
     }
-    if !is_snake_name(name) || is_protected_name(name) || !seen.insert(name) {
+    budget.step(seen.len() as u64)?;
+    if !is_snake_name(name)
+        || is_protected_name(name)
+        || !seen.insert(name).map_err(|_| E::Allocation)?
+    {
         return Err(E::InvalidContract);
     }
     Ok(())
@@ -399,7 +405,9 @@ pub(super) fn preflight_type(ty: &T, budget: &mut Budget<'_>) -> Result<(), E> {
 
 /// Bounds caller-owned defaults/choices iteratively before any recursive expansion or clone.
 fn preflight_value(value: &V, budget: &mut Budget<'_>) -> Result<(), E> {
-    let mut stack = vec![(value, 0)];
+    let mut stack = Vec::new();
+    stack.try_reserve_exact(1).map_err(|_| E::Allocation)?;
+    stack.push((value, 0));
     while let Some((value, depth)) = stack.pop() {
         budget.depth(depth, budget.limits.value_depth)?;
         match value {
@@ -481,6 +489,7 @@ pub(super) fn lookup<'a>(
                     + definition.name.len(),
                 result.len() + 1,
             )?;
+            budget.step(result.len() as u64)?;
             result.insert(
                 (
                     bundle.identity.identity(),
@@ -488,7 +497,7 @@ pub(super) fn lookup<'a>(
                     &definition.name,
                 ),
                 definition,
-            );
+            )?;
         }
     }
     for source in sources {
@@ -496,7 +505,11 @@ pub(super) fn lookup<'a>(
             source.owner.module().module_name().len() + source.definition.name.len(),
             result.len() + 1,
         )?;
-        result.sources.insert(&source.owner, &source.definition);
+        budget.step(result.len() as u64)?;
+        result
+            .sources
+            .insert(&source.owner, &source.definition)
+            .map_err(|_| E::Allocation)?;
     }
     Ok(result)
 }
@@ -509,7 +522,11 @@ fn validate_edges(
 ) -> Result<(), E> {
     let mut graph = BTreeMap::<&ModuleSymbolIdentity, BTreeSet<&ModuleSymbolIdentity>>::new();
     for source in sources {
-        let targets = graph.entry(&source.owner).or_default();
+        budget.step(graph.len() as u64)?;
+        let targets = graph
+            .entry(&source.owner)
+            .map_err(|_| E::Allocation)?
+            .or_default();
         for ty in values::definition_types(&source.definition) {
             let mut ty = ty;
             let mut reference = false;
@@ -529,7 +546,8 @@ fn validate_edges(
                             return Err(E::PrivateType);
                         }
                         if !reference {
-                            targets.insert(owner);
+                            budget.step(targets.len() as u64)?;
+                            targets.insert(owner).map_err(|_| E::Allocation)?;
                         }
                         break;
                     }
@@ -547,18 +565,22 @@ fn validate_edges(
     let mut done = BTreeSet::new();
     for root in graph.keys() {
         let mut visiting = BTreeSet::new();
-        let mut stack = vec![(*root, false)];
+        let mut stack = Vec::new();
+        stack.try_reserve_exact(1).map_err(|_| E::Allocation)?;
+        stack.push((*root, false));
         while let Some((owner, leaving)) = stack.pop() {
             budget.step(1)?;
             if leaving {
+                budget.step(visiting.len() as u64 + done.len() as u64)?;
                 visiting.remove(owner);
-                done.insert(owner);
+                done.insert(owner).map_err(|_| E::Allocation)?;
                 continue;
             }
             if done.contains(owner) {
                 continue;
             }
-            if !visiting.insert(owner) {
+            budget.step(visiting.len() as u64)?;
+            if !visiting.insert(owner).map_err(|_| E::Allocation)? {
                 return Err(E::EmbeddedCycle);
             }
             stack

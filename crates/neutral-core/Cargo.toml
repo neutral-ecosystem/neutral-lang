@@ -11,6 +11,8 @@ owner = "core-foundation"
 
 [dependencies]
 sha2.workspace = true
+trybox.workspace = true
+triomphe.workspace = true
 
 [lints]
 workspace = true

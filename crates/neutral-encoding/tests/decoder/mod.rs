@@ -146,6 +146,8 @@ fn unsupported_forms_and_offset_overflow_fail_closed() {
         nodes: 0,
         cancellation: &CancellationToken::new(),
         canonical: false,
+        allocations: 0,
+        allocation_fault: None,
     };
     assert_eq!(
         parser.read_array::<2>().unwrap_err().class(),
@@ -155,6 +157,47 @@ fn unsupported_forms_and_offset_overflow_fail_closed() {
     parser.nodes = usize::MAX;
     assert!(
         matches!(parser.value(1), Err(error) if error.class() == DecodeErrorClass::EncodedSizeLimit)
+    );
+}
+
+/// Every actual lexical storage checkpoint fails atomically under synthetic allocation faults or cancellation.
+#[test]
+fn security_cbor_reservation_faults_and_cancellation_are_atomic() {
+    /// Creates fresh isolated lexical state for each borrowed cancellation signal.
+    fn make(cancellation: &CancellationToken) -> Parser<'_> {
+        Parser {
+            bytes: &[0x82, 0xa1, 0x61, b'k', 0x82, 0x42, 1, 2, 0x61, b'x', 0xf6],
+            position: 0,
+            base_offset: 0,
+            limits: DecodeLimits::hard(),
+            nodes: 0,
+            cancellation,
+            canonical: true,
+            allocations: 0,
+            allocation_fault: None,
+        }
+    }
+    let bytes = &[0x82, 0xa1, 0x61, b'k', 0x82, 0x42, 1, 2, 0x61, b'x', 0xf6];
+    let signal = CancellationToken::new();
+    let mut baseline = make(&signal);
+    assert!(baseline.value(1).is_ok());
+    assert_eq!(baseline.position, bytes.len());
+    let checkpoints = baseline.allocations;
+    assert!(checkpoints >= 6);
+    for checkpoint in 0..checkpoints {
+        for cancel in [false, true] {
+            let signal = CancellationToken::new();
+            let mut parser = make(&signal);
+            parser.allocation_fault = Some((checkpoint, cancel));
+            let result = parser.value(1);
+            assert!(
+                matches!(result, Err(error) if error.class() == if cancel { DecodeErrorClass::Cancelled } else { DecodeErrorClass::EncodedSizeLimit })
+            );
+            assert_eq!(parser.allocations, checkpoint + 1);
+        }
+    }
+    assert!(
+        parse_canonical_section(bytes, 0, DecodeLimits::hard(), &CancellationToken::new()).is_ok()
     );
 }
 

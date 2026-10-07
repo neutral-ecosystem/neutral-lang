@@ -29,5 +29,18 @@ digest-for-digest with the frozen second implementation.
 reference worklists, private reuse redaction, precise source-default/reuse spans,
 invalid companion rejection, safe vocabulary owners, selection-invariant complete
 identity, and the real compiler-free probe executable on successor artifacts.
-Derivation/artifact identities, complete hostile/fault/fuzz campaigns and actual
-cache execution remain pending; the registered suite is still frozen.
+`hardening.rs` exercises real successor syntax-cache hits and changed units,
+vocabularies/defaults, host IDs, policies, failed generations and concurrent
+caller isolation. Complete IR/companions and encoded bytes must equal clean
+compilation. It also sweeps every independent composition and wire consumer
+control, composition producer policy and JSON/scalar/shape capture controls at
+their acceptance threshold and one below/above, and mutates every
+artifact byte before independent validation. These sweeps complement the literal
+catalogue/dependency boundary expectations; they do not prove all allocation
+failure paths. Derivation/artifact identity partitions and complete fault/hostile
+review remain pending; the registered suite is still frozen.
+
+`graphs.rs` supplements the immutable literals with transitive vocabulary graph
+families and source import chains, diamonds and valid reference-type SCCs. Source
+topology is compared with the existing graph API, then independently decoded and
+inspected; shuffled captures must produce identical wire bytes.

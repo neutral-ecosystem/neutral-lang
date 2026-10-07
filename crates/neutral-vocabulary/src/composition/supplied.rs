@@ -4,6 +4,7 @@
 
 use super::{Budget, CompositionError as E, CompositionLimits, ValidatedComposition, values};
 use neutral_core::CancellationToken;
+use neutral_core::ordered::OrderedMap as BTreeMap;
 use neutral_ir::{
     composition::{
         ClosedValue, CompositionValue as V, ValueOrigin, ValueOriginKind as K,
@@ -11,7 +12,6 @@ use neutral_ir::{
     },
     project_interface::ProjectPublicType as T,
 };
-use std::collections::BTreeMap;
 
 /// Complete immutable value plus origin classifications, never a compiled project artifact.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -66,6 +66,7 @@ pub fn materialize_composition_value(
                     + definition.name.len(),
                 lookup.len() + 1,
             )?;
+            budget.step(lookup.len() as u64)?;
             lookup.insert(
                 (
                     bundle.identity.identity(),
@@ -73,7 +74,7 @@ pub fn materialize_composition_value(
                     definition.name.as_str(),
                 ),
                 definition,
-            );
+            )?;
         }
     }
     budget.key(owner.0.len() + owner.1.len() + owner.2.len(), lookup.len())?;
@@ -82,9 +83,9 @@ pub fn materialize_composition_value(
         return Err(E::PrivateType);
     }
     let ty = T::VocabularyNominal {
-        identity: owner.0.to_owned(),
-        version: owner.1.to_owned(),
-        name: owner.2.to_owned(),
+        identity: super::copy::text(owner.0)?,
+        version: super::copy::text(owner.1)?,
+        name: super::copy::text(owner.2)?,
     };
     let value = values::materialize(supplied, &ty, &lookup, &mut budget, 1).map_err(|error| {
         if error == E::InvalidDefault {
@@ -141,7 +142,7 @@ pub(super) fn classify<R>(
     budget.step(path_bytes)?;
     origins.try_reserve(1).map_err(|_| E::Allocation)?;
     origins.push(ValueOrigin {
-        path: path.clone(),
+        path: super::copy::path(path)?,
         kind,
     });
     match value {
@@ -154,12 +155,15 @@ pub(super) fn classify<R>(
             let mut provided = BTreeMap::new();
             for (name, value) in raw_fields {
                 budget.key(name.len(), raw_fields.len())?;
-                provided.insert(name.as_str(), value.as_ref());
+                budget.step(provided.len() as u64)?;
+                provided
+                    .insert(name.as_str(), value.as_ref())
+                    .map_err(|_| E::Allocation)?;
             }
             for (name, value) in fields {
                 budget.key(name.len(), raw_fields.len())?;
                 descend(
-                    P::Field(name.clone()),
+                    P::Field(super::copy::text(name)?),
                     provided.get(name.as_str()).copied().flatten(),
                     value.as_ref(),
                     defaulted,
