@@ -55,11 +55,24 @@ establish validity or extend frozen project schemas.
 `SourceCompositionDefinition` associates that same record/variant body with an
 exact module-symbol owner; it does not introduce a second variant model or
 confer source/compiler validity merely through construction.
+`CompositionValue<R>` shares scalar/list/record/variant structure between
+`ClosedValue` defaults and `BindingValue` identity references. A closed default's
+reference parameter is uninhabited; the type system prevents a binding target
+from being assigned as a default. `CompositionBinding` and its occurrence paths
+are raw resolved-model contracts, not a new complete project or wire schema.
 Its [profile selectors](src/composition/profile.rs) are shared across capture,
 vocabulary and consumers. `captured_composition_closure` constructs a separately
 typed successor capture identity using the same bounded framing machinery;
-existing identity transcripts stay unchanged. This does not activate successor
-logical, derivation or artifact identities.
+existing identity transcripts stay unchanged.
+`composition::project::CompositionProjectIr` retains complete resolved source
+and vocabulary declarations, materialized bindings, origin paths, companions
+and independently recomputable resource facts. Iterative structural inspection
+bounds raw data before recursive consumers clone or interpret it; construction
+still confers no validation authority.
+`canonical_composition_project` and `composition_interface` use separately
+selected bounded logical/interface framing. Complete logical bytes and digest
+match the frozen independent vector. Successor derivation/artifact identities,
+public views and standalone probe activation remain separate work.
 The [identity writer](src/project_identity/framing.rs) explains bounded in-place
 framing and why malformed canonical order is rejected instead of silently sorted.
 

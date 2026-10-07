@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Frozen /2 design inputs plus capture-only integration, not complete compiler/codec activation.
+//! Frozen /2 oracles plus explicit capture, source, reader and codec integration.
 
 use neutral_core::{
     CancellationToken, SemanticDigest, SourceContentDigest, StructuralLimits,
@@ -18,10 +18,11 @@ use std::{
 };
 
 mod capture;
+mod pipeline;
 
 /// Runtime-owned immutable vector copy, not a generated measurement report.
 const VECTORS: &str = include_str!("vectors.json");
-/// Runtime-owned literal request families; compiler expectations remain frozen-only.
+/// Runtime-owned immutable literal request families shared by oracle and production comparisons.
 const REQUESTS: &[&str] = &[
     include_str!("positive.json"),
     include_str!("negative.json"),

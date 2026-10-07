@@ -2,14 +2,21 @@
 
 //! Explicit, bounded composition validation without activating old project schemas.
 
+mod bindings;
 mod closure;
 mod decode;
+mod model;
 mod scope;
 mod supplied;
 mod values;
 
+pub use bindings::{
+    ValidatedCompositionBinding, ValidatedCompositionBindings, validate_composition_bindings,
+};
+pub use model::validate_composition_model;
 pub use scope::{ValidatedCompositionScope, validate_composition_scope};
 pub use supplied::{ValidatedCompositionValue, materialize_composition_value};
+pub use values::check_composition_field_restrictions;
 
 use crate::{VocabularyError, VocabularyLimits, VocabularyLock};
 use neutral_core::{CancellationToken, VocabularyContentDigest};
@@ -25,7 +32,7 @@ pub const REQUIRED_FEATURE: &str = neutral_ir::composition::profile::VOCABULARY_
 /// Maximum recursive semantic layers, intersected with caller limits.
 pub const MAX_DEPTH: u64 = crate::MAX_VOCABULARY_NESTING_DEPTH;
 /// Hard aggregate item/work ceiling, independent of semantic restrictions.
-pub const MAX_WORK: u64 = 1_000_000;
+pub const MAX_WORK: u64 = neutral_ir::composition::profile::MAX_ITEMS;
 /// Hard total captured-byte ceiling for one supplied closure.
 pub const MAX_CAPTURED_BYTES: u64 = 67_108_864;
 /// Largest legitimate closed-schema JSON object, bounding duplicate-key inspection work.
@@ -69,6 +76,53 @@ pub struct CompositionLimits {
 }
 
 impl CompositionLimits {
+    /// Projects the independently retained acceptance controls in frozen contract order.
+    #[must_use]
+    pub const fn policy(self) -> neutral_ir::composition::project::CompositionPolicy {
+        neutral_ir::composition::project::CompositionPolicy::from_values([
+            self.bundles,
+            self.captured_bytes,
+            self.dependencies_per_bundle,
+            self.dependency_edges,
+            self.dependency_depth,
+            self.total_types,
+            self.total_fields,
+            self.alternatives_per_type,
+            self.total_alternatives,
+            self.choices_per_field,
+            self.total_choices,
+            self.type_depth,
+            self.value_depth,
+            self.value_nodes,
+            self.work,
+        ])
+    }
+
+    /// Combines an explicit wire policy with independent JSON/scalar consumer controls.
+    #[must_use]
+    pub const fn from_policy(
+        json: VocabularyLimits,
+        policy: neutral_ir::composition::project::CompositionPolicy,
+    ) -> Self {
+        Self {
+            json,
+            bundles: policy.bundles,
+            captured_bytes: policy.captured_bytes,
+            dependencies_per_bundle: policy.dependencies_per_bundle,
+            dependency_edges: policy.dependency_edges,
+            dependency_depth: policy.dependency_depth,
+            total_types: policy.total_types,
+            total_fields: policy.total_fields,
+            alternatives_per_type: policy.alternatives_per_type,
+            total_alternatives: policy.total_alternatives,
+            choices_per_field: policy.choices_per_field,
+            total_choices: policy.total_choices,
+            type_depth: policy.type_depth,
+            value_depth: policy.value_depth,
+            value_nodes: policy.value_nodes,
+            work: policy.work,
+        }
+    }
     /// Derives finite defaults from existing structural policy; every budget remains independently tunable.
     #[must_use]
     pub const fn from_vocabulary(json: VocabularyLimits) -> Self {

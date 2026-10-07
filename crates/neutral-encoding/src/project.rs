@@ -140,7 +140,7 @@ pub fn decode_project(
 }
 
 /// Writes a definite array with one shared item encoder.
-fn write_list<T>(
+pub(crate) fn write_list<T>(
     w: &mut CborWriter,
     values: &[T],
     mut item: impl FnMut(&mut CborWriter, &T) -> Result<(), EncodingError>,
@@ -152,23 +152,29 @@ fn write_list<T>(
     Ok(())
 }
 /// Writes a fixed unsigned tuple.
-fn write_numbers(w: &mut CborWriter, values: &[u64]) -> Result<(), EncodingError> {
+pub(crate) fn write_numbers(w: &mut CborWriter, values: &[u64]) -> Result<(), EncodingError> {
     write_list(w, values, |w, n| w.unsigned(*n))
 }
 /// Writes an exact module identity.
-fn write_module(w: &mut CborWriter, m: &LogicalModuleIdentity) -> Result<(), EncodingError> {
+pub(crate) fn write_module(
+    w: &mut CborWriter,
+    m: &LogicalModuleIdentity,
+) -> Result<(), EncodingError> {
     w.array(2)?;
     w.text(m.language_behavior_version())?;
     w.text(m.module_name())
 }
 /// Writes a full module-symbol identity.
-fn write_symbol(w: &mut CborWriter, s: &ModuleSymbolIdentity) -> Result<(), EncodingError> {
+pub(crate) fn write_symbol(
+    w: &mut CborWriter,
+    s: &ModuleSymbolIdentity,
+) -> Result<(), EncodingError> {
     w.array(2)?;
     write_module(w, s.module())?;
     w.text(s.declaration_name())
 }
 /// Writes original-byte location evidence.
-fn write_location(w: &mut CborWriter, l: SourceLocation) -> Result<(), EncodingError> {
+pub(crate) fn write_location(w: &mut CborWriter, l: SourceLocation) -> Result<(), EncodingError> {
     w.array(3)?;
     w.bytes(&l.source().as_bytes())?;
     w.unsigned(l.span().start())?;
@@ -193,7 +199,7 @@ fn write_signature(w: &mut CborWriter, s: &ProjectPublicSignature) -> Result<(),
     }
 }
 /// Writes one bounded project type; tags are the shared language spellings.
-fn write_type(
+pub(crate) fn write_type(
     w: &mut CborWriter,
     t: &ProjectPublicType,
     depth: usize,
@@ -300,7 +306,7 @@ fn write_fields(
     })
 }
 /// Reads a definite array already bounded by the lexical parser.
-fn array(v: &LocatedValue) -> Result<&[LocatedValue], DecodeError> {
+pub(crate) fn array(v: &LocatedValue) -> Result<&[LocatedValue], DecodeError> {
     if let CborValue::Array(a) = &v.value {
         Ok(a)
     } else {
@@ -308,18 +314,18 @@ fn array(v: &LocatedValue) -> Result<&[LocatedValue], DecodeError> {
     }
 }
 /// Checks exact tuple cardinality before any positional access.
-fn tuple<const N: usize>(v: &LocatedValue) -> Result<&[LocatedValue; N], DecodeError> {
+pub(crate) fn tuple<const N: usize>(v: &LocatedValue) -> Result<&[LocatedValue; N], DecodeError> {
     array(v)?.try_into().map_err(|_| schema(v))
 }
 /// Reads a collection without trusting unvalidated container lengths.
-fn read_list<T>(
+pub(crate) fn read_list<T>(
     v: &LocatedValue,
     item: impl FnMut(&LocatedValue) -> Result<T, DecodeError>,
 ) -> Result<Vec<T>, DecodeError> {
     array(v)?.iter().map(item).collect()
 }
 /// Borrows UTF-8 text from one lexically validated value.
-fn text(v: &LocatedValue) -> Result<&str, DecodeError> {
+pub(crate) fn text(v: &LocatedValue) -> Result<&str, DecodeError> {
     if let CborValue::Text(s) = &v.value {
         Ok(s)
     } else {
@@ -327,11 +333,11 @@ fn text(v: &LocatedValue) -> Result<&str, DecodeError> {
     }
 }
 /// Copies one bounded schema string.
-fn owned_text(v: &LocatedValue) -> Result<String, DecodeError> {
+pub(crate) fn owned_text(v: &LocatedValue) -> Result<String, DecodeError> {
     Ok(text(v)?.to_owned())
 }
 /// Reads an unsigned integer without coercion.
-fn unsigned(v: &LocatedValue) -> Result<u64, DecodeError> {
+pub(crate) fn unsigned(v: &LocatedValue) -> Result<u64, DecodeError> {
     if let CborValue::Unsigned(n) = v.value {
         Ok(n)
     } else {
@@ -339,7 +345,7 @@ fn unsigned(v: &LocatedValue) -> Result<u64, DecodeError> {
     }
 }
 /// Reads a signed integer with checked positive conversion.
-fn signed(v: &LocatedValue) -> Result<i64, DecodeError> {
+pub(crate) fn signed(v: &LocatedValue) -> Result<i64, DecodeError> {
     match v.value {
         CborValue::Negative(n) => Ok(n),
         CborValue::Unsigned(n) => i64::try_from(n).map_err(|_| schema(v)),
@@ -347,7 +353,7 @@ fn signed(v: &LocatedValue) -> Result<i64, DecodeError> {
     }
 }
 /// Reads an explicit Boolean without numeric coercion.
-fn boolean(v: &LocatedValue) -> Result<bool, DecodeError> {
+pub(crate) fn boolean(v: &LocatedValue) -> Result<bool, DecodeError> {
     if let CborValue::Boolean(b) = v.value {
         Ok(b)
     } else {
@@ -355,7 +361,7 @@ fn boolean(v: &LocatedValue) -> Result<bool, DecodeError> {
     }
 }
 /// Reads an exact typed digest payload, never a lossy text identity.
-fn digest(v: &LocatedValue) -> Result<[u8; 32], DecodeError> {
+pub(crate) fn digest(v: &LocatedValue) -> Result<[u8; 32], DecodeError> {
     if let CborValue::Bytes(b) = &v.value {
         b.as_slice().try_into().map_err(|_| schema(v))
     } else {
@@ -363,17 +369,17 @@ fn digest(v: &LocatedValue) -> Result<[u8; 32], DecodeError> {
     }
 }
 /// Reads one exact module identity; the independent reader checks grammar/profile.
-fn read_module(v: &LocatedValue) -> Result<LogicalModuleIdentity, DecodeError> {
+pub(crate) fn read_module(v: &LocatedValue) -> Result<LogicalModuleIdentity, DecodeError> {
     let a = tuple::<2>(v)?;
     Ok(LogicalModuleIdentity::new(text(&a[0])?, text(&a[1])?))
 }
 /// Reads one exact declaration identity.
-fn read_symbol(v: &LocatedValue) -> Result<ModuleSymbolIdentity, DecodeError> {
+pub(crate) fn read_symbol(v: &LocatedValue) -> Result<ModuleSymbolIdentity, DecodeError> {
     let a = tuple::<2>(v)?;
     Ok(ModuleSymbolIdentity::new(read_module(&a[0])?, text(&a[1])?))
 }
 /// Reads an ordered original-byte span; ownership is independently validated.
-fn read_location(v: &LocatedValue) -> Result<SourceLocation, DecodeError> {
+pub(crate) fn read_location(v: &LocatedValue) -> Result<SourceLocation, DecodeError> {
     let a = tuple::<3>(v)?;
     Ok(SourceLocation::new(
         SourceContentDigest::from_raw_bytes(digest(&a[0])?),
@@ -393,7 +399,7 @@ fn read_signature(v: &LocatedValue) -> Result<ProjectPublicSignature, DecodeErro
     })
 }
 /// Reads bounded closed type tuples, rejecting every unknown discriminator.
-fn read_type(v: &LocatedValue, depth: usize) -> Result<ProjectPublicType, DecodeError> {
+pub(crate) fn read_type(v: &LocatedValue, depth: usize) -> Result<ProjectPublicType, DecodeError> {
     if depth > PROJECT_MAX_DEPTH {
         return Err(failure(DecodeErrorClass::EncodedSizeLimit));
     }
@@ -459,7 +465,7 @@ fn read_fields(v: &LocatedValue, depth: usize) -> Result<Vec<(String, ProjectVal
     })
 }
 /// Maps the closed edge kind to its stable wire ordinal.
-const fn edge_tag(k: ProjectPublicEdgeKind) -> u64 {
+pub(crate) const fn edge_tag(k: ProjectPublicEdgeKind) -> u64 {
     match k {
         ProjectPublicEdgeKind::Type => 0,
         ProjectPublicEdgeKind::ReferenceType => 1,
@@ -468,7 +474,7 @@ const fn edge_tag(k: ProjectPublicEdgeKind) -> u64 {
     }
 }
 /// Rejects unknown edge ordinals instead of interpreting them as value dependencies.
-fn read_edge(n: u64) -> Result<ProjectPublicEdgeKind, DecodeError> {
+pub(crate) fn read_edge(n: u64) -> Result<ProjectPublicEdgeKind, DecodeError> {
     match n {
         0 => Ok(ProjectPublicEdgeKind::Type),
         1 => Ok(ProjectPublicEdgeKind::ReferenceType),
@@ -478,11 +484,11 @@ fn read_edge(n: u64) -> Result<ProjectPublicEdgeKind, DecodeError> {
     }
 }
 /// Produces a safe bounded failure with no hostile input text.
-const fn failure(class: DecodeErrorClass) -> DecodeError {
+pub(crate) const fn failure(class: DecodeErrorClass) -> DecodeError {
     DecodeError::new(class, None)
 }
 /// Associates closed-schema rejection with its lexical byte offset.
-const fn schema(v: &LocatedValue) -> DecodeError {
+pub(crate) const fn schema(v: &LocatedValue) -> DecodeError {
     DecodeError::new(DecodeErrorClass::InvalidEncodedSchema, Some(v.offset))
 }
 /// Preserves cancellation/limit/companion distinctions across the transport boundary.

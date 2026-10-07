@@ -29,7 +29,10 @@ pub use lowering::{ProjectCompileFailure, compile_project};
 
 #[path = "project_cache.rs"]
 mod cache;
+mod composition;
 pub use cache::{ProjectCacheLimits, ProjectCacheStats, ProjectCompilationCache};
+pub use composition::codes as composition_diagnostics;
+pub use composition::{CompositionCompileFailure, compile_composition_project};
 
 #[cfg(test)]
 #[path = "../../tests/project_semantics/mod.rs"]

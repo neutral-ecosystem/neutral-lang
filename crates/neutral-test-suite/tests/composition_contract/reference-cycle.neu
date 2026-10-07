@@ -1,0 +1,6 @@
+neu "1.0"
+module example
+
+public record Node { Ref<Node>? next }
+public Node left = { next: ref(right) }
+public Node right = { next: ref(left) }

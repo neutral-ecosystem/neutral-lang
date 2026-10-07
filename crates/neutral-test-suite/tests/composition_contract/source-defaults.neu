@@ -1,0 +1,11 @@
+neu "1.0"
+module example
+
+public record Inner { num count = 42, num retries = 3 }
+public record Outer { Inner inner = {}, List<string> labels = ["portable", "typed"] }
+public variant State { Outer ready, string failed }
+public Outer original = {}
+public Outer copied = original
+public State status = { tag: "ready", payload: copied }
+public List<State> states = [status, { tag: "failed", payload: "none" }]
+num variant = 1

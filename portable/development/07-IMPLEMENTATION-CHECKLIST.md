@@ -442,12 +442,48 @@ This validates resolved contracts, not `.neu` parsing/import resolution, source
 binding reuse/ref semantics, compiled project IR, encoded artifacts or public views.
 No frozen suite/profile/vector is activated or rewritten by this sub-step.
 
+#### Resolved binding values and independent reference inspection
+
+- [x] Share one structural value model and materializer between closed defaults
+  and reference-capable resolved bindings; keep binding references impossible in
+  contract defaults by construction.
+- [x] Check complete binding indices, invariant target types, forward/cyclic
+  non-embedding references and public/external target visibility atomically.
+- [x] Materialize defaults/restrictions with cumulative request budgets and retain
+  separate origin and actual field/list/payload binding-reference paths.
+- [x] Recheck stricter semantic controls against unused contracts/defaults;
+  preserve captured-byte/digest validation as a separate capture responsibility.
+- [x] Expose public binding values, origins and actual reference targets through
+  a compiler-independent reader, with private/missing lookup and debug redaction.
+- [x] Validate both nominal origins, numeric/Unicode/list boundaries, omission
+  versus null, incompatible/private/dangling targets, cancellation, exact/one-under
+  value budgets, ordering and concurrent isolation. Standard CI passes 712 Nextest
+  tests with zero skips and three compile-fail doctests.
+
+Evidence: [resolved binding validation and reader inspection](evidence/stage7-contract-core.md#resolved-binding-validation-and-reader-inspection-07-10-2026),
+[value/reference tests](../../crates/neutral-vocabulary/tests/composition_bindings.rs)
+and [reader tests](../../crates/neutral-reader/tests/composition_bindings.rs).
+These are resolved-model binding edges, not `.neu` parsing/reuse/import resolution,
+checked original-byte attribution, complete successor IR or encoded probe/views.
+
 #### Remaining full extension gates
 
-Next: implement the frozen source/project IR/wire/identity boundaries and compare
-every production result against the registered inputs/oracles before activation.
-Existing JSON catalogue fixtures are not `.nir`
-artifacts, and the current binary CBOR codec does not support this extension.
+Status reviewed 07-10-2026: the explicit capture /2 → source compiler → complete
+project IR → independent reader → `NIR-PROJECT-CBOR/2` library pipeline is
+implemented. Shared contracts cover both nominal origins, closed defaults,
+constraints, tagged values, typed references and occurrence states. Production
+complete logical identity matches the frozen independent /2 bytes and digest.
+`cargo xtask test all` passes 726 Nextest tests with zero skips and three
+compile-fail doctests; see [pipeline evidence](evidence/stage7-contract-core.md#composition-source-ir-reader-and-wire-integration-07-10-2026).
+
+Next implementation order: standalone successor probe, public views and checked
+fine-grained attribution; remaining identity partitions; then hostile-input,
+allocation-fault, fuzz and actual clean/cache validation against every frozen
+oracle/vector. Existing JSON catalogue fixtures are not `.nir` artifacts.
+The old project codec remains `NIR-PROJECT-CBOR/1`; successor transport uses
+separate explicit library entry points with no fallback or CLI activation.
+Full extension activation remains pending. Keep the registered suite `frozen`
+until all production comparisons and validation gates pass.
 
 - [x] Freeze the new bundle schema, source-aligned list/nullable/reference
   composition, semantic defaults/restrictions, compatibility, diagnostic codes,
@@ -457,27 +493,63 @@ artifacts, and the current binary CBOR codec does not support this extension.
   Evidence: [freeze and fixture/vector review](evidence/stage7-contract-core.md#composition-contract-and-literal-registration-06-10-2026).
   The `composition-contract` suite remains frozen, not required; existing
   standalone APIs do not establish compiler/codec/profile activation.
-- [ ] Implement composition, closed defaults, finite choices, numeric and
+- [x] Implement composition, closed defaults, finite choices, numeric and
   string/list length restrictions through compiler, IR, encoding, and reader.
+  Evidence: explicit source parsing/import/type/value/ref resolution, shared
+  materialization, complete successor IR, restricted successor encoding and
+  independent decoded-artifact validation. Literal positive/negative/boundary/
+  migration and new nested-default/reuse/reference tests pass. This functional
+  library gate does not claim probe/view activation or the later quality gates.
 - [ ] Expose complete new contract facts and reference dependencies through
   independent reader/probe APIs with public-view closure and source attribution.
+  Implemented: public type contracts, reference-type paths and resolved binding
+  reference edges for both nominal origins through independent reader APIs.
+  Complete source-resolved bindings, project contracts and reference dependencies
+  now survive independent wire decoding. Remaining: standalone successor probe,
+  public-view closure/redaction and checked fine-grained source/vocabulary
+  attribution; producer origin attribution is explicitly unavailable, not invented.
 - [ ] Pass hostile schema/decoder, invalid default/constraint/reference,
   exact/one-over, cancellation, ordering, clean/cache, and old-schema suites.
+  Implemented: catalogue/capture/resolved-model negative, boundary, cancellation,
+  ordering, concurrent-isolation and old-schema tests, plus successor truncation,
+  unknown/nonminimal tags, stale companions/facts, source negatives and caller
+  bounds. Remaining: complete hostile/fault/fuzz coverage, all independent
+  exact/one-over controls and actual new-profile clean/cache execution.
 - [ ] Verify semantic restrictions/defaults affect the appropriate identities,
   presentation does not, and existing identity profiles/vectors remain immutable.
+  Implemented: separately typed captured identity /2 and unchanged /1 vectors.
+  Production complete logical /2 matches its frozen independent transcript;
+  interface /2 is independently recomputed by the reader. Remaining: derivation
+  and artifact /2 layers and every frozen restriction/default/presentation
+  variation, independent interface and root-invariance comparison.
 - [ ] Freeze and implement closed tagged variants across source, vocabulary,
   semantic typing, IR, wire, reader, and identity; reject wrong/unknown tags and
   payloads and validate heterogeneous typed collections.
   Both source declarations and vocabulary declarations are required, sharing
   one semantic model; the [frozen contract](../specs/contracts/VARIANTS.md)
   and registered fixtures record requirements, not implementation completion.
+  Implemented: vocabulary declarations and the common resolved record/variant
+  model, source syntax/binding semantics, payload validation and heterogeneous
+  lists through complete project/wire/logical identity. Remaining: complete
+  identity partition, probe/view and registered hostile/boundary validation.
 - [ ] Freeze and implement cross-vocabulary public type dependencies and exact
   transitive lock closure, including diamond/conflicting/private/missing/cyclic
   dependency rules without compilation-time acquisition.
+  Implemented: frozen rules, exact captured catalogue closure, diamond deduplication
+  and conflicting/private/missing/cyclic rejection, now retained through source,
+  complete project and wire validation. Remaining: public-view integration and
+  full registered-oracle comparisons.
 - [ ] Freeze required/omitted/null/default distinctions and safe origin facts;
   verify equivalent materialized meaning and distinct source evidence correctly.
+  Implemented: frozen states, closed/binding-value materialization, safe origin
+  paths, source reuse/ref edges and retained independently checked companions.
+  Remaining: fine-grained original-byte source/vocabulary attribution and
+  public-view redaction.
 - [ ] Pass variant, cross-bundle closure, omission/default, old/new schema,
   public-view, hostile-input, exact/one-over, and independent identity suites.
+  Existing catalogue/resolved-model passes are partial evidence only. Complete
+  source-to-artifact, public-view, hostile decoder/fault/fuzz, independent /2
+  identity and clean/cache suites must pass before activation or promotion.
 
 ## Stage 8 — dynamic authoring bridge and Editor probe
 

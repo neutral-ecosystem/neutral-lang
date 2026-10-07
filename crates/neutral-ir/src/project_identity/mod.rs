@@ -3,9 +3,11 @@
 //! Bounded, explicitly partitioned project identity transcripts, not attestations.
 
 mod captured;
+mod composition;
 mod derived;
 mod framing;
 mod logical;
+pub use composition::{canonical_composition_project, composition_interface};
 
 pub use captured::{
     CapturedIdentityInput, CapturedIdentitySource, CapturedIdentityVocabulary, captured_closure,
@@ -121,6 +123,10 @@ identity!(
 identity!(
     CompositionCapturedClosureIdentity,
     "Exact composition-profile capture identity; not interchangeable with captured identity /1."
+);
+identity!(
+    CompositionLogicalIdentity,
+    "Complete successor logical meaning, separate from identity /1."
 );
 identity!(
     LogicalProjectIdentity,

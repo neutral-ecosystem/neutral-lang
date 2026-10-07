@@ -300,3 +300,117 @@ documentation generation, dependency and repository checks pass.
 fixture/oracle pairs retain their pins with zero manifest/freeze updates.
 No coverage, mutation, full fuzz, allocation-fault, clean/cache or release gate
 is newly claimed by these resolved-model tests.
+
+## Resolved binding validation and reader inspection (07-10-2026)
+
+`CompositionValue<R>` shares the structural scalar/list/record/variant model
+between `ClosedValue` defaults and `BindingValue` resolved module-symbol references.
+Closed references are uninhabited; a compile-fail doctest proves a binding target
+cannot become a contract default. No frozen project or wire enum is extended.
+
+`validate_composition_bindings` validates a whole resolved binding index before
+publication. Canonical owner/signature checks precede value materialization;
+targets must be present, invariantly typed and visible. Public values cannot
+expose private targets. Forward and cyclic references remain identity-only,
+without evaluation or embedding. The same default/restriction engine checks both
+nominal origins and nested selected payload/list/nullable values. Budgets and
+materialization visits span the entire request; repeated references pay for
+type-key comparisons too. Stricter semantic policy rechecks dormant contracts
+and unused defaults. Capture remains responsible for exact original bytes,
+digest checks and captured-byte budgets; the resolved model cannot attest them.
+
+Materialized meaning, supplied/null/absent/default origin paths and actual binding
+reference occurrences are separate immutable facts. `CompositionBindingCatalogue`
+exposes only public bindings and public compatible targets, sharing the independent
+type catalogue without compiler linkage. Missing/private owners have the same safe
+lookup failure; debug shows counts, not private names or data.
+
+Eleven new vocabulary tests and two reader tests cover both origins, forward/cyclic
+references, private/dangling/incompatible targets, default constraints, required
+fields, omission versus null, exact numeric choices, Unicode-scalar/list-length
+boundaries, root-zero depth and cumulative visit boundaries, cancellation,
+permutation and concurrent isolation. Runtime inputs use existing crate-owned
+literal vocabulary fixtures; no portable-path reads or expected-input rewrites
+are introduced.
+
+Standard `cargo xtask ci pr` passes 712 Nextest tests (zero skips), three compile-fail
+doctests, strict workspace Clippy, formatting, dependency/hygiene checks, standalone
+probe build and generated docs. This is not new coverage, mutation, fuzz,
+allocation-fault, clean/cache or release evidence.
+`cargo xtask test all`, `cargo xtask portable verify` and `cargo xtask fixtures
+check` also pass; all 64 fixture/oracle pairs keep their original pins, with
+zero manifest or freeze updates.
+
+At this resolved-model slice, the two full integration gates remained unchecked: `.neu` source parsing,
+import/reuse resolution and original-byte attribution are not established by a
+resolved binding index. Complete successor project IR/companions, independent
+encoded-artifact validation, probe/root views and the remaining /2 identity layers
+still require implementation. Registered contracts, manifests, oracles and identity
+vectors remain unchanged; the new suite stays frozen, not activated.
+
+## Composition source IR reader and wire integration (07-10-2026)
+
+The explicit library pipeline now implements `capture_composition_project` →
+`compile_composition_project` → `ValidatedCompositionProject::from_ir` →
+`encode_composition_project` / `decode_composition_project`. The old capture,
+compiler, project schema, codec and identity selectors are unchanged; there is
+no successor-to-legacy downcast or decode fallback.
+
+The request-local compiler resolves source imports and both source/vocabulary
+nominal origins before contextual values. Source records and variants share
+the common contract model; final member commas are optional. Closed defaults,
+finite choices, exact numeric ranges and Unicode-scalar/string/list-length
+restrictions use the same bounded scope/binding engine as independent consumers.
+Ordinary reuse materializes immutable values and rejects evaluation cycles;
+typed references remain non-embedding and may cycle. Reuse and contract copies
+are charged before allocation, preventing unchecked repeated expansion.
+
+`CompositionProjectIr` retains complete private/public/disconnected declarations,
+canonical catalogues/dependencies, materialized values, source/vocabulary evidence,
+source maps, reuse/type/reference provenance, origin paths, independent policy
+and retained resource counts. Iterative raw inspection precedes recursive copies.
+The reader intersects producer/caller/hard controls, independently validates
+catalogues and source signatures, reconstructs supplied/default/omitted states,
+rematerializes values, and rejects stale resource/interface/companion facts.
+Original declaration spans are checked; fine-grained origin attribution remains
+explicitly unavailable rather than fabricated. Complete-data access is not a
+redacted public view.
+
+The separate `NIR-PROJECT-CBOR/2` codec implements the frozen sixteen-position
+envelope and restricted tuple grammar. It rejects unknown tags, wrong arity,
+nonminimal arguments, truncation, trailing bytes, invalid categories and consumer
+bounds. Minimal-width enforcement is explicitly selected for the successor;
+legacy lexical acceptance remains unchanged. Transcript-framing bounds are
+independent of encoded artifact size, so an exact artifact-byte budget is valid.
+
+Production complete logical /2 matches the frozen independent transcript exactly:
+5,551 bytes, 278 frames, digest
+`c01399c882bc6342db64023cacee743fc47e4985773d1967308a9d1239e8e8e7`.
+The reader recomputes the separate interface /2 identity. Frozen contracts,
+fixture/oracle inputs and vectors are not rewritten to match production.
+
+Fourteen new tests (thirteen [pipeline tests](../../../crates/neutral-test-suite/tests/composition_contract/pipeline.rs)
+and one [lexical-profile regression](../../../crates/neutral-encoding/tests/decoder/mod.rs))
+cover accepted literal source families, registered source-negative codes,
+boundary/migration captures, nested defaults, optional final commas, both variant
+origins, heterogeneous lists, reuse/reference cycles, invalid payload/defaults,
+independent byte/count controls, every truncated artifact prefix, wire tag/arity/
+minimal-width defects, stale facts, ordering and concurrent isolation, plus bounded
+exponentially expanding reuse without cross-request contamination.
+`cargo xtask test all` passes 726 Nextest tests, zero skips and three compile-fail
+doctests. No new coverage, mutation, fuzz, allocation-fault or release approval
+is claimed by this functional integration.
+
+`cargo xtask ci pr` also passes formatting, strict workspace Clippy, all tests,
+dependency/hygiene/traceability checks, legacy probe smoke/build and generated
+documentation. `cargo xtask portable verify` and `cargo xtask fixtures check`
+pass: all 64 fixture/oracle pairs keep their reviewed hashes, with zero manifest
+or freeze updates. The probe build checks existing behavior, not successor
+standalone probe activation.
+
+The compiler/IR/encoding/reader implementation checkbox is now complete.
+Standalone successor probe, public views/redaction, fine-grained attribution,
+derivation/artifact identity partitions, all adversarial identity variations,
+complete hostile/fault/fuzz campaigns and actual clean/cache execution remain
+open. The registered suite stays frozen; full extension activation and promotion
+are not claimed.

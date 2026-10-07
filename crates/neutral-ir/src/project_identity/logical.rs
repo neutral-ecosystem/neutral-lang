@@ -278,7 +278,7 @@ fn signature(
 }
 
 /// Frames typed meaning without source aliases or recursive reference expansion.
-fn type_transcript(
+pub(super) fn type_transcript(
     writer: &mut Writer<'_>,
     ty: &ProjectPublicType,
     depth: usize,

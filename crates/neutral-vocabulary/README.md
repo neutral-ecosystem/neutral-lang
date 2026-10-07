@@ -38,7 +38,21 @@ contracts against that exact catalogue, using the same closure, default,
 restriction and materialization rules for both nominal origins. Its immutable
 scope applies occurrence-based depth limits and rejects private/dangling types
 and embedded cycles. It is not source parsing, import checking or complete
-project compilation; the successor compiler and codec remain separate work.
+project compilation; the explicitly selected successor compiler uses this scope
+instead of maintaining a second default/restriction engine.
+
+`validate_composition_bindings` checks a complete resolved binding request over
+that scope. It materializes constraints/defaults with the same value engine,
+checks invariant reference targets (including forward and non-embedding cyclic
+references), enforces public target closure and retains actual reference paths
+separately from meaning. Budgets span the whole request, including unused
+defaults. This API does not parse source, establish imports or publish encoded IR.
+
+`validate_composition_model` independently checks canonical catalogue contracts
+restored from complete IR: owners, exact dependencies, schema/features, public
+closure, normalized choices/defaults and bounds. The reader uses it before
+accepting decoded project data. It does not trust a producer's validation claims,
+acquire locks or reinterpret old-schema bundles as new ones.
 
 ## Command
 

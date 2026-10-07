@@ -12,6 +12,7 @@ use crate::{
 use std::cmp::Ordering;
 
 pub mod profile;
+pub mod project;
 
 /// Whether omission rejects, remains absent, or materializes a closed default.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -24,9 +25,29 @@ pub enum FieldPresence {
     Defaulted,
 }
 
+/// A reference that cannot exist; closed contract defaults have no reference channel.
+pub type ClosedReference = std::convert::Infallible;
+
 /// One bounded, closed value with no reference, expression, or execution channel.
+///
+/// A resolved binding reference cannot be used as a contract default:
+///
+/// ```compile_fail,E0308
+/// # use neutral_ir::{LogicalModuleIdentity, ModuleSymbolIdentity, composition::ClosedValue};
+/// # use neutral_core::profile::V1_SOURCE_PROFILE;
+/// let target = ModuleSymbolIdentity::new(LogicalModuleIdentity::new(V1_SOURCE_PROFILE, "example"), "value");
+/// let default = ClosedValue::Reference(target);
+/// ```
+pub type ClosedValue = CompositionValue<ClosedReference>;
+
+/// A contextual project value with exact, identity-only binding references.
+///
+/// Reference targets are not embedded values and never trigger acquisition or execution.
+pub type BindingValue = CompositionValue<ModuleSymbolIdentity>;
+
+/// Shared structural value model; the reference parameter keeps defaults closed by construction.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ClosedValue {
+pub enum CompositionValue<R> {
     /// Normalized exact decimal number.
     Number(ExactNumber),
     /// Exact Unicode scalar sequence.
@@ -50,10 +71,12 @@ pub enum ClosedValue {
         /// Payload checked against that tag's alternative type.
         payload: Box<Self>,
     },
+    /// A typed identity edge, present only in non-closed project values.
+    Reference(R),
 }
 
 /// A schema-checked location inside a closed value, never a host/source path.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum ValuePathSegment {
     /// Canonical record field name.
     Field(String),
@@ -83,6 +106,28 @@ pub struct ValueOrigin {
     pub path: Vec<ValuePathSegment>,
     /// Supplied/null/absent/default classification.
     pub kind: ValueOriginKind,
+}
+
+/// A resolved binding request; construction does not establish source or project validity.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompositionBinding {
+    /// Exact source module-symbol owner, independent of aliases and graph-local IDs.
+    pub owner: ModuleSymbolIdentity,
+    /// Source visibility; public values must expose only public reference targets.
+    pub public: bool,
+    /// Complete invariant resolved type, including either nominal origin.
+    pub ty: ProjectPublicType,
+    /// Supplied contextual value; defaults are materialized at the validation boundary.
+    pub value: BindingValue,
+}
+
+/// One actual binding reference occurrence, distinct from a declared reference type.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompositionBindingReference {
+    /// Canonical field/list/selected-payload path from the consuming binding's root.
+    pub path: Vec<ValuePathSegment>,
+    /// Exact target binding identity; a reference never embeds its target value.
+    pub target: ModuleSymbolIdentity,
 }
 
 /// Closed scalar/length restrictions, never executable predicates.

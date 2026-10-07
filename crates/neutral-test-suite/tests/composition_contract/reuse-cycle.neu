@@ -1,0 +1,5 @@
+neu "1.0"
+module example
+
+num left = right
+num right = left

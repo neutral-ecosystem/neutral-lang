@@ -59,6 +59,16 @@ pub struct VocabularyLimits {
 }
 
 impl VocabularyLimits {
+    /// Returns the independent exact coefficient digit budget, not a semantic numeric restriction.
+    #[must_use]
+    pub const fn numeric_digits(self) -> u64 {
+        self.numeric_digits
+    }
+    /// Returns the independent absolute exponent budget; no exponent-sized padding is allocated.
+    #[must_use]
+    pub const fn numeric_scale(self) -> u64 {
+        self.numeric_scale
+    }
     /// Creates vocabulary limits from the shared structural policy.
     ///
     /// The captured byte bound also bounds JSON members, arrays, types, and

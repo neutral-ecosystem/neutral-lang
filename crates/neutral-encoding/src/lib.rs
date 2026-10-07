@@ -9,6 +9,8 @@
 //! confined to the envelope.
 
 mod cbor;
+/// Explicit successor composition transport, distinct from frozen project /1.
+pub mod composition;
 pub mod constants;
 mod decode;
 mod decoder;

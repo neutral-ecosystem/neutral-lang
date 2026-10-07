@@ -44,6 +44,27 @@ pub(crate) fn parse_section(
     limits: DecodeLimits,
     cancellation: &CancellationToken,
 ) -> Result<LocatedValue, DecodeError> {
+    parse_section_profile(bytes, base_offset, limits, cancellation, false)
+}
+
+/// Parses successor wire data with minimal-width integer and length arguments.
+pub(crate) fn parse_canonical_section(
+    bytes: &[u8],
+    base_offset: usize,
+    limits: DecodeLimits,
+    cancellation: &CancellationToken,
+) -> Result<LocatedValue, DecodeError> {
+    parse_section_profile(bytes, base_offset, limits, cancellation, true)
+}
+
+/// Keeps legacy lexical acceptance separate from explicit canonical successor selection.
+fn parse_section_profile(
+    bytes: &[u8],
+    base_offset: usize,
+    limits: DecodeLimits,
+    cancellation: &CancellationToken,
+    canonical: bool,
+) -> Result<LocatedValue, DecodeError> {
     let mut parser = Parser {
         bytes,
         position: 0,
@@ -51,6 +72,7 @@ pub(crate) fn parse_section(
         limits,
         nodes: 0,
         cancellation,
+        canonical,
     };
     let value = parser.value(1)?;
     if parser.position != bytes.len() {
@@ -73,6 +95,8 @@ struct Parser<'a> {
     nodes: usize,
     /// Cooperative cancellation signal.
     cancellation: &'a CancellationToken,
+    /// Explicit successor minimal-width enforcement; old selectors remain unchanged.
+    canonical: bool,
 }
 
 impl Parser<'_> {
@@ -192,14 +216,25 @@ impl Parser<'_> {
 
     /// Reads a supported CBOR argument and rejects indefinite/reserved forms.
     fn argument(&mut self, additional: u8) -> Result<u64, DecodeError> {
-        match additional {
-            0..=23 => Ok(u64::from(additional)),
-            24 => Ok(u64::from(self.read_byte()?)),
-            25 => Ok(u64::from(u16::from_be_bytes(self.read_array()?))),
-            26 => Ok(u64::from(u32::from_be_bytes(self.read_array()?))),
-            27 => Ok(u64::from_be_bytes(self.read_array()?)),
-            _ => Err(self.error(DecodeErrorClass::MalformedCbor)),
+        let value = match additional {
+            0..=23 => u64::from(additional),
+            24 => u64::from(self.read_byte()?),
+            25 => u64::from(u16::from_be_bytes(self.read_array()?)),
+            26 => u64::from(u32::from_be_bytes(self.read_array()?)),
+            27 => u64::from_be_bytes(self.read_array()?),
+            _ => return Err(self.error(DecodeErrorClass::MalformedCbor)),
+        };
+        let minimum = match additional {
+            24 => 24,
+            25 => 256,
+            26 => 65_536,
+            27 => 4_294_967_296,
+            _ => 0,
+        };
+        if self.canonical && value < minimum {
+            return Err(self.error(DecodeErrorClass::MalformedCbor));
         }
+        Ok(value)
     }
 
     /// Reads one fixed-size byte array without unchecked slicing.

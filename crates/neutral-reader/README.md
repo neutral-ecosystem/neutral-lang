@@ -72,6 +72,24 @@ shares closed-value validation and enumerates exact reference-type dependencies
 without compiler linkage. This is a type catalogue, not complete successor
 project IR, a public view or source provenance.
 
+`CompositionBindingCatalogue` inspects immutable validated resolved binding
+values, safe origin classifications and actual binding-reference paths/targets.
+Public references have exact compatible public targets; private/missing bindings
+share one unavailable result. Debug output discloses counts only. It shares the
+public type catalogue without compiler linkage, but does not assert source
+attribution, complete project validation, encoded-artifact support or root views.
+
+`composition::ValidatedCompositionProject::from_ir` is the separate complete
+successor boundary. It intersects producer and caller controls, inspects raw
+depth/count/text/work before copying, revalidates both nominal origins and
+materializes defaults again from occurrence classifications. It rejects invalid
+references, public closure, reused values, companions, stale resource counts or
+interface identity. Encoding can accept only this checked immutable authority.
+`complete_ir` is a trusted complete-data API, not a redacted public view;
+`bindings` exposes independently checked contract/reference facts. No compiler
+linkage, source reparsing or host acquisition is needed. Fine-grained source
+attribution, root views and standalone successor probe integration remain open.
+
 ## Command
 
 Use `cargo xtask test all` for complete repository validation, including doctests.

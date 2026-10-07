@@ -18,5 +18,13 @@ optional origins, old-schema adaptation, replay, permutations and concurrency.
 The production captured-identity transcript is compared with literal bytes/digest
 and exact/one-over framing budgets. Catalogue-only cases get an explicit test
 source declaring their reviewed roots; those are not source-compilation tests.
-Source semantic expectations, complete project IR, binary codec/probe/views,
-logical/derivation/artifact identities and actual cache execution remain pending.
+`pipeline.rs` additionally runs the actual successor compiler, complete reader
+and binary round trip for accepted source families, boundary cases and legacy-leaf
+adaptation. It checks frozen source diagnostic codes, both nominal variant origins,
+nested closed defaults, ordinary reuse versus reference cycles, heterogeneous
+lists, independent bounds, hostile frames, shuffled captures and concurrency.
+The complete production logical transcript is compared byte-for-byte and
+digest-for-digest with the frozen second implementation.
+Public views, standalone successor probe, checked fine-grained attribution,
+derivation/artifact identities, complete hostile/fault/fuzz campaigns and actual
+cache execution remain pending; the registered suite is still frozen.

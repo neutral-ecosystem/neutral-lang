@@ -51,8 +51,23 @@ defaults and restrictions, then shares immutable contracts with independent
 readers. Repeated local aliases refer to one canonical lock; dependencies never
 become implicit source aliases. Replay preserves exact bytes and both policies.
 Its separately typed captured identity matches the frozen successor transcript.
-This capture-only output cannot enter `compile_project`: source variants,
-complete successor IR, logical identities and binary transport are not yet active.
+This output cannot enter the old `compile_project` boundary. Instead,
+`compile_composition_project` explicitly resolves imports, both source/vocabulary
+nominal origins, source records and tagged variants, closed defaults, immutable
+reuse and typed references. It publishes complete `CompositionProjectIr` only
+after shared contract/value validation. Missing fields, incompatible payloads,
+private exposure, embedded/reuse cycles, constraints and exhausted budgets fail
+atomically. Record/variant members may omit their final comma.
+
+The library pipeline is `capture_composition_project` →
+`compile_composition_project` →
+`neutral_reader::composition::ValidatedCompositionProject::from_ir` →
+`neutral_encoding::composition::encode_composition_project`. The independent
+reader must revalidate producer data before it becomes encoding authority.
+Origin paths retain supplied/null/omitted/default classifications; fine-grained
+attribution is explicitly unavailable rather than fabricated. This separate
+successor API does not activate the CLI, standalone probe, public views or a
+composition compilation cache. Those extension gates remain separate.
 
 Within one clean project compilation, semantic analysis hands its private parsed
 units to lowering instead of parsing them again. This request-local handoff does

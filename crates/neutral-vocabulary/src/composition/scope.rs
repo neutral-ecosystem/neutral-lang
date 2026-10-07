@@ -250,7 +250,7 @@ fn validate_owner(owner: &ModuleSymbolIdentity, budget: &mut Budget<'_>) -> Resu
 }
 
 /// Validates keys, presence and independent aggregate counts before retained-value copies.
-fn preflight(
+pub(super) fn preflight(
     definition: &CompositionDefinition,
     source: bool,
     budget: &mut Budget<'_>,
@@ -280,23 +280,7 @@ fn preflight(
                     return Err(E::InvalidContract);
                 }
                 preflight_type(&field.ty, budget)?;
-                if let Some(choices) = &field.restrictions.choices {
-                    check_count(choices.len(), budget.limits.choices_per_field)?;
-                    charge(
-                        &mut budget.choices,
-                        choices.len() as u64,
-                        budget.limits.total_choices,
-                    )?;
-                    for choice in choices {
-                        preflight_value(choice, budget)?;
-                    }
-                }
-                for bound in [&field.restrictions.minimum, &field.restrictions.maximum]
-                    .into_iter()
-                    .flatten()
-                {
-                    number(bound, budget)?;
-                }
+                preflight_restrictions(field, budget)?;
                 if let Some(default) = &field.default {
                     preflight_value(default, budget)?;
                 }
@@ -322,6 +306,31 @@ fn preflight(
     Ok(())
 }
 
+/// Bounds every restriction value before copying or canonical numeric/scalar comparison.
+pub(super) fn preflight_restrictions(
+    field: &neutral_ir::composition::CompositionField,
+    budget: &mut Budget<'_>,
+) -> Result<(), E> {
+    if let Some(choices) = &field.restrictions.choices {
+        check_count(choices.len(), budget.limits.choices_per_field)?;
+        charge(
+            &mut budget.choices,
+            choices.len() as u64,
+            budget.limits.total_choices,
+        )?;
+        for choice in choices {
+            preflight_value(choice, budget)?;
+        }
+    }
+    for bound in [&field.restrictions.minimum, &field.restrictions.maximum]
+        .into_iter()
+        .flatten()
+    {
+        number(bound, budget)?;
+    }
+    Ok(())
+}
+
 /// Rejects invalid or duplicate member keys before canonical field/tag ordering.
 fn member<'a>(
     name: &'a str,
@@ -340,7 +349,7 @@ fn member<'a>(
 }
 
 /// Checks every wrapper before recursive type consumers; nominal ownership remains exact.
-fn preflight_type(ty: &T, budget: &mut Budget<'_>) -> Result<(), E> {
+pub(super) fn preflight_type(ty: &T, budget: &mut Budget<'_>) -> Result<(), E> {
     let mut current = ty;
     let mut depth = 0;
     loop {
@@ -457,7 +466,7 @@ fn number(number: &neutral_ir::ExactNumber, budget: &mut Budget<'_>) -> Result<(
 }
 
 /// Builds both exact nominal maps once per request, without cloning private contract bodies.
-fn lookup<'a>(
+pub(super) fn lookup<'a>(
     catalogue: &'a ValidatedComposition,
     sources: &'a [SourceCompositionDefinition],
     budget: &mut Budget<'_>,

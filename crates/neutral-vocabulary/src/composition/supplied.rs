@@ -5,7 +5,10 @@
 use super::{Budget, CompositionError as E, CompositionLimits, ValidatedComposition, values};
 use neutral_core::CancellationToken;
 use neutral_ir::{
-    composition::{ClosedValue as V, ValueOrigin, ValueOriginKind as K, ValuePathSegment as P},
+    composition::{
+        ClosedValue, CompositionValue as V, ValueOrigin, ValueOriginKind as K,
+        ValuePathSegment as P,
+    },
     project_interface::ProjectPublicType as T,
 };
 use std::collections::BTreeMap;
@@ -14,7 +17,7 @@ use std::collections::BTreeMap;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ValidatedCompositionValue {
     /// Canonical materialized meaning, separate from occurrence evidence.
-    pub(super) value: V,
+    pub(super) value: ClosedValue,
     /// Ordered safe paths; no invented source span or host information.
     pub(super) origins: Vec<ValueOrigin>,
 }
@@ -22,7 +25,7 @@ pub struct ValidatedCompositionValue {
 impl ValidatedCompositionValue {
     /// Returns immutable materialized meaning; compare this rather than origins for value equality.
     #[must_use]
-    pub fn value(&self) -> &V {
+    pub fn value(&self) -> &ClosedValue {
         &self.value
     }
 
@@ -45,7 +48,7 @@ impl ValidatedCompositionValue {
 pub fn materialize_composition_value(
     catalogue: &ValidatedComposition,
     owner: (&str, &str, &str),
-    supplied: &V,
+    supplied: &ClosedValue,
     limits: CompositionLimits,
     cancellation: &CancellationToken,
 ) -> Result<ValidatedCompositionValue, E> {
@@ -104,9 +107,9 @@ pub fn materialize_composition_value(
 }
 
 /// Classifies canonical final occurrences without equating optional absence with explicit null.
-pub(super) fn classify(
-    raw: Option<&V>,
-    value: Option<&V>,
+pub(super) fn classify<R>(
+    raw: Option<&V<R>>,
+    value: Option<&V<R>>,
     inherited_default: bool,
     path: &mut Vec<P>,
     origins: &mut Vec<ValueOrigin>,
@@ -206,10 +209,10 @@ pub(super) fn classify(
 }
 
 /// Pushes one safe path segment and restores the caller path even when nested classification fails.
-fn descend(
+fn descend<R>(
     segment: P,
-    raw: Option<&V>,
-    value: Option<&V>,
+    raw: Option<&V<R>>,
+    value: Option<&V<R>>,
     defaulted: bool,
     path: &mut Vec<P>,
     origins: &mut Vec<ValueOrigin>,

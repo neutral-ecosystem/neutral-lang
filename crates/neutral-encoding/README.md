@@ -40,3 +40,16 @@ transport retains private validation content but never root-prunes a project.
 It enforces captured artifact-byte limits independently of value work.
 Package versions, byte order, and public-interface fingerprints are not complete
 project identity. Neither codec links compiler-private models or performs I/O.
+
+## Composition projects
+
+`composition::encode_composition_project` accepts only an independently checked
+`ValidatedCompositionProject`. `decode_composition_project` reads the explicit
+`NIR-PROJECT-CBOR/2` magic and sixteen-position restricted-CBOR envelope, retaining
+complete source/vocabulary contracts, variants, defaults, restrictions, typed
+references and origin companions. It rechecks meaning, interface identity and
+resource facts through the reader under producer, caller and hard bounds.
+Unknown tags, nonminimal arguments, trailing/truncated data and invalid companions
+fail without partial output. The existing project codec cannot read this frame;
+there is no schema fallback. CLI/probe/view activation is not implied by these
+explicit library entry points.

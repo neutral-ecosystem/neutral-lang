@@ -7,7 +7,8 @@ use neutral_ir::{
     ExactNumber, ModuleSymbolIdentity,
     composition::{
         ClosedValue as V, CompositionBody, CompositionBundle, CompositionDefinition,
-        CompositionField, FieldPresence, FieldRestrictions, compare_exact_numbers,
+        CompositionField, CompositionValue as W, FieldPresence, FieldRestrictions,
+        compare_exact_numbers,
     },
     project_interface::ProjectPublicType as T,
 };
@@ -107,7 +108,16 @@ pub(super) fn validate_defaults(
     bundles: &mut [CompositionBundle],
     budget: &mut Budget<'_>,
 ) -> Result<(), E> {
-    let catalogue = bundles
+    validate_defaults_policy(bundles, budget, false)
+}
+
+/// Validates every unused default with an explicitly selected occurrence-depth policy.
+pub(super) fn validate_defaults_policy(
+    bundles: &mut [CompositionBundle],
+    budget: &mut Budget<'_>,
+    project_depth: bool,
+) -> Result<(), E> {
+    let mut catalogue = bundles
         .iter()
         .flat_map(|bundle| {
             bundle.definitions.iter().map(move |definition| {
@@ -122,6 +132,7 @@ pub(super) fn validate_defaults(
             })
         })
         .collect::<Catalogue<'_>>();
+    catalogue.project_depth = project_depth;
     let mut finalized = Vec::new();
     for (bundle_index, bundle) in bundles.iter().enumerate() {
         for (definition_index, definition) in bundle.definitions.iter().enumerate() {
@@ -135,7 +146,13 @@ pub(super) fn validate_defaults(
                     .default
                     .as_ref()
                     .map(|value| {
-                        let value = materialize(value, &field.ty, &catalogue, budget, 1)?;
+                        let value = materialize(
+                            value,
+                            &field.ty,
+                            &catalogue,
+                            budget,
+                            u64::from(!project_depth),
+                        )?;
                         check_restrictions(&restrictions, &value, budget)?;
                         Ok::<_, E>(value)
                     })
@@ -172,36 +189,74 @@ fn compare_numbers(
 }
 
 /// Returns exact scalar compatibility without structural coercion or inert-text interpretation.
-fn scalar_matches(value: &V, ty: &T) -> bool {
+fn scalar_matches<R>(value: &W<R>, ty: &T) -> bool {
     matches!(
         (value, ty),
-        (V::Number(_), T::Num)
-            | (V::String(_), T::String)
-            | (V::Bool(_), T::Bool)
-            | (V::Url(_), T::Url)
-            | (V::Path(_), T::Path)
+        (W::Number(_), T::Num)
+            | (W::String(_), T::String)
+            | (W::Bool(_), T::Bool)
+            | (W::Url(_), T::Url)
+            | (W::Path(_), T::Path)
     )
 }
 
 /// Compares compatible scalar choices in canonical order; malformed kinds are rejected earlier.
-fn compare_scalars(left: &V, right: &V) -> Ordering {
+fn compare_scalars<L, R>(left: &W<L>, right: &W<R>) -> Ordering {
     match (left, right) {
-        (V::Number(a), V::Number(b)) => compare_exact_numbers(a, b),
-        (V::String(a), V::String(b)) | (V::Url(a), V::Url(b)) | (V::Path(a), V::Path(b)) => {
+        (W::Number(a), W::Number(b)) => compare_exact_numbers(a, b),
+        (W::String(a), W::String(b)) | (W::Url(a), W::Url(b)) | (W::Path(a), W::Path(b)) => {
             a.cmp(b)
         }
-        (V::Bool(a), V::Bool(b)) => a.cmp(b),
+        (W::Bool(a), W::Bool(b)) => a.cmp(b),
         _ => unreachable!("choices were checked against one exact scalar type"),
     }
 }
 
 /// Returns bounded key work for an already verified scalar, for sort/search reservations.
-fn scalar_size(value: &V) -> u64 {
+fn scalar_size<R>(value: &W<R>) -> u64 {
     match value {
-        V::Number(number) => number.coefficient().len() as u64,
-        V::String(text) | V::Url(text) | V::Path(text) => text.len() as u64,
+        W::Number(number) => number.coefficient().len() as u64,
+        W::String(text) | W::Url(text) | W::Path(text) => text.len() as u64,
         _ => 1,
     }
+}
+
+/// Checks one field's declarative restrictions using the common exact comparison engine.
+///
+/// This diagnostic helper does not establish type, reference, scope or project
+/// authority. Complete materialization must still pass the shared binding boundary.
+///
+/// # Errors
+/// Rejects invalid restrictions, violated choices/bounds, limits or cancellation.
+pub fn check_composition_field_restrictions(
+    field: &CompositionField,
+    value: &neutral_ir::composition::BindingValue,
+    limits: super::CompositionLimits,
+    cancellation: &neutral_core::CancellationToken,
+) -> Result<(), E> {
+    limits.validate()?;
+    let mut budget = Budget::new(limits, cancellation);
+    super::scope::preflight_type(&field.ty, &mut budget)?;
+    super::scope::preflight_restrictions(field, &mut budget)?;
+    let restrictions = validate_restrictions(field, &mut budget)?;
+    let ty = if let T::Nullable(inner) = &field.ty {
+        inner.as_ref()
+    } else {
+        &field.ty
+    };
+    if !matches!(value, W::Null)
+        && !scalar_matches(value, ty)
+        && !matches!((value, ty), (W::List(_), T::List(_)))
+    {
+        return Err(E::InvalidValue);
+    }
+    check_restrictions(&restrictions, value, &mut budget).map_err(|e| {
+        if e == E::InvalidDefault {
+            E::InvalidValue
+        } else {
+            e
+        }
+    })
 }
 
 /// Rejects contradictory/inapplicable bounds and canonicalizes finite scalar choices.
@@ -277,16 +332,16 @@ pub(super) fn validate_restrictions(
 }
 
 /// Checks an already typed present value against inclusive bounds and finite choices.
-pub(super) fn check_restrictions(
+pub(super) fn check_restrictions<R>(
     restrictions: &FieldRestrictions,
-    value: &V,
+    value: &W<R>,
     budget: &mut Budget<'_>,
 ) -> Result<(), E> {
     budget.step(1)?;
-    if matches!(value, V::Null) {
+    if matches!(value, W::Null) {
         return Ok(());
     }
-    if let V::Number(number) = value {
+    if let W::Number(number) = value {
         if let Some(min) = &restrictions.minimum
             && compare_numbers(number, min, budget)? == Ordering::Less
         {
@@ -299,11 +354,11 @@ pub(super) fn check_restrictions(
         }
     }
     let length = match value {
-        V::String(text) | V::Url(text) | V::Path(text) => {
+        W::String(text) | W::Url(text) | W::Path(text) => {
             budget.step(text.len() as u64)?;
             Some(text.chars().count() as u64)
         }
-        V::List(values) => Some(values.len() as u64),
+        W::List(values) => Some(values.len() as u64),
         _ => None,
     };
     if let Some(length) = length
@@ -343,31 +398,60 @@ pub(super) fn materialize(
     budget: &mut Budget<'_>,
     depth: u64,
 ) -> Result<V, E> {
+    materialize_with(value, ty, catalogue, budget, depth, &ClosedReferences)
+}
+
+/// Checks identity-only reference targets without evaluating or embedding their values.
+pub(super) trait ReferencePolicy<R> {
+    /// Verifies the exact invariant target type, visibility and lookup budget.
+    fn check(&self, target: &R, expected: &T, budget: &mut Budget<'_>) -> Result<(), E>;
+}
+
+/// Closed defaults cannot construct a reference, including through nested defaults.
+struct ClosedReferences;
+
+impl ReferencePolicy<std::convert::Infallible> for ClosedReferences {
+    /// Eliminates an impossible closed reference without adding a runtime escape hatch.
+    fn check(&self, target: &std::convert::Infallible, _: &T, _: &mut Budget<'_>) -> Result<(), E> {
+        match *target {}
+    }
+}
+
+/// Materializes both closed and binding values with one contextual/default/restriction engine.
+pub(super) fn materialize_with<R: Clone>(
+    value: &W<R>,
+    ty: &T,
+    catalogue: &Catalogue<'_>,
+    budget: &mut Budget<'_>,
+    depth: u64,
+    references: &impl ReferencePolicy<R>,
+) -> Result<W<R>, E> {
     budget.depth(depth, budget.limits.value_depth)?;
     budget.value_node()?;
     if let T::Nullable(inner) = ty {
-        return if matches!(value, V::Null) {
-            Ok(V::Null)
+        return if matches!(value, W::Null) {
+            Ok(W::Null)
         } else {
-            materialize(
+            materialize_with(
                 value,
                 inner,
                 catalogue,
                 budget,
                 depth + u64::from(!catalogue.project_depth),
+                references,
             )
         };
     }
     if scalar_matches(value, ty) {
         budget.step(scalar_size(value))?;
         match value {
-            V::Number(number)
+            W::Number(number)
                 if number.coefficient().len() as u64 > budget.limits.json.numeric_digits
                     || number.scale().unsigned_abs() > budget.limits.json.numeric_scale =>
             {
                 return Err(E::Limit);
             }
-            V::String(text) | V::Url(text) | V::Path(text)
+            W::String(text) | W::Url(text) | W::Path(text)
                 if text.len() as u64 > budget.limits.json.string_bytes =>
             {
                 return Err(E::Limit);
@@ -377,7 +461,11 @@ pub(super) fn materialize(
         return Ok(value.clone());
     }
     match (value, ty) {
-        (V::List(values), T::List(inner)) => {
+        (W::Reference(target), T::Ref(inner)) => {
+            references.check(target, inner, budget)?;
+            Ok(W::Reference(target.clone()))
+        }
+        (W::List(values), T::List(inner)) => {
             super::check_count(values.len(), budget.limits.json.array_items)?;
             super::check_count(
                 values.len(),
@@ -389,21 +477,29 @@ pub(super) fn materialize(
                 .try_reserve(values.len())
                 .map_err(|_| E::Allocation)?;
             for value in values {
-                result.push(materialize(value, inner, catalogue, budget, depth + 1)?);
+                result.push(materialize_with(
+                    value,
+                    inner,
+                    catalogue,
+                    budget,
+                    depth + 1,
+                    references,
+                )?);
             }
-            Ok(V::List(result))
+            Ok(W::List(result))
         }
         (_, T::VocabularyNominal { .. } | T::Nominal(_)) => {
             let definition = catalogue.resolve(ty, budget)?;
             match (&definition.body, value) {
-                (CompositionBody::Record(fields), V::Record(values)) => materialize_record(
+                (CompositionBody::Record(fields), W::Record(values)) => materialize_record(
                     values,
                     fields,
                     catalogue,
                     budget,
                     depth + u64::from(!catalogue.project_depth),
+                    references,
                 ),
-                (CompositionBody::Variant(alternatives), V::Variant { tag, payload }) => {
+                (CompositionBody::Variant(alternatives), W::Variant { tag, payload }) => {
                     if tag.len() as u64 > budget.limits.json.string_bytes {
                         return Err(E::Limit);
                     }
@@ -412,14 +508,15 @@ pub(super) fn materialize(
                         .binary_search_by(|alternative| alternative.tag.cmp(tag))
                         .map_err(|_| E::InvalidDefault)?;
                     let alternative = &alternatives[index];
-                    Ok(V::Variant {
+                    Ok(W::Variant {
                         tag: tag.clone(),
-                        payload: Box::new(materialize(
+                        payload: Box::new(materialize_with(
                             payload,
                             &alternative.ty,
                             catalogue,
                             budget,
                             depth + 1,
+                            references,
                         )?),
                     })
                 }
@@ -433,13 +530,14 @@ pub(super) fn materialize(
 }
 
 /// Applies required/optional/defaulted field policies without conflating absence and null.
-fn materialize_record(
-    values: &[(String, Option<V>)],
+fn materialize_record<R: Clone>(
+    values: &[(String, Option<W<R>>)],
     fields: &[CompositionField],
     catalogue: &Catalogue<'_>,
     budget: &mut Budget<'_>,
     depth: u64,
-) -> Result<V, E> {
+    references: &impl ReferencePolicy<R>,
+) -> Result<W<R>, E> {
     budget.depth(depth, budget.limits.value_depth)?;
     super::check_count(values.len(), budget.limits.json.fields)?;
     super::check_count(fields.len(), budget.limits.json.fields)?;
@@ -471,20 +569,35 @@ fn materialize_record(
             .get(field.name.as_str())
             .and_then(|value| value.as_ref());
         let value = match provided {
-            Some(value) => Some(materialize(value, &field.ty, catalogue, budget, depth + 1)?),
+            Some(value) => Some(materialize_with(
+                value,
+                &field.ty,
+                catalogue,
+                budget,
+                depth + 1,
+                references,
+            )?),
             None => match field.presence {
                 FieldPresence::Required => return Err(E::InvalidDefault),
                 FieldPresence::Optional => {
                     budget.value_node()?;
                     None
                 }
-                FieldPresence::Defaulted => Some(materialize(
-                    field.default.as_ref().ok_or(E::InvalidDefault)?,
-                    &field.ty,
-                    catalogue,
-                    budget,
-                    depth + 1,
-                )?),
+                FieldPresence::Defaulted => {
+                    let default = lift_closed(
+                        field.default.as_ref().ok_or(E::InvalidDefault)?,
+                        budget,
+                        depth + 1,
+                    )?;
+                    Some(materialize_with(
+                        &default,
+                        &field.ty,
+                        catalogue,
+                        budget,
+                        depth + 1,
+                        references,
+                    )?)
+                }
             },
         };
         if let Some(value) = &value {
@@ -492,5 +605,54 @@ fn materialize_record(
         }
         result.push((field.name.clone(), value));
     }
-    Ok(V::Record(result))
+    Ok(W::Record(result))
+}
+
+/// Copies a closed default into a reference-capable representation without inventing a target.
+fn lift_closed<R>(value: &V, budget: &mut Budget<'_>, depth: u64) -> Result<W<R>, E> {
+    budget.depth(depth, budget.limits.value_depth)?;
+    budget.step(scalar_size(value))?;
+    Ok(match value {
+        V::Number(value) => W::Number(value.clone()),
+        V::String(value) => W::String(value.clone()),
+        V::Bool(value) => W::Bool(*value),
+        V::Url(value) => W::Url(value.clone()),
+        V::Path(value) => W::Path(value.clone()),
+        V::Null => W::Null,
+        V::Reference(never) => match *never {},
+        V::List(items) => {
+            super::check_count(items.len(), budget.limits.json.array_items())?;
+            let mut result = Vec::new();
+            result.try_reserve(items.len()).map_err(|_| E::Allocation)?;
+            for item in items {
+                result.push(lift_closed(item, budget, depth + 1)?);
+            }
+            W::List(result)
+        }
+        V::Record(fields) => {
+            super::check_count(fields.len(), budget.limits.json.fields())?;
+            let mut result = Vec::new();
+            result
+                .try_reserve(fields.len())
+                .map_err(|_| E::Allocation)?;
+            for (name, value) in fields {
+                budget.step(name.len() as u64)?;
+                result.push((
+                    name.clone(),
+                    value
+                        .as_ref()
+                        .map(|value| lift_closed(value, budget, depth + 1))
+                        .transpose()?,
+                ));
+            }
+            W::Record(result)
+        }
+        V::Variant { tag, payload } => {
+            budget.step(tag.len() as u64)?;
+            W::Variant {
+                tag: tag.clone(),
+                payload: Box::new(lift_closed(payload, budget, depth + 1)?),
+            }
+        }
+    })
 }

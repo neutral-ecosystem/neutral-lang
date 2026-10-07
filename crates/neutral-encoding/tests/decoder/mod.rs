@@ -145,6 +145,7 @@ fn unsupported_forms_and_offset_overflow_fail_closed() {
         limits: DecodeLimits::hard(),
         nodes: 0,
         cancellation: &CancellationToken::new(),
+        canonical: false,
     };
     assert_eq!(
         parser.read_array::<2>().unwrap_err().class(),
@@ -155,4 +156,36 @@ fn unsupported_forms_and_offset_overflow_fail_closed() {
     assert!(
         matches!(parser.value(1), Err(error) if error.class() == DecodeErrorClass::EncodedSizeLimit)
     );
+}
+
+/// Explicit successor parsing rejects every nonminimal width without changing legacy acceptance.
+#[test]
+fn successor_minimal_widths_are_separate_from_legacy_selection() {
+    let token = CancellationToken::new();
+    for bytes in [
+        &[0x18, 0][..],
+        &[0x19, 0, 24][..],
+        &[0x1a, 0, 0, 1, 0][..],
+        &[0x1b, 0, 0, 0, 0, 0, 1, 0, 0][..],
+        &[0x38, 0][..],
+        &[0x98, 0][..],
+        &[0x78, 1, b'x'][..],
+        &[0x58, 1, 0][..],
+    ] {
+        assert!(parse_section(bytes, 0, DecodeLimits::hard(), &token).is_ok());
+        assert!(
+            matches!(parse_canonical_section(bytes, 0, DecodeLimits::hard(), &token), Err(e) if e.class() == DecodeErrorClass::MalformedCbor)
+        );
+    }
+    for bytes in [
+        &[0x00][..],
+        &[0x18, 24][..],
+        &[0x19, 1, 0][..],
+        &[0x1a, 0, 1, 0, 0][..],
+        &[0x1b, 0, 0, 0, 1, 0, 0, 0, 0][..],
+        &[0x80][..],
+        &[0x61, b'x'][..],
+    ] {
+        assert!(parse_canonical_section(bytes, 0, DecodeLimits::hard(), &token).is_ok());
+    }
 }

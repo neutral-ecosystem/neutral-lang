@@ -38,10 +38,11 @@ mod project_vocabulary;
 mod semantics;
 
 pub use frontend::{
-    ProjectCacheLimits, ProjectCacheStats, ProjectCompilationCache, ProjectCompileFailure,
-    ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic, ProjectSemanticFailure,
-    ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind, analyze_project_semantics,
-    compile_project, project_lowering_diagnostics, project_semantics_diagnostics,
+    CompositionCompileFailure, ProjectCacheLimits, ProjectCacheStats, ProjectCompilationCache,
+    ProjectCompileFailure, ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic,
+    ProjectSemanticFailure, ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind,
+    analyze_project_semantics, compile_composition_project, compile_project,
+    composition_diagnostics, project_lowering_diagnostics, project_semantics_diagnostics,
 };
 
 pub use module_graph::diagnostics as module_graph_diagnostics;

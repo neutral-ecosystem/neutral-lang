@@ -17,8 +17,12 @@ use neutral_vocabulary::composition::{
 };
 use std::sync::Arc;
 
+mod bindings;
+mod project;
 mod references;
 mod scope;
+pub use bindings::{CompositionBindingCatalogue, CompositionBindingLookupError};
+pub use project::{CompositionReadError, ValidatedCompositionProject};
 pub use references::{
     CompositionInspectionLimits, CompositionReferenceError, ReferenceTypeDependency,
     ReferenceTypeSegment,

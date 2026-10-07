@@ -18,10 +18,11 @@ mod project_semantics;
 
 pub use project_semantics::diagnostics as project_semantics_diagnostics;
 pub use project_semantics::{
-    ProjectCacheLimits, ProjectCacheStats, ProjectCompilationCache, ProjectCompileFailure,
-    ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic, ProjectSemanticFailure,
-    ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind, analyze_project_semantics,
-    compile_project, project_lowering_diagnostics,
+    CompositionCompileFailure, ProjectCacheLimits, ProjectCacheStats, ProjectCompilationCache,
+    ProjectCompileFailure, ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic,
+    ProjectSemanticFailure, ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind,
+    analyze_project_semantics, compile_composition_project, compile_project,
+    composition_diagnostics, project_lowering_diagnostics,
 };
 
 pub(crate) use graph_syntax::{GraphImport, GraphSyntaxErrorKind, scan_graph_source};
