@@ -802,7 +802,7 @@ impl Drop for TestRoot {
 }
 
 /// Builds a requested executable offline and discovers its path from Cargo's typed messages.
-fn executable(package: &str) -> PathBuf {
+pub(crate) fn executable(package: &str) -> PathBuf {
     let output = Command::new(env!("CARGO"))
         .args([
             "build",

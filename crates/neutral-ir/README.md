@@ -71,8 +71,9 @@ bounds raw data before recursive consumers clone or interpret it; construction
 still confers no validation authority.
 `canonical_composition_project` and `composition_interface` use separately
 selected bounded logical/interface framing. Complete logical bytes and digest
-match the frozen independent vector. Successor derivation/artifact identities,
-public views and standalone probe activation remain separate work.
+match the frozen independent vector. The independent reader checks occurrence
+attribution and derives redacted public closure; the standalone probe consumes
+that projection. Successor derivation/artifact identities remain separate work.
 The [identity writer](src/project_identity/framing.rs) explains bounded in-place
 framing and why malformed canonical order is rejected instead of silently sorted.
 

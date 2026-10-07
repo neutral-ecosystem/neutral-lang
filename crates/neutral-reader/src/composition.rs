@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Compiler-independent public inspection of validated composition catalogues.
+//! Compiler-independent catalogue, complete-project and redacted public-view inspection.
 //!
-//! This surface exposes semantic contracts, not source provenance or a decoded
-//! project artifact. It never reparses source, changes identity or grants effects.
+//! Catalogue APIs expose contracts; the separate complete-project boundary checks
+//! decoded companions and occurrence attribution before deriving public closure.
+//! It never reparses source, changes identity or grants effects.
 
 use neutral_core::CancellationToken;
 use neutral_ir::composition::ClosedValue;
 use neutral_ir::{
     VocabularyIdentity,
-    composition::{CompositionBundle, CompositionDefinition, CompositionDependency},
+    composition::{CompositionDefinition, CompositionDependency},
 };
 use neutral_vocabulary::composition::{
     CompositionError, CompositionLimits, ValidatedComposition, ValidatedCompositionValue,
@@ -21,13 +22,26 @@ mod bindings;
 mod project;
 mod references;
 mod scope;
+mod view;
 pub use bindings::{CompositionBindingCatalogue, CompositionBindingLookupError};
+pub use neutral_ir::composition::profile;
+pub use neutral_ir::composition::project::{
+    CompositionAttribution, CompositionDeclaration, CompositionOrigin, CompositionSignature,
+};
+pub use neutral_ir::composition::{
+    CompositionBindingReference, CompositionBody, CompositionBundle, ValuePathSegment,
+};
+pub use neutral_ir::project_identity::CompositionLogicalIdentity;
+pub use neutral_ir::project_identity::canonical_composition_project;
+pub use neutral_vocabulary::VocabularyLimits as CompositionScalarLimits;
+pub use neutral_vocabulary::composition::CompositionLimits as ProjectCompositionLimits;
 pub use project::{CompositionReadError, ValidatedCompositionProject};
 pub use references::{
     CompositionInspectionLimits, CompositionReferenceError, ReferenceTypeDependency,
     ReferenceTypeSegment,
 };
 pub use scope::CompositionTypeCatalogue;
+pub use view::{CompositionView, CompositionViewRequest};
 
 /// Safe lookup failures containing no private type names, captured text or host paths.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

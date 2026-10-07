@@ -7,6 +7,10 @@ the composition capture profile. It reuses the private lexer and inherited type
 grammar, then feeds source and vocabulary contracts through one shared semantic
 validator. Frozen project compilation remains on its separate entry point.
 
+`composition_attribution` traces materialized occurrence paths back to original
+source/default/reuse tokens or canonical vocabulary default owners. Missing
+evidence stays absent, never synthesized; the independent reader rechecks it.
+
 Complete producer IR must pass the independent reader before encoding. Nothing
 here acquires imports, opens inert locations, chooses public roots or executes
 operations.

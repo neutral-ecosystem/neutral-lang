@@ -55,6 +55,9 @@ impl CompositionCompileFailure {
 }
 /// Short request-local diagnostic result name.
 type E = CompositionCompileFailure;
+/// Checked occurrence locations; raw source stays private to the compiler.
+#[path = "composition_attribution.rs"]
+mod attribution;
 /// Source diagnostic spellings; package releases never select them.
 #[path = "composition_codes.rs"]
 pub mod codes;
@@ -343,14 +346,15 @@ struct LoweredDeclarations {
 }
 /// Projects already validated complete source contracts and materialized bindings.
 fn declarations(
-    resolver: &Resolver<'_>,
+    resolver: &mut Resolver<'_>,
     scope: &ValidatedCompositionScope,
     bindings: &neutral_vocabulary::composition::ValidatedCompositionBindings,
 ) -> Result<LoweredDeclarations, E> {
     let mut declarations = Vec::new();
     let mut maps = Vec::new();
     let mut origins = Vec::new();
-    for root in resolver.roots.values() {
+    let roots = resolver.roots.values().cloned().collect::<Vec<_>>();
+    for root in &roots {
         let (signature, value) = if root.ty.is_some() {
             let b = bindings
                 .bindings()
@@ -362,7 +366,13 @@ fn declarations(
                     binding: root.owner.clone(),
                     path: o.path.clone(),
                     kind: o.kind,
-                    attribution: None,
+                    attribution: attribution::origin(
+                        resolver,
+                        root,
+                        &b.binding().ty,
+                        &o.path,
+                        o.kind,
+                    )?,
                 });
             }
             (

@@ -87,8 +87,17 @@ references, public closure, reused values, companions, stale resource counts or
 interface identity. Encoding can accept only this checked immutable authority.
 `complete_ir` is a trusted complete-data API, not a redacted public view;
 `bindings` exposes independently checked contract/reference facts. No compiler
-linkage, source reparsing or host acquisition is needed. Fine-grained source
-attribution, root views and standalone successor probe integration remain open.
+linkage, source reparsing or host acquisition is needed. Occurrence attribution
+is checked against source maps, source-default owners, validated reuse edges and
+exact vocabulary contracts. These checks are not producer authentication or
+proof of faithful compilation from original bytes.
+`derive_view` accepts an explicit `CompositionViewRequest` and retains complete
+public field/alternative/default/restriction contracts, transitive vocabulary
+locks and actual reference targets. Iterative worklists bound reference chains.
+The view removes source IDs/spans, private definitions and ordinary reuse
+provenance; canonical public vocabulary default owners remain, without byte
+spans. Empty selection means an empty view. Selection cannot mutate complete IR
+or its logical identity. The compiler-free standalone probe uses this boundary.
 
 ## Command
 

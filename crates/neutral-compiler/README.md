@@ -64,10 +64,14 @@ The library pipeline is `capture_composition_project` →
 `neutral_reader::composition::ValidatedCompositionProject::from_ir` →
 `neutral_encoding::composition::encode_composition_project`. The independent
 reader must revalidate producer data before it becomes encoding authority.
-Origin paths retain supplied/null/omitted/default classifications; fine-grained
-attribution is explicitly unavailable rather than fabricated. This separate
-successor API does not activate the CLI, standalone probe, public views or a
-composition compilation cache. Those extension gates remain separate.
+Origin paths retain supplied/null/omitted/default classifications and original-byte
+subexpression/default spans, including ordinary source reuse. Vocabulary defaults
+retain exact canonical identity/revision/type/field owners, without fabricated
+bundle spans. Attribution unavailable after materialized vocabulary reuse remains
+explicitly absent. The independent reader checks these companions; its public
+view removes source/private implementation evidence. The standalone probe reads
+successor artifacts, but this API does not activate CLI compilation or a
+composition compilation cache.
 
 Within one clean project compilation, semantic analysis hands its private parsed
 units to lowering instead of parsing them again. This request-local handoff does

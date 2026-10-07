@@ -63,6 +63,8 @@ pub struct ValidatedCompositionProject {
     ir: Arc<CompositionProjectIr>,
     /// Independently validated interpretation and actual reference paths.
     bindings: Arc<ValidatedCompositionBindings>,
+    /// Intersected consumer acceptance policy, retained for later bounded projections.
+    effective_composition: CompositionLimits,
 }
 impl std::fmt::Debug for ValidatedCompositionProject {
     /// Logs counts only, avoiding private values or identity keys.
@@ -145,6 +147,7 @@ impl ValidatedCompositionProject {
                 .map_err(|e| error(&e))?,
         );
         let mut origins = ir.origins.iter();
+        let mut attribution_work = composition.work;
         for binding in bindings.bindings() {
             let d = ir
                 .declarations
@@ -162,7 +165,7 @@ impl ValidatedCompositionProject {
                 {
                     return Err(E::Companion);
                 }
-                attribution(actual, &ir)?;
+                attribution(actual, &ir, &mut attribution_work, cancellation)?;
             }
         }
         if origins.next().is_some() {
@@ -173,7 +176,11 @@ impl ValidatedCompositionProject {
         if cancellation.is_cancelled() {
             return Err(E::Cancelled);
         }
-        Ok(Self { ir, bindings })
+        Ok(Self {
+            ir,
+            bindings,
+            effective_composition: composition,
+        })
     }
     /// Returns immutable complete data for trusted consumers, not a public redacted view.
     #[must_use]
@@ -184,6 +191,10 @@ impl ValidatedCompositionProject {
     #[must_use]
     pub const fn bindings(&self) -> &Arc<ValidatedCompositionBindings> {
         &self.bindings
+    }
+    /// Keeps post-validation work within the independent consumer's policy.
+    pub(super) const fn effective_composition_limits(&self) -> CompositionLimits {
+        self.effective_composition
     }
 }
 
@@ -363,30 +374,12 @@ fn supplied(
 fn attribution(
     origin: &neutral_ir::composition::project::CompositionOrigin,
     ir: &CompositionProjectIr,
+    work: &mut u64,
+    cancel: &CancellationToken,
 ) -> Result<(), E> {
     match &origin.attribution {
         None => Ok(()),
-        Some(A::Source(location)) => {
-            let source = ir
-                .sources
-                .iter()
-                .find(|s| s.module == origin.binding.module().module_name())
-                .ok_or(E::Companion)?;
-            let map = ir
-                .source_maps
-                .iter()
-                .find(|m| m.declaration == origin.binding)
-                .ok_or(E::Companion)?;
-            if source.digest != location.source()
-                || location.span().is_empty()
-                || location.span().end() > source.byte_len
-                || location.span().start() < map.location.span().start()
-                || location.span().end() > map.location.span().end()
-            {
-                return Err(E::Companion);
-            }
-            Ok(())
-        }
+        Some(A::Source(location)) => source_attribution(ir, origin, *location, work, cancel),
         Some(A::Vocabulary {
             identity,
             version,
@@ -467,6 +460,19 @@ fn default_path_matches(
     origin: &neutral_ir::composition::project::CompositionOrigin,
     owner: (&str, &str, &str, &str),
 ) -> Result<bool, E> {
+    default_path_check(
+        ir,
+        origin,
+        |ty, field| matches!(ty,T::VocabularyNominal {identity,version,name} if (identity.as_str(),version.as_str(),name.as_str(),field.name.as_str())==owner),
+    )
+}
+
+/// Checks actual typed field prefixes for source or vocabulary default ownership.
+fn default_path_check(
+    ir: &CompositionProjectIr,
+    origin: &neutral_ir::composition::project::CompositionOrigin,
+    matches: impl Fn(&T, &neutral_ir::composition::CompositionField) -> bool,
+) -> Result<bool, E> {
     let declaration = ir
         .declarations
         .iter()
@@ -490,9 +496,7 @@ fn default_path_matches(
                     .iter()
                     .find(|f| f.name == *name)
                     .ok_or(E::Companion)?;
-                if matches!(ty,T::VocabularyNominal {identity,version,name} if (identity.as_str(),version.as_str(),name.as_str(),field.name.as_str())==owner)
-                    && field.default.is_some()
-                {
+                if matches(ty, field) && field.default.is_some() {
                     return Ok(true);
                 }
                 ty = &field.ty;
@@ -533,6 +537,67 @@ fn default_path_matches(
         }
     }
     Ok(false)
+}
+
+/// Checks a source occurrence against its consuming declaration, exact default owner or real reuse closure.
+fn source_attribution(
+    ir: &CompositionProjectIr,
+    origin: &neutral_ir::composition::project::CompositionOrigin,
+    location: neutral_core::SourceLocation,
+    work: &mut u64,
+    cancel: &CancellationToken,
+) -> Result<(), E> {
+    if location.span().is_empty() {
+        return Err(E::Companion);
+    }
+    let contains = |map: &neutral_ir::project::ProjectSourceMap| {
+        map.location.source() == location.source()
+            && location.span().start() >= map.location.span().start()
+            && location.span().end() <= map.location.span().end()
+    };
+    if ir
+        .source_maps
+        .iter()
+        .any(|m| m.declaration == origin.binding && contains(m))
+    {
+        return Ok(());
+    }
+    if default_path_check(
+        ir,
+        origin,
+        |ty, _| matches!(ty, T::Nominal(owner) if ir.source_maps.iter().any(|m| m.declaration == *owner && contains(m))),
+    )? {
+        return Ok(());
+    }
+    let mut seen = BTreeSet::new();
+    let mut pending = vec![&origin.binding];
+    while let Some(owner) = pending.pop() {
+        if cancel.is_cancelled() {
+            return Err(E::Cancelled);
+        }
+        *work = work
+            .checked_sub(ir.provenance.len() as u64 + ir.declarations.len() as u64 + 1)
+            .ok_or(E::Limit)?;
+        if !seen.insert(owner) {
+            continue;
+        }
+        if ir
+            .source_maps
+            .iter()
+            .any(|m| m.declaration == *owner && contains(m))
+        {
+            return Ok(());
+        }
+        for edge in ir
+            .provenance
+            .iter()
+            .filter(|e| e.from == *owner && e.kind == Edge::Value)
+        {
+            pending.try_reserve(1).map_err(|_| E::Limit)?;
+            pending.push(&edge.to);
+        }
+    }
+    Err(E::Companion)
 }
 
 /// Validates source coverage, dependency provenance and independently recomputed base facts.

@@ -51,5 +51,6 @@ references and origin companions. It rechecks meaning, interface identity and
 resource facts through the reader under producer, caller and hard bounds.
 Unknown tags, nonminimal arguments, trailing/truncated data and invalid companions
 fail without partial output. The existing project codec cannot read this frame;
-there is no schema fallback. CLI/probe/view activation is not implied by these
-explicit library entry points.
+there is no schema fallback. The standalone probe detects this frame and derives
+public closure only after independent validation. CLI source compilation remains
+a separate activation gate; encoding never applies root selection.

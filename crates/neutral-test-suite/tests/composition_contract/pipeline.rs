@@ -19,6 +19,8 @@ use neutral_ir::{
 };
 use neutral_reader::composition::ValidatedCompositionProject;
 use std::{fmt::Write as _, sync::Arc};
+#[path = "reader_probe.rs"]
+mod reader_probe;
 
 /// Finite request-local policy independent of ambient machine paths or package releases.
 fn capture_limits() -> ProjectCaptureLimits {

@@ -15,6 +15,8 @@ use neutral_reader::{
     ValidatedProjectInterface,
 };
 
+/// Compiler-independent successor project inspection and redacted contract views.
+pub mod composition;
 /// Shared field schema and JSON rendering for validated artifact inspection.
 pub mod inspection_schema;
 /// Reader-only inspection of complete encoded projects and redacted public views.

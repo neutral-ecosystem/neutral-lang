@@ -25,6 +25,9 @@ nested closed defaults, ordinary reuse versus reference cycles, heterogeneous
 lists, independent bounds, hostile frames, shuffled captures and concurrency.
 The complete production logical transcript is compared byte-for-byte and
 digest-for-digest with the frozen second implementation.
-Public views, standalone successor probe, checked fine-grained attribution,
-derivation/artifact identities, complete hostile/fault/fuzz campaigns and actual
+`reader_probe.rs` checks public field/alternative/reference closure and cyclic
+reference worklists, private reuse redaction, precise source-default/reuse spans,
+invalid companion rejection, safe vocabulary owners, selection-invariant complete
+identity, and the real compiler-free probe executable on successor artifacts.
+Derivation/artifact identities, complete hostile/fault/fuzz campaigns and actual
 cache execution remain pending; the registered suite is still frozen.

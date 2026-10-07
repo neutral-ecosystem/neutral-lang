@@ -473,15 +473,17 @@ project IR → independent reader → `NIR-PROJECT-CBOR/2` library pipeline is
 implemented. Shared contracts cover both nominal origins, closed defaults,
 constraints, tagged values, typed references and occurrence states. Production
 complete logical identity matches the frozen independent /2 bytes and digest.
-`cargo xtask test all` passes 726 Nextest tests with zero skips and three
-compile-fail doctests; see [pipeline evidence](evidence/stage7-contract-core.md#composition-source-ir-reader-and-wire-integration-07-10-2026).
+The standalone successor probe now independently decodes complete artifacts and
+derives redacted public closure, with checked fine-grained occurrence attribution.
+Validation passes 731 Nextest tests with zero skips and three compile-fail
+doctests; see [pipeline evidence](evidence/stage7-contract-core.md#composition-source-ir-reader-and-wire-integration-07-10-2026)
+and [consumer integration evidence](evidence/stage7-contract-core.md#composition-public-views-probe-and-attribution-07-10-2026).
 
-Next implementation order: standalone successor probe, public views and checked
-fine-grained attribution; remaining identity partitions; then hostile-input,
+Next implementation order: remaining identity partitions; then hostile-input,
 allocation-fault, fuzz and actual clean/cache validation against every frozen
 oracle/vector. Existing JSON catalogue fixtures are not `.nir` artifacts.
 The old project codec remains `NIR-PROJECT-CBOR/1`; successor transport uses
-separate explicit library entry points with no fallback or CLI activation.
+separate explicit library entry points with no fallback or source-compiler CLI activation.
 Full extension activation remains pending. Keep the registered suite `frozen`
 until all production comparisons and validation gates pass.
 
@@ -499,15 +501,17 @@ until all production comparisons and validation gates pass.
   materialization, complete successor IR, restricted successor encoding and
   independent decoded-artifact validation. Literal positive/negative/boundary/
   migration and new nested-default/reuse/reference tests pass. This functional
-  library gate does not claim probe/view activation or the later quality gates.
-- [ ] Expose complete new contract facts and reference dependencies through
+  library gate does not claim the later quality gates.
+- [x] Expose complete new contract facts and reference dependencies through
   independent reader/probe APIs with public-view closure and source attribution.
-  Implemented: public type contracts, reference-type paths and resolved binding
-  reference edges for both nominal origins through independent reader APIs.
-  Complete source-resolved bindings, project contracts and reference dependencies
-  now survive independent wire decoding. Remaining: standalone successor probe,
-  public-view closure/redaction and checked fine-grained source/vocabulary
-  attribution; producer origin attribution is explicitly unavailable, not invented.
+  Evidence: independent complete decoding and standalone successor probe, both-origin
+  public contracts/defaults/restrictions, all alternative/reference types, actual
+  binding reference targets and exact transitive vocabulary closure. Public views
+  redact source/private implementation evidence without changing complete identity.
+  Source subexpression/default/reuse spans and canonical vocabulary default owners
+  are independently checked against retained companions. Unavailable attribution
+  stays explicitly absent; no byte spans or producer authenticity are invented.
+  See [consumer integration evidence](evidence/stage7-contract-core.md#composition-public-views-probe-and-attribution-07-10-2026).
 - [ ] Pass hostile schema/decoder, invalid default/constraint/reference,
   exact/one-over, cancellation, ordering, clean/cache, and old-schema suites.
   Implemented: catalogue/capture/resolved-model negative, boundary, cancellation,
@@ -531,25 +535,27 @@ until all production comparisons and validation gates pass.
   Implemented: vocabulary declarations and the common resolved record/variant
   model, source syntax/binding semantics, payload validation and heterogeneous
   lists through complete project/wire/logical identity. Remaining: complete
-  identity partition, probe/view and registered hostile/boundary validation.
+  identity partition and registered hostile/boundary validation.
 - [ ] Freeze and implement cross-vocabulary public type dependencies and exact
   transitive lock closure, including diamond/conflicting/private/missing/cyclic
   dependency rules without compilation-time acquisition.
   Implemented: frozen rules, exact captured catalogue closure, diamond deduplication
   and conflicting/private/missing/cyclic rejection, now retained through source,
-  complete project and wire validation. Remaining: public-view integration and
+  complete project, wire and public-view closure validation. Remaining:
   full registered-oracle comparisons.
 - [ ] Freeze required/omitted/null/default distinctions and safe origin facts;
   verify equivalent materialized meaning and distinct source evidence correctly.
   Implemented: frozen states, closed/binding-value materialization, safe origin
   paths, source reuse/ref edges and retained independently checked companions.
-  Remaining: fine-grained original-byte source/vocabulary attribution and
-  public-view redaction.
+  Fine-grained original-byte source attribution, canonical vocabulary default
+  owners and public-view redaction are implemented. Remaining: every registered
+  omission/default evidence and identity equivalence comparison.
 - [ ] Pass variant, cross-bundle closure, omission/default, old/new schema,
   public-view, hostile-input, exact/one-over, and independent identity suites.
   Existing catalogue/resolved-model passes are partial evidence only. Complete
-  source-to-artifact, public-view, hostile decoder/fault/fuzz, independent /2
-  identity and clean/cache suites must pass before activation or promotion.
+  source-to-artifact and public-view tests now pass; complete hostile decoder/fault/
+  fuzz, independent /2 identity and clean/cache suites must pass before activation
+  or promotion.
 
 ## Stage 8 — dynamic authoring bridge and Editor probe
 
