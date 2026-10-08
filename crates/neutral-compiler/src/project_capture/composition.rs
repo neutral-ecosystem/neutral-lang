@@ -15,6 +15,7 @@ use super::{
     validate_sources_cancellable, validate_vocabularies_cancellable,
 };
 use crate::module_graph::{ModuleGraph, ModuleGraphFailure};
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::allocation::Shared as Arc;
 use neutral_core::ordered::OrderedMap;
 use neutral_core::{CancellationToken, profile::LanguageProfile};
@@ -310,7 +311,7 @@ fn capture_with_checkpoints(
 
     let mut roots = Vec::new();
     roots
-        .try_reserve(requirements.len())
+        .try_retain(requirements.len())
         .map_err(|_| CompositionError::Allocation)?;
     for identity in &requirements {
         capture_cancelled(Some(cancellation))?;
@@ -324,7 +325,7 @@ fn capture_with_checkpoints(
     }
     let mut inputs = Vec::new();
     inputs
-        .try_reserve(envelope.vocabularies.len())
+        .try_retain(envelope.vocabularies.len())
         .map_err(|_| CompositionError::Allocation)?;
     inputs.extend(
         envelope
@@ -351,14 +352,16 @@ fn capture_with_checkpoints(
         &mut sources,
         envelope.vocabularies,
     )?;
-    Ok(CapturedCompositionProject {
+    let result = CapturedCompositionProject {
         captured,
         catalogue: Arc::try_new(catalogue).map_err(|_| ProjectCaptureError::LimitExceeded)?,
         composition_limits: request.composition_limits,
         aliases: Arc::try_new(aliases).map_err(|_| ProjectCaptureError::LimitExceeded)?,
         required_features: Arc::try_new(request.required_features)
             .map_err(|_| ProjectCaptureError::LimitExceeded)?,
-    })
+    };
+    capture_cancelled(Some(cancellation))?;
+    Ok(result)
 }
 
 /// Retains module-local aliases fallibly, charging sorted-index shifts before insertion.

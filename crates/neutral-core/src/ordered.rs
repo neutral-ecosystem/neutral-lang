@@ -2,7 +2,7 @@
 
 //! Fallibly growing canonical indexes. Callers charge insertion shifts and key comparisons to work policy.
 
-use crate::allocation::{AllocationError as E, TryClone};
+use crate::allocation::{AllocationError as E, RetainCapacity, TryClone};
 use std::borrow::Borrow;
 
 /// Canonically ordered request-local index with no infallible allocating insertion.
@@ -77,7 +77,7 @@ impl<K: Ord, V> OrderedMap<K, V> {
         match self.position(&key) {
             Ok(index) => Ok(Some(std::mem::replace(&mut self.entries[index].1, value))),
             Err(index) => {
-                self.entries.try_reserve(1).map_err(|_| E)?;
+                self.entries.try_retain(1)?;
                 self.entries.insert(index, (key, value));
                 Ok(None)
             }
@@ -90,7 +90,7 @@ impl<K: Ord, V> OrderedMap<K, V> {
     pub fn entry(&mut self, key: K) -> Result<Entry<'_, K, V>, E> {
         let position = self.position(&key);
         if position.is_err() {
-            self.entries.try_reserve(1).map_err(|_| E)?;
+            self.entries.try_retain(1)?;
         }
         Ok(Entry {
             map: self,

@@ -4,6 +4,7 @@
 
 use super::{Token, TokenKind, lexer};
 use crate::language::{graph_names, names};
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::{ByteSpan, CancellationToken, allocation::text, profile::V1_SOURCE_PROFILE};
 
 /// One parsed, source-accounted logical import.
@@ -173,7 +174,7 @@ fn scan_line(
         }
         result
             .vocabulary_aliases
-            .try_reserve(1)
+            .try_retain(1)
             .map_err(|_| retention(line_span))?;
         result
             .vocabulary_aliases
@@ -204,7 +205,7 @@ fn scan_line(
         }
         result
             .imports
-            .try_reserve(1)
+            .try_retain(1)
             .map_err(|_| retention(line_span))?;
         result.imports.push(parsed);
         return Ok(());
@@ -276,13 +277,13 @@ fn parse_module_name(tokens: &[Token]) -> Result<Option<String>, GraphSyntaxErro
                 return Ok(None);
             }
             result
-                .try_reserve(name.len())
+                .try_retain(name.len())
                 .map_err(|_| retention(token.span))?;
             result.push_str(name);
         } else if !matches!(token.kind, TokenKind::DoubleColon) {
             return Ok(None);
         } else {
-            result.try_reserve(2).map_err(|_| retention(token.span))?;
+            result.try_retain(2).map_err(|_| retention(token.span))?;
             result.push_str("::");
         }
     }

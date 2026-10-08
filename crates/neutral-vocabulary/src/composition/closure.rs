@@ -3,6 +3,7 @@
 //! Canonical dependency, visibility, and embedded-type graph validation.
 
 use super::{Budget, CompositionError as E, values::definition_types};
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::ordered::{OrderedMap as BTreeMap, OrderedSet as BTreeSet};
 use neutral_ir::{composition::CompositionBundle, project_interface::ProjectPublicType as T};
 
@@ -121,7 +122,7 @@ fn validate_root_cover(
     let mut root_versions = BTreeMap::new();
     let mut stack = Vec::new();
     stack
-        .try_reserve_exact(roots.len())
+        .try_retain_exact(roots.len())
         .map_err(|_| E::Allocation)?;
     stack.extend_from_slice(roots);
     while let Some((identity, version)) = stack.pop() {
@@ -141,7 +142,7 @@ fn validate_root_cover(
         budget.step(required.len() as u64)?;
         if required.insert(identity).map_err(|_| E::Allocation)? {
             stack
-                .try_reserve(bundle.dependencies.len())
+                .try_retain(bundle.dependencies.len())
                 .map_err(|_| E::Allocation)?;
             stack.extend(
                 bundle
@@ -182,7 +183,7 @@ fn reject_embedded_cycles<'a>(
                 return Err(E::EmbeddedCycle);
             }
             stack
-                .try_reserve(1 + graph.get(&key).map_or(0, BTreeSet::len))
+                .try_retain(1 + graph.get(&key).map_or(0, BTreeSet::len))
                 .map_err(|_| E::Allocation)?;
             stack.push((key, true));
             if let Some(targets) = graph.get(&key) {
@@ -229,7 +230,7 @@ fn dependency_height<'a>(
             return Err(E::DependencyCycle);
         }
         stack
-            .try_reserve(1 + bundle.dependencies.len())
+            .try_retain(1 + bundle.dependencies.len())
             .map_err(|_| E::Allocation)?;
         stack.push((name, true));
         for dependency in &bundle.dependencies {
@@ -248,7 +249,7 @@ fn dependency_height<'a>(
 /// Starts an iterative traversal with one fallible allocation rather than an infallible vector literal.
 fn initial_stack<T>(value: T) -> Result<Vec<T>, E> {
     let mut stack = Vec::new();
-    stack.try_reserve_exact(1).map_err(|_| E::Allocation)?;
+    stack.try_retain_exact(1).map_err(|_| E::Allocation)?;
     stack.push(value);
     Ok(stack)
 }

@@ -9,6 +9,7 @@ use super::{
 };
 use crate::{ModuleSymbolIdentity, project::ProjectLimits};
 use neutral_core::CancellationToken;
+use neutral_core::allocation::RetainCapacity;
 
 /// Complete explicit derivation inputs, never ambient compiler/host state.
 pub struct DerivationContext<'a> {
@@ -133,7 +134,7 @@ pub fn artifact_identity(
             }
             let mut roots = Vec::new();
             roots
-                .try_reserve(input.roots.len())
+                .try_retain(input.roots.len())
                 .map_err(|_| IdentityError::Limit)?;
             roots.extend(input.roots);
             roots.sort_unstable();

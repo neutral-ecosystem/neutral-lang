@@ -12,6 +12,7 @@ use crate::{
         write_location, write_module, write_numbers, write_symbol, write_type,
     },
 };
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::allocation::Shared as Arc;
 use neutral_core::{
     ByteSpan, CancellationToken, SemanticDigest, SourceContentDigest, VocabularyContentDigest,
@@ -56,10 +57,18 @@ pub fn encode_composition_project(
             E::EncodedSizeLimit
         }
     })?;
-    let mut output = profile::MAGIC.to_vec();
+    let length = profile::MAGIC
+        .len()
+        .checked_add(payload.len())
+        .ok_or(E::EncodedSizeLimit)?;
+    if length as u64 > ir.limits.artifact_bytes {
+        return Err(E::EncodedSizeLimit);
+    }
+    let mut output = Vec::new();
     output
-        .try_reserve(payload.len())
+        .try_retain_exact(length)
         .map_err(|_| E::EncodedSizeLimit)?;
+    output.extend_from_slice(&profile::MAGIC);
     output.extend(payload);
     if output.len() as u64 > ir.limits.artifact_bytes {
         return Err(E::EncodedSizeLimit);
@@ -614,7 +623,7 @@ fn read_vocabularies(
     let raw_definitions = array(&p[3])?;
     let mut definitions: Vec<((&str, &str), Vec<CompositionDefinition>)> = Vec::new();
     definitions
-        .try_reserve_exact(raw_definitions.len())
+        .try_retain_exact(raw_definitions.len())
         .map_err(|_| failure(C::EncodedSizeLimit))?;
     let mut previous = None;
     for d in raw_definitions {
@@ -631,7 +640,7 @@ fn read_vocabularies(
         }
         let group = &mut definitions.last_mut().ok_or_else(|| schema(d))?.1;
         group
-            .try_reserve(1)
+            .try_retain(1)
             .map_err(|_| failure(C::EncodedSizeLimit))?;
         group.push(CompositionDefinition {
             name,
@@ -660,7 +669,7 @@ fn read_vocabularies(
     let mut definitions = definitions.into_iter().peekable();
     let mut vocabularies = Vec::new();
     vocabularies
-        .try_reserve_exact(catalogues.len())
+        .try_retain_exact(catalogues.len())
         .map_err(|_| failure(C::EncodedSizeLimit))?;
     for ((c, dep), source) in catalogues.iter().zip(dependencies).zip(vocabulary_sources) {
         let a = tuple::<5>(c)?;

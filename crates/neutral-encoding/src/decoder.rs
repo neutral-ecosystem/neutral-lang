@@ -4,6 +4,7 @@
 
 use crate::{DecodeError, DecodeErrorClass, DecodeLimits};
 use neutral_core::CancellationToken;
+use neutral_core::allocation::RetainCapacity;
 
 #[cfg(test)]
 #[path = "../tests/decoder/mod.rs"]
@@ -123,7 +124,7 @@ impl Parser<'_> {
             }
         }
         values
-            .try_reserve(count)
+            .try_retain(count)
             .map_err(|_| self.error(DecodeErrorClass::EncodedSizeLimit))?;
         self.check_cancelled()
     }

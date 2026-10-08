@@ -5,9 +5,10 @@
 use crate::{
     JsonValue, VocabularyError, VocabularyLimits, VocabularyLock, json, schema, validation,
 };
-use neutral_core::VocabularyContentDigest;
+use neutral_core::allocation::{RetainCapacity, text};
+use neutral_core::ordered::{OrderedMap, OrderedSet};
+use neutral_core::{CancellationToken, VocabularyContentDigest};
 use neutral_ir::language;
-use std::collections::{BTreeMap, BTreeSet};
 
 /// Exact v1 project bundle encoding version.
 pub const PROJECT_VOCABULARY_ENCODING_VERSION: &str = schema::PROJECT_ENCODING_VERSION;
@@ -135,15 +136,26 @@ impl ProjectVocabulary {
 /// # Errors
 ///
 /// Returns a closed-schema or lock error without exposing a partial contract.
-#[expect(
-    clippy::too_many_lines,
-    reason = "the closed schema is validated in one fail-closed pass"
-)]
 pub fn validate_project_bundle(
     bytes: &[u8],
     lock: &VocabularyLock,
     limits: VocabularyLimits,
 ) -> Result<ProjectVocabulary, VocabularyError> {
+    validate_project_bundle_cancellable(bytes, lock, limits, None)
+}
+
+/// Validates the schema leaf reached by successor capture, observing cancellation before retention.
+#[expect(
+    clippy::too_many_lines,
+    reason = "one atomic closed-schema validation pass"
+)]
+pub(crate) fn validate_project_bundle_cancellable(
+    bytes: &[u8],
+    lock: &VocabularyLock,
+    limits: VocabularyLimits,
+    cancellation: Option<&CancellationToken>,
+) -> Result<ProjectVocabulary, VocabularyError> {
+    check_cancelled(cancellation)?;
     if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > limits.bundle_bytes() {
         return Err(VocabularyError::BundleByteLimitExceeded);
     }
@@ -155,7 +167,11 @@ pub fn validate_project_bundle(
         return Err(VocabularyError::BomForbidden);
     }
     let text = std::str::from_utf8(bytes).map_err(|_| VocabularyError::InvalidUtf8)?;
-    let parsed = json::parse(text, limits)?;
+    let parsed = if let Some(signal) = cancellation {
+        json::parse_cancellable(text, limits, signal)?
+    } else {
+        json::parse(text, limits)?
+    };
     let root = validation::object(&parsed)?;
     validation::exact_members(
         root,
@@ -191,15 +207,19 @@ pub fn validate_project_bundle(
     if u64::try_from(features.len()).unwrap_or(u64::MAX) > limits.features() {
         return Err(VocabularyError::JsonLimitExceeded);
     }
-    let mut decoded_features = BTreeSet::new();
+    let mut decoded_features = OrderedSet::new();
     for feature in features {
+        check_cancelled(cancellation)?;
         let JsonValue::String(value) = feature else {
             return Err(VocabularyError::InvalidMemberType);
         };
         if !schema::is_feature_id(value) {
             return Err(VocabularyError::InvalidFeatureId);
         }
-        if !decoded_features.insert(value.as_str()) {
+        if !decoded_features
+            .insert(value.as_str())
+            .map_err(|_| VocabularyError::JsonLimitExceeded)?
+        {
             return Err(VocabularyError::DuplicateFeature);
         }
     }
@@ -213,8 +233,9 @@ pub fn validate_project_bundle(
     if u64::try_from(definitions.len()).unwrap_or(u64::MAX) > limits.types() {
         return Err(VocabularyError::JsonLimitExceeded);
     }
-    let mut visibility = BTreeMap::new();
+    let mut visibility = OrderedMap::new();
     for definition in definitions {
+        check_cancelled(cancellation)?;
         let fields = validation::object(definition)?;
         validation::exact_members(fields, &["name", "public", "fields"])?;
         let name = validation::string(fields, "name")?;
@@ -222,14 +243,19 @@ pub fn validate_project_bundle(
             return Err(VocabularyError::InvalidTypeName);
         }
         if visibility
-            .insert(name.to_owned(), validation::boolean(fields, "public")?)
+            .insert(name, validation::boolean(fields, "public")?)
+            .map_err(|_| VocabularyError::JsonLimitExceeded)?
             .is_some()
         {
             return Err(VocabularyError::DuplicateType);
         }
     }
-    let mut types = Vec::with_capacity(definitions.len());
+    let mut types = Vec::new();
+    types
+        .try_retain_exact(definitions.len())
+        .map_err(|_| VocabularyError::JsonLimitExceeded)?;
     for definition in definitions {
+        check_cancelled(cancellation)?;
         let fields = validation::object(definition)?;
         let name = validation::string(fields, "name")?;
         let public = visibility[name];
@@ -237,16 +263,23 @@ pub fn validate_project_bundle(
         if u64::try_from(raw_fields.len()).unwrap_or(u64::MAX) > limits.fields() {
             return Err(VocabularyError::JsonLimitExceeded);
         }
-        let mut seen = BTreeSet::new();
-        let mut decoded = Vec::with_capacity(raw_fields.len());
+        let mut seen = OrderedSet::new();
+        let mut decoded = Vec::new();
+        decoded
+            .try_retain_exact(raw_fields.len())
+            .map_err(|_| VocabularyError::JsonLimitExceeded)?;
         for raw in raw_fields {
+            check_cancelled(cancellation)?;
             let field = validation::object(raw)?;
             validation::exact_members(field, &["name", "type"])?;
             let field_name = validation::string(field, "name")?;
             if !schema::is_snake_name(field_name) || schema::is_protected_name(field_name) {
                 return Err(VocabularyError::InvalidFieldName);
             }
-            if !seen.insert(field_name) {
+            if !seen
+                .insert(field_name)
+                .map_err(|_| VocabularyError::JsonLimitExceeded)?
+            {
                 return Err(VocabularyError::DuplicateField);
             }
             let spelling = validation::string(field, "type")?;
@@ -263,26 +296,27 @@ pub fn validate_project_bundle(
                     if public && !target_public {
                         return Err(VocabularyError::PrivateTypeExposed);
                     }
-                    ProjectVocabularyType::Nominal(other.to_owned())
+                    ProjectVocabularyType::Nominal(retain_text(other)?)
                 }
             };
             decoded.push(ProjectVocabularyField {
-                name: field_name.to_owned(),
+                name: retain_text(field_name)?,
                 ty,
             });
         }
-        decoded.sort_by(|left, right| left.name.cmp(&right.name));
+        decoded.sort_unstable_by(|left, right| left.name.cmp(&right.name));
         types.push(ProjectVocabularyTypeDefinition {
-            name: name.to_owned(),
+            name: retain_text(name)?,
             public,
             fields: decoded,
         });
     }
-    types.sort_by(|left, right| left.name.cmp(&right.name));
-    validate_embedding_graph(&types, limits)?;
+    types.sort_unstable_by(|left, right| left.name.cmp(&right.name));
+    validate_embedding_graph(&types, limits, cancellation)?;
+    check_cancelled(cancellation)?;
     Ok(ProjectVocabulary {
-        identity: lock.identity().to_owned(),
-        version: lock.version().to_owned(),
+        identity: retain_text(lock.identity())?,
+        version: retain_text(lock.version())?,
         content_digest: digest,
         types,
     })
@@ -292,50 +326,86 @@ pub fn validate_project_bundle(
 fn validate_embedding_graph(
     types: &[ProjectVocabularyTypeDefinition],
     limits: VocabularyLimits,
+    cancellation: Option<&CancellationToken>,
 ) -> Result<(), VocabularyError> {
-    let graph = types
-        .iter()
-        .map(|ty| {
-            let targets = ty
-                .fields
-                .iter()
-                .filter_map(|field| match &field.ty {
-                    ProjectVocabularyType::Nominal(name) => Some(name.as_str()),
-                    _ => None,
-                })
-                .collect::<BTreeSet<_>>();
-            (ty.name.as_str(), targets)
-        })
-        .collect::<BTreeMap<_, _>>();
-    let mut visited = BTreeSet::new();
+    let mut graph = OrderedMap::new();
+    for ty in types {
+        check_cancelled(cancellation)?;
+        let mut targets = OrderedSet::new();
+        for field in &ty.fields {
+            check_cancelled(cancellation)?;
+            if let ProjectVocabularyType::Nominal(name) = &field.ty {
+                targets
+                    .insert(name.as_str())
+                    .map_err(|_| VocabularyError::JsonLimitExceeded)?;
+            }
+        }
+        graph
+            .insert(ty.name.as_str(), targets)
+            .map_err(|_| VocabularyError::JsonLimitExceeded)?;
+    }
+    let mut visited = OrderedSet::new();
     let mut traversed = 0_u64;
     for root in graph.keys() {
         if visited.contains(root) {
             continue;
         }
-        let mut visiting = BTreeSet::new();
-        let mut stack = vec![(*root, false)];
+        let mut visiting = OrderedSet::new();
+        let mut stack = Vec::new();
+        stack
+            .try_retain(1)
+            .map_err(|_| VocabularyError::JsonLimitExceeded)?;
+        stack.push((*root, false));
         while let Some((name, leaving)) = stack.pop() {
+            check_cancelled(cancellation)?;
             traversed = traversed.saturating_add(1);
             if traversed > limits.total_nodes() {
                 return Err(VocabularyError::JsonLimitExceeded);
             }
             if leaving {
                 visiting.remove(name);
-                visited.insert(name);
+                visited
+                    .insert(name)
+                    .map_err(|_| VocabularyError::JsonLimitExceeded)?;
                 continue;
             }
             if visited.contains(name) {
                 continue;
             }
-            if !visiting.insert(name) {
+            if !visiting
+                .insert(name)
+                .map_err(|_| VocabularyError::JsonLimitExceeded)?
+            {
                 return Err(VocabularyError::InvalidTypeRecursion);
             }
+            let targets = graph.get(name).ok_or(VocabularyError::UnknownTypeTarget)?;
+            stack
+                .try_retain(
+                    targets
+                        .len()
+                        .checked_add(1)
+                        .ok_or(VocabularyError::JsonLimitExceeded)?,
+                )
+                .map_err(|_| VocabularyError::JsonLimitExceeded)?;
             stack.push((name, true));
-            for target in graph.get(name).into_iter().flatten() {
+            for target in targets {
                 stack.push((*target, false));
             }
         }
     }
     Ok(())
+}
+
+/// Copies a bounded schema spelling without infallible string growth.
+fn retain_text(value: &str) -> Result<String, VocabularyError> {
+    text(value).map_err(|_| VocabularyError::JsonLimitExceeded)
+}
+
+/// Preserves old-only validation while allowing successor callers to cancel every traversal.
+fn check_cancelled(cancellation: Option<&CancellationToken>) -> Result<(), VocabularyError> {
+    if cancellation.is_some_and(CancellationToken::is_cancelled) {
+        Err(VocabularyError::Cancelled)
+    } else {
+        Ok(())
+    }
 }

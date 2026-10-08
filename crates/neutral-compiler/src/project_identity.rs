@@ -4,6 +4,7 @@
 
 use crate::{CapturedProject, CapturedProjectSource, CapturedProjectVocabulary};
 use neutral_core::CancellationToken;
+use neutral_core::allocation::RetainCapacity;
 use neutral_ir::project_identity::{
     CapturedClosureIdentity, CapturedIdentityInput, CapturedIdentitySource,
     CapturedIdentityVocabulary, IdentityError, IdentityLimits, IdentityTranscript,
@@ -83,7 +84,7 @@ pub(crate) fn capture_facts<'a>(
     }
     let mut sources = Vec::new();
     sources
-        .try_reserve(captured_sources.len())
+        .try_retain(captured_sources.len())
         .map_err(|_| IdentityError::Limit)?;
     for source in captured_sources {
         if cancellation.is_cancelled() {
@@ -98,7 +99,7 @@ pub(crate) fn capture_facts<'a>(
     }
     let mut vocabularies = Vec::new();
     vocabularies
-        .try_reserve(captured_vocabularies.len())
+        .try_retain(captured_vocabularies.len())
         .map_err(|_| IdentityError::Limit)?;
     for vocabulary in captured_vocabularies {
         if cancellation.is_cancelled() {

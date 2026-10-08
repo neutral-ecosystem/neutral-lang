@@ -216,7 +216,12 @@ fn legacy_bundle(
     input: CapturedCompositionBundle<'_>,
     budget: &mut Budget<'_>,
 ) -> Result<CompositionBundle, E> {
-    let legacy = crate::validate_project_bundle(input.bytes, input.lock, budget.limits.json)?;
+    let legacy = crate::project::validate_project_bundle_cancellable(
+        input.bytes,
+        input.lock,
+        budget.limits.json,
+        Some(budget.cancellation),
+    )?;
     charge(
         &mut budget.types,
         legacy.types().len() as u64,

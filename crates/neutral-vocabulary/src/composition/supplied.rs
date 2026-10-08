@@ -4,6 +4,7 @@
 
 use super::{Budget, CompositionError as E, CompositionLimits, ValidatedComposition, values};
 use neutral_core::CancellationToken;
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::ordered::OrderedMap as BTreeMap;
 use neutral_ir::{
     composition::{
@@ -140,7 +141,7 @@ pub(super) fn classify<R>(
             .ok_or(E::Limit)
     })?;
     budget.step(path_bytes)?;
-    origins.try_reserve(1).map_err(|_| E::Allocation)?;
+    origins.try_retain(1).map_err(|_| E::Allocation)?;
     origins.push(ValueOrigin {
         path: super::copy::path(path)?,
         kind,
@@ -222,7 +223,7 @@ fn descend<R>(
     origins: &mut Vec<ValueOrigin>,
     budget: &mut Budget<'_>,
 ) -> Result<(), E> {
-    path.try_reserve(1).map_err(|_| E::Allocation)?;
+    path.try_retain(1).map_err(|_| E::Allocation)?;
     path.push(segment);
     let result = classify(raw, value, defaulted, path, origins, budget);
     path.pop();

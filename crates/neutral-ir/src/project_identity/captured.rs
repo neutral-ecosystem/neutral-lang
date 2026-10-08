@@ -9,6 +9,7 @@ use super::{
     transcript, transcript_profile,
 };
 use crate::composition::profile;
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::{CancellationToken, SourceContentDigest, VocabularyContentDigest};
 
 /// Borrowed source facts from a successfully frozen capture, never host paths.
@@ -129,7 +130,7 @@ fn capture_body(
     }
     let mut source_ids = Vec::new();
     source_ids
-        .try_reserve(input.sources.len())
+        .try_retain(input.sources.len())
         .map_err(|_| IdentityError::Limit)?;
     source_ids.extend(input.sources.iter().map(|source| source.source_id));
     source_ids.sort_unstable();

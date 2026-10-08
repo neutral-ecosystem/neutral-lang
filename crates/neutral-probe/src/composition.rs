@@ -4,6 +4,7 @@
 
 use crate::inspection_schema::{Field, FieldValue, render_fields_json};
 use neutral_core::CancellationToken;
+use neutral_core::allocation::{RetainCapacity, TryClone, text};
 use neutral_encoding::{DecodeError, DecodeLimits, composition::decode_composition_project};
 use neutral_reader::{
     IdentityError, IdentityLimits, MAX_TRANSCRIPT_BYTES, MAX_TRANSCRIPT_NODES,
@@ -13,7 +14,7 @@ use neutral_reader::{
         ProjectCompositionLimits, canonical_composition_project, profile,
     },
 };
-use std::collections::BTreeMap;
+use std::fmt::Write as _;
 
 /// Atomic inspection failures without private root names or partial projections.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -56,41 +57,66 @@ pub fn inspect_composition_encoded(
     let project = decode_composition_project(bytes, wire, project, composition, cancel)
         .map_err(CompositionProbeError::Decode)?;
     let ir = project.complete_ir();
-    let public = ir
-        .declarations
-        .iter()
-        .filter(|d| d.public)
-        .collect::<Vec<_>>();
-    let index = public
-        .iter()
-        .map(|d| (symbol_name(&d.identity), &d.identity))
-        .collect::<BTreeMap<_, _>>();
-    let selected = match roots {
-        None => public.iter().map(|d| d.identity.clone()).collect(),
-        Some(roots) => {
-            if roots.len() > public.len()
-                || roots
-                    .iter()
-                    .try_fold(0_u64, |n, r| n.checked_add(r.len() as u64))
-                    .is_none_or(|n| n > composition.work)
-            {
-                return Err(CompositionProbeError::View(CompositionReadError::Limit));
-            }
-            roots
+    let public_count = ir.declarations.iter().filter(|d| d.public).count();
+    if roots.is_some_and(|roots| {
+        roots.len() > public_count
+            || roots
                 .iter()
-                .map(|root| {
-                    index
-                        .get(root)
-                        .map(|owner| (*owner).clone())
-                        .ok_or(CompositionProbeError::View(CompositionReadError::Semantic))
-                })
-                .collect::<Result<Vec<_>, _>>()?
+                .try_fold(0_u64, |n, r| n.checked_add(r.len() as u64))
+                .is_none_or(|n| n > composition.work)
+    }) {
+        return Err(probe_limit());
+    }
+    let mut selected = Vec::new();
+    selected
+        .try_retain_exact(roots.map_or(public_count, <[String]>::len))
+        .map_err(|_| probe_limit())?;
+    let selected = match roots {
+        None => {
+            for declaration in ir.declarations.iter().filter(|d| d.public) {
+                if cancel.is_cancelled() {
+                    return Err(CompositionProbeError::View(CompositionReadError::Cancelled));
+                }
+                selected.push(
+                    declaration
+                        .identity
+                        .try_clone()
+                        .map_err(|_| probe_limit())?,
+                );
+            }
+            selected
+        }
+        Some(roots) => {
+            for root in roots {
+                if cancel.is_cancelled() {
+                    return Err(CompositionProbeError::View(CompositionReadError::Cancelled));
+                }
+                let (module, name) = root
+                    .rsplit_once("::")
+                    .ok_or(CompositionProbeError::View(CompositionReadError::Semantic))?;
+                let index = ir
+                    .declarations
+                    .binary_search_by(|d| {
+                        (
+                            d.identity.module().module_name(),
+                            d.identity.declaration_name(),
+                        )
+                            .cmp(&(module, name))
+                    })
+                    .map_err(|_| CompositionProbeError::View(CompositionReadError::Semantic))?;
+                let owner = &ir.declarations[index];
+                if !owner.public {
+                    return Err(CompositionProbeError::View(CompositionReadError::Semantic));
+                }
+                selected.push(owner.identity.try_clone().map_err(|_| probe_limit())?);
+            }
+            selected
         }
     };
     let view = project
         .derive_view(
             &CompositionViewRequest {
-                schema: profile::PROJECT_VIEW_SCHEMA.to_owned(),
+                schema: text(profile::PROJECT_VIEW_SCHEMA).map_err(|_| probe_limit())?,
                 roots: selected,
             },
             cancel,
@@ -106,13 +132,26 @@ pub fn inspect_composition_encoded(
     )
     .map_err(CompositionProbeError::Identity)?
     .identity();
+    let mut fingerprint = String::new();
+    fingerprint
+        .try_retain_exact(ir.interface_digest.as_bytes().len() * 2)
+        .map_err(|_| probe_limit())?;
+    write!(fingerprint, "{}", ir.interface_digest).map_err(|_| probe_limit())?;
+    if cancel.is_cancelled() {
+        return Err(CompositionProbeError::View(CompositionReadError::Cancelled));
+    }
     Ok(CompositionProbeSummary {
         modules: ir.resources.source_units,
         declarations: ir.resources.declarations,
         logical_identity,
-        interface_fingerprint: ir.interface_digest.to_string(),
+        interface_fingerprint: fingerprint,
         view,
     })
+}
+
+/// Classifies failed probe retention without allocating diagnostic text.
+fn probe_limit() -> CompositionProbeError {
+    CompositionProbeError::View(CompositionReadError::Limit)
 }
 
 /// Formats an exact public owner for independent root selection.

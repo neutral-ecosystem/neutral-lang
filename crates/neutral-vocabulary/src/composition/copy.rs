@@ -3,6 +3,7 @@
 //! Fallible retained occurrence-key copies; raw-data bounds remain the caller's responsibility.
 
 use super::CompositionError as E;
+use neutral_core::allocation::RetainCapacity;
 use neutral_ir::composition::ValuePathSegment as P;
 
 /// Copies one previously bounded UTF-8 string without an infallible growth operation.
@@ -21,7 +22,7 @@ fn text_observed(
     observer(value.len())?;
     let mut result = String::new();
     result
-        .try_reserve_exact(value.len())
+        .try_retain_exact(value.len())
         .map_err(|_| E::Allocation)?;
     result.push_str(value);
     Ok(result)
@@ -34,7 +35,7 @@ fn path_observed(
     observer(value.len())?;
     let mut result = Vec::new();
     result
-        .try_reserve_exact(value.len())
+        .try_retain_exact(value.len())
         .map_err(|_| E::Allocation)?;
     for segment in value {
         result.push(match segment {

@@ -17,6 +17,7 @@
 //! does not establish validity. The independent reader boundary is responsible
 //! for checking hostile artifacts before exposing authoritative traversal.
 
+use neutral_core::allocation::RetainCapacity;
 pub mod composition;
 pub mod language;
 pub mod project;
@@ -396,7 +397,7 @@ fn parse_source_number(
     }
     let mut coefficient = String::new();
     coefficient
-        .try_reserve_exact(digit_count)
+        .try_retain_exact(digit_count)
         .map_err(|_| IrError::ExactNumberLimitExceeded)?;
     coefficient.extend(
         spelling[integer.start..integer.end]

@@ -7,6 +7,7 @@ use super::{
     TriviaKind, span,
 };
 use crate::language::names;
+use neutral_core::allocation::RetainCapacity;
 
 /// UTF-8 byte-order mark accepted only once at byte offset zero.
 const UTF8_BOM: &[u8; 3] = b"\xef\xbb\xbf";
@@ -95,7 +96,7 @@ pub(super) fn lex_bounded(
                     span: span(index, end),
                 });
                 tokens
-                    .try_reserve(line_ends.len())
+                    .try_retain(line_ends.len())
                     .map_err(|_| FrontendError::record_limit_exceeded(span(index, end)))?;
                 tokens.extend(line_ends);
                 index = end;
@@ -125,7 +126,7 @@ pub(super) fn lex_bounded(
 
     policy.check(source.len())?;
     tokens
-        .try_reserve(1)
+        .try_retain(1)
         .map_err(|_| FrontendError::record_limit_exceeded(span(source.len(), source.len())))?;
     tokens.push(token(TokenKind::EndOfFile, source.len(), source.len()));
     Ok(LexedSource { tokens, trivia })
@@ -209,7 +210,7 @@ fn block_comment(
     while index < source.len() {
         policy.check(index)?;
         line_ends
-            .try_reserve(1)
+            .try_retain(1)
             .map_err(|_| FrontendError::record_limit_exceeded(span(index, index)))?;
         if source.get(index) == Some(&b'*') && source.get(index + 1) == Some(&b'/') {
             return Ok((index + 2, line_ends));
@@ -429,7 +430,7 @@ impl Retention<'_> {
     ) -> Result<(), FrontendError> {
         self.check(index)?;
         values
-            .try_reserve(count)
+            .try_retain(count)
             .map_err(|_| FrontendError::record_limit_exceeded(span(index, index)))
     }
     /// Observes cancellation before any proportional retention or scan step.
@@ -454,7 +455,7 @@ impl Retention<'_> {
             return Err(FrontendError::record_limit_exceeded(span(index, index)));
         }
         value
-            .try_reserve(character.len_utf8())
+            .try_retain(character.len_utf8())
             .map_err(|_| FrontendError::record_limit_exceeded(span(index, index)))?;
         value.push(character);
         Ok(())

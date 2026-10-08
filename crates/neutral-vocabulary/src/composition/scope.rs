@@ -6,6 +6,7 @@ use super::{
     Budget, CompositionError as E, CompositionLimits, ValidatedComposition,
     ValidatedCompositionValue, charge, check_count, supplied, values,
 };
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::allocation::Shared as Arc;
 use neutral_core::ordered::{OrderedMap as BTreeMap, OrderedSet as BTreeSet};
 use neutral_core::{CancellationToken, profile::V1_SOURCE_PROFILE};
@@ -200,7 +201,7 @@ pub fn validate_composition_scope(
                     Ok::<_, E>(value)
                 })
                 .transpose()?;
-            finalized.try_reserve(1).map_err(|_| E::Allocation)?;
+            finalized.try_retain(1).map_err(|_| E::Allocation)?;
             finalized.push((index, field_index, restrictions, default));
         }
     }
@@ -406,7 +407,7 @@ pub(super) fn preflight_type(ty: &T, budget: &mut Budget<'_>) -> Result<(), E> {
 /// Bounds caller-owned defaults/choices iteratively before any recursive expansion or clone.
 fn preflight_value(value: &V, budget: &mut Budget<'_>) -> Result<(), E> {
     let mut stack = Vec::new();
-    stack.try_reserve_exact(1).map_err(|_| E::Allocation)?;
+    stack.try_retain_exact(1).map_err(|_| E::Allocation)?;
     stack.push((value, 0));
     while let Some((value, depth)) = stack.pop() {
         budget.depth(depth, budget.limits.value_depth)?;
@@ -414,13 +415,13 @@ fn preflight_value(value: &V, budget: &mut Budget<'_>) -> Result<(), E> {
             V::List(items) => {
                 check_count(items.len(), budget.limits.json.array_items())?;
                 budget.step(items.len() as u64)?;
-                stack.try_reserve(items.len()).map_err(|_| E::Allocation)?;
+                stack.try_retain(items.len()).map_err(|_| E::Allocation)?;
                 stack.extend(items.iter().map(|item| (item, depth + 1)));
             }
             V::Record(fields) => {
                 check_count(fields.len(), budget.limits.json.fields())?;
                 budget.step(fields.len() as u64)?;
-                stack.try_reserve(fields.len()).map_err(|_| E::Allocation)?;
+                stack.try_retain(fields.len()).map_err(|_| E::Allocation)?;
                 for (name, value) in fields {
                     budget.key(name.len(), fields.len())?;
                     if name.len() as u64 > budget.limits.json.string_bytes() {
@@ -436,7 +437,7 @@ fn preflight_value(value: &V, budget: &mut Budget<'_>) -> Result<(), E> {
                 if tag.len() as u64 > budget.limits.json.string_bytes() {
                     return Err(E::Limit);
                 }
-                stack.try_reserve(1).map_err(|_| E::Allocation)?;
+                stack.try_retain(1).map_err(|_| E::Allocation)?;
                 stack.push((payload, depth + 1));
             }
             _ => scalar(value, budget)?,
@@ -566,7 +567,7 @@ fn validate_edges(
     for root in graph.keys() {
         let mut visiting = BTreeSet::new();
         let mut stack = Vec::new();
-        stack.try_reserve_exact(1).map_err(|_| E::Allocation)?;
+        stack.try_retain_exact(1).map_err(|_| E::Allocation)?;
         stack.push((*root, false));
         while let Some((owner, leaving)) = stack.pop() {
             budget.step(1)?;
@@ -584,7 +585,7 @@ fn validate_edges(
                 return Err(E::EmbeddedCycle);
             }
             stack
-                .try_reserve(1 + graph.get(owner).map_or(0, BTreeSet::len))
+                .try_retain(1 + graph.get(owner).map_or(0, BTreeSet::len))
                 .map_err(|_| E::Allocation)?;
             stack.push((owner, true));
             if let Some(targets) = graph.get(owner) {

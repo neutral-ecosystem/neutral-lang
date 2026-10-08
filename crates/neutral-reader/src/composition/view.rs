@@ -4,6 +4,7 @@
 
 use super::{CompositionReadError as E, ValidatedCompositionProject};
 use neutral_core::CancellationToken;
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::allocation::{TryClone, copy_slice, text};
 use neutral_core::ordered::OrderedSet as BTreeSet;
 use neutral_ir::{
@@ -123,7 +124,7 @@ impl Closure<'_> {
                 self.shift(self.types.len())?;
                 let key = (owned(identity)?, owned(version)?, owned(name)?);
                 if self.types.insert(copy(&key)?).map_err(|_| E::Limit)? {
-                    self.pending_types.try_reserve(1).map_err(|_| E::Limit)?;
+                    self.pending_types.try_retain(1).map_err(|_| E::Limit)?;
                     self.pending_types.push(key);
                 }
                 Ok(())
@@ -172,7 +173,7 @@ impl Closure<'_> {
         if !self.sources.insert(copy(owner)?).map_err(|_| E::Limit)? {
             return Ok(());
         }
-        self.pending.try_reserve(1).map_err(|_| E::Limit)?;
+        self.pending.try_retain(1).map_err(|_| E::Limit)?;
         self.pending.push(copy(owner)?);
         Ok(())
     }
@@ -423,7 +424,7 @@ fn owned(value: &str) -> Result<String, E> {
 }
 /// Reserves unpublished view retention before appending, never exposing a partial view.
 fn push<T>(values: &mut Vec<T>, value: T) -> Result<(), E> {
-    values.try_reserve(1).map_err(|_| E::Limit)?;
+    values.try_retain(1).map_err(|_| E::Limit)?;
     values.push(value);
     Ok(())
 }

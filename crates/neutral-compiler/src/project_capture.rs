@@ -3,12 +3,14 @@
 //! Complete, bounded, and effect-free project capture for the v1 profile.
 
 use crate::module_graph::{ModuleGraph, ModuleGraphFailure, build_module_graph};
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::allocation::Shared as Arc;
+use neutral_core::allocation::{TryClone, text};
+use neutral_core::ordered::OrderedSet;
 use neutral_core::{
     CancellationToken, SourceContentDigest, VocabularyContentDigest, profile::LanguageProfile,
 };
 use neutral_vocabulary::VocabularyLock;
-use std::collections::BTreeSet;
 
 mod composition;
 pub use composition::{
@@ -703,12 +705,12 @@ fn validate_sources_cancellable(
     values: ProjectCaptureLimitValues,
     cancellation: Option<&CancellationToken>,
 ) -> Result<Vec<(CapturedSourceInput, SourceContentDigest)>, ProjectCaptureError> {
-    let mut source_ids = BTreeSet::new();
-    let mut module_ids = BTreeSet::new();
+    let mut source_ids = OrderedSet::new();
+    let mut module_ids = OrderedSet::new();
     let mut total_source_bytes = 0_u64;
     let mut captured_sources = Vec::new();
     captured_sources
-        .try_reserve(sources.len())
+        .try_retain(sources.len())
         .map_err(|_| ProjectCaptureError::LimitExceeded)?;
     for source in sources {
         capture_cancelled(cancellation)?;
@@ -727,10 +729,26 @@ fn validate_sources_cancellable(
         if total_source_bytes > values.total_source_bytes {
             return Err(ProjectCaptureError::LimitExceeded);
         }
-        if !source_ids.insert(source.source_id.clone()) {
+        if !source_ids
+            .insert(
+                source
+                    .source_id
+                    .try_clone()
+                    .map_err(|_| ProjectCaptureError::LimitExceeded)?,
+            )
+            .map_err(|_| ProjectCaptureError::LimitExceeded)?
+        {
             return Err(ProjectCaptureError::DuplicateSourceId);
         }
-        if !module_ids.insert(source.module_id.clone()) {
+        if !module_ids
+            .insert(
+                source
+                    .module_id
+                    .try_clone()
+                    .map_err(|_| ProjectCaptureError::LimitExceeded)?,
+            )
+            .map_err(|_| ProjectCaptureError::LimitExceeded)?
+        {
             return Err(ProjectCaptureError::DuplicateModuleId);
         }
         let digest = SourceContentDigest::from_bytes(&source.bytes);
@@ -749,7 +767,7 @@ fn validate_sources_cancellable(
 fn validate_vocabularies(
     vocabularies: &[CapturedVocabularyInput],
     values: ProjectCaptureLimitValues,
-) -> Result<BTreeSet<String>, ProjectCaptureError> {
+) -> Result<OrderedSet<String>, ProjectCaptureError> {
     validate_vocabularies_cancellable(vocabularies, values, None)
 }
 
@@ -758,8 +776,8 @@ fn validate_vocabularies_cancellable(
     vocabularies: &[CapturedVocabularyInput],
     values: ProjectCaptureLimitValues,
     cancellation: Option<&CancellationToken>,
-) -> Result<BTreeSet<String>, ProjectCaptureError> {
-    let mut vocabulary_ids = BTreeSet::new();
+) -> Result<OrderedSet<String>, ProjectCaptureError> {
+    let mut vocabulary_ids = OrderedSet::new();
     let mut total_vocabulary_bytes = 0_u64;
     for vocabulary in vocabularies {
         capture_cancelled(cancellation)?;
@@ -772,7 +790,12 @@ fn validate_vocabularies_cancellable(
         if total_vocabulary_bytes > values.total_vocabulary_bytes {
             return Err(ProjectCaptureError::LimitExceeded);
         }
-        if !vocabulary_ids.insert(vocabulary.lock.identity().to_owned()) {
+        if !vocabulary_ids
+            .insert(
+                text(vocabulary.lock.identity()).map_err(|_| ProjectCaptureError::LimitExceeded)?,
+            )
+            .map_err(|_| ProjectCaptureError::LimitExceeded)?
+        {
             return Err(ProjectCaptureError::DuplicateVocabulary);
         }
         if VocabularyContentDigest::from_bytes(&vocabulary.bytes)
@@ -788,7 +811,7 @@ fn validate_vocabularies_cancellable(
 fn validate_headers(
     sources: &[(CapturedSourceInput, SourceContentDigest)],
     profile: LanguageProfile,
-) -> Result<BTreeSet<String>, ProjectCaptureError> {
+) -> Result<OrderedSet<String>, ProjectCaptureError> {
     validate_headers_policy(sources, profile, false, None)
 }
 
@@ -798,8 +821,8 @@ fn validate_headers_policy(
     profile: LanguageProfile,
     repeated_aliases: bool,
     cancellation: Option<&CancellationToken>,
-) -> Result<BTreeSet<String>, ProjectCaptureError> {
-    let mut required_vocabularies = BTreeSet::new();
+) -> Result<OrderedSet<String>, ProjectCaptureError> {
+    let mut required_vocabularies = OrderedSet::new();
     for (source, _) in sources {
         capture_cancelled(cancellation)?;
         let headers = scan_headers(&source.bytes, repeated_aliases, cancellation)?;
@@ -809,20 +832,25 @@ fn validate_headers_policy(
         if headers.module_id != source.module_id {
             return Err(ProjectCaptureError::ModuleHeaderMismatch);
         }
-        required_vocabularies.extend(headers.vocabularies);
+        for identity in headers.vocabularies {
+            capture_cancelled(cancellation)?;
+            required_vocabularies
+                .insert(identity)
+                .map_err(|_| ProjectCaptureError::LimitExceeded)?;
+        }
     }
     Ok(required_vocabularies)
 }
 
 /// Requires supplied locks to be exactly the set referenced by source headers.
 fn validate_vocabulary_cover(
-    required: &BTreeSet<String>,
-    supplied: &BTreeSet<String>,
+    required: &OrderedSet<String>,
+    supplied: &OrderedSet<String>,
 ) -> Result<(), ProjectCaptureError> {
-    if required.difference(supplied).next().is_some() {
+    if required.iter().any(|identity| !supplied.contains(identity)) {
         return Err(ProjectCaptureError::MissingVocabulary);
     }
-    if supplied.difference(required).next().is_some() {
+    if supplied.iter().any(|identity| !required.contains(identity)) {
         return Err(ProjectCaptureError::ExtraVocabulary);
     }
     Ok(())
@@ -853,7 +881,7 @@ fn freeze_project(
     });
     let mut frozen_sources = Vec::new();
     frozen_sources
-        .try_reserve_exact(sources.len())
+        .try_retain_exact(sources.len())
         .map_err(|_| ProjectCaptureError::LimitExceeded)?;
     for (source, digest) in std::mem::take(sources) {
         capture_cancelled(Some(cancellation))?;
@@ -869,7 +897,7 @@ fn freeze_project(
     vocabularies.sort_unstable_by(|left, right| left.lock.identity().cmp(right.lock.identity()));
     let mut frozen_vocabularies = Vec::new();
     frozen_vocabularies
-        .try_reserve_exact(vocabularies.len())
+        .try_retain_exact(vocabularies.len())
         .map_err(|_| ProjectCaptureError::LimitExceeded)?;
     for vocabulary in vocabularies {
         capture_cancelled(Some(cancellation))?;
@@ -882,14 +910,16 @@ fn freeze_project(
     if cancellation.is_cancelled() {
         return Err(ProjectCaptureError::Cancelled);
     }
-    Ok(CapturedProject {
+    let captured = CapturedProject {
         profile,
         sources: Arc::try_new(frozen_sources).map_err(|_| ProjectCaptureError::LimitExceeded)?,
         vocabularies: Arc::try_new(frozen_vocabularies)
             .map_err(|_| ProjectCaptureError::LimitExceeded)?,
         limits,
         resource_facts,
-    })
+    };
+    capture_cancelled(Some(cancellation))?;
+    Ok(captured)
 }
 
 /// Minimal bounded header facts required by project capture.
@@ -899,7 +929,7 @@ struct HeaderFacts<'a> {
     /// Exact qualified module ID.
     module_id: &'a str,
     /// Exact required vocabulary identities.
-    vocabularies: BTreeSet<String>,
+    vocabularies: OrderedSet<String>,
 }
 
 /// Scans only required header lines without invoking the inactive v1 parser.
@@ -921,10 +951,15 @@ fn scan_headers<'a>(
         .strip_prefix("module ")
         .filter(|value| valid_module_id(value))
         .ok_or(ProjectCaptureError::InvalidHeader)?;
-    let vocabularies = scan_vocabulary_requirements_policy(source, repeated_aliases, cancellation)?
-        .into_iter()
-        .map(|(identity, _)| identity)
-        .collect();
+    let mut vocabularies = OrderedSet::new();
+    for (identity, _) in
+        scan_vocabulary_requirements_policy(source, repeated_aliases, cancellation)?
+    {
+        capture_cancelled(cancellation)?;
+        vocabularies
+            .insert(identity)
+            .map_err(|_| ProjectCaptureError::LimitExceeded)?;
+    }
     Ok(HeaderFacts {
         profile,
         module_id,
@@ -946,8 +981,8 @@ fn scan_vocabulary_requirements_policy(
     cancellation: Option<&CancellationToken>,
 ) -> Result<Vec<(String, String)>, ProjectCaptureError> {
     let mut requirements = Vec::new();
-    let mut identities = BTreeSet::new();
-    let mut aliases = BTreeSet::new();
+    let mut identities = OrderedSet::new();
+    let mut aliases = OrderedSet::new();
     let mut in_block_comment = false;
     for line in source.lines().skip(2) {
         capture_cancelled(cancellation)?;
@@ -971,15 +1006,28 @@ fn scan_vocabulary_requirements_policy(
             || as_keyword != crate::language::graph_names::AS
             || !valid_vocabulary_identity(identity)
             || !valid_name_segment(alias)
-            || (!repeated_aliases && !identities.insert(identity.to_owned()))
-            || (repeated_aliases && !aliases.insert(alias.to_owned()))
+        {
+            return Err(ProjectCaptureError::InvalidHeader);
+        }
+        if (!repeated_aliases
+            && !identities
+                .insert(identity)
+                .map_err(|_| ProjectCaptureError::LimitExceeded)?)
+            || (repeated_aliases
+                && !aliases
+                    .insert(alias)
+                    .map_err(|_| ProjectCaptureError::LimitExceeded)?)
         {
             return Err(ProjectCaptureError::InvalidHeader);
         }
         requirements
-            .try_reserve(1)
+            .try_retain(1)
             .map_err(|_| ProjectCaptureError::LimitExceeded)?;
-        requirements.push((identity.to_owned(), alias.to_owned()));
+        capture_cancelled(cancellation)?;
+        requirements.push((
+            text(identity).map_err(|_| ProjectCaptureError::LimitExceeded)?,
+            text(alias).map_err(|_| ProjectCaptureError::LimitExceeded)?,
+        ));
     }
     Ok(requirements)
 }

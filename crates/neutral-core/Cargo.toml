@@ -14,5 +14,9 @@ sha2.workspace = true
 trybox.workspace = true
 triomphe.workspace = true
 
+[features]
+# Request-local deterministic reservation failures; enabled only by test consumers.
+allocation-testing = []
+
 [lints]
 workspace = true

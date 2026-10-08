@@ -685,3 +685,76 @@ phase/lexical/cache checkpoints do not establish complete allocator-exhaustion
 coverage for every newly migrated boundary. Standalone legacy entry-point review
 remains excluded; these findings concern actual successor dependencies. Frozen
 contracts, fixture manifests, oracles and identity vectors are unchanged.
+
+## Cross-package allocation sweeps and capture retention (08-10-2026)
+
+The shared source/header/lock capture validators now use fallible ordered
+membership and owned-text copies instead of infallible tree insertions and
+`clone`/`to_owned`. Required-lock aggregation is fallible. The explicitly adapted
+old-schema leaf validator retains names, fields, visibility, feature membership
+and iterative nominal embedding traversal fallibly, and successor callers supply
+cancellation into the shared JSON decoder and each validation/traversal loop.
+Stable allocating sorts are replaced with allocation-free unstable sorts over
+already unique canonical keys. Old-only API validation is not claimed as a
+separate review; its actual successor dependency is covered.
+
+Core vector/string capacity, text/recursive copies, boxes, shared headers and
+ordered indexes share one reservation observation boundary. The non-default
+`allocation-testing` feature is enabled by the cross-package test crate, not by
+ordinary production dependencies. Observation is thread-local, supports nested
+scopes, and restores state on unwind. Tests verify thread isolation and that
+failed primitive reservations do not mutate retained content. This is
+deterministic reservation-error injection, not a global allocator replacement
+or physical whole-process memory exhaustion experiment.
+
+The sweeps exercise every observed reservation on each selected accepted path:
+capture families and a compatible leaf bundle with real nominal graph edges;
+multi-module source resolution/SCC assembly, defaults, references and vocabulary
+values; independent complete reader validation; public closure; logical identity;
+successor encoding/decoding; and standalone probe inspection. Each failure must
+return an error rather than partial success, followed by successful recovery.
+Warm and changed-unit cache sweeps verify retained byte/unit accounting and the
+previous generation remain intact, with a subsequent warm hit and successful
+changed-unit compilation. Eight capture count/byte/identity controls are tested
+independently below/at/above their exact requirement, including count rejection
+before any observed retention.
+
+The audit additionally found unchecked growth in the shared CBOR writer and the
+successor magic prefix. Writer growth now reserves fallibly after size and
+cancellation checks; framing checks final size before reserving the output.
+Probe inspection copies public roots and fingerprint text fallibly, and uses
+borrowed canonical binary lookup rather than allocated formatted-name indexes.
+Host-side fixture/request construction and presentation rendering are not
+executed inside the reservation sweeps.
+
+Real token cancellation at every observed capture reservation found a
+publication bug: cancellation during final shared ownership could still return
+a captured project. Both shared capture freezing and successor publication now
+check cancellation after final retention. Compiler/reader/view/identity/wire/probe
+reservation cancellation sweeps also reject publication, including the final
+probe fingerprint reservation.
+
+Validation completed so far: all-feature workspace Clippy with denied warnings;
+`cargo xtask test all` reports 777/777 tests, zero skips, plus three compile-fail
+doctests. Existing literal contracts, manifests, identity vectors and oracles are
+unchanged. `cargo xtask ci pr` also passes all seven quality steps, including the
+same 777 tests/three doctests, compiler-free probe build and generated API docs.
+`cargo xtask portable verify` and `cargo xtask fixtures check` pass; fixture
+checking verifies 64 fixtures and 64 oracles with zero manifest/freeze updates.
+
+The configured five-target campaign ran outside the traced sandbox with
+`RUSTUP_TOOLCHAIN=nightly CCACHE_DISABLE=1 cargo xtask fuzz campaign`. Each
+target used the existing 15-second policy, not a 900-second campaign. All five
+tool runs and receipt validation pass. The source-bound receipt is generated
+under `test-results/analysis/quality-gates/` with input digest
+`751dff23ce7d9c68c090080693382ba05ecbb33a44adab483556f74cdd83bc98`;
+only its validated receipt is measurement authority, not this prose.
+
+The requested processing failure/boundary sweeps are implemented and passing.
+The broader allocation guarantee is still not checked: successor
+`CapturedCompositionProject::replay_request` calls the older infallible owned
+request-copy adapter, and probe JSON presentation still uses allocating
+`format!`/`collect`/owned strings. These were outside the observed operations,
+not silently made safe by the new primitives or exempted as old-only validation.
+They require fallible adapter paths and additional fault tests before claiming
+every successor-reachable operation is allocation-safe.

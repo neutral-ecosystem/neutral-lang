@@ -59,3 +59,53 @@ fn fallible_shared_owner_preserves_thread_safe_single_drop() {
     let text = Shared::try_new("exact bytes".to_owned()).unwrap();
     assert_eq!(text, text.clone());
 }
+
+/// Observation is thread-local, nested scopes restore their parent, and unwind cannot poison later requests.
+#[cfg(feature = "allocation-testing")]
+#[test]
+fn allocation_observation_is_isolated_and_unwind_safe() {
+    use testing::observe;
+    let (result, count) = observe(Some(1), || {
+        assert!(text("first").is_ok());
+        let (nested, nested_count) = observe(Some(0), || text("nested"));
+        assert!(nested.is_err());
+        assert_eq!(nested_count, 1);
+        assert!(
+            std::thread::spawn(|| text("other thread"))
+                .join()
+                .unwrap()
+                .is_ok()
+        );
+        text("second")
+    });
+    assert!(result.is_err());
+    assert_eq!(count, 2);
+    let panic = std::panic::catch_unwind(|| {
+        observe(Some(0), || panic!("test observer unwind"));
+    });
+    assert!(panic.is_err());
+    assert_eq!(text("recovered").unwrap(), "recovered");
+}
+
+/// Vector/string growth, boxes and shared headers each reject failure before ownership changes.
+#[cfg(feature = "allocation-testing")]
+#[test]
+fn allocation_primitives_fail_before_mutation() {
+    let mut bytes = vec![1_u8, 2];
+    let mut string = "exact".to_owned();
+    assert!(
+        testing::observe(Some(0), || bytes.try_retain(100))
+            .0
+            .is_err()
+    );
+    assert!(
+        testing::observe(Some(0), || string.try_retain_exact(100))
+            .0
+            .is_err()
+    );
+    assert_eq!(bytes, [1, 2]);
+    assert_eq!(string, "exact");
+    assert!(testing::observe(Some(0), || boxed(42)).0.is_err());
+    assert!(testing::observe(Some(0), || Shared::try_new(42)).0.is_err());
+    assert!(testing::observe(Some(0), || text("exact")).0.is_err());
+}

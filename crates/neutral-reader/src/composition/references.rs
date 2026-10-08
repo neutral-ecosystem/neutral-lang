@@ -4,6 +4,7 @@
 
 use super::CompositionLookupError;
 use neutral_core::CancellationToken;
+use neutral_core::allocation::RetainCapacity;
 use neutral_ir::{
     composition::{CompositionBody, CompositionDefinition},
     project_interface::ProjectPublicType as T,
@@ -112,11 +113,11 @@ impl Inspector<'_> {
                 self.step(bytes)?;
                 let mut copied = Vec::new();
                 copied
-                    .try_reserve_exact(path.len())
+                    .try_retain_exact(path.len())
                     .map_err(|_| CompositionReferenceError::Allocation)?;
                 copied.extend_from_slice(path);
                 result
-                    .try_reserve(1)
+                    .try_retain(1)
                     .map_err(|_| CompositionReferenceError::Allocation)?;
                 result.push(ReferenceTypeDependency {
                     path: copied,
@@ -124,7 +125,7 @@ impl Inspector<'_> {
                 });
             }
             T::List(inner) | T::Nullable(inner) => {
-                path.try_reserve(1)
+                path.try_retain(1)
                     .map_err(|_| CompositionReferenceError::Allocation)?;
                 path.push(if matches!(ty, T::List(_)) {
                     ReferenceTypeSegment::ListElement
@@ -157,7 +158,7 @@ pub(super) fn inspect<'a>(
     };
     let mut result = Vec::new();
     let mut path = Vec::new();
-    path.try_reserve(1)
+    path.try_retain(1)
         .map_err(|_| CompositionReferenceError::Allocation)?;
     inspector.step(1)?;
     match &definition.body {

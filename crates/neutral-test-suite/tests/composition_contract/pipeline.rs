@@ -20,6 +20,8 @@ use neutral_ir::{
 };
 use neutral_reader::composition::ValidatedCompositionProject;
 use std::fmt::Write as _;
+#[path = "allocation.rs"]
+mod allocation;
 #[path = "graphs.rs"]
 mod graphs;
 #[path = "hardening.rs"]
@@ -60,6 +62,15 @@ fn request_with_limits(
     case: &Value,
     limits: CompositionLimits,
 ) -> CapturedCompositionProjectRequest {
+    request_with_policies(case, capture_limits(), limits, CancellationToken::new())
+}
+/// Independently varies capture retention bounds and cancellation without changing fixture bytes.
+fn request_with_policies(
+    case: &Value,
+    capture: ProjectCaptureLimits,
+    limits: CompositionLimits,
+    cancellation: CancellationToken,
+) -> CapturedCompositionProjectRequest {
     let sources = case["capture"]["sources"]
         .as_array()
         .unwrap()
@@ -88,7 +99,7 @@ fn request_with_limits(
             LanguageProfile::V1_0,
             sources,
             vocabularies,
-            ProjectCaptureControls::new(capture_limits(), CancellationToken::new()),
+            ProjectCaptureControls::new(capture, cancellation),
         ),
         profile::REQUIRED_FEATURES
             .iter()

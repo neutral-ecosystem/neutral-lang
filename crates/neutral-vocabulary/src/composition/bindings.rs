@@ -2,6 +2,7 @@
 
 //! Atomic, resolved binding validation; no source parser, wire decoder or acquisition.
 
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::allocation::TryClone;
 
 use super::{
@@ -193,7 +194,7 @@ pub fn validate_composition_bindings(
     }
     let mut result = Vec::new();
     result
-        .try_reserve(bindings.len())
+        .try_retain(bindings.len())
         .map_err(|_| E::Allocation)?;
     for binding in index.values() {
         let value = values::materialize_with(
@@ -230,7 +231,7 @@ pub fn validate_composition_bindings(
                     target.module().module_name().len() as u64
                         + target.declaration_name().len() as u64,
                 )?;
-                references.try_reserve(1).map_err(|_| E::Allocation)?;
+                references.try_retain(1).map_err(|_| E::Allocation)?;
                 references.push(CompositionBindingReference {
                     path: origin.path.try_clone().map_err(|_| E::Allocation)?,
                     target: target.try_clone().map_err(|_| E::Allocation)?,
@@ -279,7 +280,7 @@ fn recheck_scope<'a>(
     }
     let mut roots = Vec::new();
     roots
-        .try_reserve(scope.catalogue().bundles().len())
+        .try_retain(scope.catalogue().bundles().len())
         .map_err(|_| E::Allocation)?;
     roots.extend(
         scope

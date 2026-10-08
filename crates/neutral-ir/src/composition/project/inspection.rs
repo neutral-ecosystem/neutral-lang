@@ -12,6 +12,7 @@ use crate::{
     project_interface::ProjectPublicType as T,
 };
 use neutral_core::CancellationToken;
+use neutral_core::allocation::RetainCapacity;
 
 /// Safe structural preflight failures without untrusted names or partial facts.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -120,7 +121,7 @@ impl Inspector<'_> {
         self.step(1)?;
         let mut stack = Vec::new();
         stack
-            .try_reserve(1)
+            .try_retain(1)
             .map_err(|_| CompositionShapeError::Limit)?;
         stack.push((value, 0_u64));
         while let Some((value, depth)) = stack.pop() {
@@ -149,14 +150,14 @@ impl Inspector<'_> {
                 CompositionValue::List(items) => {
                     self.count(items.len(), self.limits.nodes)?;
                     stack
-                        .try_reserve(items.len())
+                        .try_retain(items.len())
                         .map_err(|_| CompositionShapeError::Limit)?;
                     stack.extend(items.iter().map(|value| (value, depth + 1)));
                 }
                 CompositionValue::Record(fields) => {
                     self.count(fields.len(), self.policy.total_fields)?;
                     stack
-                        .try_reserve(fields.len())
+                        .try_retain(fields.len())
                         .map_err(|_| CompositionShapeError::Limit)?;
                     for (name, value) in fields {
                         self.text(name)?;
@@ -179,7 +180,7 @@ impl Inspector<'_> {
                 CompositionValue::Variant { tag, payload } => {
                     self.text(tag)?;
                     stack
-                        .try_reserve(1)
+                        .try_retain(1)
                         .map_err(|_| CompositionShapeError::Limit)?;
                     stack.push((payload, depth + 1));
                 }

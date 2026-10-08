@@ -6,6 +6,65 @@
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct AllocationError;
 
+/// Checks the test-only request-local allocation policy before an actual reservation.
+///
+/// # Errors
+/// Returns an injected failure in instrumented tests; production builds always continue.
+pub fn checkpoint() -> Result<(), AllocationError> {
+    #[cfg(feature = "allocation-testing")]
+    testing::checkpoint()?;
+    Ok(())
+}
+
+/// Fallible capacity growth shared by vectors and strings, with test-only failure observation.
+pub trait RetainCapacity {
+    /// Reserves additional elements/bytes before changing any retained content.
+    ///
+    /// # Errors
+    /// Returns allocation/capacity failure or a deterministic test failure.
+    fn try_retain(&mut self, additional: usize) -> Result<(), AllocationError>;
+    /// Reserves exactly the additional capacity requested, without changing retained content.
+    ///
+    /// # Errors
+    /// Returns allocation/capacity failure or a deterministic test failure.
+    fn try_retain_exact(&mut self, additional: usize) -> Result<(), AllocationError>;
+}
+
+impl<T> RetainCapacity for Vec<T> {
+    /// Checks the local policy before forwarding to the vector's fallible reservation.
+    fn try_retain(&mut self, additional: usize) -> Result<(), AllocationError> {
+        checkpoint()?;
+        self.try_reserve(additional).map_err(|_| AllocationError)
+    }
+    /// Checks the local policy before forwarding to the vector's exact reservation.
+    fn try_retain_exact(&mut self, additional: usize) -> Result<(), AllocationError> {
+        checkpoint()?;
+        self.try_reserve_exact(additional)
+            .map_err(|_| AllocationError)
+    }
+}
+
+impl RetainCapacity for String {
+    /// Checks the local policy before forwarding to fallible UTF-8 byte retention.
+    fn try_retain(&mut self, additional: usize) -> Result<(), AllocationError> {
+        checkpoint()?;
+        self.try_reserve(additional).map_err(|_| AllocationError)
+    }
+    /// Checks the local policy before forwarding to exact fallible UTF-8 byte retention.
+    fn try_retain_exact(&mut self, additional: usize) -> Result<(), AllocationError> {
+        checkpoint()?;
+        self.try_reserve_exact(additional)
+            .map_err(|_| AllocationError)
+    }
+}
+
+/// Deterministic allocation-boundary testing, absent from ordinary dependency builds.
+///
+/// This simulates reservation failure, not physical system-wide memory exhaustion.
+/// Each scope affects only its calling thread and restores prior state on unwind.
+#[cfg(feature = "allocation-testing")]
+pub mod testing;
+
 /// Fallibly constructed immutable shared ownership for successor-only public contracts.
 ///
 /// Unlike standard `Arc` construction, this type offers no infallible allocating
@@ -18,6 +77,7 @@ impl<T> Shared<T> {
     /// # Errors
     /// Returns [`AllocationError`] if the shared header/data allocation fails.
     pub fn try_new(value: T) -> Result<Self, AllocationError> {
+        checkpoint()?;
         triomphe::Arc::try_new(value)
             .map(Self)
             .map_err(|_| AllocationError)
@@ -75,7 +135,7 @@ pub trait TryClone: Sized {
 pub fn text(value: &str) -> Result<String, AllocationError> {
     let mut result = String::new();
     result
-        .try_reserve_exact(value.len())
+        .try_retain_exact(value.len())
         .map_err(|_| AllocationError)?;
     result.push_str(value);
     Ok(result)
@@ -89,6 +149,7 @@ pub fn text(value: &str) -> Result<String, AllocationError> {
 /// # Errors
 /// Returns [`AllocationError`] when the box allocation fails.
 pub fn boxed<T>(value: T) -> Result<Box<T>, AllocationError> {
+    checkpoint()?;
     trybox::or_drop(value).map_err(|_| AllocationError)
 }
 
@@ -124,7 +185,7 @@ impl<T: TryClone> TryClone for Vec<T> {
 pub fn copy_slice<T: TryClone>(values: &[T]) -> Result<Vec<T>, AllocationError> {
     let mut result = Vec::new();
     result
-        .try_reserve_exact(values.len())
+        .try_retain_exact(values.len())
         .map_err(|_| AllocationError)?;
     for value in values {
         result.push(value.try_clone()?);

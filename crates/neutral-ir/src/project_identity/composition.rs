@@ -16,6 +16,7 @@ use crate::{
     project::PROJECT_MAX_DEPTH,
     project_interface::ProjectPublicEdgeKind,
 };
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::{CancellationToken, SemanticDigest, profile::V1_SOURCE_PROFILE};
 
 /// Frames complete successor meaning without accepting source evidence as logical content.
@@ -119,7 +120,7 @@ fn build<I>(
                         w.text(owner.module().module_name())?;
                         w.text(owner.declaration_name())?;
                     }
-                    edges.try_reserve(1).map_err(|_| E::Limit)?;
+                    edges.try_retain(1).map_err(|_| E::Limit)?;
                     edges.push((&e.from, e.kind, &e.to));
                 }
             }

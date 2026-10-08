@@ -566,14 +566,28 @@ until all production comparisons and validation gates pass.
   and independent wire/probe validation; exact SCC/work bounds, pre-cancellation
   and a long iterative import chain are tested. Syntax-first diagnostic precedence,
   diagnostic overflow and pre-resolution decoded-string bounds are guarded by
-  regressions. Capture alias retention is fallible. Final CI passes 767 tests
-  without skips plus three compile-fail doctests.
-  Remaining: shared source/header/lock capture validation and the explicitly
-  adapted old-schema leaf validator still have infallible indexes/copies reachable
-  through successor capture. Fault coverage outside the exercised checkpoints and
-  remaining capture/retention boundaries. Processing-fault injection is not
-  allocator exhaustion, and a single
-  fuzz topology is not exhaustive graph validation. This checkbox stays open.
+  regressions. Capture alias retention is fallible.
+  Added: shared source/header/lock capture validation and the explicitly adapted
+  old-schema leaf validator now use fallible indexes, copies and graph worklists.
+  Shared capacity, box and owner operations have non-default, thread-local
+  reservation failure observation. Actual capture/compiler/reader/view/identity/
+  encoding/decoding/probe operations sweep every observed reservation, including
+  defaults, reference cycles, vocabulary-backed values and old-leaf embedding.
+  Warm and changed-unit cache sweeps preserve the prior successful generation.
+  Real reservation-boundary cancellation found and fixed final capture publication
+  after cancellation; compiler and consumer publication checks also pass.
+  Eight independent capture controls have below/exact/one-over tests.
+  `cargo xtask test all` and final CI pass 777 tests without skips and three
+  compile-fail doctests. All five configured untraced sanitizer targets pass
+  with the existing 15-second-per-target policy and a validated source-bound
+  receipt; this is not a 900-second campaign. Reservation-error simulation is
+  not physical whole-process memory exhaustion.
+  Remaining for the broader allocation guarantee: successor `replay_request`
+  still calls the infallible old request-copy adapter, and probe JSON presentation
+  still uses infallible formatted strings/collections. Those operations were
+  outside the processing reservation sweeps; they are not waived by excluding
+  old-only validation. The broad checkbox remains open until these reachable
+  adapters have fallible paths and corresponding fault tests.
   Evidence: [hardening and actual cache execution](evidence/stage7-contract-core.md#composition-hostile-boundaries-and-actual-cache-execution-07-10-2026).
 - [ ] Verify semantic restrictions/defaults affect the appropriate identities,
   presentation does not, and existing identity profiles/vectors remain immutable.

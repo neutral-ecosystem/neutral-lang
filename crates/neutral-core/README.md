@@ -34,6 +34,11 @@ caller depth/work preflight. [ordered.rs](src/ordered.rs) provides fallibly grow
 ordered indexes; callers must budget insertion/removal shifts, not just key lookup.
 These primitives do not make an entire pipeline allocation-safe automatically.
 
+`RetainCapacity` checks vector/string reservations through the same boundary.
+The non-default `allocation-testing` feature exposes thread-local failure and
+cancellation scopes for cross-package tests. It is not a global allocator
+replacement and is disabled in ordinary production dependency builds.
+
 ## Command
 
 Use `cargo xtask test all` for complete repository validation, including doctests.

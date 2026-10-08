@@ -7,6 +7,7 @@ use super::{
     SCHEMA_VERSION, ValidatedComposition, check_count, closure, scope, values,
 };
 use neutral_core::CancellationToken;
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::allocation::TryClone;
 use neutral_ir::{
     composition::{CompositionBody, CompositionBundle, FieldPresence, FieldRestrictions},
@@ -92,9 +93,7 @@ pub fn validate_composition_model(
         }
     }
     let mut roots = Vec::new();
-    roots
-        .try_reserve(bundles.len())
-        .map_err(|_| E::Allocation)?;
+    roots.try_retain(bundles.len()).map_err(|_| E::Allocation)?;
     roots.extend(
         bundles
             .iter()
@@ -103,7 +102,7 @@ pub fn validate_composition_model(
     closure::validate(bundles, &roots, &mut budget)?;
     let mut normalized = Vec::new();
     normalized
-        .try_reserve(bundles.len())
+        .try_retain(bundles.len())
         .map_err(|_| E::Allocation)?;
     for bundle in bundles {
         budget.step(1)?;

@@ -4,6 +4,7 @@
 
 use crate::{VocabularyError, VocabularyLimits};
 use neutral_core::CancellationToken;
+use neutral_core::allocation::RetainCapacity;
 
 #[cfg(test)]
 #[path = "../tests/json/mod.rs"]
@@ -97,7 +98,7 @@ impl Parser<'_> {
         (self.reservation)(std::mem::size_of::<T>())?;
         self.check_cancelled()?;
         output
-            .try_reserve(1)
+            .try_retain(1)
             .map_err(|_| VocabularyError::JsonLimitExceeded)
     }
 
@@ -115,7 +116,7 @@ impl Parser<'_> {
         (self.reservation)(bytes)?;
         self.check_cancelled()?;
         output
-            .try_reserve(bytes)
+            .try_retain(bytes)
             .map_err(|_| VocabularyError::JsonLimitExceeded)?;
         output.push(ch);
         Ok(())

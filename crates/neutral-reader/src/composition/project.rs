@@ -2,6 +2,7 @@
 
 //! Independent complete successor validation, before any encoded artifact becomes authority.
 
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::allocation::{Shared as Arc, TryClone, boxed, text};
 use neutral_core::ordered::{OrderedMap as BTreeMap, OrderedSet as BTreeSet};
 use neutral_core::{CancellationToken, profile::V1_SOURCE_PROFILE};
@@ -227,9 +228,9 @@ fn declarations(
     let mut sources = Vec::new();
     let mut raw = Vec::new();
     sources
-        .try_reserve_exact(ir.declarations.len())
+        .try_retain_exact(ir.declarations.len())
         .map_err(|_| E::Limit)?;
-    raw.try_reserve_exact(ir.declarations.len())
+    raw.try_retain_exact(ir.declarations.len())
         .map_err(|_| E::Limit)?;
     for (i, d) in ir.declarations.iter().enumerate() {
         if cancellation.is_cancelled() {
@@ -364,13 +365,13 @@ fn supplied(
             }
             let mut result = Vec::new();
             result
-                .try_reserve_exact(fields.len())
+                .try_retain_exact(fields.len())
                 .map_err(|_| E::Limit)?;
             for (name, value) in fields {
                 if cancellation.is_cancelled() {
                     return Err(E::Cancelled);
                 }
-                path.try_reserve(1).map_err(|_| E::Limit)?;
+                path.try_retain(1).map_err(|_| E::Limit)?;
                 path.push(P::Field(text(name).map_err(|_| E::Limit)?));
                 let origin = origins.get(&(owner, path.as_slice())).ok_or(E::Companion)?;
                 if !matches!(origin.kind, K::Defaulted | K::OmittedOptional) {
@@ -392,10 +393,10 @@ fn supplied(
         V::List(values) => {
             let mut result = Vec::new();
             result
-                .try_reserve_exact(values.len())
+                .try_retain_exact(values.len())
                 .map_err(|_| E::Limit)?;
             for (i, v) in values.iter().enumerate() {
-                path.try_reserve(1).map_err(|_| E::Limit)?;
+                path.try_retain(1).map_err(|_| E::Limit)?;
                 path.push(P::Element(i as u64));
                 result.push(supplied(owner, v, path, origins, cancellation)?);
                 path.pop();
@@ -403,7 +404,7 @@ fn supplied(
             V::List(result)
         }
         V::Variant { tag, payload } => {
-            path.try_reserve(1).map_err(|_| E::Limit)?;
+            path.try_retain(1).map_err(|_| E::Limit)?;
             path.push(P::Payload);
             let payload = supplied(owner, payload, path, origins, cancellation)?;
             path.pop();
@@ -617,7 +618,7 @@ fn source_attribution(
     }
     let mut seen = BTreeSet::new();
     let mut pending = Vec::new();
-    pending.try_reserve(1).map_err(|_| E::Limit)?;
+    pending.try_retain(1).map_err(|_| E::Limit)?;
     pending.push(&origin.binding);
     while let Some(owner) = pending.pop() {
         if cancel.is_cancelled() {
@@ -642,7 +643,7 @@ fn source_attribution(
             .iter()
             .filter(|e| e.from == *owner && e.kind == Edge::Value)
         {
-            pending.try_reserve(1).map_err(|_| E::Limit)?;
+            pending.try_retain(1).map_err(|_| E::Limit)?;
             pending.push(&edge.to);
         }
     }
@@ -939,12 +940,12 @@ fn check_reuse_cycles(
                 .or_insert(0_usize);
             *incoming.entry(*to).map_err(|_| E::Limit)?.or_insert(0) += 1;
             let targets = outgoing.entry(*from).map_err(|_| E::Limit)?.or_default();
-            targets.try_reserve(1).map_err(|_| E::Limit)?;
+            targets.try_retain(1).map_err(|_| E::Limit)?;
             targets.push(*to);
         }
     }
     let mut ready = Vec::new();
-    ready.try_reserve(incoming.len()).map_err(|_| E::Limit)?;
+    ready.try_retain(incoming.len()).map_err(|_| E::Limit)?;
     for (key, count) in &incoming {
         if *count == 0 {
             ready.push(*key);
@@ -1014,7 +1015,7 @@ fn reachable(
     cancel: &CancellationToken,
 ) -> Result<bool, E> {
     let mut stack = Vec::new();
-    stack.try_reserve(1).map_err(|_| E::Limit)?;
+    stack.try_retain(1).map_err(|_| E::Limit)?;
     stack.push(from);
     let mut seen = BTreeSet::new();
     while let Some(name) = stack.pop() {
@@ -1034,7 +1035,7 @@ fn reachable(
             .find(|m| m.identity.module_name() == name)
             .ok_or(E::Semantic)?;
         stack
-            .try_reserve(module.imports.len())
+            .try_retain(module.imports.len())
             .map_err(|_| E::Limit)?;
         stack.extend(module.imports.iter().map(String::as_str));
     }

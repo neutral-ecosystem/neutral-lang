@@ -3,6 +3,7 @@
 //! Shared contextual closed-default and restriction validation with bounded expansion.
 
 use super::{Budget, CompositionError as E};
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::allocation::{TryClone, boxed};
 use neutral_core::ordered::OrderedMap as BTreeMap;
 use neutral_ir::{
@@ -147,7 +148,7 @@ pub(super) fn validate_defaults_policy(
                         Ok::<_, E>(value)
                     })
                     .transpose()?;
-                finalized.try_reserve(1).map_err(|_| E::Allocation)?;
+                finalized.try_retain(1).map_err(|_| E::Allocation)?;
                 finalized.push((
                     bundle_index,
                     definition_index,
@@ -464,9 +465,7 @@ pub(super) fn materialize_with<R: TryClone>(
             )?;
             budget.step(values.len() as u64)?;
             let mut result = Vec::new();
-            result
-                .try_reserve(values.len())
-                .map_err(|_| E::Allocation)?;
+            result.try_retain(values.len()).map_err(|_| E::Allocation)?;
             for value in values {
                 result.push(materialize_with(
                     value,
@@ -555,9 +554,7 @@ fn materialize_record<R: TryClone>(
         }
     }
     let mut result = Vec::new();
-    result
-        .try_reserve(fields.len())
-        .map_err(|_| E::Allocation)?;
+    result.try_retain(fields.len()).map_err(|_| E::Allocation)?;
     for field in fields {
         budget.step(1)?;
         let restrictions = validate_restrictions(field, budget)?;
@@ -619,7 +616,7 @@ fn lift_closed<R>(value: &V, budget: &mut Budget<'_>, depth: u64) -> Result<W<R>
         V::List(items) => {
             super::check_count(items.len(), budget.limits.json.array_items())?;
             let mut result = Vec::new();
-            result.try_reserve(items.len()).map_err(|_| E::Allocation)?;
+            result.try_retain(items.len()).map_err(|_| E::Allocation)?;
             for item in items {
                 result.push(lift_closed(item, budget, depth + 1)?);
             }
@@ -628,9 +625,7 @@ fn lift_closed<R>(value: &V, budget: &mut Budget<'_>, depth: u64) -> Result<W<R>
         V::Record(fields) => {
             super::check_count(fields.len(), budget.limits.json.fields())?;
             let mut result = Vec::new();
-            result
-                .try_reserve(fields.len())
-                .map_err(|_| E::Allocation)?;
+            result.try_retain(fields.len()).map_err(|_| E::Allocation)?;
             for (name, value) in fields {
                 budget.step(name.len() as u64)?;
                 result.push((

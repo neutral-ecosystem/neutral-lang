@@ -9,6 +9,7 @@
 
 use super::{IdentityError, IdentityLimits, MAX_TRANSCRIPT_BYTES, MAX_TRANSCRIPT_NODES};
 use neutral_core::CancellationToken;
+use neutral_core::allocation::RetainCapacity;
 
 /// One bounded, cancellation-aware transcript under construction.
 pub(super) struct Writer<'a> {
@@ -91,7 +92,7 @@ impl<'a> Writer<'a> {
             return Err(IdentityError::Limit);
         }
         self.bytes
-            .try_reserve(bytes.len())
+            .try_retain(bytes.len())
             .map_err(|_| IdentityError::Limit)?;
         self.bytes.extend_from_slice(bytes);
         Ok(())

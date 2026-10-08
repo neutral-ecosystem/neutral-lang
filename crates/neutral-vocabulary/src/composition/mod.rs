@@ -2,6 +2,7 @@
 
 //! Explicit, bounded composition validation without activating old project schemas.
 
+use neutral_core::allocation::RetainCapacity;
 mod bindings;
 mod closure;
 mod copy;
@@ -421,7 +422,7 @@ impl<'a> Budget<'a> {
         self.allocation()?;
         let mut result = Vec::new();
         result
-            .try_reserve_exact(count)
+            .try_retain_exact(count)
             .map_err(|_| CompositionError::Allocation)?;
         self.step(0)?;
         Ok(result)

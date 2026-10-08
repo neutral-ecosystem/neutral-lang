@@ -6,6 +6,7 @@ use super::{
     Token, TokenKind, TypeExpr, is_requirement_or_import, lexer, parse_complete_type_fallible,
 };
 use crate::CapturedCompositionProject;
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::allocation::{Shared as Arc, TryClone, boxed, copy_slice, text};
 use neutral_core::ordered::{OrderedMap as BTreeMap, OrderedSet as BTreeSet};
 use neutral_core::{
@@ -1257,7 +1258,7 @@ fn parse(
                     if roots.len() as u64 >= captured.limits().values().declarations {
                         return Err(fail(codes::LIMIT, None));
                     }
-                    roots.try_reserve(1).map_err(|_| fail(codes::LIMIT, None))?;
+                    roots.try_retain(1).map_err(|_| fail(codes::LIMIT, None))?;
                     roots.push(parse_declaration(
                         source,
                         &statement,
@@ -1288,7 +1289,7 @@ fn parse(
             ));
         }
         statement
-            .try_reserve(1)
+            .try_retain(1)
             .map_err(|_| fail(codes::LIMIT, None))?;
         statement.push(token);
     }
@@ -1334,14 +1335,14 @@ fn value_clone_work<R>(
             CompositionValue::Reference(target) => reference(target),
             CompositionValue::List(items) => {
                 stack
-                    .try_reserve(items.len())
+                    .try_retain(items.len())
                     .map_err(|_| fail(codes::LIMIT, None))?;
                 stack.extend(items);
                 items.len() as u64
             }
             CompositionValue::Record(fields) => {
                 stack
-                    .try_reserve(fields.len())
+                    .try_retain(fields.len())
                     .map_err(|_| fail(codes::LIMIT, None))?;
                 let mut bytes = 0_u64;
                 for (name, value) in fields {
@@ -1565,9 +1566,7 @@ fn parsed_fields(tokens: &[Token], limit: u64) -> Result<Vec<(String, TypeExpr)>
         if end < member.len() && end + 1 == member.len() {
             return Err(fail(codes::INVALID_SOURCE, None));
         }
-        result
-            .try_reserve(1)
-            .map_err(|_| fail(codes::LIMIT, None))?;
+        result.try_retain(1).map_err(|_| fail(codes::LIMIT, None))?;
         result.push((
             neutral_core::allocation::text(name).map_err(|_| fail(codes::LIMIT, None))?,
             ty,
@@ -1602,9 +1601,7 @@ fn split(tokens: &[Token]) -> Result<Vec<&[Token]>, E> {
             if start == i {
                 return Err(fail(codes::INVALID_SOURCE, None));
             }
-            result
-                .try_reserve(1)
-                .map_err(|_| fail(codes::LIMIT, None))?;
+            result.try_retain(1).map_err(|_| fail(codes::LIMIT, None))?;
             result.push(&tokens[start..i]);
             start = i + 1;
         }
@@ -1613,9 +1610,7 @@ fn split(tokens: &[Token]) -> Result<Vec<&[Token]>, E> {
         return Err(fail(codes::INVALID_SOURCE, None));
     }
     if start < tokens.len() {
-        result
-            .try_reserve(1)
-            .map_err(|_| fail(codes::LIMIT, None))?;
+        result.try_retain(1).map_err(|_| fail(codes::LIMIT, None))?;
         result.push(&tokens[start..]);
     }
     Ok(result)
@@ -1690,7 +1685,7 @@ fn retain<T>(result: Result<T, neutral_core::allocation::AllocationError>) -> Re
 /// Reserves unpublished vector growth before insertion, preserving existing state on failure.
 fn reserve<T>(values: &mut Vec<T>, additional: usize) -> Result<(), E> {
     values
-        .try_reserve(additional)
+        .try_retain(additional)
         .map_err(|_| fail(codes::LIMIT, None))
 }
 /// Maps shared semantic failures without exposing private contract text.

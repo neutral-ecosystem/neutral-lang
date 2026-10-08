@@ -15,6 +15,7 @@ use crate::{
 };
 use ProjectPublicType as T;
 use ProjectValue as V;
+use neutral_core::allocation::RetainCapacity;
 use neutral_core::{
     ByteSpan, CancellationToken, SemanticDigest, SourceContentDigest, SourceLocation,
     VocabularyContentDigest,
@@ -325,7 +326,7 @@ pub(crate) fn read_list<T>(
     let items = array(v)?;
     let mut result = Vec::new();
     result
-        .try_reserve_exact(items.len())
+        .try_retain_exact(items.len())
         .map_err(|_| failure(DecodeErrorClass::EncodedSizeLimit))?;
     for value in items {
         result.push(item(value)?);

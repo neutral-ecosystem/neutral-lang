@@ -3,7 +3,7 @@
 //! Minimal deterministic writer for the restricted Neutral CBOR subset.
 
 use crate::{EncodingError, constants};
-use neutral_core::CancellationToken;
+use neutral_core::{CancellationToken, allocation::RetainCapacity};
 
 /// One bounded restricted-CBOR section writer.
 pub(crate) struct CborWriter {
@@ -139,6 +139,12 @@ impl CborWriter {
     /// Appends one byte under the section ceiling.
     fn push(&mut self, value: u8) -> Result<(), EncodingError> {
         self.check_size()?;
+        if self.bytes.len() >= constants::MAXIMUM_SECTION_BYTES {
+            return Err(EncodingError::EncodedSizeLimit);
+        }
+        self.bytes
+            .try_retain(1)
+            .map_err(|_| EncodingError::EncodedSizeLimit)?;
         self.bytes.push(value);
         self.check_size()
     }
@@ -154,6 +160,9 @@ impl CborWriter {
         if new_length > constants::MAXIMUM_SECTION_BYTES {
             return Err(EncodingError::EncodedSizeLimit);
         }
+        self.bytes
+            .try_retain(value.len())
+            .map_err(|_| EncodingError::EncodedSizeLimit)?;
         self.bytes.extend_from_slice(value);
         Ok(())
     }

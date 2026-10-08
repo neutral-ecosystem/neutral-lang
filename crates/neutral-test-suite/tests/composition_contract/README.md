@@ -37,8 +37,20 @@ control, composition producer policy and JSON/scalar/shape capture controls at
 their acceptance threshold and one below/above, and mutates every
 artifact byte before independent validation. These sweeps complement the literal
 catalogue/dependency boundary expectations; they do not prove all allocation
-failure paths. Derivation/artifact identity partitions and complete fault/hostile
-review remain pending; the registered suite is still frozen.
+failure paths. Derivation/artifact identity partitions remain a separate gate;
+the registered suite is still frozen.
+
+`allocation.rs` uses the core's non-default, thread-local `allocation-testing`
+feature to reject every observed reservation independently in accepted capture
+families, the adapted leaf embedding graph, source resolution/SCCs, complete
+companions, reader validation, views, logical identity, wire encoding/decoding
+and probe inspection. Defaults, references and vocabulary-backed values exercise
+additional branches. Warm and changed-unit cache sweeps verify the previous
+successful generation survives each failure and subsequent compilation recovers.
+Real token cancellation is injected at each observed processing reservation;
+eight capture controls are tested independently below/at/above the boundary.
+Fixture/request setup happens outside observation. These tests simulate checked
+reservation failures, not physical whole-process memory exhaustion.
 
 `graphs.rs` supplements the immutable literals with transitive vocabulary graph
 families and source import chains, diamonds and valid reference-type SCCs. Source
