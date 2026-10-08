@@ -7,10 +7,77 @@ use neutral_compiler::{CompositionCompilationCache, ProjectCacheLimits};
 use neutral_core::allocation::testing::{observe, observe_cancellation};
 use neutral_ir::project_identity::{IdentityLimits, canonical_composition_project};
 use neutral_probe::composition::inspect_composition_encoded;
+use neutral_probe::composition::render_composition_summary_json;
 use neutral_reader::composition::CompositionViewRequest;
 
 /// Borrowed operation under an independently supplied cancellation signal.
 type CancellableOperation<'a> = (&'a str, &'a dyn Fn(&CancellationToken) -> bool);
+
+/// Replay must expose its owned copies to the same failure policy as capture.
+#[test]
+fn security_composition_replay_observes_allocation_boundaries() {
+    for case in [
+        leaf_case(),
+        source_case(include_str!("source-defaults.neu")),
+    ] {
+        let captured = capture_composition_project(request(&case)).unwrap();
+        let count = sweep("replay", |failure| {
+            observe(failure, || {
+                captured.replay_request(CancellationToken::new())
+            })
+        });
+        for index in 0..count {
+            let signal = CancellationToken::new();
+            let (result, _) =
+                observe_cancellation(index, &signal, || captured.replay_request(signal.clone()));
+            assert!(
+                result.is_err(),
+                "replay published after cancellation {index}"
+            );
+        }
+        let replayed =
+            capture_composition_project(captured.replay_request(CancellationToken::new()).unwrap())
+                .unwrap();
+        assert_eq!(replayed.sources(), captured.sources());
+        assert_eq!(replayed.vocabularies(), captured.vocabularies());
+        assert_eq!(replayed.required_features(), captured.required_features());
+        assert_eq!(replayed.limits(), captured.limits());
+        assert_eq!(replayed.composition_limits(), captured.composition_limits());
+    }
+}
+
+/// JSON presentation must not bypass the fallible processing policy.
+#[test]
+fn security_composition_render_observes_allocation_boundaries() {
+    let case = source_case(include_str!("source-defaults.neu"));
+    let project = compile(&case);
+    let signal = CancellationToken::new();
+    let bytes = encode_composition_project(&project, &signal).unwrap();
+    let summary = inspect_composition_encoded(
+        &bytes,
+        DecodeLimits::hard(),
+        project.complete_ir().limits,
+        limits_for(&case),
+        None,
+        &signal,
+    )
+    .unwrap();
+    let count = sweep("render", |failure| {
+        observe(failure, || {
+            render_composition_summary_json(&summary, &signal)
+        })
+    });
+    for index in 0..count {
+        let cancel = CancellationToken::new();
+        let (result, _) = observe_cancellation(index, &cancel, || {
+            render_composition_summary_json(&summary, &cancel)
+        });
+        assert!(
+            result.is_err(),
+            "render published after cancellation {index}"
+        );
+    }
+}
 
 /// Fails every observed reservation independently, requiring atomic failure and subsequent recovery.
 fn sweep<T, E: std::fmt::Debug>(
@@ -322,7 +389,53 @@ fn sweep_consumers(case: &Value) {
                 )
             })
         });
+        let summary = inspect_composition_encoded(
+            &bytes,
+            DecodeLimits::hard(),
+            ir.limits,
+            composition,
+            roots.as_deref(),
+            &cancel,
+        )
+        .unwrap();
+        sweep("render-family", |failure| {
+            observe(failure, || {
+                render_composition_summary_json(&summary, &cancel)
+            })
+        });
     }
+}
+
+/// Fallible formatting retains the JSON escaping contract without double-escaping or losing Unicode.
+#[test]
+fn integration_composition_render_preserves_json_strings_and_empty_views() {
+    let case = source_case(include_str!("source-defaults.neu"));
+    let project = compile(&case);
+    let signal = CancellationToken::new();
+    let bytes = encode_composition_project(&project, &signal).unwrap();
+    let mut summary = inspect_composition_encoded(
+        &bytes,
+        DecodeLimits::hard(),
+        project.complete_ir().limits,
+        limits_for(&case),
+        Some(&[]),
+        &signal,
+    )
+    .unwrap();
+    summary.interface_fingerprint =
+        "quote\"slash\\line\nreturn\rtab\t\u{0000}\u{001f} é🦀".to_owned();
+    let rendered = render_composition_summary_json(&summary, &signal).unwrap();
+    let json: Value = serde_json::from_str(&rendered).unwrap();
+    assert_eq!(
+        json["interface_fingerprint"],
+        "quote\"slash\\line\nreturn\rtab\t\u{0000}\u{001f} é🦀"
+    );
+    assert_eq!(json["roots"], json!([]));
+    assert_eq!(json["contracts_and_values"], json!([]));
+    assert!(rendered.contains("\"roots\": [],\n"));
+    assert!(rendered.ends_with("\n}\n"));
+    signal.cancel();
+    assert!(render_composition_summary_json(&summary, &signal).is_err());
 }
 
 /// Real token cancellation at every compiler/consumer reservation rejects final publication.

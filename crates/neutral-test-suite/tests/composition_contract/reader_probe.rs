@@ -235,7 +235,7 @@ fn integration_composition_probe_preserves_contracts_and_root_invariance() {
         .unwrap();
         assert_eq!(all.logical_identity, empty.logical_identity);
         assert_eq!(empty.view.declarations().len(), 0);
-        let rendered = render_composition_summary_json(&all);
+        let rendered = render_composition_summary_json(&all, &CancellationToken::new()).unwrap();
         assert!(serde_json::from_str::<Value>(&rendered).is_ok());
         for source in &ir.sources {
             assert!(!rendered.contains(&source.source_id));

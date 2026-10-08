@@ -66,10 +66,16 @@ vocabulary default owners remain without captured-byte spans. Complete logical
 identity is independent of selection. The same `--json`/`--root` commands above
 work for these library-produced artifacts without compiler linkage.
 
-The JSON view is a readable, versioned projection of the probe summary. Its
-field names, value shapes, and text labels are shared through
-`neutral_probe::inspection_schema`, so consumers and both renderers use one
-definition. Successor contract/value text lists are inspection presentation,
+`composition::render_composition_summary_json(&summary, &cancellation)` returns
+`Result<String, CompositionProbeError>`. It writes escaped JSON directly into
+fallible private output; allocation failure or cancellation returns an error,
+never a partial document. Formatting and JSON field shapes are unchanged.
+
+The JSON view is a readable, versioned projection of the probe summary. The
+single-artifact field names, value shapes, and text labels are shared through
+`neutral_probe::inspection_schema`. Successor JSON keeps the same inspection
+schema version and escaping/layout rules while streaming borrowed facts.
+Successor contract/value text lists are inspection presentation,
 not a JSON IR transport. The `.nir` file remains the canonical binary NIR-CBOR artifact;
 JSON whitespace does not change its encoding or identity.
 

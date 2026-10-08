@@ -205,7 +205,8 @@ fn repeated_identity_aliases_share_one_validated_lock() {
     );
     assert!(captured.module_graph(&CancellationToken::new()).is_ok());
     let replay =
-        capture_composition_project(captured.replay_request(CancellationToken::new())).unwrap();
+        capture_composition_project(captured.replay_request(CancellationToken::new()).unwrap())
+            .unwrap();
     assert_eq!(captured.sources(), replay.sources());
     assert_eq!(captured.vocabularies(), replay.vocabularies());
     assert_eq!(captured.catalogue(), replay.catalogue());

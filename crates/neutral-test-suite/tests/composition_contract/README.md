@@ -51,6 +51,10 @@ Real token cancellation is injected at each observed processing reservation;
 eight capture controls are tested independently below/at/above the boundary.
 Fixture/request setup happens outside observation. These tests simulate checked
 reservation failures, not physical whole-process memory exhaustion.
+Replay copying and JSON presentation are also included: every observed growth
+failure and reservation-boundary cancellation must reject publication. Replay
+preserves exact bytes, locks, features and policies; renderer tests additionally
+cover empty views, Unicode and JSON control-character escaping.
 
 `graphs.rs` supplements the immutable literals with transitive vocabulary graph
 families and source import chains, diamonds and valid reference-type SCCs. Source

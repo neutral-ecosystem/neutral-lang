@@ -15,8 +15,8 @@ use super::{
     validate_sources_cancellable, validate_vocabularies_cancellable,
 };
 use crate::module_graph::{ModuleGraph, ModuleGraphFailure};
-use neutral_core::allocation::RetainCapacity;
 use neutral_core::allocation::Shared as Arc;
+use neutral_core::allocation::{RetainCapacity, TryClone, text};
 use neutral_core::ordered::OrderedMap;
 use neutral_core::{CancellationToken, profile::LanguageProfile};
 use neutral_ir::project_identity::{
@@ -206,19 +206,75 @@ impl CapturedCompositionProject {
     }
 
     /// Reconstructs exact bytes, locks, features and policies under the explicit successor envelope.
-    #[must_use]
+    ///
+    /// # Errors
+    /// Rejects allocation failure or cancellation without publishing a partial request.
     pub fn replay_request(
         &self,
         cancellation: CancellationToken,
-    ) -> CapturedCompositionProjectRequest {
-        let mut envelope = self.captured.replay_request(cancellation);
-        profile::CAPTURE_REQUEST_VERSION.clone_into(&mut envelope.request_version);
-        CapturedCompositionProjectRequest::new(
+    ) -> Result<CapturedCompositionProjectRequest, ProjectCaptureError> {
+        capture_cancelled(Some(&cancellation))?;
+        let mut sources = Vec::new();
+        sources
+            .try_retain_exact(self.sources().len())
+            .map_err(|_| ProjectCaptureError::LimitExceeded)?;
+        for source in self.sources() {
+            capture_cancelled(Some(&cancellation))?;
+            sources.push(
+                super::CapturedSourceInput::new(
+                    text(source.source_id()).map_err(|_| ProjectCaptureError::LimitExceeded)?,
+                    text(source.module_id()).map_err(|_| ProjectCaptureError::LimitExceeded)?,
+                    replay_bytes(source.bytes(), &cancellation)?,
+                )
+                .requiring_digest(source.digest()),
+            );
+        }
+        let mut vocabularies = Vec::new();
+        vocabularies
+            .try_retain_exact(self.vocabularies().len())
+            .map_err(|_| ProjectCaptureError::LimitExceeded)?;
+        for vocabulary in self.vocabularies() {
+            capture_cancelled(Some(&cancellation))?;
+            vocabularies.push(super::CapturedVocabularyInput::new(
+                replay_bytes(vocabulary.bytes(), &cancellation)?,
+                vocabulary
+                    .lock()
+                    .try_clone()
+                    .map_err(|_| ProjectCaptureError::LimitExceeded)?,
+            ));
+        }
+        let version = text(profile::CAPTURE_REQUEST_VERSION)
+            .map_err(|_| ProjectCaptureError::LimitExceeded)?;
+        let features = self
+            .required_features
+            .try_clone()
+            .map_err(|_| ProjectCaptureError::LimitExceeded)?;
+        capture_cancelled(Some(&cancellation))?;
+        let envelope = CapturedProjectRequest::new(
+            version,
+            self.captured.profile,
+            sources,
+            vocabularies,
+            super::ProjectCaptureControls::new(self.limits(), cancellation),
+        );
+        Ok(CapturedCompositionProjectRequest::new(
             envelope,
-            self.required_features.to_vec(),
+            features,
             self.composition_limits,
-        )
+        ))
     }
+}
+
+/// Copies already bounded exact captured bytes, checking cancellation before retention and copying.
+fn replay_bytes(bytes: &[u8], cancel: &CancellationToken) -> Result<Vec<u8>, ProjectCaptureError> {
+    capture_cancelled(Some(cancel))?;
+    let mut copied = Vec::new();
+    copied
+        .try_retain_exact(bytes.len())
+        .map_err(|_| ProjectCaptureError::LimitExceeded)?;
+    capture_cancelled(Some(cancel))?;
+    copied.extend_from_slice(bytes);
+    Ok(copied)
 }
 
 /// Whole-request rejection with phase-specific codes and no raw input or host information.

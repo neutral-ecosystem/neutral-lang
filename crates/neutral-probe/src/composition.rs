@@ -2,7 +2,6 @@
 
 //! Standalone successor inspection through independent decoding and public closure only.
 
-use crate::inspection_schema::{Field, FieldValue, render_fields_json};
 use neutral_core::CancellationToken;
 use neutral_core::allocation::{RetainCapacity, TryClone, text};
 use neutral_encoding::{DecodeError, DecodeLimits, composition::decode_composition_project};
@@ -154,172 +153,204 @@ fn probe_limit() -> CompositionProbeError {
     CompositionProbeError::View(CompositionReadError::Limit)
 }
 
-/// Formats an exact public owner for independent root selection.
-fn symbol_name(owner: &ModuleSymbolIdentity) -> String {
-    format!(
-        "{}::{}",
-        owner.module().module_name(),
-        owner.declaration_name()
-    )
-}
-
-/// Owned consumer projection assembled before JSON rendering.
-struct Projection {
-    /// Normalized public root names.
-    roots: Vec<String>,
-    /// Public source signatures and materialized values.
-    exports: Vec<String>,
-    /// Complete required public vocabulary contracts and dependencies.
-    vocabularies: Vec<String>,
-    /// Actual public reference occurrence paths.
-    references: Vec<String>,
-    /// Redacted public origin facts.
-    origins: Vec<String>,
-}
-/// Converts only a redacted reader view into presentation strings.
-fn projection(summary: &CompositionProbeSummary) -> Projection {
-    let roots = summary
-        .view
-        .roots()
-        .iter()
-        .map(symbol_name)
-        .collect::<Vec<_>>();
-    let exports = summary
-        .view
-        .declarations()
-        .iter()
-        .map(|d| {
-            format!(
-                "{}: {:?} = {:?}",
-                symbol_name(&d.identity),
-                d.signature,
-                d.value
-            )
-        })
-        .collect::<Vec<_>>();
-    let vocabularies = summary
-        .view
-        .vocabularies()
-        .iter()
-        .map(|b| {
-            format!(
-                "{}@{}: {:?}; dependencies: {:?}",
-                b.identity.identity(),
-                b.identity.version(),
-                b.definitions,
-                b.dependencies
-            )
-        })
-        .collect::<Vec<_>>();
-    let references = summary
-        .view
-        .references()
-        .iter()
-        .map(|(owner, r)| {
-            format!(
-                "{} {:?} -> {}",
-                symbol_name(owner),
-                r.path,
-                symbol_name(&r.target)
-            )
-        })
-        .collect::<Vec<_>>();
-    let origins = summary
-        .view
-        .origins()
-        .iter()
-        .map(|o| {
-            format!(
-                "{} {:?}: {:?}; {:?}",
-                symbol_name(&o.binding),
-                o.path,
-                o.kind,
-                o.attribution
-            )
-        })
-        .collect::<Vec<_>>();
-    Projection {
-        roots,
-        exports,
-        vocabularies,
-        references,
-        origins,
+/// Borrowed owner formatting avoids an intermediate allocated root name.
+struct Symbol<'a>(&'a ModuleSymbolIdentity);
+impl std::fmt::Display for Symbol<'_> {
+    /// Writes the exact qualified public owner through the caller's fallible writer.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}::{}",
+            self.0.module().module_name(),
+            self.0.declaration_name()
+        )
     }
 }
 
-/// Renders the safe consumer projection with complete contract/default/restriction/reference facts.
-#[must_use]
-pub fn render_composition_summary_json(summary: &CompositionProbeSummary) -> String {
-    let modules = summary.modules.to_string();
-    let declarations = summary.declarations.to_string();
-    let logical = summary.logical_identity.to_string();
-    let Projection {
-        roots,
-        exports,
-        vocabularies,
-        references,
-        origins,
-    } = projection(summary);
-    render_fields_json(&[
-        Field {
-            json_key: "schema",
-            text_prefix: "schema",
-            value: FieldValue::Text(profile::PROJECT_IR_SCHEMA),
+/// Private output is published only after all formatting and cancellation checks succeed.
+struct Output<'a> {
+    /// Unpublished JSON bytes, retained only through checked growth.
+    text: String,
+    /// Caller-owned cancellation policy checked at every formatted fragment.
+    cancel: &'a CancellationToken,
+    /// Nonallocating classification retained when the formatter returns its unit error.
+    error: CompositionProbeError,
+}
+impl std::fmt::Write for Output<'_> {
+    /// Reserves each growth fallibly and checks cancellation even when capacity is already available.
+    fn write_str(&mut self, value: &str) -> std::fmt::Result {
+        if self.cancel.is_cancelled() {
+            self.error = CompositionProbeError::View(CompositionReadError::Cancelled);
+            return Err(std::fmt::Error);
+        }
+        if self.text.capacity() - self.text.len() < value.len() {
+            self.text
+                .try_retain(value.len())
+                .map_err(|_| std::fmt::Error)?;
+        }
+        if self.cancel.is_cancelled() {
+            self.error = CompositionProbeError::View(CompositionReadError::Cancelled);
+            return Err(std::fmt::Error);
+        }
+        self.text.push_str(value);
+        Ok(())
+    }
+}
+
+/// Escapes formatted fragments directly into output, never allocating a presentation string.
+struct JsonString<'a, 'b>(&'a mut Output<'b>);
+impl std::fmt::Write for JsonString<'_, '_> {
+    /// Preserves Unicode while escaping quotes, backslashes and every JSON control character.
+    fn write_str(&mut self, value: &str) -> std::fmt::Result {
+        let mut start = 0;
+        for (index, c) in value.char_indices() {
+            if c == '"' || c == '\\' || c <= '\u{001f}' {
+                self.0.write_str(&value[start..index])?;
+                match c {
+                    '"' => self.0.write_str("\\\"")?,
+                    '\\' => self.0.write_str("\\\\")?,
+                    '\n' => self.0.write_str("\\n")?,
+                    '\r' => self.0.write_str("\\r")?,
+                    '\t' => self.0.write_str("\\t")?,
+                    control => write!(self.0, "\\u{:04x}", u32::from(control))?,
+                }
+                start = index + c.len_utf8();
+            }
+        }
+        self.0.write_str(&value[start..])
+    }
+}
+
+impl Output<'_> {
+    /// Writes an escaped JSON string from borrowed formatting arguments.
+    fn string(&mut self, value: std::fmt::Arguments<'_>) -> std::fmt::Result {
+        self.write_str("\"")?;
+        JsonString(self).write_fmt(value)?;
+        self.write_str("\"")
+    }
+
+    /// Writes a fixed schema member with no temporary number or digest string.
+    fn field(&mut self, key: &str, value: std::fmt::Arguments<'_>) -> std::fmt::Result {
+        write!(self, "  \"{key}\": ")?;
+        self.string(value)?;
+        self.write_str(",\n")
+    }
+
+    /// Writes a borrowed collection using the existing ordered, two-space inspection layout.
+    fn list<T>(
+        &mut self,
+        key: &str,
+        values: &[T],
+        render: impl Fn(&T, &mut Self) -> std::fmt::Result,
+    ) -> std::fmt::Result {
+        write!(self, "  \"{key}\": [")?;
+        if !values.is_empty() {
+            self.write_str("\n")?;
+            for (index, value) in values.iter().enumerate() {
+                self.write_str("    ")?;
+                render(value, self)?;
+                if index + 1 != values.len() {
+                    self.write_str(",")?;
+                }
+                self.write_str("\n")?;
+            }
+            self.write_str("  ")?;
+        }
+        self.write_str("]")
+    }
+}
+
+/// Renders public contract/default/restriction/reference facts without intermediate owned projections.
+///
+/// # Errors
+/// Returns retention failure or cancellation without publishing partial JSON.
+pub fn render_composition_summary_json(
+    summary: &CompositionProbeSummary,
+    cancel: &CancellationToken,
+) -> Result<String, CompositionProbeError> {
+    let mut output = Output {
+        text: String::new(),
+        cancel,
+        error: probe_limit(),
+    };
+    render_projection(summary, &mut output).map_err(|_| output.error)?;
+    if cancel.is_cancelled() {
+        return Err(CompositionProbeError::View(CompositionReadError::Cancelled));
+    }
+    Ok(output.text)
+}
+
+/// Formats the redacted reader view using borrowed facts and the shared inspection schema version.
+fn render_projection(summary: &CompositionProbeSummary, out: &mut Output<'_>) -> std::fmt::Result {
+    write!(
+        out,
+        "{{\n  \"schema_version\": {},\n",
+        crate::inspection_schema::SCHEMA_VERSION
+    )?;
+    out.field("schema", format_args!("{}", profile::PROJECT_IR_SCHEMA))?;
+    out.field("view_schema", format_args!("{}", summary.view.schema()))?;
+    out.field(
+        "identity_profile",
+        format_args!("{}", profile::IDENTITY_PROFILE),
+    )?;
+    out.field(
+        "logical_identity",
+        format_args!("{}", summary.logical_identity),
+    )?;
+    out.field(
+        "interface_fingerprint",
+        format_args!("{}", summary.interface_fingerprint),
+    )?;
+    out.field("modules", format_args!("{}", summary.modules))?;
+    out.field("declarations", format_args!("{}", summary.declarations))?;
+    out.list("roots", summary.view.roots(), |owner, out| {
+        out.string(format_args!("{}", Symbol(owner)))
+    })?;
+    out.write_str(",\n")?;
+    out.list(
+        "contracts_and_values",
+        summary.view.declarations(),
+        |d, out| {
+            out.string(format_args!(
+                "{}: {:?} = {:?}",
+                Symbol(&d.identity),
+                d.signature,
+                d.value
+            ))
         },
-        Field {
-            json_key: "view_schema",
-            text_prefix: "view",
-            value: FieldValue::Text(summary.view.schema()),
+    )?;
+    out.write_str(",\n")?;
+    out.list("vocabularies", summary.view.vocabularies(), |b, out| {
+        out.string(format_args!(
+            "{}@{}: {:?}; dependencies: {:?}",
+            b.identity.identity(),
+            b.identity.version(),
+            b.definitions,
+            b.dependencies
+        ))
+    })?;
+    out.write_str(",\n")?;
+    out.list(
+        "references",
+        summary.view.references(),
+        |(owner, r), out| {
+            out.string(format_args!(
+                "{} {:?} -> {}",
+                Symbol(owner),
+                r.path,
+                Symbol(&r.target)
+            ))
         },
-        Field {
-            json_key: "identity_profile",
-            text_prefix: "identity",
-            value: FieldValue::Text(profile::IDENTITY_PROFILE),
-        },
-        Field {
-            json_key: "logical_identity",
-            text_prefix: "logical",
-            value: FieldValue::Text(&logical),
-        },
-        Field {
-            json_key: "interface_fingerprint",
-            text_prefix: "interface",
-            value: FieldValue::Text(&summary.interface_fingerprint),
-        },
-        Field {
-            json_key: "modules",
-            text_prefix: "modules",
-            value: FieldValue::Text(&modules),
-        },
-        Field {
-            json_key: "declarations",
-            text_prefix: "declarations",
-            value: FieldValue::Text(&declarations),
-        },
-        Field {
-            json_key: "roots",
-            text_prefix: "roots",
-            value: FieldValue::TextList(&roots),
-        },
-        Field {
-            json_key: "contracts_and_values",
-            text_prefix: "contracts",
-            value: FieldValue::TextList(&exports),
-        },
-        Field {
-            json_key: "vocabularies",
-            text_prefix: "vocabularies",
-            value: FieldValue::TextList(&vocabularies),
-        },
-        Field {
-            json_key: "references",
-            text_prefix: "references",
-            value: FieldValue::TextList(&references),
-        },
-        Field {
-            json_key: "origins",
-            text_prefix: "origins",
-            value: FieldValue::TextList(&origins),
-        },
-    ])
+    )?;
+    out.write_str(",\n")?;
+    out.list("origins", summary.view.origins(), |o, out| {
+        out.string(format_args!(
+            "{} {:?}: {:?}; {:?}",
+            Symbol(&o.binding),
+            o.path,
+            o.kind,
+            o.attribution
+        ))
+    })?;
+    out.write_str("\n}\n")
 }

@@ -310,7 +310,8 @@ fn property_composition_capture_permutation_replay_and_concurrent_requests() {
     assert_eq!(first.vocabularies(), reversed.vocabularies());
     assert_eq!(first.catalogue(), reversed.catalogue());
     let replay =
-        capture_composition_project(first.replay_request(CancellationToken::new())).unwrap();
+        capture_composition_project(first.replay_request(CancellationToken::new()).unwrap())
+            .unwrap();
     assert_eq!(first.sources(), replay.sources());
     assert_eq!(first.vocabularies(), replay.vocabularies());
     assert_eq!(first.catalogue(), replay.catalogue());
@@ -365,7 +366,8 @@ fn conformance_composition_capture_identity_matches_literal_vector() {
     );
     assert_eq!(frame_count(transcript.bytes(), 0, ""), policy.nodes);
     let replay =
-        capture_composition_project(captured.replay_request(CancellationToken::new())).unwrap();
+        capture_composition_project(captured.replay_request(CancellationToken::new()).unwrap())
+            .unwrap();
     assert_eq!(
         replay
             .identity_transcript(policy, &CancellationToken::new())

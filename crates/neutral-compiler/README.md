@@ -50,6 +50,8 @@ features. It validates complete transitive locks, schemas, public type closure,
 defaults and restrictions, then shares immutable contracts with independent
 readers. Repeated local aliases refer to one canonical lock; dependencies never
 become implicit source aliases. Replay preserves exact bytes and both policies.
+`CapturedCompositionProject::replay_request(cancellation)` returns a `Result`:
+allocation failure or cancellation rejects the entire copy without partial output.
 Its separately typed captured identity matches the frozen successor transcript.
 This output cannot enter the old `compile_project` boundary. Instead,
 `compile_composition_project` explicitly resolves imports, both source/vocabulary

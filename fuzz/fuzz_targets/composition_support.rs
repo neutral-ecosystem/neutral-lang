@@ -8,13 +8,13 @@ use neutral_compiler::{
     ProjectCaptureLimitValues, ProjectCaptureLimits, capture_composition_project,
     compile_composition_project,
 };
+use neutral_core::allocation::Shared as Arc;
 use neutral_core::{CancellationToken, StructuralLimits, profile::LanguageProfile};
 use neutral_encoding::composition::encode_composition_project;
 use neutral_ir::composition::profile;
 use neutral_reader::composition::ValidatedCompositionProject;
 use neutral_vocabulary::{VocabularyLimits, composition::CompositionLimits};
 use std::sync::OnceLock;
-use neutral_core::allocation::Shared as Arc;
 
 /// Finite independent successor semantic controls, never selected by package version.
 pub fn limits() -> CompositionLimits {

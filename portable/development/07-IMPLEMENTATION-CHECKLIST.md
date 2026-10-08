@@ -515,80 +515,16 @@ until all production comparisons and validation gates pass.
   are independently checked against retained companions. Unavailable attribution
   stays explicitly absent; no byte spans or producer authenticity are invented.
   See [consumer integration evidence](evidence/stage7-contract-core.md#composition-public-views-probe-and-attribution-07-10-2026).
-- [ ] Pass hostile schema/decoder, invalid default/constraint/reference,
+- [x] Pass hostile schema/decoder, invalid default/constraint/reference,
   exact/one-over, cancellation, ordering, clean/cache, and old-schema suites.
-  Implemented: catalogue/capture/resolved-model negative, boundary, cancellation,
-  ordering, concurrent-isolation and old-schema tests, plus successor truncation,
-  unknown/nonminimal tags, stale companions/facts, source negatives and caller
-  bounds. Actual successor clean/cache execution now compares complete IR,
-  companions and wire bytes for cold/warm/changed/removed units, changed vocabulary
-  defaults/controls, host-ID remapping, failures, cancellation and concurrent caches;
-  stale/digest-collision/module/feature rejection is tested. All fifteen composition
-  and seven CBOR consumer controls have exact acceptance-boundary sweeps; every
-  artifact byte is adversarially mutated under independent validation.
-  Fifteen producer-policy controls and thirteen JSON/scalar/shape controls now
-  have independent acceptance-boundary sweeps. Ten compiler phase checkpoints
-  inject cancellation and processing faults; failed generations never publish
-  or replace a successful cache. Occurrence paths and field names use fallible
-  copies with reservation-error tests. The vocabulary fuzz harness adds an exact
-  four-bundle diamond through compilation, independent wire validation and probe.
-  The configured five-target sanitizer runs completed outside the sandbox;
-  successor source/wire/probe fuzz paths are included. The source-bound command is
-  rerun on fixed inputs after concurrent edits; the automatic validated receipt,
-  not raw logs or this checklist, is measurement authority.
-  Added: fallible successor shared ownership, recursive contract/value copies,
-  materialization boxes, scope/dependency ordered indexes and graph worklists.
-  JSON reservation checkpoints test faults and mid-parse cancellation. Chain,
-  fanout, diamond and unequal-path DAG tests cover deterministic/concurrent wire
-  output and independent dependency controls, missing/extra/conflicting/private
-  and cyclic dependencies.
-  Added: fallible successor schema retention and shared CBOR lexical retention;
-  each exercised reservation checkpoint rejects synthetic allocation faults and
-  mid-parse cancellation. Wire catalogue joining is linear and borrows keys rather
-  than cloning a tree. Successor cache syntax/token/type copies and pending indexes
-  are fallible; retention faults preserve the previous generation. Exact cache
-  byte and UTF-8 lexer boundaries are tested. Reader declaration copies and supplied
-  origin reconstruction now reserve storage fallibly. Exact-number normalization
-  reuses its fallibly reserved coefficient instead of allocating additional copies.
-  Scope decision standalone legacy validation/allocation review is
-  not required for this gate. Existing compatibility tests and behavior remain
-  unchanged. Shared code called by the successor pipeline remains in scope;
-  excluding standalone legacy work does not waive the successor's frozen
-  fail-closed allocation contract.
-  Added fallible resolver signature/value/active indexes, syntax/body/
-  value retention, boxes and complete companion assembly. Successor compilation
-  uses separately retained import topology and iterative fallible SCC worklists,
-  not old-profile public graph owners. Reader companion/reuse/reachability indexes
-  and public-view retention are fallible with charged index movement. Logical and
-  interface framing borrow numeric restrictions and visibility facts; semantic
-  edge retention is fallibly reserved and canonicalized without tree allocation.
-  Source chains/diamonds/reference-type cycles agree with the existing graph API
-  and independent wire/probe validation; exact SCC/work bounds, pre-cancellation
-  and a long iterative import chain are tested. Syntax-first diagnostic precedence,
-  diagnostic overflow and pre-resolution decoded-string bounds are guarded by
-  regressions. Capture alias retention is fallible.
-  Added: shared source/header/lock capture validation and the explicitly adapted
-  old-schema leaf validator now use fallible indexes, copies and graph worklists.
-  Shared capacity, box and owner operations have non-default, thread-local
-  reservation failure observation. Actual capture/compiler/reader/view/identity/
-  encoding/decoding/probe operations sweep every observed reservation, including
-  defaults, reference cycles, vocabulary-backed values and old-leaf embedding.
-  Warm and changed-unit cache sweeps preserve the prior successful generation.
-  Real reservation-boundary cancellation found and fixed final capture publication
-  after cancellation; compiler and consumer publication checks also pass.
-  Eight independent capture controls have below/exact/one-over tests.
-  `cargo xtask test all` and final CI pass 777 tests without skips and three
-  compile-fail doctests. All five configured untraced sanitizer targets pass
-  with the existing 15-second-per-target policy and a validated source-bound
-  receipt; this is not a 900-second campaign. Reservation-error simulation is
-  not physical whole-process memory exhaustion.
-  Remaining for the broader allocation guarantee: successor `replay_request`
-  still calls the infallible old request-copy adapter, and probe JSON presentation
-  still uses infallible formatted strings/collections. Those operations were
-  outside the processing reservation sweeps; they are not waived by excluding
-  old-only validation. The broad checkbox remains open until these reachable
-  adapters have fallible paths and corresponding fault tests.
-  Evidence: [hardening and actual cache execution](evidence/stage7-contract-core.md#composition-hostile-boundaries-and-actual-cache-execution-07-10-2026).
+  Complete: hostile inputs, limits, cancellation, ordering, old-schema adapters,
+  clean/cache equivalence and fault recovery are covered across the successor
+  pipeline. All successor-reachable allocation paths are fallible and tested;
+  replay and JSON rendering publish no partial result. Validation: 780 tests,
+  CI, fixtures, portable checks and the configured five-target fuzz campaign pass.
+  Frozen wire formats, vectors and fixtures remain unchanged. Detailed evidence:
+  [hardening](evidence/stage7-contract-core.md#composition-hostile-boundaries-and-actual-cache-execution-07-10-2026)
+  and [replay/render closure](evidence/stage7-contract-core.md#replay-and-presentation-allocation-closure-08-10-2026).
 - [ ] Verify semantic restrictions/defaults affect the appropriate identities,
   presentation does not, and existing identity profiles/vectors remain immutable.
   Implemented: separately typed captured identity /2 and unchanged /1 vectors.

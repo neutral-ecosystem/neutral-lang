@@ -22,13 +22,16 @@ fuzz_target!(|bytes: &[u8]| {
         &CancellationToken::new(),
     );
     for input in [bytes, &composition_support::mutated_seed(bytes)] {
-        let _ = neutral_probe::composition::inspect_composition_encoded(
+        let cancel = CancellationToken::new();
+        if let Ok(summary) = neutral_probe::composition::inspect_composition_encoded(
             input,
             DecodeLimits::hard(),
             neutral_encoding::project::hard_project_limits(),
             composition_support::limits(),
             None,
-            &CancellationToken::new(),
-        );
+            &cancel,
+        ) {
+            let _ = neutral_probe::composition::render_composition_summary_json(&summary, &cancel);
+        }
     }
 });

@@ -122,7 +122,8 @@ fn inspect_composition(bytes: &[u8], json: bool, roots: Option<&[String]>) -> Re
             neutral_reader::composition::profile::PROJECT_RESULT_SCHEMA
         ),
     })?;
-    let rendered = render_composition_summary_json(&summary);
+    let rendered = render_composition_summary_json(&summary, &CancellationToken::new())
+        .map_err(|_| "probe-render-failed".to_owned())?;
     if json {
         emit_stdout(&rendered)
     } else {

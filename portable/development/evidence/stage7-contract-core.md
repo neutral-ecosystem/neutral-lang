@@ -750,11 +750,59 @@ under `test-results/analysis/quality-gates/` with input digest
 `751dff23ce7d9c68c090080693382ba05ecbb33a44adab483556f74cdd83bc98`;
 only its validated receipt is measurement authority, not this prose.
 
-The requested processing failure/boundary sweeps are implemented and passing.
-The broader allocation guarantee is still not checked: successor
+The requested processing failure/boundary sweeps were implemented and passing
+at this checkpoint. The remaining blockers were successor
 `CapturedCompositionProject::replay_request` calls the older infallible owned
 request-copy adapter, and probe JSON presentation still uses allocating
 `format!`/`collect`/owned strings. These were outside the observed operations,
 not silently made safe by the new primitives or exempted as old-only validation.
-They require fallible adapter paths and additional fault tests before claiming
-every successor-reachable operation is allocation-safe.
+These replay/presentation blockers are resolved by the follow-up below.
+
+## Replay and presentation allocation closure (08-10-2026)
+
+Successor `CapturedCompositionProject::replay_request` now returns
+`Result<CapturedCompositionProjectRequest, ProjectCaptureError>` and no longer
+calls the old infallible owned-request adapter. Previously validated source bytes,
+IDs, locks and features are copied through fallible retention; digests, profile
+and both resource policies remain exact. `VocabularyLock::try_clone` copies
+validated fields without invoking allocating sort or lock revalidation. No new
+dependency or language/wire/identity contract is introduced. Old-only replay APIs
+remain unchanged.
+
+`render_composition_summary_json` now accepts caller cancellation and returns
+`Result<String, CompositionProbeError>`. It streams borrowed counts, digests,
+owners and debug projections directly through an escaping fallible writer, rather
+than building temporary formatted strings and collected presentation vectors.
+Output remains private until formatting and final cancellation checks succeed.
+JSON member ordering, indentation, Unicode and escaping are preserved. All
+successor callers and crate documentation are updated. The existing probe fuzz
+target also renders successfully inspected successor summaries.
+
+Two regression tests first failed because replay and presentation observed zero
+fallible reservations. They now sweep every observed allocation failure and
+reservation-boundary cancellation for the selected paths and verify recovery.
+Replay equality checks cover exact sources/locks/features/policies, including
+adapted old-schema inputs. Consumer families additionally sweep rendering of
+defaults, reference cycles and vocabulary-backed values. A third regression
+checks empty views, quotes, backslashes, every JSON escape category and Unicode.
+A fresh read-only review found no concrete defects in the changed copy/formatting
+paths or their connected helpers.
+
+Final validation: `cargo xtask test all` and `cargo xtask ci pr` pass 780 tests,
+zero skips, plus three compile-fail doctests. CI includes all-feature Clippy with
+denied warnings, compiler-free probe build and API docs. Direct no-default-feature
+probe checking, `cargo xtask check`, portable verification, fixture verification
+(64 fixtures/64 oracles, no manifest or freeze changes), both workspace and fuzz
+format checks, and `git diff --check` pass.
+
+The final untraced nightly five-target campaign passes with the existing
+15-second-per-target policy; its validated source-bound receipt uses input digest
+`387fb31acdbce006bbb13469688c44fca1c12e81d4921f52fd250e77d7f5cefb`.
+An earlier run was interrupted after source changes and is not completion evidence.
+Reports remain ignored generated outputs, not tracked machine-specific logs.
+
+The hostile/fault/boundary/cancellation/ordering/clean-cache/adapted-schema gate
+is now checked. This is not a 900-second campaign or a physical whole-process OOM
+experiment. Reservation sweeps cover observed paths, not every possible input;
+they complement the existing hostile suites and allocation review. Separate
+identity and activation gates remain open and are not claimed by this closure.

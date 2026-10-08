@@ -316,6 +316,20 @@ impl VocabularyLock {
     }
 }
 
+impl neutral_core::allocation::TryClone for VocabularyLock {
+    /// Copies an already validated lock without revalidation or allocating sorting work.
+    fn try_clone(&self) -> Result<Self, neutral_core::allocation::AllocationError> {
+        Ok(Self {
+            identity: self.identity.try_clone()?,
+            version: self.version.try_clone()?,
+            encoding_version: self.encoding_version.try_clone()?,
+            schema_version: self.schema_version.try_clone()?,
+            content_digest: self.content_digest,
+            required_features: self.required_features.try_clone()?,
+        })
+    }
+}
+
 /// One normalized closed vocabulary type expression.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum VocabularyType {
