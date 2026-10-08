@@ -137,8 +137,19 @@ fn vectors() -> Value {
 
 /// Executes the independent test oracle; missing Python is a failure, never a skip.
 fn inspect(request: &Value) -> Value {
-    let script =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/composition_contract/reference.py");
+    inspect_script(request, "reference.py")
+}
+
+/// Executes a separately maintained public projection without modifying the pinned complete oracle.
+fn inspect_interface(request: &Value) -> Value {
+    inspect_script(request, "interface_reference.py")
+}
+
+/// Shares process plumbing only; neither test adapter encodes or hashes transcript expectations.
+fn inspect_script(request: &Value, script_name: &str) -> Value {
+    let script = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/composition_contract")
+        .join(script_name);
     let program =
         std::env::var("NEUTRAL_IDENTITY_REFERENCE_PYTHON").unwrap_or_else(|_| "python3".to_owned());
     let mut child = Command::new(program)

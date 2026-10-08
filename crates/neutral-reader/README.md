@@ -105,6 +105,14 @@ provenance; canonical public vocabulary default owners remain, without byte
 spans. Empty selection means an empty view. Selection cannot mutate complete IR
 or its logical identity. The compiler-free standalone probe uses this boundary.
 
+`identities` accepts explicit `CompositionIdentityContext` and checks every
+source/lock selector against validated companions. It exposes typed captured,
+logical, interface and derivation transcripts plus borrowed producer facts and
+retained processing controls. `CompositionIdentities::artifact` validates public
+roots before returning a selected artifact identity; roots never alter complete
+identity. Construction is bounded, fallible and cancellable. Producer facts remain
+claims, not authentication or proof that retained source bytes were compiled.
+
 ## Command
 
 Use `cargo xtask test all` for complete repository validation, including doctests.

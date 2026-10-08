@@ -222,6 +222,27 @@ pub struct CompositionBundle {
     pub definitions: Vec<CompositionDefinition>,
 }
 
+/// Compares like-typed scalar choices without normalization, allocation or exponent expansion.
+///
+/// Returns `None` for mixed kinds or non-scalar values; callers must not invent
+/// an ordering for malformed restrictions. Text uses exact UTF-8 ordering.
+#[must_use]
+pub fn compare_composition_scalars<L, R>(
+    left: &CompositionValue<L>,
+    right: &CompositionValue<R>,
+) -> Option<Ordering> {
+    match (left, right) {
+        (CompositionValue::Number(a), CompositionValue::Number(b)) => {
+            Some(compare_exact_numbers(a, b))
+        }
+        (CompositionValue::String(a), CompositionValue::String(b))
+        | (CompositionValue::Url(a), CompositionValue::Url(b))
+        | (CompositionValue::Path(a), CompositionValue::Path(b)) => Some(a.cmp(b)),
+        (CompositionValue::Bool(a), CompositionValue::Bool(b)) => Some(a.cmp(b)),
+        _ => None,
+    }
+}
+
 /// Compares normalized decimal values without floating point or exponent-sized expansion.
 ///
 /// Work is bounded by the longer coefficient. Wide signed decimal positions

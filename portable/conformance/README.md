@@ -17,13 +17,15 @@ The scheduled [consumer-readiness requirements](../specs/contracts/CONSUMER-READ
 add composite vocabulary fixtures before `v0.8.0` and consumer-data/authoring
 fixtures before `v0.9.0`. They are not active manifest entries or passing evidence
 until their schemas, literal outcomes, and identity vectors have been reviewed.
-The registered `composition-catalogue` suite covers only explicit standalone
-catalogue acceptance/errors and legacy migration. It does not activate composition
-source projects, new wire/identity profiles, or the full promotion gate.
-The `composition-contract` suite is registered and byte-pinned with status
-`frozen`. Its 26 request cases and /2 identity vectors are reviewed requirements,
-not passing compiler/codec evidence. Runtime copies validate catalogue outcomes,
-literal integrity and independent oracle framing. Full production comparison and
-hostile/fault/cache validation must pass before its status becomes `required`.
+The `composition-catalogue` suite covers standalone catalogue acceptance/errors
+and legacy migration. The separate required `composition-contract` suite covers
+the explicit successor capture/compiler/codec/reader/probe/identity pipeline.
+Its 26 request cases, five baseline partitions, twelve identity variations and
+eight rejection vectors retain their reviewed byte pins. Production comparisons,
+independent interface framing and hostile/fault/boundary/clean-cache suites are
+documented in the [extension evidence](../development/evidence/stage7-contract-core.md#composition-identity-and-registered-corpus-closure-08-10-2026).
+Frozen contract prose records its original design checkpoint; current activation
+authority is the manifest, review and freeze record. No source-header, fallback
+or compiler CLI selection of the successor pipeline is implied.
 Core acceptance and consumer interpretation failures must have separate oracles;
 no backend execution or external product implementation is required.

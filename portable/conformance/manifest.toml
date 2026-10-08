@@ -76,8 +76,8 @@ oracle_sha256 = "8e82e65283fcb55140f8350f417cac6ca397592611bee4129cd1dcd6f7d75d3
 id = "composition-contract"
 profile = "vocabulary-schema-2.0; neutral.project-identity/2"
 active_from_stage = 7
-status = "frozen"
-scope = "reviewed-design-inputs; compiler-codec-reader-probe-identity-production-activation-pending"
+status = "required"
+scope = "explicit-successor-capture-compiler-codec-reader-probe-identity; frozen-input-production-comparisons"
 
 [[case]]
 id = "V1-VOC-COMPOSITION-CONTRACT-POSITIVE"

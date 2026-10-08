@@ -806,3 +806,69 @@ is now checked. This is not a 900-second campaign or a physical whole-process OO
 experiment. Reservation sweeps cover observed paths, not every possible input;
 they complement the existing hostile suites and allocation review. Separate
 identity and activation gates remain open and are not claimed by this closure.
+
+## Composition identity and registered corpus closure (08-10-2026)
+
+Separately typed `CompositionDerivationIdentity` and `CompositionArtifactIdentity`
+now implement the frozen /2 partitions. Derivation binds complete logical/captured
+meaning, explicit producer facts and every fourteen/six/fifteen-position
+capture/project/composition control. Artifact framing additionally binds kind,
+format, options and selected roots. Shared body helpers retain the original /1
+grammar; old profiles and all frozen inputs remain byte-identical.
+
+The independent reader exposes complete transcripts and derivation facts through
+explicit `CompositionIdentityContext`. It checks exact source and vocabulary
+companion selectors, retains authoritative decoded policy and validates public
+roots before returning artifact identity. Producer text is borrowed, never
+authenticated. Construction and root retention are fallible, bounded and
+cancellable; observed failure/cancellation sweeps verify recovery.
+
+Production comparisons cover all five literal baseline transcripts/digests,
+twelve semantic/evidence variations and eight malformed-input vectors. A small
+separate Python interface projection uses the pinned independent encoder without
+modifying it. Every variation also compares independent derivation and both
+artifact kinds. Tests vary every explicit control, reject zero controls and
+exercise exact/one-under byte/frame budgets. Raw framing rejects invalid reference
+wrappers, declaration/default shape and unsorted or non-scalar finite choices;
+complete reader validation remains semantic authority.
+
+All 26 registered requests reach their applicable capture/compiler/independent
+wire boundaries with exact expected codes and canonical re-encoding. Catalogue-only
+cases use explicit test sources, not invented literal source expectations. Both
+variant origins, heterogeneous collections, dependency diamonds/errors, migration,
+presence/defaults and decoder boundaries retain their frozen oracles. Actual source
+default versus supplied values share logical/interface identity but retain distinct
+captured bytes and checked origin evidence after decoding; omitted optional versus
+explicit null and changed unused defaults remain meaning-distinct.
+
+Independent root comparisons preserve complete captured/logical/derivation
+partitions. A review-requested regression additionally rejects missing, private,
+wrong-profile and duplicate roots through the identity API itself, guarding its
+connection to public-view authority. Read-only review found no runtime correctness
+defect after this regression was added.
+
+Activation updates only inventory/review status and their two enclosing freeze
+digests, after verifying the existing 64 fixture and 64 oracle pins. No contract,
+fixture, oracle, identity vector or pinned `reference.py` bytes were regenerated.
+The required suite selects explicit successor APIs; source headers, old-codec
+fallback and the existing compiler CLI do not implicitly select /2. Frozen contract
+prose records its original checkpoint; manifest/review/freeze track activation.
+Separate authoring metadata/projection remains Stage 8 work.
+
+Final validation: `cargo xtask ci pr` passes all seven quality steps, 789 Nextest
+tests with zero skips and three compile-fail doctests. This includes all-feature
+Clippy with denied warnings, compiler-free probe build and generated API docs.
+`cargo xtask fixtures check` verifies 64 fixtures/64 oracles with zero changes;
+`cargo xtask portable verify`, `cargo xtask check`, direct no-default-feature probe
+checking, fuzz formatting and `git diff --check` also pass. The root-authority
+regression closes the only review finding; follow-up review reports no remaining
+findings.
+
+The final untraced nightly five-target fuzz campaign passes and validates its
+source-bound receipt for unchanged final code/configuration/fixture inputs:
+`8489d87cd9dd27662f7efa4e654315c8b775eb36feeee1534d8f5fa637924759`.
+Each target uses the existing 15-second policy, not 900 seconds. An earlier run
+completed tool execution while tests were changing; its invalidated receipt is
+not completion evidence. Reports remain ignored local outputs, never tracked
+machine-specific logs. This closes the explicit extension gates, not Stage 8
+authoring, a new release approval/publication or physical whole-process OOM proof.

@@ -7,7 +7,7 @@ portable plan. `reference.py` is a test-only Python encoder of the frozen /2
 transcript grammar. It reuses only unchanged /1 framing primitives from the
 independent test oracle, never compiler, codec or production identity code.
 `mod.rs` verifies literal bytes/digests, input integrity and adversarial partitions.
-This checks a frozen design, not implementation availability. Ordinary tests run
+Production comparisons use the same immutable expectations. Ordinary tests run
 with `cargo xtask test all`; focused runs use `cargo test -p neutral-test-suite
 composition_contract`. Python 3 is required; missing tools fail, not skip.
 
@@ -37,8 +37,7 @@ control, composition producer policy and JSON/scalar/shape capture controls at
 their acceptance threshold and one below/above, and mutates every
 artifact byte before independent validation. These sweeps complement the literal
 catalogue/dependency boundary expectations; they do not prove all allocation
-failure paths. Derivation/artifact identity partitions remain a separate gate;
-the registered suite is still frozen.
+failure paths; those are exercised separately below.
 
 `allocation.rs` uses the core's non-default, thread-local `allocation-testing`
 feature to reject every observed reservation independently in accepted capture
@@ -60,3 +59,17 @@ cover empty views, Unicode and JSON control-character escaping.
 families and source import chains, diamonds and valid reference-type SCCs. Source
 topology is compared with the existing graph API, then independently decoded and
 inspected; shuffled captures must produce identical wire bytes.
+
+`identity.rs` compares all five frozen /2 baseline partitions, twelve semantic/
+evidence variations and eight rejection vectors against production boundaries.
+`identity_facts.rs` constructs raw test models from literal facts without sorting
+or normalizing them; these models are framing inputs, not reader authority.
+`interface_reference.py` independently projects public declarations/contracts
+before using the pinned Python grammar. The original `reference.py`, vectors and
+fixture/oracle bytes remain unchanged. Tests additionally cover real default versus
+supplied values, omission versus null, decoded origin evidence, every explicit
+derivation control, byte/frame boundaries, allocation/cancellation recovery and
+root invariance. Missing/private/wrong-profile/duplicate roots cannot acquire
+artifact identity through the reader. All 26 registered request cases now reach
+their applicable capture/compiler/independent wire boundaries; catalogue-only
+cases retain explicit test sources rather than invented literal source outcomes.

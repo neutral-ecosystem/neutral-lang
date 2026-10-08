@@ -40,7 +40,7 @@ fn case(family: usize, name: &str) -> Value {
 /// Catalogue-only fixtures have no source unit. For those tests only, an explicit
 /// synthetic source declares their reviewed roots; this is not a literal source
 /// compilation expectation or permission to infer roots in production.
-fn request(case: &Value) -> CapturedCompositionProjectRequest {
+pub(super) fn request(case: &Value) -> CapturedCompositionProjectRequest {
     let inputs = case["capture"]["vocabularies"].as_array().unwrap();
     let vocabularies = inputs
         .iter()

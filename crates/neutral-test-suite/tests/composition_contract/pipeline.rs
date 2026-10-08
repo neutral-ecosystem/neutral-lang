@@ -26,6 +26,8 @@ mod allocation;
 mod graphs;
 #[path = "hardening.rs"]
 mod hardening;
+#[path = "identity.rs"]
+mod identity;
 #[path = "reader_probe.rs"]
 mod reader_probe;
 
@@ -121,6 +123,71 @@ fn compile(case: &Value) -> ValidatedCompositionProject {
     let limits = ir.limits;
     ValidatedCompositionProject::from_ir(ir, limits, limits_for(case), &CancellationToken::new())
         .unwrap_or_else(|e| panic!("{}: read {e:?}", case["id"]))
+}
+
+/// Executes every registered family, including catalogue-only probes, without changing oracle inputs.
+#[test]
+fn conformance_composition_every_registered_case_through_complete_pipeline() {
+    let cancel = CancellationToken::new();
+    let mut covered = 0;
+    for raw in REQUESTS {
+        let data: Value = serde_json::from_str(raw).unwrap();
+        for case in data["cases"].as_array().unwrap() {
+            covered += 1;
+            let captured = capture_composition_project(super::capture::request(case));
+            if case["catalogue_outcome"] != "accepted" {
+                let expected = if case["id"] == "conflicting-revision" {
+                    neutral_compiler::ProjectCaptureError::DuplicateVocabulary.code()
+                } else {
+                    case["catalogue_outcome"].as_str().unwrap()
+                };
+                assert_eq!(captured.unwrap_err().code(), expected, "{}", case["id"]);
+                continue;
+            }
+            let ir = compile_composition_project(&captured.unwrap(), &cancel);
+            if case["project_outcome"] != "accepted" {
+                assert_eq!(
+                    ir.unwrap_err().code,
+                    case["project_code"].as_str().unwrap(),
+                    "{}",
+                    case["id"]
+                );
+                continue;
+            }
+            let ir = ir.unwrap_or_else(|e| panic!("{}: {e:?}", case["id"]));
+            let reader = ValidatedCompositionProject::from_ir(
+                ir.clone(),
+                ir.limits,
+                limits_for(case),
+                &cancel,
+            )
+            .unwrap();
+            let bytes = encode_composition_project(&reader, &cancel).unwrap();
+            let decoded = decode_composition_project(
+                &bytes,
+                DecodeLimits::hard(),
+                ir.limits,
+                limits_for(case),
+                &cancel,
+            )
+            .unwrap();
+            assert_eq!(decoded.complete_ir(), &ir, "{}", case["id"]);
+            assert_eq!(
+                encode_composition_project(&decoded, &cancel).unwrap(),
+                bytes
+            );
+        }
+    }
+    assert_eq!(
+        covered,
+        REQUESTS
+            .iter()
+            .map(|raw| serde_json::from_str::<Value>(raw).unwrap()["cases"]
+                .as_array()
+                .unwrap()
+                .len())
+            .sum::<usize>()
+    );
 }
 /// Source defaults, nested materialization and reuse are ordinary immutable meaning, not execution.
 #[test]

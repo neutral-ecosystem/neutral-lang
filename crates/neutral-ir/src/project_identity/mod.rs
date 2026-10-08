@@ -14,7 +14,9 @@ pub use captured::{
     captured_composition_closure,
 };
 pub use derived::{
-    ArtifactIdentityInput, ArtifactKind, DerivationContext, artifact_identity, derivation_identity,
+    ArtifactIdentityInput, ArtifactKind, CompositionDerivationContext, DerivationContext,
+    artifact_identity, composition_artifact_identity, composition_derivation_identity,
+    derivation_identity,
 };
 pub use logical::canonical_logical_project;
 use neutral_core::{CancellationToken, SemanticDigest};
@@ -127,6 +129,14 @@ identity!(
 identity!(
     CompositionLogicalIdentity,
     "Complete successor logical meaning, separate from identity /1."
+);
+identity!(
+    CompositionDerivationIdentity,
+    "Successor logical and captured identities plus explicit processing policy; distinct from /1."
+);
+identity!(
+    CompositionArtifactIdentity,
+    "Successor derivation plus artifact kind, format and public selection; distinct from /1."
 );
 identity!(
     LogicalProjectIdentity,

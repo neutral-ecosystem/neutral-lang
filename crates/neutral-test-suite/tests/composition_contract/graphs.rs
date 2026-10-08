@@ -91,7 +91,7 @@ fn security_composition_source_graph_diagnostic_precedence_and_overflow_are_pres
 }
 
 /// Rebuilds exact runtime lock evidence after an intentional bundle mutation.
-fn replace_bundle(input: &mut Value, bundle: &Value) {
+pub(super) fn replace_bundle(input: &mut Value, bundle: &Value) {
     let text = serde_json::to_string_pretty(bundle).unwrap();
     let digest = VocabularyContentDigest::from_bytes(text.as_bytes()).to_string();
     input["bundle_utf8"] = json!(text);

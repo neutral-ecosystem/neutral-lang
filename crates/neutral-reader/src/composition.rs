@@ -19,11 +19,16 @@ use neutral_vocabulary::composition::{
 };
 
 mod bindings;
+mod identity;
 mod project;
 mod references;
 mod scope;
 mod view;
 pub use bindings::{CompositionBindingCatalogue, CompositionBindingLookupError};
+pub use identity::{
+    CompositionDerivationFacts, CompositionIdentities, CompositionIdentityContext,
+    CompositionIdentityReadError,
+};
 pub use neutral_ir::composition::profile;
 pub use neutral_ir::composition::project::{
     CompositionAttribution, CompositionDeclaration, CompositionOrigin, CompositionSignature,

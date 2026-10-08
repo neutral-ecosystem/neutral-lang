@@ -194,14 +194,8 @@ fn scalar_matches<R>(value: &W<R>, ty: &T) -> bool {
 
 /// Compares compatible scalar choices in canonical order; malformed kinds are rejected earlier.
 fn compare_scalars<L, R>(left: &W<L>, right: &W<R>) -> Ordering {
-    match (left, right) {
-        (W::Number(a), W::Number(b)) => compare_exact_numbers(a, b),
-        (W::String(a), W::String(b)) | (W::Url(a), W::Url(b)) | (W::Path(a), W::Path(b)) => {
-            a.cmp(b)
-        }
-        (W::Bool(a), W::Bool(b)) => a.cmp(b),
-        _ => unreachable!("choices were checked against one exact scalar type"),
-    }
+    neutral_ir::composition::compare_composition_scalars(left, right)
+        .expect("choices were checked against one exact scalar type")
 }
 
 /// Returns bounded key work for an already verified scalar, for sort/search reservations.

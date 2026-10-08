@@ -123,6 +123,14 @@ impl CapturedCompositionProject {
         self.captured.limits()
     }
 
+    /// Returns explicit capture controls in the immutable derivation transcript order.
+    #[must_use]
+    pub fn identity_capture_limits(
+        &self,
+    ) -> [u64; neutral_ir::project_identity::CAPTURE_LIMIT_TAGS.len()] {
+        self.captured.identity_capture_limits()
+    }
+
     /// Returns every independent composition budget, preserved exactly for replay.
     #[must_use]
     pub const fn composition_limits(&self) -> CompositionLimits {

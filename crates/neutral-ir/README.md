@@ -73,7 +73,10 @@ still confers no validation authority.
 selected bounded logical/interface framing. Complete logical bytes and digest
 match the frozen independent vector. The independent reader checks occurrence
 attribution and derives redacted public closure; the standalone probe consumes
-that projection. Successor derivation/artifact identities remain separate work.
+that projection. `CompositionDerivationIdentity` binds complete logical/captured
+meaning, explicit producer facts and every capture/project/composition control;
+`CompositionArtifactIdentity` additionally binds kind, format, options and roots.
+Both use separately typed /2 transcripts; /1 profiles and vectors are unchanged.
 The [identity writer](src/project_identity/framing.rs) explains bounded in-place
 framing and why malformed canonical order is rejected instead of silently sorted.
 

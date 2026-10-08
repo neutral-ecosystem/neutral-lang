@@ -27,6 +27,28 @@ pub const PROJECT_VIEW_SCHEMA: &str = "neutral.project-view/2";
 pub const PROJECT_RESULT_SCHEMA: &str = "neutral.project-result/2";
 /// Successor complete logical identity domain.
 pub const LOGICAL_DOMAIN: &str = "neutral/project-logical/v2";
+/// Successor processing context domain, independent of complete logical meaning.
+pub const DERIVATION_DOMAIN: &str = "neutral/project-derivation/v2";
+/// Successor artifact format and post-compilation selection domain.
+pub const ARTIFACT_DOMAIN: &str = "neutral/project-artifact/v2";
+/// Composition control tags in the immutable policy tuple order.
+pub const COMPOSITION_LIMIT_TAGS: [&str; 15] = [
+    "bundles",
+    "captured-bytes",
+    "dependencies-per-bundle",
+    "dependency-edges",
+    "dependency-depth",
+    "total-types",
+    "total-fields",
+    "alternatives-per-type",
+    "total-alternatives",
+    "choices-per-field",
+    "total-choices",
+    "type-depth",
+    "value-depth",
+    "value-nodes",
+    "work",
+];
 /// Successor independently checked public interface identity domain.
 pub const INTERFACE_DOMAIN: &str = "neutral/project-interface/v2";
 /// Distinct restricted-CBOR successor transport.

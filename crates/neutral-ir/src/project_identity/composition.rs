@@ -5,7 +5,7 @@
 use super::{
     CompositionLogicalIdentity, IdentityError as E, IdentityLimits, IdentityTranscript,
     framing::{Writer, ordered},
-    logical::{symbol, type_transcript},
+    logical::{symbol, type_transcript as frozen_type_transcript},
     transcript_profile,
 };
 use crate::{
@@ -14,7 +14,7 @@ use crate::{
         project::{CompositionProjectIr, CompositionSignature as S, inspect_composition_ir},
     },
     project::PROJECT_MAX_DEPTH,
-    project_interface::ProjectPublicEdgeKind,
+    project_interface::{ProjectPublicEdgeKind, ProjectPublicType},
 };
 use neutral_core::allocation::RetainCapacity;
 use neutral_core::{CancellationToken, SemanticDigest, profile::V1_SOURCE_PROFILE};
@@ -147,6 +147,11 @@ fn build<I>(
 fn modules(w: &mut Writer<'_>, ir: &CompositionProjectIr) -> Result<(), E> {
     w.frame("modules", |w| {
         for m in &ir.modules {
+            if m.identity.language_behavior_version() != V1_SOURCE_PROFILE
+                || m.identity.module_name().is_empty()
+            {
+                return Err(E::InvalidInput);
+            }
             ordered(&m.imports)?;
             w.frame("module", |w| {
                 w.leaf("name", m.identity.module_name().as_bytes())?;
@@ -166,6 +171,9 @@ fn modules(w: &mut Writer<'_>, ir: &CompositionProjectIr) -> Result<(), E> {
 fn declarations(w: &mut Writer<'_>, ir: &CompositionProjectIr, public: bool) -> Result<(), E> {
     w.frame("declarations", |w| {
         for d in ir.declarations.iter().filter(|d| !public || d.public) {
+            if matches!(d.signature, S::Binding(_)) != d.value.is_some() {
+                return Err(E::InvalidInput);
+            }
             w.frame("declaration", |w| {
                 symbol(w, &d.identity)?;
                 w.leaf("public", &[u8::from(d.public)])?;
@@ -256,6 +264,9 @@ fn body(w: &mut Writer<'_>, b: &B) -> Result<(), E> {
             ordered(fields.iter().map(|f| &f.name))?;
             w.frame("record", |w| {
                 for f in fields {
+                    if (f.presence == FieldPresence::Defaulted) != f.default.is_some() {
+                        return Err(E::InvalidInput);
+                    }
                     w.frame("field", |w| {
                         w.leaf("name", f.name.as_bytes())?;
                         type_transcript(w, &f.ty, 0)?;
@@ -278,6 +289,9 @@ fn body(w: &mut Writer<'_>, b: &B) -> Result<(), E> {
             })
         }
         B::Variant(alternatives) => {
+            if alternatives.is_empty() || alternatives.iter().any(|a| a.tag.is_empty()) {
+                return Err(E::InvalidInput);
+            }
             ordered(alternatives.iter().map(|a| &a.tag))?;
             w.frame("variant", |w| {
                 for a in alternatives {
@@ -294,6 +308,25 @@ fn body(w: &mut Writer<'_>, b: &B) -> Result<(), E> {
 
 /// Preserves absence of constraints separately from present finite or numeric bounds.
 fn restrictions(w: &mut Writer<'_>, r: &FieldRestrictions) -> Result<(), E> {
+    if let Some(choices) = &r.choices {
+        w.items(choices.len())?;
+        for choice in choices {
+            w.check()?;
+            match choice {
+                V::Number(n) => w.text(n.coefficient())?,
+                V::String(s) | V::Url(s) | V::Path(s) => w.text(s)?,
+                V::Bool(_) => {}
+                _ => return Err(E::InvalidInput),
+            }
+        }
+        for pair in choices.windows(2) {
+            if crate::composition::compare_composition_scalars(&pair[0], &pair[1])
+                != Some(std::cmp::Ordering::Less)
+            {
+                return Err(E::InvalidInput);
+            }
+        }
+    }
     w.frame("restrictions", |w| {
         w.frame("choices", |w| {
             if let Some(values) = &r.choices {
@@ -317,6 +350,41 @@ fn restrictions(w: &mut Writer<'_>, r: &FieldRestrictions) -> Result<(), E> {
         }
         Ok(())
     })
+}
+
+/// Checks successor wrapper invariants before using the unchanged frozen type framing grammar.
+fn type_transcript(w: &mut Writer<'_>, ty: &ProjectPublicType, depth: usize) -> Result<(), E> {
+    let mut inner = ty;
+    let mut current_depth = depth;
+    loop {
+        w.check()?;
+        if current_depth > PROJECT_MAX_DEPTH {
+            return Err(E::Limit);
+        }
+        match inner {
+            ProjectPublicType::Ref(target)
+                if !matches!(
+                    target.as_ref(),
+                    ProjectPublicType::Nominal(_) | ProjectPublicType::VocabularyNominal { .. }
+                ) =>
+            {
+                return Err(E::InvalidInput);
+            }
+            ProjectPublicType::Nullable(target)
+                if matches!(target.as_ref(), ProjectPublicType::Nullable(_)) =>
+            {
+                return Err(E::InvalidInput);
+            }
+            ProjectPublicType::List(target)
+            | ProjectPublicType::Ref(target)
+            | ProjectPublicType::Nullable(target) => {
+                inner = target;
+                current_depth += 1;
+            }
+            _ => break,
+        }
+    }
+    frozen_type_transcript(w, ty, depth)
 }
 
 /// Frames borrowed exact numbers without constructing an allocating temporary value.
