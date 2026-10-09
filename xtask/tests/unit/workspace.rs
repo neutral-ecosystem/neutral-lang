@@ -8,10 +8,15 @@ use super::*;
 /// Shared binaries must discover the invoking checkout and skip isolated nested workspaces.
 fn workspace_discovery_follows_the_invocation() {
     let root = std::env::temp_dir().join(format!(
-        "neutral-workspace-discovery-{}",
-        std::process::id()
+        "neutral-workspace-discovery-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
     ));
     fs::create_dir(&root).expect("owned test directory must be new");
+    let enclosing_workspace = discover(&root);
     for name in ["first", "second"] {
         let checkout = root.join(name);
         fs::create_dir_all(checkout.join("config")).expect("configuration directory");
@@ -32,6 +37,7 @@ fn workspace_discovery_follows_the_invocation() {
         assert_eq!(discover(&checkout), Ok(expected.clone()));
         assert_eq!(discover(&checkout.join("fuzz/subdirectory")), Ok(expected));
     }
-    assert!(discover(&root).is_err());
+    // Child fixtures must not change discovery, even when TMPDIR is inside a checkout.
+    assert_eq!(discover(&root), enclosing_workspace);
     fs::remove_dir_all(root).expect("remove owned temporary fixture");
 }

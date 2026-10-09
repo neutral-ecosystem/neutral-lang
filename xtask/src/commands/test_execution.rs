@@ -157,10 +157,13 @@ pub(crate) fn mutation_arguments(
         command.extend(["--file".to_owned(), target.clone()]);
     }
     command.push("--no-config".to_owned());
+    // Baseline timing must include the same workspace tested for each mutant.
+    command.push("--cargo-arg=--workspace".to_owned());
     command.extend(["--jobs".to_owned(), "2".to_owned()]);
     // Generated nested build trees can exceed the temporary workspace quota.
     command.extend(["--gitignore".to_owned(), "true".to_owned()]);
-    command.extend(["--test-workspace".to_owned(), "true".to_owned()]);
+    // Workspace tests must resolve Git policy within the copy, not its parent checkout.
+    command.extend(["--copy-vcs".to_owned(), "true".to_owned()]);
     if backend == TestRunner::Nextest {
         let testing = configuration::automation()?.testing;
         // cargo-mutants tests copied workspaces: resolve config relative to that copy.
@@ -170,6 +173,7 @@ pub(crate) fn mutation_arguments(
             testing.config,
             "--profile".to_owned(),
             testing.ci_profile,
+            "--fail-fast".to_owned(),
             "--ignore-default-filter".to_owned(),
             "--no-tests".to_owned(),
             "fail".to_owned(),

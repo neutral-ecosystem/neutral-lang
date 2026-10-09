@@ -21,17 +21,19 @@ fn analysis_commands_share_the_selected_test_backend() {
         )
         .expect("mutation command");
         assert!(mutation.contains(&"--no-config".to_owned()));
+        assert!(mutation.contains(&"--cargo-arg=--workspace".to_owned()));
+        assert!(
+            mutation
+                .windows(2)
+                .any(|pair| pair == ["--copy-vcs", "true"])
+        );
         assert!(mutation.windows(2).any(|pair| pair == ["--jobs", "2"]));
         assert!(
             mutation
                 .windows(2)
                 .any(|pair| pair == ["--gitignore", "true"])
         );
-        assert!(
-            mutation
-                .windows(2)
-                .any(|pair| pair == ["--test-workspace", "true"])
-        );
+        assert!(!mutation.contains(&"--test-workspace".to_owned()));
         if backend == TestRunner::Nextest {
             assert_eq!(coverage[1], "nextest");
             assert!(coverage.contains(&"--ignore-default-filter".to_owned()));
@@ -40,6 +42,7 @@ fn analysis_commands_share_the_selected_test_backend() {
             assert!(mutation.contains(&settings.config));
             assert!(mutation.contains(&settings.ci_profile));
             assert!(mutation.contains(&"--ignore-default-filter".to_owned()));
+            assert!(mutation.contains(&"--fail-fast".to_owned()));
         } else {
             assert!(!coverage.contains(&"nextest".to_owned()));
             assert_eq!(mutation[2], "cargo");

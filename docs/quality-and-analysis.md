@@ -114,6 +114,13 @@ mutation against the workspace, including the cross-package suite. Receipts must
 cover the whole configured list; the caught threshold is unchanged. Expanded
 scope requires new measurements, not reuse of historical single-file results.
 The campaign uses two parallel workers without reducing the mutation scope.
+Baseline and mutant runs both test the whole workspace, so automatic timeouts
+are calibrated against the complete suite. Mutation runs override the CI profile
+with Nextest fail-fast: one test failure already establishes that a mutant is caught.
+Workspace selection is forwarded with `--cargo-arg=--workspace`; combining this
+with `--test-workspace true` would duplicate the flag in Nextest mutant runs.
+Copies retain Git metadata so repository-policy tests do not resolve a parent
+checkout; ignored generated build/report trees remain excluded.
 Progress shows completed/discovered mutants from native reports, excluding the
 baseline. Before reports are available, it shows elapsed time; the final evidence
 validation, not the counter, determines whether the campaign passes.
@@ -129,7 +136,7 @@ For an optional broader investigation, use the native tool (not a substitute for
 the configured gate):
 
 ```sh
-cargo mutants --workspace --no-config --gitignore true --test-workspace true --test-tool nextest --output test-results/analysis/mutation-workspace
+cargo mutants --workspace --no-config --cargo-arg=--workspace --gitignore true --copy-vcs true --test-tool nextest --output test-results/analysis/mutation-workspace -- --config-file config/nextest.toml --profile ci --fail-fast --ignore-default-filter --no-tests fail
 ```
 
 Fuzz campaigns and extended soak are separate, opt-in analysis, not release-quality requirements.

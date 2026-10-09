@@ -137,7 +137,7 @@ fn validates_real_mutation_counts() {
         .push("--no-config".to_owned());
     receipt.invocations[0]
         .arguments
-        .extend(["--test-workspace".to_owned(), "true".to_owned()]);
+        .push("--cargo-arg=--workspace".to_owned());
     for (caught, missed, timeout, accepted) in [
         (38, 0, 0, true),
         (38, 1, 0, false),
@@ -174,6 +174,11 @@ fn validates_real_mutation_counts() {
     receipt.invocations[0]
         .arguments
         .push("--re=one_function".to_owned());
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
+    receipt.invocations[0].arguments.clone_from(&complete);
+    receipt.invocations[0]
+        .arguments
+        .retain(|argument| argument != "--cargo-arg=--workspace");
     assert!(validate_reports(&receipt, &directory, &settings).is_err());
     receipt.invocations[0].arguments.clone_from(&complete);
     receipt.invocations[0]

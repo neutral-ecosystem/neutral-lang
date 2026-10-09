@@ -567,8 +567,7 @@ fn validate_mutation(
             && run.arguments.contains(&"--no-config".to_owned())
             && run
                 .arguments
-                .windows(2)
-                .any(|pair| pair == ["--test-workspace", "true"])
+                .contains(&"--cargo-arg=--workspace".to_owned())
             && !run.arguments.iter().any(|argument| {
                 matches!(
                     argument.split('=').next().unwrap_or(argument),
