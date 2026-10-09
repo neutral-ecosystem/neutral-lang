@@ -108,17 +108,17 @@ impl<K: Ord, V> OrderedMap<K, V> {
             .map(|index| self.entries.remove(index).1)
     }
     /// Enumerates keys and values in canonical order without copying them.
-    #[must_use]
+    #[must_use = "iterators do nothing unless consumed"]
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = (&K, &V)> {
         self.entries.iter().map(|(k, v)| (k, v))
     }
     /// Enumerates canonical borrowed keys without allocating.
-    #[must_use]
+    #[must_use = "iterators do nothing unless consumed"]
     pub fn keys(&self) -> impl DoubleEndedIterator<Item = &K> {
         self.entries.iter().map(|(k, _)| k)
     }
     /// Enumerates canonical borrowed values without allocating.
-    #[must_use]
+    #[must_use = "iterators do nothing unless consumed"]
     pub fn values(&self) -> impl DoubleEndedIterator<Item = &V> {
         self.entries.iter().map(|(_, v)| v)
     }
@@ -238,7 +238,7 @@ impl<K: Ord> OrderedSet<K> {
         self.0.remove(key).is_some()
     }
     /// Borrows all keys in canonical order without allocating.
-    #[must_use]
+    #[must_use = "iterators do nothing unless consumed"]
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &K> {
         self.0.keys()
     }

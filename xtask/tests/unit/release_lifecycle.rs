@@ -135,7 +135,7 @@ fn recovery_accepts_new_scaffold_and_rejects_unrelated_changes() {
     require_only_metadata_changes(&root, &paths).unwrap();
     commit_paths(&root, &[readme], "metadata").unwrap();
     super::super::version_update::acknowledge(&root).unwrap();
-    assert!(git(&root, &["status", "--porcelain"]).unwrap().is_empty());
+    assert_eq!(git(&root, &["status", "--porcelain"]).unwrap(), "");
     fs::remove_dir_all(root).unwrap();
 }
 
