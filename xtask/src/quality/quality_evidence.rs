@@ -155,8 +155,15 @@ impl Measurement {
             .stderr(Stdio::from(stderr))
             .spawn()
             .map_err(|error| format!("could not run measured tool: {error}"))?;
-        let status = progress::wait(&mut child, &label, budget_seconds)
-            .map_err(|error| format!("could not wait for measured tool: {error}"))?;
+        let mutation_directory = (self.receipt.gate == QualityGate::Mutation)
+            .then(|| self.directory.join("mutants.out"));
+        let status = progress::wait(
+            &mut child,
+            &label,
+            budget_seconds,
+            mutation_directory.as_deref(),
+        )
+        .map_err(|error| format!("could not wait for measured tool: {error}"))?;
         if !status.success() {
             output::file(
                 "tool errors",

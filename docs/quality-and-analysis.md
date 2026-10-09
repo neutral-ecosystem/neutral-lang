@@ -113,11 +113,23 @@ configuration so it cannot silently narrow that reviewed scope, and tests each
 mutation against the workspace, including the cross-package suite. Receipts must
 cover the whole configured list; the caught threshold is unchanged. Expanded
 scope requires new measurements, not reuse of historical single-file results.
+The campaign uses three parallel workers without reducing the mutation scope.
+Progress shows completed/discovered mutants from native reports, excluding the
+baseline. Before reports are available, it shows elapsed time; the final evidence
+validation, not the counter, determines whether the campaign passes.
+This increases memory and disk usage. On systems with a small RAM-backed `/tmp`,
+use disk-backed temporary storage:
+
+```sh
+mkdir -p target/mutation-tmp
+TMPDIR="$PWD/target/mutation-tmp" cargo xtask mutate
+```
+
 For an optional broader investigation, use the native tool (not a substitute for
 the configured gate):
 
 ```sh
-cargo mutants --workspace --no-config --test-workspace true --test-tool nextest --output test-results/analysis/mutation-workspace
+cargo mutants --workspace --no-config --gitignore true --test-workspace true --test-tool nextest --output test-results/analysis/mutation-workspace
 ```
 
 Fuzz campaigns and extended soak are separate, opt-in analysis, not release-quality requirements.

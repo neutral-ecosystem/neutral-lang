@@ -41,7 +41,7 @@ fn preserves_child_exit_status() {
         .stderr(std::process::Stdio::null())
         .spawn()
         .unwrap();
-    assert!(!wait(&mut child, "test", Some(300)).unwrap().success());
+    assert!(!wait(&mut child, "test", Some(300), None).unwrap().success());
 }
 
 /// Unbudgeted measurements preserve successful exit without inventing a deadline.
@@ -53,5 +53,21 @@ fn unbudgeted_tool_can_succeed() {
         .stderr(std::process::Stdio::null())
         .spawn()
         .unwrap();
-    assert!(wait(&mut child, "test", None).unwrap().success());
+    assert!(wait(&mut child, "test", None, None).unwrap().success());
+}
+
+/// Mutation progress counts finished mutants, excluding baseline and incomplete reports.
+#[test]
+fn mutation_counts_use_discovered_total_and_finished_outcomes() {
+    assert_eq!(
+        mutation_counts("[{}, {}, {}]", r#"{"total_mutants":2}"#),
+        Some((2, 3))
+    );
+    assert_eq!(
+        mutation_counts("[{}]", r#"{"total_mutants":0}"#),
+        Some((0, 1))
+    );
+    assert_eq!(mutation_counts("[{}]", "{"), None);
+    assert_eq!(mutation_counts("[{}]", r#"{"total_mutants":2}"#), None);
+    assert_eq!(mutation_counts("[]", r#"{"total_mutants":0}"#), None);
 }

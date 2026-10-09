@@ -3,14 +3,21 @@
 //! Estimated command progress without interfering with retained tool reports.
 
 use std::{
+    fs,
     io::{self, IsTerminal, Write},
+    path::Path,
     process::{Child, ExitStatus},
     thread,
     time::{Duration, Instant},
 };
 
 /// Waits for a child, refreshing terminal progress or emitting periodic log lines.
-pub(crate) fn wait(child: &mut Child, label: &str, budget: Option<u64>) -> io::Result<ExitStatus> {
+pub(crate) fn wait(
+    child: &mut Child,
+    label: &str,
+    budget: Option<u64>,
+    mutation_directory: Option<&Path>,
+) -> io::Result<ExitStatus> {
     let start = Instant::now();
     let terminal = io::stderr().is_terminal();
     let mut previous = None;
@@ -19,6 +26,11 @@ pub(crate) fn wait(child: &mut Child, label: &str, budget: Option<u64>) -> io::R
             let mut output = io::stderr().lock();
             if terminal && previous.is_some() {
                 let _ = write!(output, "\r\x1b[K");
+            }
+            if let Some(line) = mutation_directory
+                .and_then(|directory| mutation_progress(directory, label, start.elapsed()))
+            {
+                let _ = writeln!(output, "{line}");
             }
             if status.success()
                 && let Some(budget) = budget
@@ -36,13 +48,17 @@ pub(crate) fn wait(child: &mut Child, label: &str, budget: Option<u64>) -> io::R
         if previous.is_none_or(|last| elapsed >= last + if terminal { 1 } else { 10 }) {
             let line = match budget {
                 Some(budget) => render(label, elapsed, budget),
-                None => crate::output::progress(
-                    &format!(
-                        "{label} | elapsed {} | reports are being captured",
-                        crate::output::duration(Duration::from_secs(elapsed))
-                    ),
-                    false,
-                ),
+                None => mutation_directory
+                    .and_then(|directory| mutation_progress(directory, label, start.elapsed()))
+                    .unwrap_or_else(|| {
+                        crate::output::progress(
+                            &format!(
+                                "{label} | elapsed {} | reports are being captured",
+                                crate::output::duration(Duration::from_secs(elapsed))
+                            ),
+                            false,
+                        )
+                    }),
             };
             let mut output = io::stderr().lock();
             if terminal {
@@ -55,6 +71,29 @@ pub(crate) fn wait(child: &mut Child, label: &str, budget: Option<u64>) -> io::R
         }
         thread::sleep(Duration::from_millis(250));
     }
+}
+
+/// Reads native snapshots opportunistically; missing or partially written reports are not failures.
+fn mutation_progress(directory: &Path, label: &str, elapsed: Duration) -> Option<String> {
+    let mutants = fs::read_to_string(directory.join("mutants.json")).ok()?;
+    let outcomes = fs::read_to_string(directory.join("outcomes.json")).ok()?;
+    let (completed, total) = mutation_counts(&mutants, &outcomes)?;
+    Some(crate::output::progress(
+        &format!(
+            "{label} | mutants {completed}/{total} | elapsed {}",
+            crate::output::duration(elapsed)
+        ),
+        false,
+    ))
+}
+
+/// Uses the discovered list as denominator because native `total_mutants` counts finished mutants only.
+fn mutation_counts(mutants: &str, outcomes: &str) -> Option<(u64, u64)> {
+    let mutants: serde_json::Value = serde_json::from_str(mutants).ok()?;
+    let outcomes: serde_json::Value = serde_json::from_str(outcomes).ok()?;
+    let total = u64::try_from(mutants.as_array()?.len()).ok()?;
+    let completed = outcomes.get("total_mutants")?.as_u64()?;
+    (total > 0 && completed <= total).then_some((completed, total))
 }
 
 /// Formats budget progress, keeping completion distinct from child success.
