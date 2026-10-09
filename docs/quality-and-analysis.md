@@ -113,7 +113,7 @@ configuration so it cannot silently narrow that reviewed scope, and tests each
 mutation against the workspace, including the cross-package suite. Receipts must
 cover the whole configured list; the caught threshold is unchanged. Expanded
 scope requires new measurements, not reuse of historical single-file results.
-The campaign uses three parallel workers without reducing the mutation scope.
+The campaign uses two parallel workers without reducing the mutation scope.
 Progress shows completed/discovered mutants from native reports, excluding the
 baseline. Before reports are available, it shows elapsed time; the final evidence
 validation, not the counter, determines whether the campaign passes.

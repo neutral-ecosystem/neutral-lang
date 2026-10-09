@@ -157,7 +157,7 @@ pub(crate) fn mutation_arguments(
         command.extend(["--file".to_owned(), target.clone()]);
     }
     command.push("--no-config".to_owned());
-    command.extend(["--jobs".to_owned(), "3".to_owned()]);
+    command.extend(["--jobs".to_owned(), "2".to_owned()]);
     // Generated nested build trees can exceed the temporary workspace quota.
     command.extend(["--gitignore".to_owned(), "true".to_owned()]);
     command.extend(["--test-workspace".to_owned(), "true".to_owned()]);

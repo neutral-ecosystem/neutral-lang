@@ -21,7 +21,7 @@ fn analysis_commands_share_the_selected_test_backend() {
         )
         .expect("mutation command");
         assert!(mutation.contains(&"--no-config".to_owned()));
-        assert!(mutation.windows(2).any(|pair| pair == ["--jobs", "3"]));
+        assert!(mutation.windows(2).any(|pair| pair == ["--jobs", "2"]));
         assert!(
             mutation
                 .windows(2)
