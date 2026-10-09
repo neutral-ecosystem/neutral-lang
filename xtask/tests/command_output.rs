@@ -86,3 +86,50 @@ fn environment_manifest_keeps_machine_stdout() {
     assert!(stderr.starts_with("START xtask environment manifest\n"));
     assert!(stderr.contains("PASS  xtask environment manifest ("));
 }
+
+/// Invalid generated-output configuration is rejected before any tracked version write.
+#[test]
+fn version_prepare_preflights_output_before_metadata_writes() {
+    let source = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap();
+    let root =
+        std::env::temp_dir().join(format!("neutral-version-preflight-{}", std::process::id()));
+    assert!(
+        Command::new("git")
+            .args(["clone", "--quiet", "--shared"])
+            .arg(source)
+            .arg(&root)
+            .status()
+            .unwrap()
+            .success()
+    );
+    // The tested executable is new; the disposable HEAD snapshot may predate this ignore rule.
+    std::fs::write(root.join(".git/info/exclude"), ".neutral-version-update/\n").unwrap();
+    let manifest = std::fs::read(root.join("Cargo.toml")).unwrap();
+    let lock = std::fs::read(root.join("Cargo.lock")).unwrap();
+    let parsed: toml::Value = toml::from_str(std::str::from_utf8(&manifest).unwrap()).unwrap();
+    let current = parsed["workspace"]["package"]["version"].as_str().unwrap();
+    let mut parts = current.split('.');
+    let requested = format!("{}.{}.9999", parts.next().unwrap(), parts.next().unwrap());
+    let output = Command::new(env!("CARGO_BIN_EXE_xtask"))
+        .current_dir(&root)
+        .args(["version", "prepare", &requested])
+        .env("NEUTRAL_TEST_RESULTS", "../unsafe")
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(!output.status.success());
+    assert!(
+        stderr.contains("NEUTRAL_TEST_RESULTS must be a relative path"),
+        "{stderr}"
+    );
+    assert_eq!(std::fs::read(root.join("Cargo.toml")).unwrap(), manifest);
+    assert_eq!(std::fs::read(root.join("Cargo.lock")).unwrap(), lock);
+    assert!(
+        !root
+            .join(format!("quality/evidence/v{requested}/README.md"))
+            .exists()
+    );
+    std::fs::remove_dir_all(root).unwrap();
+}

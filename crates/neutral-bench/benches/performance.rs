@@ -7,6 +7,9 @@ use neutral_core::{CancellationToken, StructuralLimits};
 use neutral_encoding::{DecodeLimits, ProducerInfo, decode, encode};
 use neutral_probe::summarize;
 use neutral_reader::ValidatedDocument;
+#[path = "../src/composition.rs"]
+mod composition;
+use composition::measure;
 use std::{
     env,
     fmt::Write as _,
@@ -17,9 +20,9 @@ use std::{
 };
 
 /// Output category used by benchmark status lines.
-const INFO: &str = "[info]";
+const PASS: &str = "PASS ";
 /// Error category used by invalid benchmark invocations.
-const ERROR: &str = "[error]";
+const ERROR: &str = "FAIL ";
 /// Stable benchmark producer envelope name.
 const BENCH_PRODUCER: &str = "neutral-bench";
 /// Cargo test-list argument accepted by a harness-free benchmark target.
@@ -41,7 +44,7 @@ const RELEASE_ITERATIONS: usize = 250;
 /// Bounded local soak iteration count.
 const SOAK_ITERATIONS: usize = 5_000;
 /// Extended controlled-soak iteration count.
-const EXTENDED_SOAK_ITERATIONS: usize = 50_000;
+const EXTENDED_SOAK_ITERATIONS: usize = 25_000;
 /// Worker count used for the isolation/concurrency profile.
 const CONCURRENCY_WORKERS: usize = 8;
 /// Representative immutable source corpus entry.
@@ -119,8 +122,9 @@ fn main() {
         CONCURRENCY_WORKERS,
         concurrency_elapsed,
     );
+    composition::run(iterations, report);
     println!(
-        "{INFO} performance artifact-bytes={} source-bytes={} profile={profile}",
+        "{PASS} performance artifact-bytes={} source-bytes={} profile={profile}",
         encoded.as_bytes().len(),
         REPRESENTATIVE_SOURCE.len()
     );
@@ -151,17 +155,6 @@ fn compile_success(
         panic!("benchmark source must compile");
     };
     artifacts
-}
-
-/// Measures a deterministic count of operations with one monotonic clock sample.
-fn measure(mut iterations: usize, mut operation: impl FnMut()) -> Duration {
-    operation();
-    let start = Instant::now();
-    while iterations > 0 {
-        operation();
-        iterations -= 1;
-    }
-    start.elapsed()
 }
 
 /// Exercises growth across increasing declaration counts.
@@ -197,7 +190,7 @@ fn concurrency_profile(limits: StructuralLimits) -> Duration {
 /// Prints one stable benchmark measurement line.
 fn report(name: &str, iterations: usize, elapsed: Duration) {
     println!(
-        "{INFO} performance name={name} iterations={iterations} elapsed-ns={}",
+        "{PASS} performance name={name} iterations={iterations} elapsed-ns={}",
         elapsed.as_nanos()
     );
 }

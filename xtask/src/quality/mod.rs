@@ -4,4 +4,5 @@
 
 pub(crate) mod gate;
 pub(crate) mod ledger;
+pub(crate) mod measurement_store;
 pub(crate) mod quality_evidence;

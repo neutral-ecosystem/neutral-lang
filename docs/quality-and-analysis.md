@@ -10,10 +10,23 @@ must not be edited manually.
 
 Release measurements are produced automatically by the commands below. Each
 successful run retains tool stdout/stderr, native reports, exact report digests,
-compiler identity, duration, and an input fingerprint. Changing code, tests,
-fixtures, lockfiles, or configuration invalidates earlier measurements;
-documentation-only changes do not. New, untracked source files also participate.
+compiler identity, actual measurement-tool versions, duration, and an input
+fingerprint. Git-discovered tracked and non-ignored untracked files participate,
+including Python oracles, scripts, templates, fixtures and configuration regardless
+of extension. Top-level `docs/*.md` guides, `README.md` files, maintained
+`quality/STATUS.md` and generated approval `record.toml` files are excluded.
+Other Markdown, including executable language examples, remains an input;
+changing an HTML template is not a documentation-only change.
+The fingerprint/receipt schema change intentionally invalidates earlier receipts.
 Historical `status` and `observed_*` configuration fields are not passing evidence.
+
+Each input fingerprint/gate has an exclusive OS lock and separate `run-*` report
+directories. Another measurement of the same gate/inputs fails with an
+already-running message; independent gates can run concurrently. The `current`
+pointer selects the latest attempt, and `receipt.json` appears only after all
+reports and input freshness pass validation. A failed explicit rerun cannot reuse
+an older retained success. Inspect the printed run directory, fix the cause, and
+rerun the gate; do not manufacture a receipt or delete an active lock file.
 
 ## Quality workflow
 
@@ -93,14 +106,35 @@ cargo xtask mutate
 cargo xtask test performance --profile release
 ```
 
+`mutate` measures every production file in `mutation.critical_targets` in
+`config/quality-gates.toml`, spanning syntax, semantic restrictions, decoding,
+reader references and identity framing. The command disables separate cargo-mutants
+configuration so it cannot silently narrow that reviewed scope, and tests each
+mutation against the workspace, including the cross-package suite. Receipts must
+cover the whole configured list; the caught threshold is unchanged. Expanded
+scope requires new measurements, not reuse of historical single-file results.
+For an optional broader investigation, use the native tool (not a substitute for
+the configured gate):
+
+```sh
+cargo mutants --workspace --no-config --test-workspace true --test-tool nextest --output test-results/analysis/mutation-workspace
+```
+
 Fuzz campaigns and extended soak are separate, opt-in analysis, not release-quality requirements.
 Run `RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign` when needed; release
 preparation, CI qualification, approval, and evidence retention do not require them.
 Run `cargo xtask test performance --profile soak` explicitly for the extended
-stress/soak campaign, including its Massif and Memcheck measurements.
+stress/soak campaign with 25,000 iterations per repeated phase, including its
+Massif and Memcheck measurements.
 
 The performance commands automatically capture phase/end-to-end, growth, and
 concurrency timings, Massif heap snapshots, and Memcheck allocation/leak results.
+Distinct composition phases cover multi-unit/vocabulary capture, graph construction,
+clean compilation, reader validation, encoding/decoding, public views, all identity
+partitions, warm and changed-unit cache execution, growth, and concurrency.
+Cache and decoding measurements also check results against clean compilation.
+Old document measurements remain separately labeled for compatibility; old-only
+reports no longer satisfy the current performance gate.
 The optional soak uses the benchmark's extended-soak profile. Use an otherwise
 idle controlled runner; comparing measurements from different machines is not a
 performance regression test.

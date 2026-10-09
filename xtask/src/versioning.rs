@@ -120,7 +120,20 @@ pub(super) fn ensure_no_unreviewed_contract_changes(root: &Path) -> Result<(), S
 pub(super) fn prepare_version(requested: &str) -> Result<(), String> {
     validate_semver(requested)?;
     let root = workspace_root()?;
-    let manifest_path = root.join(constants::WORKSPACE_MANIFEST_FILE);
+    if crate::release::version_update::recover(&root)?.is_some() {
+        let current = workspace_package_version(&read_workspace_text(
+            &root,
+            constants::WORKSPACE_MANIFEST_FILE,
+        )?)?;
+        if current == requested {
+            crate::output::pass(format!(
+                "package release {requested} metadata already prepared"
+            ));
+            return Ok(());
+        }
+        require_clean_checkout()?;
+        crate::release::version_update::acknowledge(&root)?;
+    }
     let manifest = read_workspace_text(&root, constants::WORKSPACE_MANIFEST_FILE)?;
     let current = workspace_package_version(&manifest)?;
     validate_version_transition(&current, requested)?;
@@ -129,7 +142,6 @@ pub(super) fn prepare_version(requested: &str) -> Result<(), String> {
     require_clean_checkout()?;
 
     let updated_manifest = replace_workspace_package_version(&manifest, &current, requested)?;
-    let lock_path = root.join(constants::CARGO_LOCK_FILE);
     let lock = read_workspace_text(&root, constants::CARGO_LOCK_FILE)?;
     let package_names = workspace_package_names(&root)?;
     let updated_lock = replace_workspace_lock_versions(&lock, &package_names, &current, requested)?;
@@ -150,21 +162,23 @@ pub(super) fn prepare_version(requested: &str) -> Result<(), String> {
     .map_err(|error| format!("could not read contract freeze: {error}"))?;
     let freeze_digest = sha256_hex(&freeze_bytes);
 
-    fs::create_dir_all(&evidence_directory).map_err(|error| {
-        format!(
-            "could not create release evidence directory {}: {error}",
-            evidence_directory.display()
-        )
-    })?;
-    fs::write(&manifest_path, updated_manifest)
-        .map_err(|error| format!("could not update {}: {error}", manifest_path.display()))?;
-    fs::write(&lock_path, updated_lock)
-        .map_err(|error| format!("could not update {}: {error}", lock_path.display()))?;
-    fs::write(
-        &evidence_readme,
-        release_evidence_readme(requested, &project_license(&root)?),
-    )
-    .map_err(|error| format!("could not write {}: {error}", evidence_readme.display()))?;
+    let changes = vec![
+        (
+            constants::WORKSPACE_MANIFEST_FILE.to_owned(),
+            updated_manifest.into_bytes(),
+        ),
+        (
+            constants::CARGO_LOCK_FILE.to_owned(),
+            updated_lock.into_bytes(),
+        ),
+        (
+            format!(
+                "{}/v{requested}/README.md",
+                constants::QUALITY_EVIDENCE_DIRECTORY
+            ),
+            release_evidence_readme(requested, &project_license(&root)?).into_bytes(),
+        ),
+    ];
 
     let directory = result_root()?.join(constants::VERSION_RESULT_DIRECTORY);
     fs::create_dir_all(&directory)
@@ -180,6 +194,7 @@ pub(super) fn prepare_version(requested: &str) -> Result<(), String> {
         ),
     )
     .map_err(|error| format!("could not write {}: {error}", output.display()))?;
+    crate::release::version_update::apply(&root, &changes)?;
     crate::output::pass(format!(
         "package release prepared: {current} -> {requested}"
     ));

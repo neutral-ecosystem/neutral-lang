@@ -14,6 +14,11 @@ compiler output.
 performance profiles. PR measurements are informational; release thresholds
 require a recorded dedicated runner and reviewed baseline.
 
+The harness keeps compatibility document measurements separate from current
+composition capture, graph, compilation, reader/wire, view, identity, cache,
+growth and concurrency phases. A smoke test executes those same operations;
+changed-unit cache results and decoded artifacts must match clean compilation.
+
 ## Command
 
 Run the controlled local performance profile with:

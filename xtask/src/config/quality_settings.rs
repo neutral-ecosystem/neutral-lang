@@ -49,8 +49,8 @@ pub(crate) struct CoverageSettings {
 /// Mutation inputs shared by the tool and independent result checks.
 #[derive(Clone, Debug, Deserialize)]
 pub(crate) struct MutationSettings {
-    /// Workspace-relative production source selected for mutation.
-    pub(crate) critical_target: String,
+    /// Reviewed nonempty set of workspace-relative production sources.
+    pub(crate) critical_targets: Vec<String>,
     /// Required viable caught percentage.
     pub(crate) minimum_caught_percent: f64,
     /// Historical/descriptive annotations, not evidence.
@@ -79,6 +79,8 @@ pub(crate) struct FuzzSettings {
 pub(crate) struct PerformanceSettings {
     /// Cargo package/benchmark target pair.
     pub(crate) harness: BenchmarkHarness,
+    /// Required measured operations, shared by every performance receipt check.
+    pub(crate) required_phases: Vec<String>,
     /// Human profile/status descriptions, not evidence.
     #[serde(flatten)]
     _annotations: BTreeMap<String, toml::Value>,
@@ -136,7 +138,19 @@ impl QualityPolicy {
                 return Err("coverage outputs must be safe relative result paths".to_owned());
             }
         }
-        if !is_safe_relative_path(Path::new(&policy.mutation.critical_target))
+        let targets = &policy.mutation.critical_targets;
+        if targets.is_empty()
+            || targets
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len()
+                != targets.len()
+            || targets.iter().any(|target| {
+                !is_safe_relative_path(Path::new(target))
+                    || Path::new(target)
+                        .extension()
+                        .is_none_or(|extension| extension != "rs")
+            })
             || !is_safe_relative_path(&policy.fuzz.corpus_root)
             || !is_safe_relative_path(&policy.fuzz.seed_root)
             || policy.fuzz.targets.is_empty()
@@ -150,6 +164,22 @@ impl QualityPolicy {
             return Err(
                 "quality targets and paths must be safe and the fuzz budget positive".to_owned(),
             );
+        }
+        let phases = &policy.performance.required_phases;
+        if phases.is_empty()
+            || phases
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len()
+                != phases.len()
+            || phases.iter().any(|phase| {
+                phase.is_empty()
+                    || !phase
+                        .bytes()
+                        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+            })
+        {
+            return Err("performance phases must be nonempty, unique operation names".to_owned());
         }
         Ok(policy)
     }

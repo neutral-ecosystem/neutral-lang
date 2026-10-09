@@ -60,6 +60,11 @@ see [developer command flow](workflow-optimization.md).
 Use `cargo xtask test all` as the primary test command, including doctests.
 Test binaries use Nextest with the execution profiles in `config/nextest.toml`. Focus a
 run with `cargo xtask test security`, `test unit`, or another documented level.
+`test unit` selects crate-local library/binary tests, excluding the cross-package
+test suite and names containing explicit integration, system, conformance,
+property, security, smoke, determinism, or fuzz categories. It is a focused
+development check, not a replacement for `test all`. Inventory and execution use
+the same selection; the explicit Cargo backend applies equivalent exclusions.
 The runner/config/profile selection lives in `config/automation.toml`; a missing
 runner produces installation guidance rather than silently skipping tests.
 

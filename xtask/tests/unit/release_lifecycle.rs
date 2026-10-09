@@ -100,6 +100,45 @@ fn tag_checks_fail_closed_and_metadata_commits_are_repeatable() {
     fs::remove_dir_all(root).unwrap();
 }
 
+/// Porcelain's leading status column must survive capture for exact recovery path checks.
+#[test]
+fn recovery_preserves_porcelain_status_columns() {
+    let root = repository("recovery-status");
+    fs::write(root.join("source"), "changed").unwrap();
+    let status = git(&root, &["status", "--porcelain", "--", "source"]).unwrap();
+    assert_eq!(status, " M source");
+    assert_eq!(status.get(3..), Some("source"));
+    fs::remove_dir_all(root).unwrap();
+}
+
+/// Completed version preparation can commit its new scaffold, but never other edits.
+#[test]
+fn recovery_accepts_new_scaffold_and_rejects_unrelated_changes() {
+    let root = repository("recovery-scaffold");
+    fs::write(root.join(".git/info/exclude"), "origin.git/\n").unwrap();
+    let readme = "quality/evidence/v1.2.3/README.md";
+    let changes = vec![(readme.to_owned(), b"evidence".to_vec())];
+    super::super::version_update::apply(&root, &changes).unwrap();
+    // The real repository ignores recovery data independently of generated results.
+    fs::write(
+        root.join(".git/info/exclude"),
+        "origin.git/\n.neutral-version-update/\n",
+    )
+    .unwrap();
+    let paths = super::super::version_update::recover(&root)
+        .unwrap()
+        .unwrap();
+    require_only_metadata_changes(&root, &paths).unwrap();
+    fs::write(root.join("source"), "user edit").unwrap();
+    assert!(require_only_metadata_changes(&root, &paths).is_err());
+    fs::write(root.join("source"), "first").unwrap();
+    require_only_metadata_changes(&root, &paths).unwrap();
+    commit_paths(&root, &[readme], "metadata").unwrap();
+    super::super::version_update::acknowledge(&root).unwrap();
+    assert!(git(&root, &["status", "--porcelain"]).unwrap().is_empty());
+    fs::remove_dir_all(root).unwrap();
+}
+
 /// Every required gate delegates to the existing measurement family and correct toolchain.
 #[test]
 fn release_measurement_mapping_covers_all_required_gates() {

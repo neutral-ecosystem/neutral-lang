@@ -4,6 +4,42 @@
 
 use crate::{Path, PathBuf, command_output, constants, fs, sha256_hex};
 
+/// Scoped ownership of a stable OS lock file; the inode is never replaced or deleted.
+pub(crate) struct ExclusiveFileLock {
+    /// The descriptor owning the platform lock.
+    file: fs::File,
+}
+
+impl ExclusiveFileLock {
+    /// Claims an exclusive lock without truncation or following an existing symlink.
+    pub(crate) fn claim(path: &Path) -> Result<Self, String> {
+        if fs::symlink_metadata(path).is_ok_and(|metadata| !metadata.is_file()) {
+            return Err(format!("lock must be a regular file: {}", path.display()));
+        }
+        let file = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(path)
+            .map_err(|error| error.to_string())?;
+        file.try_lock().map_err(|error| {
+            format!(
+                "already running or lock unavailable at {}: {error}",
+                path.display()
+            )
+        })?;
+        Ok(Self { file })
+    }
+}
+
+impl Drop for ExclusiveFileLock {
+    /// Explicit unlock also releases transient descriptor copies inherited by forked children.
+    fn drop(&mut self) {
+        let _ = self.file.unlock();
+    }
+}
+
 /// Returns the SHA-256 digest of one exact file.
 pub(crate) fn sha256_file(path: &Path) -> Result<String, String> {
     fs::read(path)
@@ -110,3 +146,7 @@ pub(crate) fn require_main_head_checkout() -> Result<String, String> {
     }
     Ok(head)
 }
+
+#[cfg(test)]
+#[path = "../../tests/unit/file_lock.rs"]
+mod tests;

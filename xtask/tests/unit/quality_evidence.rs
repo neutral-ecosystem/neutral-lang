@@ -25,7 +25,7 @@ fn fixture(label: &str) -> (PathBuf, Receipt, QualitySettings) {
         );
     }
     let receipt = Receipt {
-        schema_version: 1,
+        schema_version: 2,
         gate: QualityGate::Coverage,
         source_commit: "a".repeat(40),
         inputs_sha256: "b".repeat(64),
@@ -39,6 +39,7 @@ fn fixture(label: &str) -> (PathBuf, Receipt, QualitySettings) {
         finished_at_unix_ms: unix_time_millis().unwrap(),
         invocations: vec![Invocation {
             program: "test fixture tool".to_owned(),
+            tool_version: "test fixture tool 1".to_owned(),
             arguments: Vec::new(),
             elapsed_ms: 1,
             report: "tool".to_owned(),
@@ -124,10 +125,19 @@ fn rejects_unhashed_native_metrics_and_low_coverage() {
 fn validates_real_mutation_counts() {
     let (directory, mut receipt, settings) = fixture("mutants");
     receipt.gate = QualityGate::Mutation;
-    receipt.invocations[0].arguments = vec![
-        "--file".to_owned(),
-        quality_value("mutation", "critical_target").unwrap(),
-    ];
+    receipt.invocations[0].arguments = settings
+        .policy
+        .mutation
+        .critical_targets
+        .iter()
+        .flat_map(|target| ["--file".to_owned(), target.clone()])
+        .collect();
+    receipt.invocations[0]
+        .arguments
+        .push("--no-config".to_owned());
+    receipt.invocations[0]
+        .arguments
+        .extend(["--test-workspace".to_owned(), "true".to_owned()]);
     for (caught, missed, timeout, accepted) in [
         (38, 0, 0, true),
         (38, 1, 0, false),
@@ -151,6 +161,25 @@ fn validates_real_mutation_counts() {
             accepted
         );
     }
+    replace_report(
+        &directory,
+        &mut receipt,
+        "outcomes.json",
+        r#"{"caught":38,"missed":0,"timeout":0,"success":0}"#,
+    );
+    let complete = receipt.invocations[0].arguments.clone();
+    receipt.invocations[0].arguments.drain(..2);
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
+    receipt.invocations[0].arguments.clone_from(&complete);
+    receipt.invocations[0]
+        .arguments
+        .push("--re=one_function".to_owned());
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
+    receipt.invocations[0].arguments.clone_from(&complete);
+    receipt.invocations[0]
+        .arguments
+        .retain(|argument| argument != "--no-config");
+    assert!(validate_reports(&receipt, &directory, &settings).is_err());
     receipt.invocations[0].arguments.clear();
     assert!(validate_reports(&receipt, &directory, &settings).is_err());
     fs::remove_dir_all(directory).unwrap();
@@ -176,6 +205,72 @@ fn input_fingerprint_includes_untracked_source() {
     assert_ne!(before, after);
     fs::write(directory.join("README.md"), "documentation only\n").unwrap();
     assert_eq!(after, input_digest(&directory).unwrap());
+    fs::remove_dir_all(directory).unwrap();
+}
+
+/// Executable inputs invalidate receipts regardless of extension or directory.
+#[test]
+fn input_fingerprint_tracks_oracles_scripts_templates_and_deletions() {
+    let directory =
+        crate::unique_generated_directory(&std::env::temp_dir().join("neutral-inputs-all"))
+            .unwrap();
+    fs::create_dir_all(directory.join("docs")).unwrap();
+    assert!(
+        Command::new(constants::GIT_COMMAND)
+            .args(["init", "--quiet"])
+            .current_dir(&directory)
+            .status()
+            .unwrap()
+            .success()
+    );
+    fs::write(directory.join(".gitignore"), "reports/\n").unwrap();
+    let mut previous = input_digest(&directory).unwrap();
+    for name in [
+        "oracle.py",
+        "release.sh",
+        "release.ps1",
+        "docs/template.html",
+        "tool-without-extension",
+        "policy.yaml",
+        "language-fixture.md",
+    ] {
+        let path = directory.join(name);
+        fs::write(&path, "first").unwrap();
+        let added = input_digest(&directory).unwrap();
+        assert_ne!(previous, added, "addition: {name}");
+        fs::write(&path, "second").unwrap();
+        let changed = input_digest(&directory).unwrap();
+        assert_ne!(added, changed, "edit: {name}");
+        fs::remove_file(path).unwrap();
+        assert_eq!(
+            previous,
+            input_digest(&directory).unwrap(),
+            "deletion: {name}"
+        );
+        previous = input_digest(&directory).unwrap();
+    }
+    fs::write(directory.join("oracle.py"), "oracle").unwrap();
+    assert!(
+        Command::new(constants::GIT_COMMAND)
+            .args(["add", "oracle.py"])
+            .current_dir(&directory)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let tracked = input_digest(&directory).unwrap();
+    fs::rename(directory.join("oracle.py"), directory.join("renamed.py")).unwrap();
+    assert_ne!(tracked, input_digest(&directory).unwrap());
+    fs::create_dir_all(directory.join("reports")).unwrap();
+    fs::write(directory.join("reports/local.json"), "local paths").unwrap();
+    fs::create_dir_all(directory.join("quality/evidence/v1.2.3")).unwrap();
+    let before_approval = input_digest(&directory).unwrap();
+    fs::write(
+        directory.join("quality/evidence/v1.2.3/record.toml"),
+        "approval",
+    )
+    .unwrap();
+    assert_eq!(before_approval, input_digest(&directory).unwrap());
     fs::remove_dir_all(directory).unwrap();
 }
 
@@ -224,6 +319,7 @@ fn fuzz_requires_every_target_and_actual_fuzzer_duration() {
         );
         receipt.invocations.push(Invocation {
             program: "fixture".to_owned(),
+            tool_version: "fixture 1".to_owned(),
             arguments: vec![format!("-max_total_time={budget}")],
             elapsed_ms: elapsed,
             report: target,
@@ -260,7 +356,7 @@ fn performance_requires_real_profiler_and_matching_profile() {
         "concurrent-isolation",
     ];
     let output = phases
-        .map(|phase| format!("[info] performance name={phase} iterations=250 elapsed-ns=100\n"))
+        .map(|phase| format!("PASS  performance name={phase} iterations=250 elapsed-ns=100\n"))
         .join("");
     replace_report(&directory, &mut receipt, "benchmark.stdout", &output);
     replace_report(&directory, &mut receipt, "benchmark.stderr", "");
@@ -275,10 +371,25 @@ fn performance_requires_real_profiler_and_matching_profile() {
     );
     receipt.invocations.push(Invocation {
         program: "fixture".to_owned(),
+        tool_version: "fixture 1".to_owned(),
         arguments: vec!["--error-exitcode=1".to_owned()],
         elapsed_ms: 1,
         report: "memcheck".to_owned(),
     });
+    assert!(
+        validate_reports(&receipt, &directory, &settings).is_err(),
+        "old-only benchmark must not qualify the composition pipeline"
+    );
+    let mut expanded = String::new();
+    for phase in &settings.policy.performance.required_phases {
+        use std::fmt::Write as _;
+        writeln!(
+            expanded,
+            "PASS  performance name={phase} iterations=250 elapsed-ns=100"
+        )
+        .unwrap();
+    }
+    replace_report(&directory, &mut receipt, "benchmark.stdout", &expanded);
     assert!(validate_reports(&receipt, &directory, &settings).is_ok());
     receipt.gate = QualityGate::PerformanceSoak;
     assert!(validate_reports(&receipt, &directory, &settings).is_err());
@@ -318,6 +429,7 @@ fn advisories_require_all_locks_and_fresh_zero_findings() {
         replace_report(&directory, &mut receipt, &format!("{report}.stderr"), "");
         receipt.invocations.push(Invocation {
             program: "fixture".to_owned(),
+            tool_version: "fixture 1".to_owned(),
             arguments: vec!["--file".to_owned(), lock],
             elapsed_ms: 1,
             report,
@@ -342,13 +454,18 @@ fn advisories_require_all_locks_and_fresh_zero_findings() {
 fn failed_tool_never_writes_a_receipt() {
     let (directory, receipt, settings) = fixture("failed-command");
     let mut measurement = Measurement {
+        _store: MeasurementStore::begin(&directory.join("ownership")).unwrap(),
         directory: directory.clone(),
         receipt,
         settings,
     };
     assert!(
         measurement
-            .run(constants::POSIX_SHELL_COMMAND, &["-c", "exit 1"], "failure")
+            .run(
+                constants::GIT_COMMAND,
+                &["not-a-neutral-command"],
+                "failure"
+            )
             .is_err()
     );
     assert!(directory.join("failure.stderr").is_file());
@@ -385,5 +502,74 @@ fn unknown_receipt_gate_is_rejected() {
     )
     .unwrap();
     assert!(read_receipt(&directory).is_err());
+    fs::remove_dir_all(directory).unwrap();
+}
+
+/// A second measurement cannot invalidate a live measurement's output.
+#[test]
+fn competing_measurements_do_not_share_writable_reports() {
+    let first = Measurement::begin(QualityGate::Advisories).unwrap();
+    let marker = first.directory.join("owner.txt");
+    fs::write(&marker, "first owner").unwrap();
+    assert!(Measurement::begin(QualityGate::Advisories).is_err());
+    assert_eq!(fs::read_to_string(marker).unwrap(), "first owner");
+    let first_directory = first.directory.clone();
+    drop(first);
+    let next = Measurement::begin(QualityGate::Advisories).unwrap();
+    assert_ne!(first_directory, next.directory);
+}
+
+/// Completed runs resolve through a safe pointer, while failed reruns cannot reuse retained success.
+#[test]
+fn measurement_pointer_requires_complete_latest_run() {
+    let (directory, receipt, settings) = fixture("pointer");
+    let root = directory.join("store");
+    let run = root.join("run-1-0");
+    fs::create_dir_all(&run).unwrap();
+    for name in receipt.reports.keys() {
+        fs::copy(directory.join(name), run.join(name)).unwrap();
+    }
+    write_receipt(&run, &receipt);
+    fs::write(root.join("current"), "run-1-0").unwrap();
+    assert!(
+        verify(
+            &root,
+            QualityGate::Coverage,
+            &receipt.inputs_sha256,
+            &settings
+        )
+        .is_ok()
+    );
+    for unsafe_pointer in ["../outside", "/outside", "run-1-0/nested", ""] {
+        fs::write(root.join("current"), unsafe_pointer).unwrap();
+        assert!(
+            verify(
+                &root,
+                QualityGate::Coverage,
+                &receipt.inputs_sha256,
+                &settings
+            )
+            .is_err()
+        );
+    }
+    let generated = directory.join("generated");
+    let retained = directory.join("retained");
+    fs::create_dir_all(generated.join("coverage")).unwrap();
+    fs::create_dir_all(retained.join("coverage")).unwrap();
+    for name in receipt.reports.keys() {
+        fs::copy(directory.join(name), retained.join("coverage").join(name)).unwrap();
+    }
+    write_receipt(&retained.join("coverage"), &receipt);
+    fs::write(generated.join("coverage/current"), "run-failed").unwrap();
+    assert!(
+        verify_gate_at(
+            QualityGate::Coverage,
+            &receipt.inputs_sha256,
+            &generated,
+            &retained,
+            &settings
+        )
+        .is_err()
+    );
     fs::remove_dir_all(directory).unwrap();
 }

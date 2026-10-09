@@ -1,0 +1,13 @@
+neu "1.0"
+module benchmark
+use BenchDomain as domain
+import helper as helper
+
+public record Node { num id }
+public variant State { domain::Config ready, string failed }
+public Node first = { id: 42 }
+public Ref<Node> selected = ref(first)
+public domain::Config config = {}
+public State status = { tag: "ready", payload: config }
+public List<State> states = [status, { tag: "failed", payload: "none" }]
+public num imported = helper::value

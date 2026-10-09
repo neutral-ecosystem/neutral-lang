@@ -8,6 +8,18 @@ use configuration::TestRunner;
 use nextest_metadata::{RustTestSuiteStatusSummary, TestListSummary};
 use std::{collections::BTreeMap, env};
 
+/// Existing explicit categories excluded by the focused crate-local unit selection.
+const NON_UNIT_CATEGORIES: &[&str] = &[
+    "integration_",
+    "system_",
+    "conformance_",
+    "property_",
+    "security_",
+    "smoke_",
+    "determinism_",
+    "fuzz_",
+];
+
 /// Selects an explicit backend override without silently falling back when nextest is absent.
 pub(crate) fn runner() -> Result<TestRunner, String> {
     match env::var(constants::TEST_RUNNER_ENV) {
@@ -70,6 +82,9 @@ fn arguments(
         }
     };
     arguments.extend([flags::WORKSPACE, flags::LOCKED, "--lib", "--bins"].map(str::to_owned));
+    if unit {
+        arguments.extend(["--exclude", constants::NEUTRAL_TEST_SUITE].map(str::to_owned));
+    }
     if !unit {
         arguments.push("--tests".to_owned());
     }
@@ -82,8 +97,22 @@ fn arguments(
         if let Some(filter) = filter {
             arguments.extend(["-E".to_owned(), format!("test(/(^|::){filter}_/)")]);
         }
+        if unit {
+            let excluded = NON_UNIT_CATEGORIES
+                .iter()
+                .map(|category| format!("test(~{category})"))
+                .collect::<Vec<_>>()
+                .join(" | ");
+            arguments.extend(["-E".to_owned(), format!("not ({excluded})")]);
+        }
     } else if let Some(filter) = filter {
         arguments.extend(["--".to_owned(), format!("{filter}_")]);
+    }
+    if runner == TestRunner::Cargo && unit {
+        arguments.push("--".to_owned());
+        for category in NON_UNIT_CATEGORIES {
+            arguments.extend(["--skip".to_owned(), (*category).to_owned()]);
+        }
     }
     if action == "run" {
         reporting_arguments(&mut arguments, runner, verbose()?);
@@ -114,24 +143,21 @@ pub(crate) fn coverage_arguments(backend: TestRunner) -> Result<Vec<String>, Str
 /// Selects cargo-mutants' native integration with the configured test backend.
 pub(crate) fn mutation_arguments(
     backend: TestRunner,
-    target: &str,
+    targets: &[String],
     output: &str,
 ) -> Result<Vec<String>, String> {
     let tool = match backend {
         TestRunner::Nextest => "nextest",
         TestRunner::Cargo => "cargo",
     };
-    let mut command = [
-        "mutants",
-        "--test-tool",
-        tool,
-        "--file",
-        target,
-        "--output",
-        output,
-    ]
-    .map(str::to_owned)
-    .to_vec();
+    let mut command = ["mutants", "--test-tool", tool, "--output", output]
+        .map(str::to_owned)
+        .to_vec();
+    for target in targets {
+        command.extend(["--file".to_owned(), target.clone()]);
+    }
+    command.push("--no-config".to_owned());
+    command.extend(["--test-workspace".to_owned(), "true".to_owned()]);
     if backend == TestRunner::Nextest {
         let testing = configuration::automation()?.testing;
         // cargo-mutants tests copied workspaces: resolve config relative to that copy.

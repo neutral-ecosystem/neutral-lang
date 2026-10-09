@@ -4,6 +4,8 @@
 debug
 target
 test-results/
+# Local recovery data and OS lock for interrupted release metadata updates.
+/.neutral-version-update/
 # Raw release measurements can contain host paths and must never enter Git.
 /quality/evidence/*/gates/
 

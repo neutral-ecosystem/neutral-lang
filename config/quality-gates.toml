@@ -19,11 +19,18 @@ status = "pass"
 
 [mutation]
 tool = "cargo-mutants"
-critical_target = "crates/neutral-ir/src/language.rs"
+# Reviewed critical scope: syntax, shared semantic restrictions, wire, public
+# reference checks, and identity framing. This is not a whole-workspace campaign.
+critical_targets = [
+    "crates/neutral-ir/src/language.rs",
+    "crates/neutral-compiler/src/frontend/graph_syntax.rs",
+    "crates/neutral-vocabulary/src/composition/values.rs",
+    "crates/neutral-encoding/src/composition.rs",
+    "crates/neutral-reader/src/composition/references.rs",
+    "crates/neutral-ir/src/project_identity/framing.rs",
+]
 minimum_caught_percent = 100
-observed_mutants = 38
-observed_caught = 38
-status = "pass"
+status = "expanded-scope-requires-new-measurement"
 
 [fuzz]
 tool = "cargo-fuzz"
@@ -43,7 +50,14 @@ status = "full-campaign-pass"
 
 [performance]
 harness = "neutral-bench/performance"
+required_phases = [
+    "compile-end-to-end", "reader-validation", "artifact-encoding",
+    "artifact-decoding", "probe-traversal", "declaration-growth", "concurrent-isolation",
+    "composition-capture", "composition-graph", "composition-compile", "composition-reader",
+    "composition-encode", "composition-decode", "composition-view", "composition-identities",
+    "composition-cache-warm", "composition-cache-changed", "composition-growth", "composition-concurrent",
+]
 pr_profile = "informational"
 release_profile = "five-direct-samples-and-massif-2026-09-08"
 soak_profile = "extended-soak-50000-massif-2026-09-08"
-status = "pass-local-profiled-runner"
+status = "expanded-scope-requires-new-measurement"

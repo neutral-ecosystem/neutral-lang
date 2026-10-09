@@ -138,15 +138,20 @@ pub(crate) fn coverage() -> Result<(), String> {
     measurement.finish()
 }
 
-/// Runs mutation analysis for the configured critical production target.
+/// Runs mutation analysis for every reviewed critical production target.
 pub(crate) fn mutate() -> Result<(), String> {
     super::test_execution::verify_runner()?;
     let mut measurement = quality_evidence::Measurement::begin(QualityGate::Mutation)?;
-    let target = measurement.settings.policy.mutation.critical_target.clone();
+    let targets = measurement
+        .settings
+        .policy
+        .mutation
+        .critical_targets
+        .clone();
     let output = measurement.directory.to_string_lossy().into_owned();
     let tests = super::test_execution::mutation_arguments(
         super::test_execution::runner()?,
-        &target,
+        &targets,
         &output,
     )?;
     measurement.cargo(

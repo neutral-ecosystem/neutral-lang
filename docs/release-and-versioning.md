@@ -98,6 +98,15 @@ creates local release commits, or pushes source refs.
 
 ## If something fails
 
+- **Version metadata update is interrupted:** rerun the same `release prepare
+  [version]` (or `version prepare <version>`). An ignored
+  `.neutral-version-update/` journal restores incomplete replacements before the
+  clean-checkout check; a completed update is reused and release preparation
+  commits only its recorded metadata. This is recoverable sequential replacement,
+  not an atomic multi-file filesystem transaction. If you edited a recorded file
+  after interruption, recovery refuses to overwrite it: preserve/review that edit
+  and restore the expected old/new bytes before retrying. Do not delete the journal
+  to bypass the check.
 - **Dirty worktree or wrong branch:** commit/review implementation changes and
   check out `main`. Release commands never stage arbitrary implementation files.
 - **A test, measurement, or tool fails:** fix the cause, commit the fix if needed,

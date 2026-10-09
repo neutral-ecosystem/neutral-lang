@@ -63,8 +63,8 @@ fn quality_policy_rejects_invalid_operational_settings() {
         ),
         (
             "mutation",
-            "critical_target",
-            toml::Value::String("/outside".to_owned()),
+            "critical_targets",
+            toml::Value::Array(vec![toml::Value::String("/outside".to_owned())]),
         ),
         ("fuzz", "targets", toml::Value::Array(Vec::new())),
         (
@@ -76,6 +76,16 @@ fn quality_policy_rejects_invalid_operational_settings() {
             "performance",
             "harness",
             toml::Value::String("other/performance".to_owned()),
+        ),
+        (
+            "performance",
+            "required_phases",
+            toml::Value::Array(Vec::new()),
+        ),
+        (
+            "performance",
+            "required_phases",
+            toml::Value::Array(vec![toml::Value::String("bad phase".to_owned())]),
         ),
     ] {
         let mut changed: toml::Value = toml::from_str(policy_text()).unwrap();
@@ -91,4 +101,31 @@ fn quality_policy_rejects_invalid_operational_settings() {
         .unwrap()
         .remove("minimum_function_percent");
     assert!(QualityPolicy::parse(&toml::to_string(&missing).unwrap()).is_err());
+}
+
+/// Critical scope is a nonempty, unique set rather than one accidental helper file.
+#[test]
+fn mutation_scope_is_a_reviewed_list() {
+    let mut policy: toml::Value = toml::from_str(policy_text()).unwrap();
+    policy["mutation"]
+        .as_table_mut()
+        .unwrap()
+        .remove("critical_target");
+    let targets = vec![
+        toml::Value::String("src/parser.rs".into()),
+        toml::Value::String("src/decoder.rs".into()),
+    ];
+    policy["mutation"].as_table_mut().unwrap().insert(
+        "critical_targets".into(),
+        toml::Value::Array(targets.clone()),
+    );
+    assert!(QualityPolicy::parse(&toml::to_string(&policy).unwrap()).is_ok());
+    for invalid in [
+        vec![],
+        vec![targets[0].clone(), targets[0].clone()],
+        vec![toml::Value::String("../outside.rs".into())],
+    ] {
+        policy["mutation"]["critical_targets"] = toml::Value::Array(invalid);
+        assert!(QualityPolicy::parse(&toml::to_string(&policy).unwrap()).is_err());
+    }
 }

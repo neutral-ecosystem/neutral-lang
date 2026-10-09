@@ -13,8 +13,29 @@ use crate::{
 /// Tests and packages clean main, committing only optional generated version metadata.
 /// No approval, tag, remote write, or GitHub publication occurs in this step.
 pub(crate) fn prepare(requested: Option<&str>) -> Result<(), String> {
-    require_main_head_checkout()?;
     let root = workspace_root()?;
+    if let Some(paths) = super::version_update::recover(&root)? {
+        if git(&root, &["branch", "--show-current"])? != "main" {
+            return Err("finish recovered release metadata on main".to_owned());
+        }
+        let version = workspace_package_version(&read_workspace_text(
+            &root,
+            constants::WORKSPACE_MANIFEST_FILE,
+        )?)?;
+        if requested.is_some_and(|requested| requested != version) {
+            return Err(format!(
+                "finish prepared version {version} before selecting another release"
+            ));
+        }
+        require_only_metadata_changes(&root, &paths)?;
+        commit_paths(
+            &root,
+            &paths.iter().map(String::as_str).collect::<Vec<_>>(),
+            &format!("[REL] v{version}"),
+        )?;
+        super::version_update::acknowledge(&root)?;
+    }
+    require_main_head_checkout()?;
     let current = workspace_package_version(&read_workspace_text(
         &root,
         constants::WORKSPACE_MANIFEST_FILE,
@@ -34,6 +55,7 @@ pub(crate) fn prepare(requested: Option<&str>) -> Result<(), String> {
             ],
             &format!("[REL] v{version}"),
         )?;
+        super::version_update::acknowledge(&root)?;
     } else if !root.join(&evidence).join("README.md").is_file() {
         fs::create_dir_all(root.join(&evidence)).map_err(|error| error.to_string())?;
         fs::write(
@@ -57,6 +79,22 @@ pub(crate) fn prepare(requested: Option<&str>) -> Result<(), String> {
     output::pass(format!(
         "v{version} prepared locally; review artifacts, then run `cargo xtask release publish`"
     ));
+    Ok(())
+}
+
+/// Checks exact paths, expanding new directories so a recovered scaffold remains committable.
+fn require_only_metadata_changes(root: &Path, paths: &[String]) -> Result<(), String> {
+    let status = git(root, &["status", "--porcelain", "--untracked-files=all"])?;
+    if status.lines().any(|line| {
+        !paths
+            .iter()
+            .any(|path| line.get(3..) == Some(path.as_str()))
+    }) {
+        return Err(
+            "unrelated worktree changes prevent recovered release commit; commit/review them first"
+                .to_owned(),
+        );
+    }
     Ok(())
 }
 
@@ -244,7 +282,7 @@ fn git(root: &Path, arguments: &[&str]) -> Result<String, String> {
         ));
     }
     String::from_utf8(result.stdout)
-        .map(|text| text.trim().to_owned())
+        .map(|text| text.trim_end().to_owned())
         .map_err(|error| error.to_string())
 }
 

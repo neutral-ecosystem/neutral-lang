@@ -14,8 +14,18 @@ fn analysis_commands_share_the_selected_test_backend() {
         assert!(coverage.contains(&"--locked".to_owned()));
         assert!(coverage.contains(&"--no-report".to_owned()));
         assert!(!coverage.contains(&"--lib".to_owned()));
-        let mutation =
-            mutation_arguments(backend, "src/example.rs", "reports").expect("mutation command");
+        let mutation = mutation_arguments(
+            backend,
+            &["src/parser.rs".to_owned(), "src/decoder.rs".to_owned()],
+            "reports",
+        )
+        .expect("mutation command");
+        assert!(mutation.contains(&"--no-config".to_owned()));
+        assert!(
+            mutation
+                .windows(2)
+                .any(|pair| pair == ["--test-workspace", "true"])
+        );
         if backend == TestRunner::Nextest {
             assert_eq!(coverage[1], "nextest");
             assert!(coverage.contains(&"--ignore-default-filter".to_owned()));
@@ -29,8 +39,15 @@ fn analysis_commands_share_the_selected_test_backend() {
             assert_eq!(mutation[2], "cargo");
         }
         assert_eq!(
-            &mutation[3..7],
-            ["--file", "src/example.rs", "--output", "reports"]
+            &mutation[3..9],
+            [
+                "--output",
+                "reports",
+                "--file",
+                "src/parser.rs",
+                "--file",
+                "src/decoder.rs"
+            ]
         );
     }
 }
@@ -87,6 +104,32 @@ fn automation_test_arguments_keep_full_gate_complete() {
     let unit = arguments(TestRunner::Cargo, "run", true, false, None).expect("cargo args");
     assert!(!unit.contains(&"--tests".to_owned()));
     assert_eq!(unit[0], "test");
+}
+
+/// Unit commands exclude cross-package and explicitly categorized suites on both backends.
+#[test]
+fn unit_selection_is_not_all_library_tests() {
+    for backend in [TestRunner::Nextest, TestRunner::Cargo] {
+        let args = arguments(backend, "run", true, false, None).unwrap();
+        assert!(
+            args.windows(2)
+                .any(|pair| pair == ["--exclude", constants::NEUTRAL_TEST_SUITE])
+        );
+        for category in [
+            "integration_",
+            "system_",
+            "conformance_",
+            "property_",
+            "security_",
+        ] {
+            assert!(
+                args.iter().any(|argument| argument.contains(category)),
+                "unit command did not exclude {category}"
+            );
+        }
+        let all = arguments(backend, "run", false, false, None).unwrap();
+        assert!(!all.contains(&"--exclude".to_owned()));
+    }
 }
 
 /// Compact reporting hides only successful per-test rows, never failures or test selection.

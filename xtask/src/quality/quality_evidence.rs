@@ -3,6 +3,7 @@
 //! Automatically retained, source-bound quality measurements.
 
 use super::gate::QualityGate;
+use super::measurement_store::{self, MeasurementStore};
 use crate::config::quality_settings::QualitySettings;
 use crate::constants::{flags, reports};
 use crate::*;
@@ -15,6 +16,8 @@ use std::process::Stdio;
 struct Invocation {
     /// Executable used by the measurement.
     program: String,
+    /// Actual measured executable/subcommand version, not a configured expectation.
+    tool_version: String,
     /// Exact argument vector.
     arguments: Vec<String>,
     /// Monotonic elapsed wall time.
@@ -49,6 +52,8 @@ struct Receipt {
 
 /// Active measurement; failures never produce a passing receipt.
 pub(crate) struct Measurement {
+    /// Keeps the gate exclusively owned until validation and receipt publication finish.
+    _store: MeasurementStore,
     /// Destination beneath ignored generated results.
     pub(crate) directory: PathBuf,
     /// Provenance assembled from tool invocations and reports.
@@ -76,22 +81,18 @@ impl Measurement {
             return Err("coverage and fuzz measurements require the isolated nightly toolchain; use RUSTUP_TOOLCHAIN=nightly".to_owned());
         }
         let inputs_sha256 = input_digest(&root)?;
-        let directory = generated_root(&settings)?
+        let store_root = generated_root(&settings)?
             .join(&inputs_sha256)
             .join(gate.as_str());
-        fs::create_dir_all(&directory)
-            .map_err(|error| format!("could not create gate reports: {error}"))?;
-        let old = directory.join(reports::RECEIPT);
-        if old.exists() {
-            fs::remove_file(old)
-                .map_err(|error| format!("could not invalidate receipt: {error}"))?;
-        }
+        let store = MeasurementStore::begin(&store_root)?;
+        let directory = store.directory.clone();
         output::start(format!("{gate}: collecting source-bound measurements"));
         output::file("reports", &directory);
         Ok(Self {
+            _store: store,
             directory,
             receipt: Receipt {
-                schema_version: 1,
+                schema_version: 2,
                 gate,
                 inputs_sha256,
                 source_commit: command_output(constants::GIT_COMMAND, &["rev-parse", "HEAD"])?,
@@ -126,6 +127,18 @@ impl Measurement {
         if !plain_filename(report) {
             return Err("tool report must be a plain filename".to_owned());
         }
+        let version_arguments: Vec<&str> = if program == cargo_command()?
+            && arguments.first().is_some_and(|argument| {
+                matches!(*argument, "llvm-cov" | "mutants" | "fuzz" | "audit")
+            }) {
+            vec![arguments[0], flags::VERSION]
+        } else {
+            vec![flags::VERSION]
+        };
+        let tool_version = command_output(program, &version_arguments)?;
+        if tool_version.trim().is_empty() {
+            return Err("measurement tool reported an empty version".to_owned());
+        }
         let stdout = fs::File::create(self.directory.join(format!("{report}.stdout")))
             .map_err(|error| format!("could not create tool output: {error}"))?;
         let stderr = fs::File::create(self.directory.join(format!("{report}.stderr")))
@@ -158,6 +171,7 @@ impl Measurement {
         output::pass(format!("{label} ({})", output::duration(start.elapsed())));
         self.receipt.invocations.push(Invocation {
             program: program.to_owned(),
+            tool_version,
             arguments: arguments.iter().map(|value| (*value).to_owned()).collect(),
             elapsed_ms: start.elapsed().as_millis(),
             report: report.to_owned(),
@@ -215,8 +229,11 @@ impl Measurement {
         validate_reports(&self.receipt, &self.directory, &self.settings)?;
         let json = serde_json::to_string_pretty(&self.receipt)
             .map_err(|error| format!("could not serialize receipt: {error}"))?;
-        fs::write(self.directory.join(reports::RECEIPT), format!("{json}\n"))
+        let pending = self.directory.join("receipt.pending");
+        fs::write(&pending, format!("{json}\n"))
             .map_err(|error| format!("could not write receipt: {error}"))?;
+        fs::rename(pending, self.directory.join(reports::RECEIPT))
+            .map_err(|error| format!("could not publish receipt: {error}"))?;
         output::pass(format!(
             "{} ({} tool runs)",
             self.receipt.gate,
@@ -256,20 +273,31 @@ pub(crate) fn input_digest(root: &Path) -> Result<String, String> {
     let paths = String::from_utf8(output.stdout)
         .map_err(|error| format!("non-UTF-8 gate input: {error}"))?;
     let mut hash = Sha256::new();
+    hash.update(b"neutral-quality-inputs/2\0");
     let paths = paths
         .split('\0')
         .filter(|value| !value.is_empty())
         .collect::<BTreeSet<_>>();
     for relative in paths {
         let path = Path::new(relative);
-        if path.starts_with("quality")
-            || path.starts_with("docs")
-            || !matches!(
-                path.extension().and_then(std::ffi::OsStr::to_str),
-                Some("rs" | "toml" | "lock" | "neu" | "json")
-            )
+        // Only known guide locations are excluded: Markdown can contain executable fixtures.
+        let guide = path.extension().and_then(std::ffi::OsStr::to_str) == Some("md")
+            && (path.parent() == Some(Path::new("docs"))
+                || path.file_name().and_then(std::ffi::OsStr::to_str) == Some("README.md")
+                || path == Path::new(constants::QUALITY_STATUS_FILE));
+        if guide
+            || (path.starts_with(constants::QUALITY_EVIDENCE_DIRECTORY)
+                && path.file_name().and_then(std::ffi::OsStr::to_str) == Some("record.toml"))
         {
             continue;
+        }
+        let metadata = match fs::symlink_metadata(root.join(path)) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(format!("could not inspect gate input {relative}: {error}")),
+        };
+        if !metadata.is_file() {
+            return Err(format!("gate input must be a regular file: {relative}"));
         }
         let bytes = fs::read(root.join(path))
             .map_err(|error| format!("could not read gate input {relative}: {error}"))?;
@@ -338,9 +366,15 @@ fn verify_gate_at(
     settings: &QualitySettings,
 ) -> Result<(), String> {
     let mut errors = Vec::new();
-    let accepted = [generated.join(gate.as_str()), retained.join(gate.as_str())]
-        .iter()
-        .any(
+    let generated_gate = generated.join(gate.as_str());
+    // A later failed explicit rerun supersedes older retained success.
+    let candidates = if fs::symlink_metadata(generated_gate.join("current")).is_ok() {
+        vec![generated_gate]
+    } else {
+        vec![generated_gate, retained.join(gate.as_str())]
+    };
+    let accepted =
+        candidates.iter().any(
             |directory| match verify(directory, gate, digest, settings) {
                 Ok(()) => true,
                 Err(error) => {
@@ -367,7 +401,7 @@ pub(crate) fn retain() -> Result<(), String> {
     let generated = generated_root(&settings)?.join(&digest);
     let retained = retained_root(&root)?.join(&digest);
     for gate in QualityGate::RELEASE_REQUIRED {
-        let source = generated.join(gate.as_str());
+        let source = measurement_store::resolve(&generated.join(gate.as_str()))?;
         let destination = retained.join(gate.as_str());
         if verify(&destination, gate, &digest, &settings).is_ok() {
             continue;
@@ -405,8 +439,10 @@ fn verify(
     inputs: &str,
     settings: &QualitySettings,
 ) -> Result<(), String> {
+    let resolved = measurement_store::resolve(directory)?;
+    let directory = resolved.as_path();
     let receipt = read_receipt(directory)?;
-    if receipt.schema_version != 1
+    if receipt.schema_version != 2
         || receipt.gate != gate
         || receipt.inputs_sha256 != inputs
         || receipt.policy_sha256 != settings.policy_sha256
@@ -449,6 +485,9 @@ fn validate_reports(
         }
     }
     for invocation in &receipt.invocations {
+        if invocation.tool_version.trim().is_empty() {
+            return Err("measurement has no tool version".to_owned());
+        }
         if !plain_filename(&invocation.report) {
             return Err("unsafe invocation report".to_owned());
         }
@@ -466,7 +505,7 @@ fn validate_reports(
         QualityGate::Mutation => validate_mutation(receipt, directory, settings),
         QualityGate::Fuzz => validate_fuzz(receipt, directory, settings),
         QualityGate::PerformanceRelease | QualityGate::PerformanceSoak => {
-            validate_performance(receipt, directory)
+            validate_performance(receipt, directory, settings)
         }
         QualityGate::Advisories => validate_advisories(receipt, directory, settings),
     }
@@ -509,13 +548,36 @@ fn validate_mutation(
     settings: &QualitySettings,
 ) -> Result<(), String> {
     require_report(receipt, "outcomes.json")?;
-    let target = &settings.policy.mutation.critical_target;
+    let targets = &settings.policy.mutation.critical_targets;
     if !receipt.invocations.iter().any(|run| {
-        run.arguments
+        let selected = run
+            .arguments
             .windows(2)
-            .any(|args| args == ["--file", target.as_str()])
+            .filter(|args| args[0] == "--file")
+            .map(|args| args[1].as_str())
+            .collect::<BTreeSet<_>>();
+        selected == targets.iter().map(String::as_str).collect::<BTreeSet<_>>()
+            && run.arguments.contains(&"--no-config".to_owned())
+            && run
+                .arguments
+                .windows(2)
+                .any(|pair| pair == ["--test-workspace", "true"])
+            && !run.arguments.iter().any(|argument| {
+                matches!(
+                    argument.split('=').next().unwrap_or(argument),
+                    "--exclude"
+                        | "--exclude-re"
+                        | "--re"
+                        | "--shard"
+                        | "--limit"
+                        | "--package"
+                        | "-p"
+                        | "--config"
+                        | "--skip-calls"
+                )
+            })
     }) {
-        return Err("mutation does not cover the configured target".to_owned());
+        return Err("mutation does not cover the complete configured critical scope".to_owned());
     }
     let report = json_report(directory, "outcomes.json")?;
     let count = |name: &str| {
@@ -574,7 +636,11 @@ fn validate_fuzz(
 }
 
 /// Validates native performance measurements against the configured acceptance policy.
-fn validate_performance(receipt: &Receipt, directory: &Path) -> Result<(), String> {
+fn validate_performance(
+    receipt: &Receipt,
+    directory: &Path,
+    settings: &QualitySettings,
+) -> Result<(), String> {
     for report in [
         reports::BENCHMARK_STDOUT,
         reports::MASSIF,
@@ -594,15 +660,7 @@ fn validate_performance(receipt: &Receipt, directory: &Path) -> Result<(), Strin
     }
     let output = fs::read_to_string(directory.join(reports::BENCHMARK_STDOUT))
         .map_err(|error| format!("missing benchmark: {error}"))?;
-    for phase in [
-        "compile-end-to-end",
-        "reader-validation",
-        "artifact-encoding",
-        "artifact-decoding",
-        "probe-traversal",
-        "declaration-growth",
-        "concurrent-isolation",
-    ] {
+    for phase in &settings.policy.performance.required_phases {
         if !output.contains(&format!("name={phase} ")) {
             return Err(format!("benchmark has no {phase} measurement"));
         }
