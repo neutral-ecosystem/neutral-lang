@@ -11,6 +11,10 @@ use super::{IdentityError, IdentityLimits, MAX_TRANSCRIPT_BYTES, MAX_TRANSCRIPT_
 use neutral_core::CancellationToken;
 use neutral_core::allocation::RetainCapacity;
 
+#[cfg(test)]
+#[path = "../../tests/unit/project_identity_framing.rs"]
+mod tests;
+
 /// One bounded, cancellation-aware transcript under construction.
 pub(super) struct Writer<'a> {
     /// Complete transcript, unpublished until every frame succeeds.

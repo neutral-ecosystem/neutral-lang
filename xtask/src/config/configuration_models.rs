@@ -115,6 +115,8 @@ pub(crate) struct Testing {
     pub(crate) profile: String,
     /// Full-gate nextest profile.
     pub(crate) ci_profile: String,
+    /// Full-workspace mutation profile, prioritizing fast catches over allocation sweeps.
+    pub(crate) mutation_profile: String,
 }
 
 /// One top-level responsibility boundary.

@@ -115,14 +115,19 @@ cover the whole configured list; the caught threshold is unchanged. Expanded
 scope requires new measurements, not reuse of historical single-file results.
 The campaign uses two parallel workers without reducing the mutation scope.
 Baseline and mutant runs both test the whole workspace, so automatic timeouts
-are calibrated against the complete suite. Mutation runs override the CI profile
-with Nextest fail-fast: one test failure already establishes that a mutant is caught.
+are calibrated against the complete suite. The dedicated Nextest `mutation` profile
+runs fast tests before allocation-failure sweeps and stops at the first failure:
+one failing test already establishes that a mutant is caught. No tests are excluded;
+the baseline and surviving mutations still execute the complete suite. Select this
+profile through `testing.mutation_profile` in `config/automation.toml`; ordering
+belongs in `config/nextest.toml`, independently of normal CI.
 Workspace selection is forwarded with `--cargo-arg=--workspace`; combining this
 with `--test-workspace true` would duplicate the flag in Nextest mutant runs.
 Copies retain Git metadata so repository-policy tests do not resolve a parent
 checkout; ignored generated build/report trees remain excluded.
-Progress shows completed/discovered mutants from native reports, excluding the
-baseline. Before reports are available, it shows elapsed time; the final evidence
+Progress shows completed/discovered mutants and caught/missed/unviable/timeout
+counts from native reports, excluding the baseline. Failures link directly to
+the survivor list and native outcomes. Before reports are available, it shows elapsed time; the final evidence
 validation, not the counter, determines whether the campaign passes.
 This increases memory and disk usage. On systems with a small RAM-backed `/tmp`,
 use disk-backed temporary storage:
@@ -136,7 +141,7 @@ For an optional broader investigation, use the native tool (not a substitute for
 the configured gate):
 
 ```sh
-cargo mutants --workspace --no-config --cargo-arg=--workspace --gitignore true --copy-vcs true --test-tool nextest --output test-results/analysis/mutation-workspace -- --config-file config/nextest.toml --profile ci --fail-fast --ignore-default-filter --no-tests fail
+cargo mutants --workspace --no-config --cargo-arg=--workspace --gitignore true --copy-vcs true --test-tool nextest --output test-results/analysis/mutation-workspace -- --config-file config/nextest.toml --profile mutation --fail-fast --ignore-default-filter --no-tests fail
 ```
 
 Fuzz campaigns and extended soak are separate, opt-in analysis, not release-quality requirements.

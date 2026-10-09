@@ -38,6 +38,10 @@ use neutral_ir::{
 use neutral_reader::composition::{CompositionReadError, ValidatedCompositionProject};
 use neutral_vocabulary::composition::CompositionLimits;
 
+#[cfg(test)]
+#[path = "../tests/composition/mod.rs"]
+mod tests;
+
 /// Encodes independently validated complete data using the frozen successor tuple grammar.
 ///
 /// # Errors
@@ -70,9 +74,6 @@ pub fn encode_composition_project(
         .map_err(|_| E::EncodedSizeLimit)?;
     output.extend_from_slice(&profile::MAGIC);
     output.extend(payload);
-    if output.len() as u64 > ir.limits.artifact_bytes {
-        return Err(E::EncodedSizeLimit);
-    }
     if cancel.is_cancelled() {
         return Err(E::Cancelled);
     }
@@ -118,7 +119,6 @@ pub fn decode_composition_project(
         failure(match e {
             CompositionReadError::Cancelled => C::Cancelled,
             CompositionReadError::Limit => C::EncodedSizeLimit,
-            CompositionReadError::Schema => C::UnsupportedVersion,
             CompositionReadError::Companion => C::InvalidProvenance,
             _ => C::InvalidLogicalIr,
         })
@@ -127,15 +127,15 @@ pub fn decode_composition_project(
 
 /// Shares the value grammar while keeping non-null default references unconstructible.
 trait Reference: Sized {
-    /// Writes a stable target symbol, never its value.
-    fn write(&self, w: &mut CborWriter) -> Result<(), E>;
+    /// Borrows a stable target symbol, never its value.
+    fn symbol(&self) -> &ModuleSymbolIdentity;
     /// Reads a target only where this value category permits references.
     fn read(v: &LocatedValue) -> Result<Self, D>;
 }
 impl Reference for ModuleSymbolIdentity {
     /// Retains exact logical owner identity.
-    fn write(&self, w: &mut CborWriter) -> Result<(), E> {
-        write_symbol(w, self)
+    fn symbol(&self) -> &ModuleSymbolIdentity {
+        self
     }
     /// Defers visibility/invariant typing to the independent reader.
     fn read(v: &LocatedValue) -> Result<Self, D> {
@@ -144,7 +144,7 @@ impl Reference for ModuleSymbolIdentity {
 }
 impl Reference for ClosedReference {
     /// A closed default cannot reach this branch.
-    fn write(&self, _: &mut CborWriter) -> Result<(), E> {
+    fn symbol(&self) -> &ModuleSymbolIdentity {
         match *self {}
     }
     /// Rejects non-null references before constructing a closed value.
@@ -187,7 +187,7 @@ fn write_value<R: Reference>(w: &mut CborWriter, v: &V<R>, depth: usize) -> Resu
         V::Reference(r) => {
             w.array(2)?;
             w.text("Ref")?;
-            r.write(w)
+            write_symbol(w, r.symbol())
         }
         V::List(values) => {
             w.array(2)?;

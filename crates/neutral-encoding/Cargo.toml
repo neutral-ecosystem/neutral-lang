@@ -19,6 +19,7 @@ neutral-vocabulary = { path = "../neutral-vocabulary" }
 
 [dev-dependencies]
 neutral-compiler = { path = "../neutral-compiler" }
+neutral-core = { path = "../neutral-core", features = ["allocation-testing"] }
 
 [lints]
 workspace = true

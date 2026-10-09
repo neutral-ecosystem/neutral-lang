@@ -106,6 +106,36 @@ fn version_prepare_preflights_output_before_metadata_writes() {
     );
     // The tested executable is new; the disposable HEAD snapshot may predate this ignore rule.
     std::fs::write(root.join(".git/info/exclude"), ".neutral-version-update/\n").unwrap();
+    // The executable and its required configuration schema must come from the same inputs.
+    let automation = "config/automation.toml";
+    if std::fs::read(source.join(automation)).unwrap()
+        != std::fs::read(root.join(automation)).unwrap()
+    {
+        std::fs::copy(source.join(automation), root.join(automation)).unwrap();
+        assert!(
+            Command::new("git")
+                .arg("-C")
+                .arg(&root)
+                .args([
+                    "-c",
+                    "user.name=Neutral test",
+                    "-c",
+                    "user.email=test@example.invalid",
+                    "-c",
+                    "commit.gpgsign=false",
+                    "commit",
+                    "--quiet",
+                    "--only",
+                    "-m",
+                    "Use current automation schema",
+                    "--",
+                    automation,
+                ])
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
     let manifest = std::fs::read(root.join("Cargo.toml")).unwrap();
     let lock = std::fs::read(root.join("Cargo.lock")).unwrap();
     let parsed: toml::Value = toml::from_str(std::str::from_utf8(&manifest).unwrap()).unwrap();

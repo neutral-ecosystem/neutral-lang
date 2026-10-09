@@ -40,7 +40,7 @@ fn analysis_commands_share_the_selected_test_backend() {
             assert_eq!(mutation[2], "nextest");
             let settings = configuration::automation().expect("settings").testing;
             assert!(mutation.contains(&settings.config));
-            assert!(mutation.contains(&settings.ci_profile));
+            assert!(mutation.contains(&settings.mutation_profile));
             assert!(mutation.contains(&"--ignore-default-filter".to_owned()));
             assert!(mutation.contains(&"--fail-fast".to_owned()));
         } else {

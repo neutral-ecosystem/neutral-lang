@@ -384,23 +384,14 @@ pub(super) fn materialize(
     budget: &mut Budget<'_>,
     depth: u64,
 ) -> Result<V, E> {
-    materialize_with(value, ty, catalogue, budget, depth, &ClosedReferences)
-}
-
-/// Checks identity-only reference targets without evaluating or embedding their values.
-pub(super) trait ReferencePolicy<R> {
-    /// Verifies the exact invariant target type, visibility and lookup budget.
-    fn check(&self, target: &R, expected: &T, budget: &mut Budget<'_>) -> Result<(), E>;
-}
-
-/// Closed defaults cannot construct a reference, including through nested defaults.
-struct ClosedReferences;
-
-impl ReferencePolicy<std::convert::Infallible> for ClosedReferences {
-    /// Eliminates an impossible closed reference without adding a runtime escape hatch.
-    fn check(&self, target: &std::convert::Infallible, _: &T, _: &mut Budget<'_>) -> Result<(), E> {
-        match *target {}
-    }
+    materialize_with(
+        value,
+        ty,
+        catalogue,
+        budget,
+        depth,
+        &|never, _, _| match *never {},
+    )
 }
 
 /// Materializes both closed and binding values with one contextual/default/restriction engine.
@@ -410,7 +401,7 @@ pub(super) fn materialize_with<R: TryClone>(
     catalogue: &Catalogue<'_>,
     budget: &mut Budget<'_>,
     depth: u64,
-    references: &impl ReferencePolicy<R>,
+    references: &impl Fn(&R, &T, &mut Budget<'_>) -> Result<(), E>,
 ) -> Result<W<R>, E> {
     budget.depth(depth, budget.limits.value_depth)?;
     budget.value_node()?;
@@ -448,7 +439,7 @@ pub(super) fn materialize_with<R: TryClone>(
     }
     match (value, ty) {
         (W::Reference(target), T::Ref(inner)) => {
-            references.check(target, inner, budget)?;
+            references(target, inner, budget)?;
             Ok(W::Reference(target.try_clone().map_err(|_| E::Allocation)?))
         }
         (W::List(values), T::List(inner)) => {
@@ -521,7 +512,7 @@ fn materialize_record<R: TryClone>(
     catalogue: &Catalogue<'_>,
     budget: &mut Budget<'_>,
     depth: u64,
-    references: &impl ReferencePolicy<R>,
+    references: &impl Fn(&R, &T, &mut Budget<'_>) -> Result<(), E>,
 ) -> Result<W<R>, E> {
     budget.depth(depth, budget.limits.value_depth)?;
     super::check_count(values.len(), budget.limits.json.fields)?;
@@ -555,13 +546,14 @@ fn materialize_record<R: TryClone>(
         let provided = supplied
             .get(field.name.as_str())
             .and_then(|value| value.as_ref());
+        let child_depth = depth + 1;
         let value = match provided {
             Some(value) => Some(materialize_with(
                 value,
                 &field.ty,
                 catalogue,
                 budget,
-                depth + 1,
+                child_depth,
                 references,
             )?),
             None => match field.presence {
@@ -574,14 +566,14 @@ fn materialize_record<R: TryClone>(
                     let default = lift_closed(
                         field.default.as_ref().ok_or(E::InvalidDefault)?,
                         budget,
-                        depth + 1,
+                        child_depth,
                     )?;
                     Some(materialize_with(
                         &default,
                         &field.ty,
                         catalogue,
                         budget,
-                        depth + 1,
+                        child_depth,
                         references,
                     )?)
                 }
@@ -642,3 +634,7 @@ fn lift_closed<R>(value: &V, budget: &mut Budget<'_>, depth: u64) -> Result<W<R>
         }
     })
 }
+
+#[cfg(test)]
+#[path = "../../tests/composition/values.rs"]
+mod tests;

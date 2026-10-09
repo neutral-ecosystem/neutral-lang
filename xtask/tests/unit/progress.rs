@@ -71,3 +71,27 @@ fn mutation_counts_use_discovered_total_and_finished_outcomes() {
     assert_eq!(mutation_counts("[{}]", r#"{"total_mutants":2}"#), None);
     assert_eq!(mutation_counts("[]", r#"{"total_mutants":0}"#), None);
 }
+
+/// Completed counters must explain survivors rather than making 100% look like success.
+#[test]
+fn mutation_progress_explains_completed_but_failed_campaigns() {
+    let directory =
+        std::env::temp_dir().join(format!("neutral-mutation-progress-{}", std::process::id()));
+    fs::create_dir_all(&directory).unwrap();
+    fs::write(directory.join("mutants.json"), "[{}, {}, {}, {}]").unwrap();
+    fs::write(
+        directory.join("outcomes.json"),
+        r#"{"total_mutants":4,"caught":1,"missed":1,"unviable":1,"timeout":1}"#,
+    )
+    .unwrap();
+    let line = mutation_progress(&directory, "mutation", Duration::from_secs(10)).unwrap();
+    assert!(line.contains("mutants 4/4"));
+    assert!(line.contains("caught 1 | missed 1 | unviable 1 | timed out 1"));
+    assert!(!line.starts_with("PASS"));
+    fs::write(directory.join("outcomes.json"), "{").unwrap();
+    assert_eq!(
+        mutation_progress(&directory, "mutation", Duration::ZERO),
+        None
+    );
+    fs::remove_dir_all(directory).unwrap();
+}

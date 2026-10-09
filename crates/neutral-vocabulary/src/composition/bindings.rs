@@ -109,7 +109,7 @@ struct References<'a> {
     consumer: &'a CompositionBinding,
 }
 
-impl values::ReferencePolicy<ModuleSymbolIdentity> for References<'_> {
+impl References<'_> {
     /// Rejects dangling, differently typed or inaccessible targets without inspecting target values.
     fn check(
         &self,
@@ -197,16 +197,17 @@ pub fn validate_composition_bindings(
         .try_retain(bindings.len())
         .map_err(|_| E::Allocation)?;
     for binding in index.values() {
+        let references = References {
+            index: &index,
+            consumer: binding,
+        };
         let value = values::materialize_with(
             &binding.value,
             &binding.ty,
             &catalogue,
             &mut budget,
             0,
-            &References {
-                index: &index,
-                consumer: binding,
-            },
+            &|target, expected, budget| references.check(target, expected, budget),
         )
         .map_err(|error| {
             if error == E::InvalidDefault {

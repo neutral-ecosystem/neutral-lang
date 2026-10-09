@@ -7,6 +7,10 @@ use crate::language::{graph_names, names};
 use neutral_core::allocation::RetainCapacity;
 use neutral_core::{ByteSpan, CancellationToken, allocation::text, profile::V1_SOURCE_PROFILE};
 
+#[cfg(test)]
+#[path = "../../tests/frontend/graph_syntax.rs"]
+mod tests;
+
 /// One parsed, source-accounted logical import.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct GraphImport {

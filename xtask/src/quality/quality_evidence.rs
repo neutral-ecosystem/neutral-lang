@@ -165,6 +165,17 @@ impl Measurement {
         )
         .map_err(|error| format!("could not wait for measured tool: {error}"))?;
         if !status.success() {
+            if let Some(directory) = &mutation_directory {
+                for (label, name) in [
+                    ("surviving mutants", "missed.txt"),
+                    ("native reports", "outcomes.json"),
+                ] {
+                    let path = directory.join(name);
+                    if path.is_file() {
+                        output::file(label, &path);
+                    }
+                }
+            }
             output::file(
                 "tool errors",
                 &self.directory.join(format!("{report}.stderr")),

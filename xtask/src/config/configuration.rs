@@ -44,6 +44,7 @@ pub(crate) fn automation() -> Result<Automation, String> {
     if !is_safe_relative_path(Path::new(&config.testing.config))
         || config.testing.profile.is_empty()
         || config.testing.ci_profile.is_empty()
+        || config.testing.mutation_profile.is_empty()
     {
         return Err(
             "test configuration requires a safe relative path and nonempty profiles".to_owned(),

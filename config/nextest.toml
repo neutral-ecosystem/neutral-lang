@@ -15,3 +15,12 @@ failure-output = "immediate-final"
 path = "junit.xml"
 store-success-output = false
 store-failure-output = true
+
+# Fail quickly on focused regressions; survivors still run every workspace test.
+[profile.mutation]
+fail-fast = true
+failure-output = "immediate-final"
+
+[[profile.mutation.overrides]]
+filter = 'test(allocation_sweep) | test(reservation_cancellation)'
+priority = -100

@@ -172,7 +172,7 @@ pub(crate) fn mutation_arguments(
             "--config-file".to_owned(),
             testing.config,
             "--profile".to_owned(),
-            testing.ci_profile,
+            testing.mutation_profile,
             "--fail-fast".to_owned(),
             "--ignore-default-filter".to_owned(),
             "--no-tests".to_owned(),

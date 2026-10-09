@@ -78,9 +78,14 @@ fn mutation_progress(directory: &Path, label: &str, elapsed: Duration) -> Option
     let mutants = fs::read_to_string(directory.join("mutants.json")).ok()?;
     let outcomes = fs::read_to_string(directory.join("outcomes.json")).ok()?;
     let (completed, total) = mutation_counts(&mutants, &outcomes)?;
+    let counts: serde_json::Value = serde_json::from_str(&outcomes).ok()?;
+    let caught = counts.get("caught")?.as_u64()?;
+    let missed = counts.get("missed")?.as_u64()?;
+    let unviable = counts.get("unviable")?.as_u64()?;
+    let timeout = counts.get("timeout")?.as_u64()?;
     Some(crate::output::progress(
         &format!(
-            "{label} | mutants {completed}/{total} | elapsed {}",
+            "{label} | mutants {completed}/{total} | caught {caught} | missed {missed} | unviable {unviable} | timed out {timeout} | elapsed {}",
             crate::output::duration(elapsed)
         ),
         false,
