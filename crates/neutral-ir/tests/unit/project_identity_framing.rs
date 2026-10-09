@@ -52,7 +52,7 @@ fn framing_key_work_budget_accepts_equality_and_rejects_overshoot() {
     assert_eq!(writer.text("x"), Ok(()));
     assert_eq!(writer.text(""), Ok(()));
     assert_eq!(writer.text("zz"), Err(IdentityError::Limit));
-    assert!(writer.finish().is_empty());
+    assert_eq!(writer.finish(), [] as [u8; 0]);
 }
 
 /// Nested frames backpatch payload lengths and write integers in network byte order.
