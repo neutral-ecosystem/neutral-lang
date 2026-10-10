@@ -2,6 +2,11 @@
 
 # neutral-encoding
 
+The crate root exposes the stable codec API and transport types. The private
+[encoder directory](src/encoder/README.md) separates logical payloads,
+companions, envelopes, framing and shared CBOR emission. Hostile decoding stays
+independent in `decode.rs` and `decoder.rs`.
+
 `neutral-encoding` owns the external Neutral IR Framed CBOR 0.1 byte boundary.
 Its encoder accepts only a `neutral-reader::ValidatedDocument`, projects all
 five frozen sections, derives capability declarations from actual content,

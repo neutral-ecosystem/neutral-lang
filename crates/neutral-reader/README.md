@@ -2,6 +2,10 @@
 
 # neutral-reader
 
+The crate root exposes immutable reader views. Private
+[document validation](src/validation/README.md) separates schema/value checks,
+cross-artifact checks and provenance validation without compiler linkage.
+
 `neutral-reader` validates external Neutral artifacts and exposes immutable,
 typed reader views over accepted logical data.
 

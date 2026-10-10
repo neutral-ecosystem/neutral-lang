@@ -78,6 +78,13 @@ Coverage HTML is written to
 is `test-results/analysis/coverage/coverage.json`. Thresholds and reviewed
 exclusions are defined in [`config/quality-gates.toml`](../config/quality-gates.toml).
 
+Raw LLVM profiles (`*.profraw`) are generated coverage data, never source files.
+The coverage runner configures `LLVM_PROFILE_FILE` beneath Cargo's target
+directory. Running an instrumented binary directly without that setting can
+leave `default_*.profraw` in its working directory; use the coverage command
+above instead. Misplaced profiles can be moved into ignored
+`test-results/analysis/coverage/` storage without changing crate structure.
+
 ## Release measurements
 
 Measurements print their report directory once, then a labeled start, exact

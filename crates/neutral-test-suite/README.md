@@ -14,6 +14,8 @@ compilation paths, typed reader and probe traversal, external
 encoding and hostile decoding, frozen oracles, determinism, structural limits,
 deterministic fuzz-style cases, the reference formatter, host CLI, standalone
 probe, documentation, and traceability.
+The [shared feature suite](tests/suite/README.md) groups these regressions by
+language responsibility while retaining the category prefixes used by xtask.
 Formatter evidence spans the complete positive source corpus and checks exact
 canonical layout, idempotence, logical/provenance preservation, deterministic
 nonsemantic comment placement, and separation from source/artifact identity.

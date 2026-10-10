@@ -46,8 +46,14 @@ Complete encoded
 transport is owned by `neutral-encoding`, which retains explicit artifact-byte
 limits separately from logical content and materialized-value work.
 
-Start with [lib.rs](src/lib.rs) for value/identity distinctions and exact-number
-normalization, then [project.rs](src/project.rs) for meaning versus companions.
+Start with [lib.rs](src/lib.rs), the stable public facade. Private modules group
+[symbols](src/symbol.rs), [exact numbers](src/exact_number.rs),
+[types and values](src/value.rs), [fingerprints](src/fingerprint.rs), and
+[document equality](src/document.rs). [Source maps](src/source_map.rs),
+[provenance](src/provenance.rs), [derivation](src/derivation.rs), and
+[complete artifacts](src/artifacts.rs) remain separate from logical meaning.
+Public imports still use the crate root. Continue with [project.rs](src/project.rs)
+for complete multi-unit meaning versus companions.
 The [composition model](src/composition.rs) shares raw composite vocabulary
 contracts and closed defaults with validators and future readers. It preserves
 absence/null distinctions and exact numeric comparison; construction does not

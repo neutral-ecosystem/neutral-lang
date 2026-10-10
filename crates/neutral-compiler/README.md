@@ -16,6 +16,14 @@ For code orientation, follow [capture](src/project_capture.rs),
 explain phase ordering, validation responsibilities, and publication boundaries;
 the [cache](src/frontend/project_cache.rs) documents the narrow reuse seam.
 
+The semantic entry point coordinates private
+[syntax extraction](src/frontend/project_semantics/syntax.rs),
+[resolution](src/frontend/project_semantics/resolution.rs), and
+[public signature projection](src/frontend/project_semantics/interface.rs).
+The [composition internals](src/frontend/project_semantics/composition/README.md)
+similarly separate parsing, resolution and complete artifact assembly. These
+file boundaries do not introduce new public APIs or change phase ordering.
+
 The public boundary captures exact bytes immutably. The v1 project-capture
 boundary accepts only a closed, versioned, data-only request with explicit
 independent limits. It retains the complete supplied source set, validates
