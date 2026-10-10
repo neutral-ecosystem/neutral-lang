@@ -3,11 +3,10 @@
 //! checks / repository responsibilities for repository automation.
 
 use crate::{
-    BTreeSet, Command, Path, ReleasedBundle, automation_value, collect_regular_files,
-    configuration, configuration_value, constants, fs, git_hygiene, html_spdx_marker, interface,
-    is_safe_relative_path, markdown_link_targets, project_license, quality_array,
-    quality_output_path, quality_value, read_workspace_text, repository_directories,
-    workspace_package_manifests, workspace_root,
+    BTreeSet, Command, Path, ReleasedBundle, collect_regular_files, configuration,
+    configuration_value, constants, fs, git_hygiene, html_spdx_marker, interface,
+    is_safe_relative_path, markdown_link_targets, project_license, read_workspace_text,
+    repository_directories, workspace_package_manifests, workspace_root,
 };
 
 /// Verifies every tracked repository-local Markdown link stays within the workspace.
@@ -67,7 +66,12 @@ pub(crate) fn check_workflow_contract() -> Result<(), String> {
     if !ci.contains("cargo xtask ci pr") {
         return Err("ci.yml does not delegate to `cargo xtask ci pr`".to_owned());
     }
-    let retained_workflows = format!("{}/workflows", automation_value("output", "results_root")?);
+    let retained_workflows = format!(
+        "{}/workflows",
+        crate::configuration::automation_at(&root)?
+            .output
+            .results_root
+    );
     for retention_requirement in [
         "if: always()",
         "actions/upload-artifact@",
@@ -184,7 +188,9 @@ pub(crate) fn ensure_no_portable_archive_dependencies(root: &Path) -> Result<(),
 pub(crate) fn check_generated_outputs() -> Result<(), String> {
     let root = workspace_root()?;
     let inventory = read_workspace_text(&root, constants::GENERATED_OUTPUTS_FILE)?;
-    let result_directory = automation_value("output", "results_root")?;
+    let result_directory = crate::configuration::automation_at(&root)?
+        .output
+        .results_root;
     if !is_safe_relative_path(Path::new(&result_directory)) {
         return Err("configured generated-results root is not a safe relative path".to_owned());
     }
@@ -366,8 +372,11 @@ pub(crate) fn check_repository_structure() -> Result<(), String> {
         }
     }
     verify_test_level_inventory(&root)?;
-    verify_coverage_policy()?;
-    verify_fuzz_ownership(&root)?;
+    let policy = crate::config::quality_settings::QualityPolicy::parse(&read_workspace_text(
+        &root,
+        constants::QUALITY_GATES_FILE,
+    )?)?;
+    verify_fuzz_ownership(&root, &policy.fuzz)?;
     verify_generated_file_hygiene(&root)?;
     verify_ignore_policy(&root)?;
     crate::output::pass("repository ownership and hygiene");
@@ -399,7 +408,12 @@ pub(crate) fn verify_ignore_policy(root: &Path) -> Result<(), String> {
             return Err(format!("generated-state ignore is missing {required}"));
         }
     }
-    let results_ignore = format!("{}/", automation_value("output", "results_root")?);
+    let results_ignore = format!(
+        "{}/",
+        crate::configuration::automation_at(root)?
+            .output
+            .results_root
+    );
     if !ignore.lines().any(|line| line.trim() == results_ignore) {
         return Err(format!(
             "generated-state ignore is missing {results_ignore}"
@@ -432,86 +446,74 @@ pub(crate) fn verify_ignore_policy(root: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Verifies coverage environment, outputs, thresholds, and exclusion policy.
-pub(crate) fn verify_coverage_policy() -> Result<(), String> {
-    let toolchain = quality_value("coverage", "toolchain")?;
-    if toolchain != "nightly-only" && toolchain != "stable" {
-        return Err(format!(
-            "unsupported coverage toolchain policy: {toolchain}"
-        ));
-    }
-    let html = quality_output_path("coverage", "html_output")?;
-    if !html.ends_with("html/index.html") {
-        return Err("coverage HTML output must end in html/index.html".to_owned());
-    }
-    let json = quality_output_path("coverage", "json_output")?;
-    if json.extension().and_then(std::ffi::OsStr::to_str) != Some("json") {
-        return Err("coverage JSON output must have a .json extension".to_owned());
-    }
-    for minimum_key in [
-        "minimum_line_percent",
-        "minimum_function_percent",
-        "minimum_region_percent",
-    ] {
-        let minimum = quality_value("coverage", minimum_key)?
-            .parse::<f64>()
-            .map_err(|error| format!("invalid coverage {minimum_key}: {error}"))?;
-        if !(minimum > 0.0 && minimum <= 100.0) {
-            return Err(format!("coverage {minimum_key} must be within (0, 100]"));
-        }
-    }
-    if quality_value("coverage", "exclusion_regex")?.is_empty() {
-        return Err("coverage exclusions must be explicit".to_owned());
-    }
-    let exclusions = quality_value("coverage", "exclusion_policy")?;
-    if !exclusions.starts_with("reviewed:") {
-        return Err("coverage exclusions require an explicit reviewed rationale".to_owned());
-    }
-    Ok(())
-}
-
 /// Verifies every durable test purpose has one documented stable command.
 pub(crate) fn verify_test_level_inventory(root: &Path) -> Result<(), String> {
-    let inventory = read_workspace_text(root, constants::TEST_LEVELS_FILE)?;
-    for (name, command) in [
-        ("unit", "cargo xtask test unit"),
-        ("smoke", "cargo xtask test smoke"),
-        ("integration", "cargo xtask test integration"),
-        ("system", "cargo xtask test system"),
-        ("conformance", "cargo xtask test conformance"),
-        ("property", "cargo xtask test property"),
-        ("security", "cargo xtask test security"),
-        ("fuzz-regression", "cargo xtask fuzz smoke"),
-        ("performance", "cargo xtask test performance --profile pr"),
-        ("all", "cargo xtask test all"),
-    ] {
-        if !inventory.contains(&format!("name = \"{name}\""))
-            || !inventory.contains(&format!("command = \"{command}\""))
-        {
-            return Err(format!("test-level inventory is missing {name}: {command}"));
+    let inventory: crate::configuration_models::TestInventory =
+        crate::configuration::read(root, constants::TEST_LEVELS_FILE)?;
+    crate::configuration::require_schema(inventory.schema_version, "test inventory")?;
+    let mut required = BTreeSet::from([
+        "unit",
+        "smoke",
+        "integration",
+        "system",
+        "conformance",
+        "property",
+        "security",
+        "fuzz-regression",
+        "performance",
+        "all",
+    ]);
+    for entry in inventory.level {
+        if !required.remove(entry.name.as_str()) || entry.owner.trim().is_empty() {
+            return Err(format!(
+                "unknown, duplicate, or unowned test purpose: {}",
+                entry.name
+            ));
         }
+        let expected = match entry.name.as_str() {
+            "fuzz-regression" => "fuzz smoke".to_owned(),
+            "performance" => "test performance --profile pr".to_owned(),
+            name => format!("test {name}"),
+        };
+        let words = entry.command.split_whitespace().collect::<Vec<_>>();
+        if !words.starts_with(&["cargo", "xtask"]) {
+            return Err(format!("invalid test command for {}", entry.name));
+        }
+        let arguments = words[2..]
+            .iter()
+            .map(|word| (*word).to_owned())
+            .collect::<Vec<_>>();
+        let expected = expected
+            .split_whitespace()
+            .map(str::to_owned)
+            .collect::<Vec<_>>();
+        if crate::interface::parse(&arguments)? != crate::interface::parse(&expected)? {
+            return Err(format!(
+                "test command does not match purpose {}",
+                entry.name
+            ));
+        }
+    }
+    if !required.is_empty() {
+        return Err(format!("test inventory is missing purposes: {required:?}"));
     }
     Ok(())
 }
 
 /// Verifies configured fuzz targets have harnesses, owners, and state policy.
-pub(crate) fn verify_fuzz_ownership(root: &Path) -> Result<(), String> {
-    let quality = read_workspace_text(root, constants::QUALITY_GATES_FILE)?;
-    for target in quality_array("fuzz", "targets")? {
+fn verify_fuzz_ownership(
+    root: &Path,
+    settings: &crate::config::quality_settings::FuzzSettings,
+) -> Result<(), String> {
+    for target in &settings.targets {
         if !root
             .join("fuzz/fuzz_targets")
             .join(format!("{target}.rs"))
             .is_file()
-            || !quality.contains(&format!("{target}_owner = \""))
         {
             return Err(format!(
                 "fuzz target {target} has no harness or subsystem owner"
             ));
-        }
-    }
-    for required in ["finding_policy = \"", "mutable_state = \""] {
-        if !quality.contains(required) {
-            return Err(format!("fuzz policy is missing {required}"));
         }
     }
     Ok(())
@@ -520,7 +522,9 @@ pub(crate) fn verify_fuzz_ownership(root: &Path) -> Result<(), String> {
 /// Rejects tracked generated products while retaining documented empty roots.
 pub(crate) fn verify_generated_file_hygiene(root: &Path) -> Result<(), String> {
     git_hygiene::verify_no_ignored_tracked_files(root)?;
-    let result_directory = automation_value("output", "results_root")?;
+    let result_directory = crate::configuration::automation_at(root)?
+        .output
+        .results_root;
     let output = Command::new(constants::GIT_COMMAND)
         .current_dir(root)
         .args([

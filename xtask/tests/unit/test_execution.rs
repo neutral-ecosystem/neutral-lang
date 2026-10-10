@@ -18,8 +18,8 @@ fn analysis_commands_share_the_selected_test_backend() {
             backend,
             &["src/parser.rs".to_owned(), "src/decoder.rs".to_owned()],
             "reports",
-        )
-        .expect("mutation command");
+            &configuration::automation().unwrap().testing,
+        );
         assert!(mutation.contains(&"--no-config".to_owned()));
         assert!(mutation.contains(&"--cargo-arg=--workspace".to_owned()));
         assert!(
@@ -180,4 +180,32 @@ fn verbose_reporting_is_explicit() {
     );
     let listing = arguments(TestRunner::Nextest, "list", false, true, None).unwrap();
     assert!(!listing.contains(&"--status-level".to_owned()));
+}
+
+/// Worker count is an execution setting, independent of backend and mutation scope.
+#[test]
+fn mutation_commands_use_configured_workers() {
+    let source = crate::read_workspace_text(
+        &crate::workspace_root().unwrap(),
+        constants::AUTOMATION_CONFIG_FILE,
+    )
+    .unwrap();
+    let mut config: toml::Table = configuration::parse(&source, "automation").unwrap();
+    config["testing"]["mutation_jobs"] = toml::Value::Integer(3);
+    let testing = configuration::parse::<crate::configuration_models::Automation>(
+        &toml::to_string(&config).unwrap(),
+        "automation",
+    )
+    .unwrap()
+    .testing;
+    for backend in [TestRunner::Cargo, TestRunner::Nextest] {
+        let arguments =
+            mutation_arguments(backend, &["src/parser.rs".to_owned()], "reports", &testing);
+        assert!(arguments.windows(2).any(|pair| pair == ["--jobs", "3"]));
+        assert!(
+            arguments
+                .windows(2)
+                .any(|pair| pair == ["--file", "src/parser.rs"])
+        );
+    }
 }

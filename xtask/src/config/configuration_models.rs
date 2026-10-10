@@ -100,6 +100,16 @@ pub(crate) enum TestRunner {
     Cargo,
 }
 
+impl TestRunner {
+    /// Returns the backend name accepted by Cargo's test integrations.
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Nextest => "nextest",
+            Self::Cargo => "cargo",
+        }
+    }
+}
+
 /// Test execution settings shared by local and CI commands.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -117,6 +127,8 @@ pub(crate) struct Testing {
     pub(crate) ci_profile: String,
     /// Full-workspace mutation profile, prioritizing fast catches over allocation sweeps.
     pub(crate) mutation_profile: String,
+    /// Positive number of concurrent mutation workers.
+    pub(crate) mutation_jobs: std::num::NonZeroUsize,
 }
 
 /// One top-level responsibility boundary.
@@ -149,4 +161,26 @@ pub(crate) struct Layout {
 pub(crate) struct TestMinimumProfile {
     /// Category names and required counts.
     pub(crate) minimum: BTreeMap<String, usize>,
+}
+
+/// Closed mapping of test purposes to stable commands.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct TestInventory {
+    /// Independent inventory schema.
+    pub(crate) schema_version: u32,
+    /// Named command and responsibility pairs.
+    pub(crate) level: Vec<TestInventoryEntry>,
+}
+
+/// One documented test purpose.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct TestInventoryEntry {
+    /// Stable purpose name.
+    pub(crate) name: String,
+    /// Contributor-facing invocation.
+    pub(crate) command: String,
+    /// Responsible subsystem.
+    pub(crate) owner: String,
 }

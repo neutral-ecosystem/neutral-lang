@@ -312,9 +312,9 @@ fn fuzz_requires_every_target_and_actual_fuzzer_duration() {
     let (directory, mut receipt, settings) = fixture("fuzz-duration");
     receipt.gate = QualityGate::Fuzz;
     receipt.invocations.clear();
-    let budget = quality_value("fuzz", "minimum_seconds_per_target").unwrap();
-    let elapsed = budget.parse::<u128>().unwrap() * 1_000;
-    for target in quality_array("fuzz", "targets").unwrap() {
+    let budget = settings.policy.fuzz.minimum_seconds_per_target;
+    let elapsed = u128::from(budget) * 1_000;
+    for target in &settings.policy.fuzz.targets {
         replace_report(&directory, &mut receipt, &format!("{target}.stdout"), "");
         replace_report(
             &directory,
@@ -327,7 +327,7 @@ fn fuzz_requires_every_target_and_actual_fuzzer_duration() {
             tool_version: "fixture 1".to_owned(),
             arguments: vec![format!("-max_total_time={budget}")],
             elapsed_ms: elapsed,
-            report: target,
+            report: target.clone(),
         });
     }
     assert!(validate_reports(&receipt, &directory, &settings).is_ok());

@@ -153,7 +153,8 @@ pub(crate) fn mutate() -> Result<(), String> {
         super::test_execution::runner()?,
         &targets,
         &output,
-    )?;
+        &crate::configuration::automation()?.testing,
+    );
     measurement.cargo(
         &tests.iter().map(String::as_str).collect::<Vec<_>>(),
         "mutation",

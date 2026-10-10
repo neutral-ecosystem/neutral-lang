@@ -29,6 +29,10 @@ pub(crate) struct QualityPolicy {
 /// Coverage inputs used by both command construction and receipt validation.
 #[derive(Clone, Debug, Deserialize)]
 pub(crate) struct CoverageSettings {
+    /// Coverage requires the sanitizer-capable isolated nightly toolchain.
+    pub(crate) toolchain: String,
+    /// Explicit reviewed justification for exclusions.
+    pub(crate) exclusion_policy: String,
     /// Generated HTML landing page relative to result root.
     pub(crate) html_output: PathBuf,
     /// Generated native JSON report relative to result root.
@@ -61,6 +65,10 @@ pub(crate) struct MutationSettings {
 /// Fuzz campaign inputs shared by execution and duration/target validation.
 #[derive(Clone, Debug, Deserialize)]
 pub(crate) struct FuzzSettings {
+    /// Finding handling must be explicit before campaigns run.
+    pub(crate) finding_policy: String,
+    /// Mutable corpus ownership must be explicit.
+    pub(crate) mutable_state: String,
     /// Nonempty set of configured target names.
     pub(crate) targets: Vec<String>,
     /// Mutable corpus directory relative to the workspace.
@@ -71,7 +79,7 @@ pub(crate) struct FuzzSettings {
     pub(crate) minimum_seconds_per_target: u64,
     /// Ownership/readiness/status annotations, not execution results.
     #[serde(flatten)]
-    _annotations: BTreeMap<String, toml::Value>,
+    annotations: BTreeMap<String, toml::Value>,
 }
 
 /// Performance command selection; measured reports remain the acceptance authority.
@@ -129,14 +137,42 @@ impl QualityPolicy {
             policy.coverage.minimum_region_percent,
             policy.mutation.minimum_caught_percent,
         ] {
-            if !percentage.is_finite() || !(0.0..=100.0).contains(&percentage) {
-                return Err("quality percentages must be finite and between 0 and 100".to_owned());
+            if !(percentage.is_finite() && percentage > 0.0 && percentage <= 100.0) {
+                return Err("quality percentages must be finite and within (0, 100]".to_owned());
             }
         }
         for path in [&policy.coverage.html_output, &policy.coverage.json_output] {
             if !crate::results::is_safe_result_path(path) {
                 return Err("coverage outputs must be safe relative result paths".to_owned());
             }
+        }
+        let coverage = &policy.coverage;
+        if coverage.toolchain != "nightly-only"
+            || !coverage.html_output.ends_with("html/index.html")
+            || coverage
+                .json_output
+                .extension()
+                .and_then(std::ffi::OsStr::to_str)
+                != Some("json")
+            || coverage.exclusion_regex.is_empty()
+            || !coverage.exclusion_policy.starts_with("reviewed:")
+        {
+            return Err("coverage requires nightly-only, HTML/JSON outputs, and reviewed explicit exclusions".to_owned());
+        }
+        if policy.fuzz.finding_policy.trim().is_empty()
+            || policy.fuzz.mutable_state.trim().is_empty()
+            || policy.fuzz.targets.iter().any(|target| {
+                policy
+                    .fuzz
+                    .annotations
+                    .get(&format!("{target}_owner"))
+                    .and_then(toml::Value::as_str)
+                    .is_none_or(|owner| owner.trim().is_empty())
+            })
+        {
+            return Err(
+                "fuzz targets require owners, finding policy, and mutable-state policy".to_owned(),
+            );
         }
         let targets = &policy.mutation.critical_targets;
         if targets.is_empty()
@@ -205,16 +241,8 @@ impl QualitySettings {
     pub(crate) fn load(root: &Path) -> Result<Self, String> {
         let content = read_workspace_text(root, constants::QUALITY_GATES_FILE)?;
         let policy = QualityPolicy::parse(&content)?;
-        let automation: crate::configuration_models::Automation =
-            configuration::read(root, constants::AUTOMATION_CONFIG_FILE)?;
-        configuration::require_schema(automation.schema_version, "automation configuration")?;
-        if automation.quality.advisory_max_age_seconds == 0 {
-            return Err("advisory freshness must be positive".to_owned());
-        }
+        let automation = configuration::automation_at(root)?;
         let evidence_root = PathBuf::from(automation.quality.evidence_root);
-        if !is_safe_relative_path(&evidence_root) {
-            return Err("quality evidence root must be relative".to_owned());
-        }
         let dependency = read_workspace_text(root, constants::DEPENDENCY_SOURCES_FILE)?;
         let mut advisory_locks = vec![constants::CARGO_LOCK_FILE.to_owned()];
         advisory_locks.extend(configuration_array_from(

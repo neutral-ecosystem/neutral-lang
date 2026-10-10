@@ -38,9 +38,8 @@ pub use runtime::output;
 use runtime::{environment, progress, results, workspace};
 
 use configuration::{
-    automation_value, cargo_command, cargo_target_directory, configuration_array_from,
-    configuration_section, configuration_value, is_safe_relative_path, quality_array,
-    quality_value, repository_directories, rustc_command,
+    cargo_command, cargo_target_directory, configuration_array_from, configuration_section,
+    configuration_value, is_safe_relative_path, repository_directories, rustc_command,
 };
 use environment::{
     bootstrap, json_string, print_environment_manifest, verify_complete_environment,
@@ -51,7 +50,7 @@ use interface::{
     QualityProfile, Task, TestLevel, ValidationTarget, VersionAction,
 };
 use released_conformance::ReleasedBundle;
-use results::{clean_results, quality_output_path, result_root};
+use results::{clean_results, result_root};
 use versioning::{
     check_versions, collect_named_files, html_spdx_marker, line_spdx_marker, project_license,
     project_slug, sha256_hex, validate_semver, version, workspace_package_directory,

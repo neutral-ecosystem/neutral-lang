@@ -145,11 +145,9 @@ pub(crate) fn mutation_arguments(
     backend: TestRunner,
     targets: &[String],
     output: &str,
-) -> Result<Vec<String>, String> {
-    let tool = match backend {
-        TestRunner::Nextest => "nextest",
-        TestRunner::Cargo => "cargo",
-    };
+    testing: &crate::configuration_models::Testing,
+) -> Vec<String> {
+    let tool = backend.as_str();
     let mut command = ["mutants", "--test-tool", tool, "--output", output]
         .map(str::to_owned)
         .to_vec();
@@ -159,27 +157,26 @@ pub(crate) fn mutation_arguments(
     command.push("--no-config".to_owned());
     // Baseline timing must include the same workspace tested for each mutant.
     command.push("--cargo-arg=--workspace".to_owned());
-    command.extend(["--jobs".to_owned(), "2".to_owned()]);
+    command.extend(["--jobs".to_owned(), testing.mutation_jobs.to_string()]);
     // Generated nested build trees can exceed the temporary workspace quota.
     command.extend(["--gitignore".to_owned(), "true".to_owned()]);
     // Workspace tests must resolve Git policy within the copy, not its parent checkout.
     command.extend(["--copy-vcs".to_owned(), "true".to_owned()]);
     if backend == TestRunner::Nextest {
-        let testing = configuration::automation()?.testing;
         // cargo-mutants tests copied workspaces: resolve config relative to that copy.
         command.extend([
             "--".to_owned(),
             "--config-file".to_owned(),
-            testing.config,
+            testing.config.clone(),
             "--profile".to_owned(),
-            testing.mutation_profile,
+            testing.mutation_profile.clone(),
             "--fail-fast".to_owned(),
             "--ignore-default-filter".to_owned(),
             "--no-tests".to_owned(),
             "fail".to_owned(),
         ]);
     }
-    Ok(command)
+    command
 }
 
 /// Resolves explicit test verbosity without changing test selection or acceptance.

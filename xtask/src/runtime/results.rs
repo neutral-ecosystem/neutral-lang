@@ -3,15 +3,14 @@
 //! Ignored generated-result root and safe local cleanup.
 
 use crate::{
-    Command, PathBuf, automation_value, constants, env, fs, is_safe_relative_path, quality_value,
-    workspace_root,
+    Command, PathBuf, configuration, constants, env, fs, is_safe_relative_path, workspace_root,
 };
 
 /// Returns the configured result root after rejecting unsafe paths.
 pub(crate) fn result_root() -> Result<PathBuf, String> {
     let configured = match env::var(constants::TEST_RESULTS_ENV) {
         Ok(path) => path,
-        Err(env::VarError::NotPresent) => automation_value("output", "results_root")?,
+        Err(env::VarError::NotPresent) => configuration::automation()?.output.results_root,
         Err(error) => return Err(format!("invalid {}: {error}", constants::TEST_RESULTS_ENV)),
     };
     let path = PathBuf::from(&configured);
@@ -47,17 +46,6 @@ pub(crate) fn result_root() -> Result<PathBuf, String> {
         ));
     }
     Ok(workspace.join(path))
-}
-
-/// Resolves one quality-configured generated file below the selected result root.
-pub(crate) fn quality_output_path(section: &str, key: &str) -> Result<PathBuf, String> {
-    let relative = PathBuf::from(quality_value(section, key)?);
-    if !is_safe_result_path(&relative) {
-        return Err(format!(
-            "quality [{section}] {key} must be a safe relative result path"
-        ));
-    }
-    Ok(result_root()?.join(relative))
 }
 
 /// Returns whether a configured result path cannot name the workspace or escape it.

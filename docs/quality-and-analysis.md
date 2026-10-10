@@ -113,7 +113,9 @@ configuration so it cannot silently narrow that reviewed scope, and tests each
 mutation against the workspace, including the cross-package suite. Receipts must
 cover the whole configured list; the caught threshold is unchanged. Expanded
 scope requires new measurements, not reuse of historical single-file results.
-The campaign uses two parallel workers without reducing the mutation scope.
+The campaign defaults to two parallel workers without reducing the mutation scope.
+Set `testing.mutation_jobs` in `config/automation.toml` to a positive worker count;
+more workers use more RAM and temporary disk space. This applies to both test backends.
 Baseline and mutant runs both test the whole workspace, so automatic timeouts
 are calibrated against the complete suite. The dedicated Nextest `mutation` profile
 runs fast tests before allocation-failure sweeps and stops at the first failure:

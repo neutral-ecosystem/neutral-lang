@@ -15,3 +15,6 @@ versioned quality thresholds remain configuration inputs, not constants.
 evidence-validation invocation. Commands and validators share those settings;
 human status annotations never substitute for measured acceptance. Malformed
 thresholds, unsafe paths, and invalid benchmark selections fail before execution.
+Repository checks use that same validator rather than separate string-key rules.
+Package version precedence uses Cargo's SemVer implementation; build metadata
+remains unsupported by release preparation.

@@ -243,6 +243,15 @@ fn automation_resolves_workspace_members_from_cargo() {
 #[test]
 /// Package transitions follow `SemVer` precedence and reject invalid versions.
 fn automation_validates_package_version_transitions() {
+    assert!(
+        validate_version_transition("0.8.0-18446744073709551616", "0.8.0-100000000000000000000")
+            .is_ok()
+    );
+    assert!(
+        validate_version_transition("0.8.0-100000000000000000000", "0.8.0-18446744073709551616")
+            .is_err()
+    );
+    assert!(super::validate_semver("0.8.0+build").is_err());
     assert!(validate_version_transition("0.1.0-rc.1", "0.1.0-rc.2").is_ok());
     assert!(validate_version_transition("0.1.0-rc.2", "0.1.0").is_ok());
     assert!(validate_version_transition("0.1.0", "0.2.0").is_ok());
@@ -250,6 +259,75 @@ fn automation_validates_package_version_transitions() {
     assert!(validate_version_transition("0.2.0", "0.1.0").is_err());
     assert!(super::validate_semver("0.1.0-rc.01").is_err());
     assert!(super::validate_semver("0.1.0-rc..1").is_err());
+}
+
+/// Inventory commands must belong to their named purpose, irrespective of TOML spelling.
+#[test]
+fn automation_test_inventory_validates_pairs() {
+    let root = std::env::temp_dir().join(format!("neutral-inventory-{}", std::process::id()));
+    let path = root.join(constants::TEST_LEVELS_FILE);
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let source = super::read_workspace_text(
+        &super::workspace_root().unwrap(),
+        constants::TEST_LEVELS_FILE,
+    )
+    .unwrap();
+    let swapped = source
+        .replace("cargo xtask test unit", "cargo xtask test TEMP")
+        .replace("cargo xtask test smoke", "cargo xtask test unit")
+        .replace("cargo xtask test TEMP", "cargo xtask test smoke");
+    std::fs::write(&path, swapped).unwrap();
+    assert!(crate::checks::repository::verify_test_level_inventory(&root).is_err());
+    std::fs::write(&path, source.replace('"', "'")).unwrap();
+    assert!(crate::checks::repository::verify_test_level_inventory(&root).is_ok());
+    let inventory: toml::Table = toml::from_str(&source).unwrap();
+    for defect in [
+        "missing",
+        "duplicate",
+        "unknown",
+        "owner",
+        "command",
+        "schema",
+    ] {
+        let mut invalid = inventory.clone();
+        let entries = invalid["level"].as_array_mut().unwrap();
+        match defect {
+            "missing" => {
+                entries.pop();
+            }
+            "duplicate" => entries.push(entries[0].clone()),
+            "unknown" => entries[0]["name"] = toml::Value::String("unknown".to_owned()),
+            "owner" => entries[0]["owner"] = toml::Value::String(" ".to_owned()),
+            "command" => entries[0]["command"] = toml::Value::String("test unit".to_owned()),
+            "schema" => invalid["schema_version"] = toml::Value::Integer(999),
+            _ => unreachable!(),
+        }
+        std::fs::write(&path, toml::to_string(&invalid).unwrap()).unwrap();
+        assert!(
+            crate::checks::repository::verify_test_level_inventory(&root).is_err(),
+            "accepted {defect}"
+        );
+    }
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+/// Captured failures retain the command arguments and tool's actionable diagnostic.
+#[test]
+fn automation_captured_command_retains_stderr() {
+    let error = super::command_output(
+        constants::GIT_COMMAND,
+        &[
+            "rev-parse",
+            "--verify",
+            "refs/heads/neutral-nonexistent-test-ref",
+        ],
+    )
+    .unwrap_err();
+    assert!(error.contains("--verify"), "{error}");
+    assert!(error.contains("fatal:"), "{error}");
+    let missing =
+        super::command_output("neutral-nonexistent-test-executable", &["--version"]).unwrap_err();
+    assert!(missing.contains("--version"), "{missing}");
 }
 
 #[test]
@@ -719,10 +797,12 @@ fn automation_rejects_unsafe_result_paths() {
 /// Configured quality report files stay beneath the selected generated root.
 fn automation_scopes_coverage_outputs_to_results() {
     let root = super::result_root().expect("generated root");
-    let html =
-        super::quality_output_path("coverage", "html_output").expect("configured HTML report");
-    let json =
-        super::quality_output_path("coverage", "json_output").expect("configured JSON report");
+    let policy =
+        crate::config::quality_settings::QualitySettings::load(&super::workspace_root().unwrap())
+            .unwrap()
+            .policy;
+    let html = root.join(policy.coverage.html_output);
+    let json = root.join(policy.coverage.json_output);
     assert!(html.starts_with(&root));
     assert!(json.starts_with(&root));
 }
@@ -872,15 +952,13 @@ fn xtask_commands_and_helpers() {
         super::json_string("hello\n\"world\""),
         "hello\\n\\\"world\\\""
     );
-    assert!(super::quality_array("fuzz", "targets").is_ok());
-    assert!(super::quality_array("fuzz", "nonexistent").is_err());
-    assert!(super::quality_array("nonexistent", "nonexistent").is_err());
-
     let root = super::workspace_root().expect("workspace root should exist");
     assert!(root.exists());
     let res_root = super::result_root().expect("result root should exist");
-    let configured =
-        super::automation_value("output", "results_root").expect("configured result directory");
+    let configured = super::configuration::automation()
+        .unwrap()
+        .output
+        .results_root;
     assert!(res_root.ends_with(configured));
 
     let uniq_dir =

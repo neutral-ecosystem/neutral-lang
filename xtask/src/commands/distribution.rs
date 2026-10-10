@@ -340,7 +340,7 @@ pub(crate) fn source_archive(
     version: &str,
     candidate_commit: &str,
 ) -> Result<Vec<u8>, String> {
-    let archive = Command::new("git")
+    let archive = Command::new(constants::GIT_COMMAND)
         .current_dir(root)
         .args([
             "archive",

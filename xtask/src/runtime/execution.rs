@@ -45,12 +45,17 @@ pub(crate) fn run_cargo(arguments: &[&str]) -> Result<(), String> {
 
 /// Returns trimmed UTF-8 output from a successful command.
 pub(crate) fn command_output(command: &str, arguments: &[&str]) -> Result<String, String> {
+    let invocation = output::command(command, arguments);
     let output = Command::new(command)
         .args(arguments)
         .output()
-        .map_err(|error| format!("could not run {command}: {error}"))?;
+        .map_err(|error| format!("could not run {invocation}: {error}"))?;
     if !output.status.success() {
-        return Err(format!("{command} failed with {}", output.status));
+        return Err(format!(
+            "{invocation} failed with {}: {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
     }
     String::from_utf8(output.stdout)
         .map(|value| value.trim().to_owned())

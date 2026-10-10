@@ -11,6 +11,8 @@ only by the frozen portable contracts. Generated reports never belong here.
 
 `automation.toml` owns typed Cargo/Rust compiler command defaults, the
 generated-results root, and the test runner/config/profile selection.
+`testing.mutation_jobs` selects concurrent mutation workers (default two; zero
+is rejected) without changing the reviewed target scope or acceptance threshold.
 `nextest.toml` owns parallelism, timeouts, failure handling, and CI JUnit
 reporting; category minima remain in `test-suites.toml`. Unknown keys in closed
 automation, layout, and release configuration are errors, not ignored defaults.
@@ -18,3 +20,7 @@ Optional per-invocation environment overrides are
 documented in the [developer command guide](../docs/workflow-optimization.md).
 Repository layout, quality thresholds, and the active conformance corpus stay
 in their own policy files rather than being duplicated in xtask constants.
+The test-level inventory validates each name/command/owner entry together, including
+duplicate and missing purposes. Quality checks and measurements use the same typed
+policy validation: positive percentage thresholds, safe report paths, nightly-only
+coverage, reviewed exclusions, and explicit fuzz ownership/state policies.

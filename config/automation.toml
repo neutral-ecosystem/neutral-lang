@@ -24,3 +24,5 @@ config = "config/nextest.toml"
 profile = "default"
 ci_profile = "ci"
 mutation_profile = "mutation"
+# Concurrent full-scope mutation workers; must be positive.
+mutation_jobs = 2

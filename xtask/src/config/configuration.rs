@@ -30,7 +30,12 @@ pub(crate) fn require_schema(schema: u32, context: &str) -> Result<(), String> {
 
 /// Loads the closed automation settings with fail-closed execution defaults.
 pub(crate) fn automation() -> Result<Automation, String> {
-    let config: Automation = read(&workspace_root()?, constants::AUTOMATION_CONFIG_FILE)?;
+    automation_at(&workspace_root()?)
+}
+
+/// Loads and validates automation settings relative to the requested workspace.
+pub(crate) fn automation_at(root: &Path) -> Result<Automation, String> {
+    let config: Automation = read(root, constants::AUTOMATION_CONFIG_FILE)?;
     require_schema(config.schema_version, "automation configuration")?;
     if !is_safe_relative_path(Path::new(&config.output.results_root))
         || !is_safe_relative_path(Path::new(&config.quality.evidence_root))
@@ -127,34 +132,11 @@ pub(crate) fn configuration_value(content: &str, key: &str) -> Option<String> {
     quality_value_from(content, "", key)
 }
 
-/// Reads a typed automation setting through its owning structure.
-pub(crate) fn automation_value(name: &str, key: &str) -> Result<String, String> {
-    let config = automation()?;
-    let value = match (name, key) {
-        ("tools", "cargo") => config.tools.cargo,
-        ("tools", "rustc") => config.tools.rustc,
-        ("output", "results_root") => config.output.results_root,
-        ("quality", "evidence_root") => config.quality.evidence_root,
-        ("quality", "advisory_max_age_seconds") => {
-            config.quality.advisory_max_age_seconds.to_string()
-        }
-        _ => {
-            return Err(format!(
-                "automation configuration has no [{name}] {key} value"
-            ));
-        }
-    };
-    if value.is_empty() {
-        return Err(format!("automation configuration [{name}] {key} is empty"));
-    }
-    Ok(value)
-}
-
 /// Selects a configured executable with an optional per-invocation override.
-fn configured_command(environment: &str, key: &str) -> Result<String, String> {
+fn configured_command(environment: &str, fallback: String) -> Result<String, String> {
     let command = match env::var(environment) {
         Ok(command) => command,
-        Err(env::VarError::NotPresent) => automation_value("tools", key)?,
+        Err(env::VarError::NotPresent) => fallback,
         Err(error) => return Err(format!("invalid {environment}: {error}")),
     };
     if command.trim().is_empty() || command.chars().any(char::is_control) {
@@ -165,12 +147,12 @@ fn configured_command(environment: &str, key: &str) -> Result<String, String> {
 
 /// Returns the selected Cargo executable for all xtask subprocesses.
 pub(crate) fn cargo_command() -> Result<String, String> {
-    configured_command(constants::CARGO_COMMAND_ENV, "cargo")
+    configured_command(constants::CARGO_COMMAND_ENV, automation()?.tools.cargo)
 }
 
 /// Returns the selected Rust compiler executable for environment and release checks.
 pub(crate) fn rustc_command() -> Result<String, String> {
-    configured_command(constants::RUSTC_COMMAND_ENV, "rustc")
+    configured_command(constants::RUSTC_COMMAND_ENV, automation()?.tools.rustc)
 }
 
 /// Resolves Cargo's actual target directory, including configuration-file overrides.
@@ -180,26 +162,10 @@ pub(crate) fn cargo_target_directory() -> Result<PathBuf, String> {
         .into_std_path_buf())
 }
 
-/// Reads one required quality setting with parser errors retained.
-pub(crate) fn quality_value(name: &str, key: &str) -> Result<String, String> {
-    let content = read_workspace_text(&workspace_root()?, constants::QUALITY_GATES_FILE)?;
-    let document: toml::Table = parse(&content, constants::QUALITY_GATES_FILE)?;
-    section(&document, name)
-        .and_then(|table| table.get(key))
-        .and_then(scalar)
-        .ok_or_else(|| format!("quality configuration [{name}] has no scalar {key}"))
-}
-
 /// Compatibility accessor backed by parsed TOML rather than raw text.
 pub(crate) fn quality_value_from(content: &str, name: &str, key: &str) -> Option<String> {
     let document = toml::from_str::<toml::Table>(content).ok()?;
     scalar(section(&document, name)?.get(key)?)
-}
-
-/// Reads one quoted-string array from the quality configuration.
-pub(crate) fn quality_array(section: &str, key: &str) -> Result<Vec<String>, String> {
-    let configuration = read_workspace_text(&workspace_root()?, constants::QUALITY_GATES_FILE)?;
-    configuration_array_from(&configuration, section, key)
 }
 
 /// Reads escaped/commented/multiline string arrays without splitting comma-containing values.

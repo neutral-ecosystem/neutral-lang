@@ -22,8 +22,8 @@ fn quality_policy_snapshot_is_typed_and_immutable() {
         90.5_f64.to_bits()
     );
     assert_eq!(
-        original.fuzz.minimum_seconds_per_target.to_string(),
-        crate::quality_value("fuzz", "minimum_seconds_per_target").unwrap()
+        next.fuzz.minimum_seconds_per_target,
+        original.fuzz.minimum_seconds_per_target
     );
     let annotation = policy_text().replace("status = \"pass\"", "status = \"not-reviewed\"");
     assert_eq!(
@@ -40,6 +40,45 @@ fn quality_policy_snapshot_is_typed_and_immutable() {
 #[test]
 fn quality_policy_rejects_invalid_operational_settings() {
     for (section, field, value) in [
+        ("coverage", "minimum_line_percent", toml::Value::Integer(0)),
+        (
+            "coverage",
+            "minimum_function_percent",
+            toml::Value::Integer(0),
+        ),
+        (
+            "coverage",
+            "minimum_region_percent",
+            toml::Value::Integer(0),
+        ),
+        (
+            "coverage",
+            "toolchain",
+            toml::Value::String("stable".to_owned()),
+        ),
+        (
+            "coverage",
+            "html_output",
+            toml::Value::String("analysis/report.html".to_owned()),
+        ),
+        (
+            "coverage",
+            "json_output",
+            toml::Value::String("analysis/report.txt".to_owned()),
+        ),
+        (
+            "coverage",
+            "exclusion_regex",
+            toml::Value::String(String::new()),
+        ),
+        (
+            "coverage",
+            "exclusion_policy",
+            toml::Value::String("unreviewed".to_owned()),
+        ),
+        ("fuzz", "finding_policy", toml::Value::String(String::new())),
+        ("fuzz", "mutable_state", toml::Value::String(String::new())),
+        ("fuzz", "source_owner", toml::Value::String(String::new())),
         (
             "coverage",
             "minimum_line_percent",
@@ -95,6 +134,11 @@ fn quality_policy_rejects_invalid_operational_settings() {
             "accepted invalid {section}.{field}"
         );
     }
+}
+
+/// Missing thresholds cannot silently become permissive defaults.
+#[test]
+fn quality_policy_requires_coverage_thresholds() {
     let mut missing: toml::Value = toml::from_str(policy_text()).unwrap();
     missing["coverage"]
         .as_table_mut()

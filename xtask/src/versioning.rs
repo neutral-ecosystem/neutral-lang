@@ -81,7 +81,7 @@ pub(super) fn ensure_no_unreviewed_contract_changes(root: &Path) -> Result<(), S
     let manifest = bundle.member("conformance/manifest.toml");
     let oracles = bundle.member("conformance/oracles");
     let review = bundle.member("conformance/fixture-oracle-review.toml");
-    let output = Command::new("git")
+    let output = Command::new(constants::GIT_COMMAND)
         .current_dir(root)
         .args([
             "diff",
@@ -498,42 +498,14 @@ pub(super) fn collect_named_files(
     Ok(())
 }
 
-/// Validates the supported numeric `SemVer` core with an optional prerelease suffix.
+/// Validates package `SemVer` without enabling unsupported build metadata.
 pub(super) fn validate_semver(value: &str) -> Result<(), String> {
-    let (core, suffix) = value
-        .split_once('-')
-        .map_or((value, None), |(core, suffix)| (core, Some(suffix)));
-    let components = core.split('.').collect::<Vec<_>>();
-    let numeric = components.len() == 3
-        && components.iter().all(|component| {
-            !component.is_empty()
-                && component.bytes().all(|byte| byte.is_ascii_digit())
-                && (component == &"0" || !component.starts_with('0'))
-        });
-    let valid_suffix = suffix.is_none_or(|suffix| {
-        !suffix.is_empty()
-            && suffix.split('.').all(|identifier| {
-                !identifier.is_empty()
-                    && identifier
-                        .bytes()
-                        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
-                    && (!identifier.bytes().all(|byte| byte.is_ascii_digit())
-                        || identifier == "0"
-                        || !identifier.starts_with('0'))
-            })
-    });
-    if numeric && valid_suffix {
-        Ok(())
-    } else {
-        Err(format!("invalid package SemVer: {value}"))
-    }
+    parsed_semver(value).map(|_| ())
 }
 
 /// Rejects package-version downgrades and invalid prerelease transitions.
 pub(super) fn validate_version_transition(current: &str, requested: &str) -> Result<(), String> {
-    let current = parsed_semver(current)?;
-    let requested = parsed_semver(requested)?;
-    if compare_semver(&requested, &current) != std::cmp::Ordering::Greater {
+    if parsed_semver(requested)? <= parsed_semver(current)? {
         return Err(
             "requested package version must be greater than the current version".to_owned(),
         );
@@ -541,61 +513,16 @@ pub(super) fn validate_version_transition(current: &str, requested: &str) -> Res
     Ok(())
 }
 
-/// Parses supported `SemVer` into numeric core and prerelease identifiers.
-pub(super) fn parsed_semver(value: &str) -> Result<(u64, u64, u64, Vec<String>), String> {
-    validate_semver(value)?;
-    let (core, prerelease) = value
-        .split_once('-')
-        .map_or((value, ""), |(core, prerelease)| (core, prerelease));
-    let mut numbers = core.split('.').map(|value| {
-        value
-            .parse::<u64>()
-            .map_err(|error| format!("invalid package SemVer component: {error}"))
-    });
-    let parsed = (
-        numbers.next().transpose()?.unwrap_or_default(),
-        numbers.next().transpose()?.unwrap_or_default(),
-        numbers.next().transpose()?.unwrap_or_default(),
-        prerelease
-            .split('.')
-            .filter(|value| !value.is_empty())
-            .map(str::to_owned)
-            .collect(),
-    );
-    Ok(parsed)
-}
-
-/// Compares two parsed `SemVer` values using numeric prerelease precedence.
-pub(super) fn compare_semver(
-    left: &(u64, u64, u64, Vec<String>),
-    right: &(u64, u64, u64, Vec<String>),
-) -> std::cmp::Ordering {
-    let core = (left.0, left.1, left.2).cmp(&(right.0, right.1, right.2));
-    if core != std::cmp::Ordering::Equal {
-        return core;
+/// Uses Cargo's `SemVer` implementation, including arbitrarily long prerelease numbers.
+fn parsed_semver(value: &str) -> Result<cargo_metadata::semver::Version, String> {
+    let version = cargo_metadata::semver::Version::parse(value)
+        .map_err(|error| format!("invalid package SemVer: {value}: {error}"))?;
+    if !version.build.is_empty() {
+        return Err(format!(
+            "invalid package SemVer: {value}; build metadata is unsupported"
+        ));
     }
-    match (left.3.is_empty(), right.3.is_empty()) {
-        (true, false) => std::cmp::Ordering::Greater,
-        (false, true) => std::cmp::Ordering::Less,
-        (true, true) => std::cmp::Ordering::Equal,
-        (false, false) => compare_prerelease(&left.3, &right.3),
-    }
-}
-
-/// Compares `SemVer` prerelease identifier sequences.
-pub(super) fn compare_prerelease(left: &[String], right: &[String]) -> std::cmp::Ordering {
-    for (left, right) in left.iter().zip(right) {
-        let ordering = match (left.parse::<u64>(), right.parse::<u64>()) {
-            (Ok(left), Ok(right)) => left.cmp(&right),
-            (Ok(_), Err(_)) => std::cmp::Ordering::Less,
-            (Err(_), Ok(_)) => std::cmp::Ordering::Greater,
-            (Err(_), Err(_)) => left.cmp(right),
-        };
-        if ordering != std::cmp::Ordering::Equal {
-            return ordering;
-        }
-    }
-    left.len().cmp(&right.len())
+    Ok(version)
 }
 
 /// Returns the lowercase SHA-256 digest of exact bytes.

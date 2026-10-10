@@ -39,6 +39,12 @@ fn automation_configuration_rejects_unknown_and_missing_fields() {
     )
     .expect("config");
     let _: Automation = parse(&source, "automation").expect("typed settings");
+    let mut zero: toml::Table = parse(&source, "automation").unwrap();
+    zero["testing"]
+        .as_table_mut()
+        .unwrap()
+        .insert("mutation_jobs".to_owned(), toml::Value::Integer(0));
+    assert!(parse::<Automation>(&toml::to_string(&zero).unwrap(), "automation").is_err());
     let mut invalid: toml::Table = parse(&source, "automation").expect("settings document");
     let testing = invalid["testing"].as_table_mut().expect("testing settings");
     let profile = testing.remove("ci_profile").expect("CI profile");
