@@ -48,10 +48,15 @@
     }
 
     .view-navigation {
+      position: sticky;
+      top: 0;
+      z-index: 2;
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
       margin-bottom: 2rem;
+      padding-block: 0.75rem;
+      background: var(--background);
     }
 
     .view-navigation a,
@@ -392,7 +397,7 @@
       <a href="#packages-view" id="packages-navigation">Packages</a>
       <a href="#codebase-map" id="map-navigation">Codebase map</a>
     </nav>
-    <header>
+    <header id="workspace-introduction">
       <div class="eyebrow">Neutral ecosystem · Rust API</div>
       <h1>Workspace documentation</h1>
       <p class="intro">Browse the contracts, compilation pipeline, readers, host adapters, and verification tools that make up Neutral. This site is generated from Cargo metadata and Rustdoc.</p>
@@ -524,7 +529,7 @@
           if (!edges.has(key)) {
             edges.set(key, { from: source.name, to: dependency.name, kinds: new Set() });
           }
-          const kind = dependency.kind === "dev" ? "test" : dependency.kind || "runtime";
+          const kind = { normal: "runtime", dev: "test", build: "build" }[dependency.kind] || "runtime";
           edges.get(key).kinds.add(kind);
         }
       }
@@ -565,6 +570,9 @@
         role: "img",
         "aria-label": `Direct dependencies of ${selected.name}; text links follow below`,
       });
+      svg.append(mapElement("text", { x: 150, y: 26, class: "map-kind" }, "Used by"));
+      svg.append(mapElement("text", { x: 500, y: 26, class: "map-kind" }, "Focus crate"));
+      svg.append(mapElement("text", { x: 850, y: 26, class: "map-kind" }, "Depends on"));
 
       /** Draws one focusable crate and labels the dependency kind without color alone. */
       function addNode(name, x, y, kinds, focused) {
@@ -631,6 +639,7 @@
       const showMap = view === "codebase-map";
       document.getElementById("codebase-map").hidden = !showMap;
       document.getElementById("packages-view").hidden = showMap;
+      document.getElementById("workspace-introduction").hidden = showMap;
       document.getElementById("map-navigation").setAttribute("aria-current", showMap ? "page" : "false");
       document.getElementById("packages-navigation").setAttribute("aria-current", showMap ? "false" : "page");
       if (showMap && packages.length > 0) {
