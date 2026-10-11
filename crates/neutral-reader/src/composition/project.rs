@@ -881,8 +881,8 @@ fn check_comparison_work(ir: &CompositionProjectIr, limit: u64) -> Result<(), E>
     let declarations = ir.declarations.len() as u64;
     let modules = ir.modules.len() as u64;
     let facts = ir.composition_resources;
-    let lookup_depth = u64::from(ir.declarations.len().bit_width())
-        + u64::from(ir.origins.len().bit_width());
+    let lookup_depth =
+        u64::from(ir.declarations.len().bit_width()) + u64::from(ir.origins.len().bit_width());
     let size = lookup_depth
         .checked_add(modules)
         .and_then(|n| n.checked_add(facts.types))
