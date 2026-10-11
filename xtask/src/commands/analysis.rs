@@ -65,7 +65,8 @@ pub(crate) fn coverage_guided_fuzz_campaign() -> Result<(), String> {
 
 /// Runs workspace coverage and enforces every configured percentage threshold.
 pub(crate) fn coverage() -> Result<(), String> {
-    super::test_execution::verify_runner()?;
+    let execution = super::test_execution::TestExecution::load()?;
+    execution.verify()?;
     let mut measurement = quality_evidence::Measurement::begin(QualityGate::Coverage)?;
     let settings = measurement.settings.policy.coverage.clone();
     let lines = settings.minimum_line_percent.to_string();
@@ -90,7 +91,7 @@ pub(crate) fn coverage() -> Result<(), String> {
     let json = json
         .to_str()
         .ok_or_else(|| "coverage JSON path is not valid UTF-8".to_owned())?;
-    let tests = super::test_execution::coverage_arguments(super::test_execution::runner()?)?;
+    let tests = execution.coverage_arguments(execution.backend)?;
     measurement.cargo(
         &tests.iter().map(String::as_str).collect::<Vec<_>>(),
         "tests",
@@ -140,7 +141,8 @@ pub(crate) fn coverage() -> Result<(), String> {
 
 /// Runs mutation analysis for every reviewed critical production target.
 pub(crate) fn mutate() -> Result<(), String> {
-    super::test_execution::verify_runner()?;
+    let execution = super::test_execution::TestExecution::load()?;
+    execution.verify()?;
     let mut measurement = quality_evidence::Measurement::begin(QualityGate::Mutation)?;
     let targets = measurement
         .settings
@@ -150,10 +152,10 @@ pub(crate) fn mutate() -> Result<(), String> {
         .clone();
     let output = measurement.directory.to_string_lossy().into_owned();
     let tests = super::test_execution::mutation_arguments(
-        super::test_execution::runner()?,
+        execution.backend,
         &targets,
         &output,
-        &crate::configuration::automation()?.testing,
+        &execution.testing,
     );
     measurement.cargo(
         &tests.iter().map(String::as_str).collect::<Vec<_>>(),

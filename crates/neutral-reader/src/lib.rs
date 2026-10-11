@@ -8,6 +8,7 @@
 
 mod validation;
 use validation::validate_artifacts;
+pub use validation::validate_document_companions;
 
 use neutral_core::SourceLocation;
 pub use neutral_ir::VocabularyContract;
@@ -61,8 +62,8 @@ impl ValidatedDocument {
     ///
     /// # Errors
     ///
-    /// Returns a fail-closed error for duplicate elements or missing source and
-    /// provenance records.
+    /// Returns a fail-closed error for invalid semantics, duplicate elements or
+    /// inconsistent derivation, source-map and provenance companions.
     pub fn from_compiler_output(artifacts: Arc<CompilationArtifacts>) -> Result<Self, ReaderError> {
         validate_artifacts(&artifacts)?;
         Ok(Self { artifacts })
@@ -159,4 +160,12 @@ pub enum ReaderError {
     InvalidDeclarationFingerprint,
     /// Logical and derivation vocabulary contracts were missing or inconsistent.
     InvalidVocabularyContract,
+    /// Source spans, coverage or canonical ordering were inconsistent.
+    InvalidSourceMap,
+    /// Companion provenance coverage or ordering was inconsistent.
+    InvalidProvenance,
+    /// Resource and derivation facts disagreed with the document or source.
+    InvalidDerivation,
+    /// Symbol/module ownership or declaration ordering was inconsistent.
+    InvalidLogicalIdentity,
 }

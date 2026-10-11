@@ -4,6 +4,42 @@
 
 use super::*;
 
+/// Validation-only walks preserve grammar, limits and offsets without tree reservations.
+#[test]
+fn security_validation_only_matches_materialized_parser_without_allocations() {
+    let cancel = CancellationToken::new();
+    for bytes in [
+        &[0x82, 0xa1, 0x61, b'k', 0x82, 0x42, 1, 2, 0x61, b'x', 0xf6][..],
+        &[0x61, 0xff],
+        &[0xa1, 0, 0],
+        &[0x18, 0],
+        &[0x81, 0, 0],
+    ] {
+        for end in 0..=bytes.len() {
+            for limits in [
+                DecodeLimits::hard(),
+                DecodeLimits::hard().with_traversal_nodes(2),
+                DecodeLimits::hard().with_nesting_depth(1),
+                DecodeLimits::hard().with_text_bytes(0),
+            ] {
+                let tree = parse_section_profile(&bytes[..end], 0, limits, &cancel, true, true);
+                let scan = parse_section_profile(&bytes[..end], 0, limits, &cancel, true, false);
+                assert_eq!(tree.as_ref().err(), scan.as_ref().err());
+                if let Ok((_, reservations)) = scan {
+                    assert_eq!(reservations, 0);
+                }
+            }
+        }
+    }
+    cancel.cancel();
+    assert_eq!(
+        validate_section(&[0xf6], DecodeLimits::hard(), &cancel)
+            .unwrap_err()
+            .class(),
+        DecodeErrorClass::Cancelled
+    );
+}
+
 /// Returns a parser failure without requiring the untrusted tree to implement Debug.
 fn failure(bytes: &[u8], base: usize, limits: DecodeLimits) -> DecodeError {
     match parse_section(bytes, base, limits, &CancellationToken::new()) {
@@ -139,6 +175,7 @@ fn unsupported_forms_and_offset_overflow_fail_closed() {
         matches!(parse_section(&[0xf6], 0, DecodeLimits::hard(), &token), Err(error) if error.class() == DecodeErrorClass::Cancelled)
     );
     let mut parser = Parser {
+        materialize: true,
         bytes: &[0],
         position: usize::MAX,
         base_offset: 0,
@@ -166,6 +203,7 @@ fn security_cbor_reservation_faults_and_cancellation_are_atomic() {
     /// Creates fresh isolated lexical state for each borrowed cancellation signal.
     fn make(cancellation: &CancellationToken) -> Parser<'_> {
         Parser {
+            materialize: true,
             bytes: &[0x82, 0xa1, 0x61, b'k', 0x82, 0x42, 1, 2, 0x61, b'x', 0xf6],
             position: 0,
             base_offset: 0,

@@ -9,13 +9,14 @@
 
 use super::{
     BTreeMap, BTreeSet, CompilationArtifacts, DeclarationFingerprint, ReaderError,
-    VocabularyContract, validate_field_provenance, validate_record_schemas,
-    validate_reference_provenance, validate_reuse_provenance, validate_value,
-    validate_vocabulary_contract, validate_vocabulary_value,
+    validate_field_provenance, validate_record_schemas, validate_reference_provenance,
+    validate_reuse_provenance, validate_value, validate_vocabulary_contract,
+    validate_vocabulary_value,
 };
 
 /// Validates relationships among logical declarations and companion artifacts.
 pub(crate) fn validate_artifacts(artifacts: &CompilationArtifacts) -> Result<(), ReaderError> {
+    super::companions::validate_derivation(artifacts)?;
     let mut element_ids = BTreeSet::new();
     let mut names = BTreeSet::new();
     let records = artifacts
@@ -26,10 +27,6 @@ pub(crate) fn validate_artifacts(artifacts: &CompilationArtifacts) -> Result<(),
         .collect::<BTreeMap<_, _>>();
     validate_record_schemas(artifacts, &records)?;
     let logical_vocabulary = artifacts.logical_document().vocabulary();
-    let derivation_vocabulary = artifacts.derivation().vocabulary();
-    if logical_vocabulary.map(VocabularyContract::identity) != derivation_vocabulary {
-        return Err(ReaderError::InvalidVocabularyContract);
-    }
     validate_vocabulary_contract(logical_vocabulary)?;
     for record in artifacts.logical_document().record_types() {
         if DeclarationFingerprint::for_record(record.fields())
@@ -89,5 +86,6 @@ pub(crate) fn validate_artifacts(artifacts: &CompilationArtifacts) -> Result<(),
     validate_field_provenance(artifacts, &records)?;
     validate_reuse_provenance(artifacts, &records)?;
     validate_reference_provenance(artifacts, &records)?;
+    super::companions::validate_document_companions(artifacts)?;
     Ok(())
 }

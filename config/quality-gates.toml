@@ -50,14 +50,32 @@ status = "full-campaign-pass"
 
 [performance]
 harness = "neutral-bench/performance"
-required_phases = [
-    "compile-end-to-end", "reader-validation", "artifact-encoding",
-    "artifact-decoding", "probe-traversal", "declaration-growth", "concurrent-isolation",
-    "composition-capture", "composition-graph", "composition-compile", "composition-reader",
-    "composition-encode", "composition-decode", "composition-view", "composition-identities",
-    "composition-cache-warm", "composition-cache-changed", "composition-growth", "composition-concurrent",
-]
+# Direct release samples only; profiler timings are intentionally not compared.
+# Initial regression envelopes have >= 10x headroom over local release samples;
+# see docs/quality-and-analysis.md for calibration and controlled-runner limitations.
+maximum_heap_bytes = 16777216
 pr_profile = "informational"
 release_profile = "five-direct-samples-and-massif-2026-09-08"
 soak_profile = "extended-soak-50000-massif-2026-09-08"
 status = "expanded-scope-requires-new-measurement"
+
+[performance.maximum_ns_per_iteration]
+compile-end-to-end = 250000
+reader-validation = 100000
+artifact-encoding = 100000
+artifact-decoding = 1000000
+probe-traversal = 100000
+declaration-growth = 5000000
+concurrent-isolation = 1000000
+composition-capture = 250000
+composition-graph = 100000
+composition-compile = 2000000
+composition-reader = 1000000
+composition-encode = 500000
+composition-decode = 2000000
+composition-view = 100000
+composition-identities = 500000
+composition-cache-warm = 2500000
+composition-cache-changed = 2000000
+composition-growth = 5000000
+composition-concurrent = 2000000

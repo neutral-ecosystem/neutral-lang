@@ -13,6 +13,22 @@ fn reader_failures_map_to_stable_decoder_classes() {
     use neutral_reader::ReaderError;
     for (error, class) in [
         (
+            ReaderError::InvalidSourceMap,
+            DecodeErrorClass::InvalidSourceMap,
+        ),
+        (
+            ReaderError::InvalidProvenance,
+            DecodeErrorClass::InvalidProvenance,
+        ),
+        (
+            ReaderError::InvalidDerivation,
+            DecodeErrorClass::InvalidDerivation,
+        ),
+        (
+            ReaderError::InvalidLogicalIdentity,
+            DecodeErrorClass::InvalidLogicalIr,
+        ),
+        (
             ReaderError::MissingSourceMapEntry,
             DecodeErrorClass::InvalidSourceMap,
         ),

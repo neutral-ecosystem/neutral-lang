@@ -125,6 +125,37 @@ fn compile(case: &Value) -> ValidatedCompositionProject {
         .unwrap_or_else(|e| panic!("{}: read {e:?}", case["id"]))
 }
 
+/// A flat project should spend work on its values, not repeated full-table searches.
+#[test]
+fn integration_composition_reader_flat_growth_uses_bounded_lookups() {
+    let mut source = "neu \"1.0\"\nmodule example\n".to_owned();
+    for index in 0..512 {
+        writeln!(source, "num value_{index:04} = {index}").unwrap();
+    }
+    let case = source_case(&source);
+    let mut values = capture_limits().values();
+    values.declarations = 512;
+    let mut composition = limits_for(&case);
+    composition.work = neutral_vocabulary::composition::MAX_WORK;
+    let captured = capture_composition_project(request_with_policies(
+        &case,
+        ProjectCaptureLimits::new(values),
+        composition,
+        CancellationToken::new(),
+    ))
+    .unwrap();
+    let cancel = CancellationToken::new();
+    let ir = compile_composition_project(&captured, &cancel).unwrap();
+    let project = ValidatedCompositionProject::from_ir(
+        Arc::clone(&ir),
+        ir.limits,
+        captured.composition_limits(),
+        &cancel,
+    )
+    .unwrap();
+    assert_eq!(project.complete_ir().declarations.len(), 512);
+}
+
 /// Executes every registered family, including catalogue-only probes, without changing oracle inputs.
 #[test]
 fn conformance_composition_every_registered_case_through_complete_pipeline() {

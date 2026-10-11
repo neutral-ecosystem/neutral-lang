@@ -161,7 +161,7 @@ pub fn decode(
             .with_field_provenance(provenance.fields)
             .with_reuse_provenance(provenance.reuses)
             .with_reference_provenance(provenance.references);
-    validate_cross_sections(&artifacts)?;
+    neutral_reader::validate_document_companions(&artifacts).map_err(map_reader_error)?;
     let mut capability_budget = TraversalBudget::new();
     let actual = derive_capabilities(&artifacts, &mut capability_budget)
         .map_err(|_| error(DecodeErrorClass::EncodedSizeLimit))?;
@@ -1271,149 +1271,20 @@ fn effective_limits(host: DecodeLimits, captured: StructuralLimits) -> DecodeLim
         .with_traversal_nodes(saturating_usize(captured.traversal_nodes()))
 }
 
-/// Validates source, derivation, identity, and resource cross-section facts.
-fn validate_cross_sections(artifacts: &CompilationArtifacts) -> Result<(), DecodeError> {
-    let logical = artifacts.logical_document();
-    let source = artifacts.source_map();
-    let derivation = artifacts.derivation();
-    if derivation.meaning().source_digest() != source.source_digest()
-        || derivation.language_behavior_version() != logical.module().language_behavior_version()
-        || derivation.vocabulary() != logical.vocabulary().map(VocabularyContract::identity)
-        || derivation.resource_facts().source_bytes() != source.source_byte_length()
-        || derivation.resource_facts().diagnostics() != 0
-        || derivation.resource_facts().declarations()
-            != u64::try_from(logical.record_types().len() + logical.declarations().len())
-                .unwrap_or(u64::MAX)
-        || source.source_byte_length() > derivation.acceptance().source_byte_limit()
-        || derivation.resource_facts().decoded_string_bytes()
-            > derivation.acceptance().string_byte_limit()
-    {
-        return Err(error(DecodeErrorClass::InvalidDerivation));
-    }
-    validate_logical_identities(logical)?;
-    validate_source_coverage(artifacts)?;
-    validate_provenance_coverage(artifacts)?;
-    Ok(())
-}
-
-/// Validates root module, symbol, identity, and canonical-name consistency.
-fn validate_logical_identities(logical: &LogicalDocument) -> Result<(), DecodeError> {
-    let module = logical.module();
-    let mut previous_record = None;
-    for record in logical.record_types() {
-        if record.symbol_identity().module() != module
-            || record.nominal_identity().module() != module
-            || record.symbol_identity().declaration_name() != record.name()
-            || previous_record.is_some_and(|name| name >= record.name())
-        {
-            return Err(error(DecodeErrorClass::InvalidLogicalIr));
-        }
-        previous_record = Some(record.name());
-    }
-    let mut previous_declaration = None;
-    for declaration in logical.declarations() {
-        if declaration.symbol_identity().module() != module
-            || declaration.symbol_identity().declaration_name() != declaration.name()
-            || previous_declaration.is_some_and(|name| name >= declaration.name())
-        {
-            return Err(error(DecodeErrorClass::InvalidLogicalIr));
-        }
-        previous_declaration = Some(declaration.name());
-    }
-    Ok(())
-}
-
-/// Validates exact one-to-one source-map ownership and span coverage.
-fn validate_source_coverage(artifacts: &CompilationArtifacts) -> Result<(), DecodeError> {
-    let logical = artifacts.logical_document();
-    let expected = logical
-        .record_types()
-        .iter()
-        .map(RecordTypeDefinition::element_id)
-        .chain(logical.declarations().iter().map(Declaration::element_id))
-        .collect::<BTreeSet<_>>();
-    let observed = artifacts
-        .source_map()
-        .entries()
-        .iter()
-        .map(|entry| entry.element_id())
-        .collect::<BTreeSet<_>>();
-    if expected.len() != artifacts.source_map().entries().len()
-        || expected != observed
-        || !artifacts
-            .source_map()
-            .entries()
-            .windows(2)
-            .all(|pair| pair[0].element_id() < pair[1].element_id())
-    {
-        return Err(error(DecodeErrorClass::InvalidSourceMap));
-    }
-    Ok(())
-}
-
-/// Validates exact root coverage and canonical ordering for every provenance array.
-fn validate_provenance_coverage(artifacts: &CompilationArtifacts) -> Result<(), DecodeError> {
-    let expected = artifacts
-        .logical_document()
-        .declarations()
-        .iter()
-        .map(Declaration::element_id)
-        .collect::<BTreeSet<_>>();
-    let observed = artifacts
-        .provenance()
-        .iter()
-        .map(|record| record.element_id())
-        .collect::<BTreeSet<_>>();
-    let values_ordered = artifacts
-        .provenance()
-        .windows(2)
-        .all(|pair| pair[0].element_id() < pair[1].element_id());
-    let fields_ordered = artifacts.field_provenance().windows(2).all(|pair| {
-        (pair[0].element_id(), pair[0].field_path()) < (pair[1].element_id(), pair[1].field_path())
-    });
-    let reuses_ordered = artifacts.reuse_provenance().windows(2).all(|pair| {
-        (
-            pair[0].element_id(),
-            pair[0].value_path(),
-            pair[0].source_element_id(),
-        ) < (
-            pair[1].element_id(),
-            pair[1].value_path(),
-            pair[1].source_element_id(),
-        )
-    });
-    let references_ordered = artifacts.reference_provenance().windows(2).all(|pair| {
-        (
-            pair[0].element_id(),
-            pair[0].value_path(),
-            pair[0].target_element_id(),
-        ) < (
-            pair[1].element_id(),
-            pair[1].value_path(),
-            pair[1].target_element_id(),
-        )
-    });
-    if expected.len() != artifacts.provenance().len()
-        || expected != observed
-        || !values_ordered
-        || !fields_ordered
-        || !reuses_ordered
-        || !references_ordered
-    {
-        return Err(error(DecodeErrorClass::InvalidProvenance));
-    }
-    Ok(())
-}
-
 /// Maps trusted-model validation failures into frozen external result classes.
 fn map_reader_error(error_value: ReaderError) -> DecodeError {
     let class = match error_value {
-        ReaderError::MissingSourceMapEntry => DecodeErrorClass::InvalidSourceMap,
-        ReaderError::InvalidFieldProvenance
+        ReaderError::MissingSourceMapEntry | ReaderError::InvalidSourceMap => {
+            DecodeErrorClass::InvalidSourceMap
+        }
+        ReaderError::InvalidDerivation => DecodeErrorClass::InvalidDerivation,
+        ReaderError::InvalidProvenance
+        | ReaderError::InvalidFieldProvenance
         | ReaderError::InvalidReuseProvenance
         | ReaderError::InvalidReferenceEdge
         | ReaderError::MissingProvenanceRecord => DecodeErrorClass::InvalidProvenance,
-        ReaderError::InvalidVocabularyContract
+        ReaderError::InvalidLogicalIdentity
+        | ReaderError::InvalidVocabularyContract
         | ReaderError::DuplicateElementId
         | ReaderError::DuplicateDeclarationName
         | ReaderError::TypeValueMismatch

@@ -20,12 +20,58 @@ const NON_UNIT_CATEGORIES: &[&str] = &[
     "fuzz_",
 ];
 
-/// Selects an explicit backend override without silently falling back when nextest is absent.
-pub(crate) fn runner() -> Result<TestRunner, String> {
-    match env::var(constants::TEST_RUNNER_ENV) {
-        Ok(value) => parse_runner(&value),
-        Err(env::VarError::NotPresent) => Ok(configuration::automation()?.testing.runner),
-        Err(error) => Err(format!("invalid {}: {error}", constants::TEST_RUNNER_ENV)),
+/// One invocation's backend, profiles, output policy and executable; never cached globally.
+pub(crate) struct TestExecution {
+    /// Effective backend after environment overrides.
+    pub(crate) backend: TestRunner,
+    /// Parsed profiles and selection policy for the invocation.
+    pub(crate) testing: crate::configuration_models::Testing,
+    /// Effective successful-test reporting policy.
+    verbose: bool,
+    /// Effective Cargo executable, resolved once.
+    cargo: String,
+}
+impl TestExecution {
+    /// Loads configuration and environment overrides once for a complete test invocation.
+    pub(crate) fn load() -> Result<Self, String> {
+        let config = configuration::automation()?;
+        let backend = match env::var(constants::TEST_RUNNER_ENV) {
+            Ok(value) => parse_runner(&value)?,
+            Err(env::VarError::NotPresent) => config.testing.runner,
+            Err(error) => return Err(format!("invalid {}: {error}", constants::TEST_RUNNER_ENV)),
+        };
+        let verbose = match env::var(constants::TEST_VERBOSE_ENV) {
+            Ok(value) => parse_verbose(&value)?,
+            Err(env::VarError::NotPresent) => config.testing.verbose,
+            Err(error) => return Err(format!("invalid {}: {error}", constants::TEST_VERBOSE_ENV)),
+        };
+        let cargo =
+            configuration::configured_command(constants::CARGO_COMMAND_ENV, config.tools.cargo)?;
+        Ok(Self {
+            backend,
+            testing: config.testing,
+            verbose,
+            cargo,
+        })
+    }
+    /// Checks the selected backend using the same executable and config as execution.
+    pub(crate) fn verify(&self) -> Result<(), String> {
+        if self.backend == TestRunner::Nextest {
+            crate::command_output(&self.cargo, &["nextest", flags::VERSION])
+                .map_err(|error| format!("nextest is required: {error}; run cargo install cargo-nextest --locked (or explicitly set {}=cargo)", constants::TEST_RUNNER_ENV))?;
+            crate::read_workspace_text(&crate::workspace_root()?, &self.testing.config)?;
+        }
+        Ok(())
+    }
+    /// Runs through the shared subprocess adapter without resolving configuration again.
+    fn run(&self, arguments: &[String]) -> Result<(), String> {
+        crate::run_program(
+            std::path::Path::new(&self.cargo),
+            &arguments
+                .iter()
+                .map(std::ffi::OsStr::new)
+                .collect::<Vec<_>>(),
+        )
     }
 }
 
@@ -43,101 +89,98 @@ fn parse_runner(value: &str) -> Result<TestRunner, String> {
 
 /// Verifies the selected runner early and explains how to install it.
 pub(crate) fn verify_runner() -> Result<(), String> {
-    if runner()? == TestRunner::Nextest {
-        crate::command_output(&configuration::cargo_command()?, &["nextest", flags::VERSION])
-            .map_err(|error| format!("nextest is required: {error}; run `cargo install cargo-nextest --locked` (or explicitly set {}=cargo)", constants::TEST_RUNNER_ENV))?;
-        let config = configuration::automation()?.testing.config;
-        crate::read_workspace_text(&crate::workspace_root()?, &config)?;
-    }
-    Ok(())
+    TestExecution::load()?.verify()
 }
 
-/// Builds a locked command using the repository's configured runner/profile and target selection.
-fn arguments(
-    runner: TestRunner,
-    action: &str,
-    unit: bool,
-    full_gate: bool,
-    filter: Option<&str>,
-) -> Result<Vec<String>, String> {
-    let mut arguments: Vec<String> = match runner {
-        TestRunner::Cargo => vec!["test".to_owned()],
-        TestRunner::Nextest => {
-            let testing = configuration::automation()?.testing;
-            vec![
-                "nextest".to_owned(),
-                action.to_owned(),
-                "--config-file".to_owned(),
-                crate::workspace_root()?
-                    .join(testing.config)
-                    .to_string_lossy()
-                    .into_owned(),
-                "--profile".to_owned(),
-                if full_gate {
-                    testing.ci_profile
-                } else {
-                    testing.profile
-                },
-            ]
-        }
-    };
-    arguments.extend([flags::WORKSPACE, flags::LOCKED, "--lib", "--bins"].map(str::to_owned));
-    if unit {
-        arguments.extend(["--exclude", constants::NEUTRAL_TEST_SUITE].map(str::to_owned));
-    }
-    if !unit {
-        arguments.push("--tests".to_owned());
-    }
-    if runner == TestRunner::Nextest {
-        // Default-filter customization must not turn a full gate into a subset run.
-        arguments.push("--ignore-default-filter".to_owned());
-        if action == "run" {
-            arguments.extend(["--no-tests", "fail"].map(str::to_owned));
-        }
-        if let Some(filter) = filter {
-            arguments.extend(["-E".to_owned(), format!("test(/(^|::){filter}_/)")]);
-        }
+impl TestExecution {
+    /// Builds a locked command using the repository's configured runner/profile and target selection.
+    fn arguments(
+        &self,
+        runner: TestRunner,
+        action: &str,
+        unit: bool,
+        full_gate: bool,
+        filter: Option<&str>,
+    ) -> Result<Vec<String>, String> {
+        let mut arguments: Vec<String> = match runner {
+            TestRunner::Cargo => vec!["test".to_owned()],
+            TestRunner::Nextest => {
+                let testing = &self.testing;
+                vec![
+                    "nextest".to_owned(),
+                    action.to_owned(),
+                    "--config-file".to_owned(),
+                    crate::workspace_root()?
+                        .join(&testing.config)
+                        .to_string_lossy()
+                        .into_owned(),
+                    "--profile".to_owned(),
+                    if full_gate {
+                        testing.ci_profile.clone()
+                    } else {
+                        testing.profile.clone()
+                    },
+                ]
+            }
+        };
+        arguments.extend([flags::WORKSPACE, flags::LOCKED, "--lib", "--bins"].map(str::to_owned));
         if unit {
-            let excluded = NON_UNIT_CATEGORIES
-                .iter()
-                .map(|category| format!("test(~{category})"))
-                .collect::<Vec<_>>()
-                .join(" | ");
-            arguments.extend(["-E".to_owned(), format!("not ({excluded})")]);
+            arguments.extend(["--exclude", constants::NEUTRAL_TEST_SUITE].map(str::to_owned));
         }
-    } else if let Some(filter) = filter {
-        arguments.extend(["--".to_owned(), format!("{filter}_")]);
-    }
-    if runner == TestRunner::Cargo && unit {
-        arguments.push("--".to_owned());
-        for category in NON_UNIT_CATEGORIES {
-            arguments.extend(["--skip".to_owned(), (*category).to_owned()]);
+        if !unit {
+            arguments.push("--tests".to_owned());
         }
+        if runner == TestRunner::Nextest {
+            // Default-filter customization must not turn a full gate into a subset run.
+            arguments.push("--ignore-default-filter".to_owned());
+            if action == "run" {
+                arguments.extend(["--no-tests", "fail"].map(str::to_owned));
+            }
+            if let Some(filter) = filter {
+                arguments.extend(["-E".to_owned(), format!("test(/(^|::){filter}_/)")]);
+            }
+            if unit {
+                let excluded = NON_UNIT_CATEGORIES
+                    .iter()
+                    .map(|category| format!("test(~{category})"))
+                    .collect::<Vec<_>>()
+                    .join(" | ");
+                arguments.extend(["-E".to_owned(), format!("not ({excluded})")]);
+            }
+        } else if let Some(filter) = filter {
+            arguments.extend(["--".to_owned(), format!("{filter}_")]);
+        }
+        if runner == TestRunner::Cargo && unit {
+            arguments.push("--".to_owned());
+            for category in NON_UNIT_CATEGORIES {
+                arguments.extend(["--skip".to_owned(), (*category).to_owned()]);
+            }
+        }
+        if action == "run" {
+            reporting_arguments(&mut arguments, runner, self.verbose);
+        }
+        Ok(arguments)
     }
-    if action == "run" {
-        reporting_arguments(&mut arguments, runner, verbose()?);
-    }
-    Ok(arguments)
-}
 
-/// Instruments the complete target set while reusing the selected test runner's policy.
-pub(crate) fn coverage_arguments(backend: TestRunner) -> Result<Vec<String>, String> {
-    let tests = arguments(backend, "run", false, true, None)?;
-    let mut command = vec!["llvm-cov".to_owned()];
-    let prefix = if backend == TestRunner::Nextest {
-        command.push("nextest".to_owned());
-        2
-    } else {
-        1
-    };
-    command.extend(["--all-targets", "--no-report"].map(str::to_owned));
-    command.extend(
-        tests
-            .into_iter()
-            .skip(prefix)
-            .filter(|argument| !matches!(argument.as_str(), "--lib" | "--bins" | "--tests")),
-    );
-    Ok(command)
+    /// Instruments the complete target set while reusing the selected test runner's policy.
+    pub(crate) fn coverage_arguments(&self, backend: TestRunner) -> Result<Vec<String>, String> {
+        let tests = self.arguments(backend, "run", false, true, None)?;
+        let mut command = vec!["llvm-cov".to_owned()];
+        let prefix = if backend == TestRunner::Nextest {
+            command.push("nextest".to_owned());
+            2
+        } else {
+            1
+        };
+        command.extend(["--all-targets", "--no-report"].map(str::to_owned));
+        command.extend(
+            tests
+                .into_iter()
+                .skip(prefix)
+                .filter(|argument| !matches!(argument.as_str(), "--lib" | "--bins" | "--tests")),
+        );
+        Ok(command)
+    }
 }
 
 /// Selects cargo-mutants' native integration with the configured test backend.
@@ -177,15 +220,6 @@ pub(crate) fn mutation_arguments(
         ]);
     }
     command
-}
-
-/// Resolves explicit test verbosity without changing test selection or acceptance.
-fn verbose() -> Result<bool, String> {
-    match env::var(constants::TEST_VERBOSE_ENV) {
-        Ok(value) => parse_verbose(&value),
-        Err(env::VarError::NotPresent) => Ok(configuration::automation()?.testing.verbose),
-        Err(error) => Err(format!("invalid {}: {error}", constants::TEST_VERBOSE_ENV)),
-    }
 }
 
 /// Accepts conventional Boolean spellings for the per-command verbosity override.
@@ -237,11 +271,12 @@ pub(crate) fn run(level: TestLevel, full_gate: bool) -> Result<(), String> {
         TestLevel::Security => Some("security"),
         _ => None,
     };
-    execute(level == TestLevel::Unit, full_gate, filter)?;
+    let execution = TestExecution::load()?;
+    execute(&execution, level == TestLevel::Unit, full_gate, filter)?;
     if level == TestLevel::All {
-        verify_counts(configuration::active_test_profile(), full_gate)?;
+        verify_counts(&execution, configuration::active_test_profile(), full_gate)?;
         // Nextest cannot run Rustdoc tests; every complete run includes them separately.
-        crate::run_cargo(&["test", flags::WORKSPACE, "--doc", flags::LOCKED])?;
+        execution.run(&["test", flags::WORKSPACE, "--doc", flags::LOCKED].map(str::to_owned))?;
     }
     Ok(())
 }
@@ -255,20 +290,25 @@ pub(crate) fn run_filter(filter: &str) -> Result<(), String> {
     {
         return Err("test filter must be a nonempty category identifier".to_owned());
     }
-    execute(false, false, Some(filter))
+    execute(&TestExecution::load()?, false, false, Some(filter))
 }
 
 /// Executes a command with inherited streams and a visible backend/profile selection.
-fn execute(unit: bool, full_gate: bool, filter: Option<&str>) -> Result<(), String> {
-    verify_runner()?;
-    let backend = runner()?;
-    let arguments = arguments(backend, "run", unit, full_gate, filter)?;
+fn execute(
+    execution: &TestExecution,
+    unit: bool,
+    full_gate: bool,
+    filter: Option<&str>,
+) -> Result<(), String> {
+    execution.verify()?;
+    let backend = execution.backend;
+    let arguments = execution.arguments(backend, "run", unit, full_gate, filter)?;
     crate::output::info(format!(
         "tests: {:?}{}",
         backend,
         if full_gate { " (full gate)" } else { "" }
     ));
-    crate::run_cargo(&arguments.iter().map(String::as_str).collect::<Vec<_>>())
+    execution.run(&arguments)
 }
 
 /// Counts actual runnable test names, never occurrences in binary paths, banners, or metadata.
@@ -300,17 +340,17 @@ fn cargo_test_names(list: &str) -> impl Iterator<Item = &str> {
 }
 
 /// Verifies category minima using nextest's own typed listing format or explicit libtest records.
-pub(crate) fn verify_counts(profile: &str, full_gate: bool) -> Result<(), String> {
+fn verify_counts(execution: &TestExecution, profile: &str, full_gate: bool) -> Result<(), String> {
     let minimums = configuration::test_minimums(profile)?;
-    let backend = runner()?;
-    let mut args = arguments(backend, "list", false, full_gate, None)?;
+    let backend = execution.backend;
+    let mut args = execution.arguments(backend, "list", false, full_gate, None)?;
     if backend == TestRunner::Nextest {
         args.extend(["--message-format", "json-pretty"].map(str::to_owned));
     } else {
         args.extend(["--", "--list"].map(str::to_owned));
     }
     let output = crate::command_output(
-        &configuration::cargo_command()?,
+        &execution.cargo,
         &args.iter().map(String::as_str).collect::<Vec<_>>(),
     )?;
     let discovered = if backend == TestRunner::Nextest {

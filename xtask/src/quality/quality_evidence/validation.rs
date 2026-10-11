@@ -249,22 +249,86 @@ fn validate_performance(
     }
     let output = fs::read_to_string(directory.join(reports::BENCHMARK_STDOUT))
         .map_err(|error| format!("missing benchmark: {error}"))?;
-    for phase in &settings.policy.performance.required_phases {
-        if !output.contains(&format!("name={phase} ")) {
-            return Err(format!("benchmark has no {phase} measurement"));
-        }
-    }
+    validate_phase_times(
+        &output,
+        &settings.policy.performance.maximum_ns_per_iteration,
+    )?;
     let massif = fs::read_to_string(directory.join(reports::MASSIF))
         .map_err(|error| format!("missing heap profile: {error}"))?;
     let memcheck = fs::read_to_string(directory.join(reports::MEMCHECK_STDERR))
         .map_err(|error| format!("missing allocation review: {error}"))?;
-    if !massif.contains("mem_heap_B=")
-        || !memcheck.contains("ERROR SUMMARY: 0 errors")
+    let peak = massif
+        .lines()
+        .filter_map(|line| line.strip_prefix("mem_heap_B="))
+        .try_fold(None, |peak: Option<u64>, value| {
+            let bytes = value
+                .parse::<u64>()
+                .map_err(|_| "invalid Massif heap sample".to_owned())?;
+            Ok::<_, String>(Some(peak.map_or(bytes, |previous| previous.max(bytes))))
+        })?
+        .ok_or("performance has no heap samples")?;
+    if peak > settings.policy.performance.maximum_heap_bytes {
+        return Err(format!(
+            "peak heap {peak} exceeds {} bytes",
+            settings.policy.performance.maximum_heap_bytes
+        ));
+    }
+    if !memcheck.contains("ERROR SUMMARY: 0 errors")
         || !receipt.invocations.iter().any(|run| {
             run.report == "memcheck" && run.arguments.contains(&"--error-exitcode=1".to_owned())
         })
     {
         return Err("performance has no successful heap/allocation review".to_owned());
+    }
+    Ok(())
+}
+
+/// Parses exact native phase records; every required operation must pass once, without averaging away failures.
+fn validate_phase_times(
+    output: &str,
+    budgets: &std::collections::BTreeMap<String, u64>,
+) -> Result<(), String> {
+    let mut observed = BTreeSet::new();
+    for line in output.lines() {
+        let mut words = line.split_whitespace();
+        if words.next() != Some("PASS") || words.next() != Some("performance") {
+            continue;
+        }
+        let field = words.next().ok_or("malformed performance record")?;
+        if field.starts_with("artifact-bytes=") {
+            continue;
+        }
+        let phase = field
+            .strip_prefix("name=")
+            .ok_or("malformed performance record")?;
+        let maximum = budgets
+            .get(phase)
+            .ok_or_else(|| format!("unconfigured performance phase {phase}"))?;
+        let iterations = words
+            .next()
+            .and_then(|word| word.strip_prefix("iterations="))
+            .and_then(|value| value.parse::<u64>().ok())
+            .filter(|n| *n > 0)
+            .ok_or_else(|| format!("invalid iterations for {phase}"))?;
+        let elapsed = words
+            .next()
+            .and_then(|word| word.strip_prefix("elapsed-ns="))
+            .and_then(|value| value.parse::<u64>().ok())
+            .filter(|n| *n > 0)
+            .ok_or_else(|| format!("invalid elapsed time for {phase}"))?;
+        if words.next().is_some() || !observed.insert(phase) {
+            return Err(format!("duplicate or malformed performance phase {phase}"));
+        }
+        if u128::from(elapsed) > u128::from(*maximum) * u128::from(iterations) {
+            return Err(format!(
+                "performance {phase} exceeded {maximum} ns/iteration ({elapsed} ns / {iterations})"
+            ));
+        }
+    }
+    for phase in budgets.keys() {
+        if !observed.contains(phase.as_str()) {
+            return Err(format!("benchmark has no {phase} measurement"));
+        }
     }
     Ok(())
 }

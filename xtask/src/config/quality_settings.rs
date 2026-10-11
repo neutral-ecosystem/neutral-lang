@@ -87,8 +87,10 @@ pub(crate) struct FuzzSettings {
 pub(crate) struct PerformanceSettings {
     /// Cargo package/benchmark target pair.
     pub(crate) harness: BenchmarkHarness,
-    /// Required measured operations, shared by every performance receipt check.
-    pub(crate) required_phases: Vec<String>,
+    /// Required operations and their inclusive direct-run nanoseconds/iteration ceilings.
+    pub(crate) maximum_ns_per_iteration: BTreeMap<String, u64>,
+    /// Inclusive peak useful-heap ceiling measured by Massif, excluding allocator bookkeeping.
+    pub(crate) maximum_heap_bytes: u64,
     /// Human profile/status descriptions, not evidence.
     #[serde(flatten)]
     _annotations: BTreeMap<String, toml::Value>,
@@ -201,21 +203,21 @@ impl QualityPolicy {
                 "quality targets and paths must be safe and the fuzz budget positive".to_owned(),
             );
         }
-        let phases = &policy.performance.required_phases;
+        let phases = &policy.performance.maximum_ns_per_iteration;
         if phases.is_empty()
-            || phases
-                .iter()
-                .collect::<std::collections::BTreeSet<_>>()
-                .len()
-                != phases.len()
-            || phases.iter().any(|phase| {
-                phase.is_empty()
+            || policy.performance.maximum_heap_bytes == 0
+            || phases.iter().any(|(phase, maximum)| {
+                *maximum == 0
+                    || phase.is_empty()
                     || !phase
                         .bytes()
                         .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
             })
         {
-            return Err("performance phases must be nonempty, unique operation names".to_owned());
+            return Err(
+                "performance requires named phases with positive timing and heap ceilings"
+                    .to_owned(),
+            );
         }
         Ok(policy)
     }

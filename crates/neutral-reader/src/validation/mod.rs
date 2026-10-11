@@ -13,11 +13,13 @@ use crate::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
+mod companions;
 mod document;
 mod provenance;
 mod schema;
 mod value;
 
+pub use companions::validate_document_companions;
 pub(super) use document::validate_artifacts;
 use provenance::{
     validate_field_provenance, validate_reference_provenance, validate_reuse_provenance,

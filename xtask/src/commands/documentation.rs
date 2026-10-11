@@ -5,16 +5,17 @@
 use crate::constants::flags;
 use crate::{
     Command, Path, RUSTDOC_HEADER_TEMPLATE, RUSTDOC_INDEX_TEMPLATE, cargo_command, cargo_discovery,
-    cargo_target_directory, constants, env, fs, output, workspace_root,
+    constants, env, fs, output, workspace_root,
 };
 
 /// Builds every workspace crate's local API documentation.
 pub(crate) fn documentation() -> Result<(), String> {
     run_rustdoc()?;
-    let metadata = serde_json::to_string(&cargo_discovery::metadata(&workspace_root()?, false)?)
+    let metadata = cargo_discovery::metadata(&workspace_root()?, false)?;
+    let output_directory = metadata.target_directory.join("doc").into_std_path_buf();
+    let metadata = serde_json::to_string(&metadata)
         .map_err(|error| format!("could not serialize Cargo metadata: {error}"))?;
     let index = render_rustdoc_index(&metadata)?;
-    let output_directory = cargo_target_directory()?.join("doc");
     fs::create_dir_all(&output_directory).map_err(|error| {
         format!(
             "could not create rustdoc directory {}: {error}",

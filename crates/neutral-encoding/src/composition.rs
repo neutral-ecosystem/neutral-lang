@@ -54,7 +54,7 @@ pub fn encode_composition_project(
     let mut w = CborWriter::with_cancellation(cancel);
     write_ir(&mut w, ir)?;
     let payload = w.finish()?;
-    parse_section(&payload, profile::MAGIC.len(), DecodeLimits::hard(), cancel).map_err(|e| {
+    crate::decoder::validate_section(&payload, DecodeLimits::hard(), cancel).map_err(|e| {
         if e.class() == C::Cancelled {
             E::Cancelled
         } else {

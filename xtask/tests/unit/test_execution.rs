@@ -4,11 +4,36 @@
 
 use super::*;
 
+/// Argument construction consumes its supplied snapshot, never a fresh configuration read.
+#[test]
+fn command_arguments_use_one_local_settings_snapshot() {
+    let mut execution = TestExecution::load().unwrap();
+    execution.testing.ci_profile = "snapshot-profile".to_owned();
+    execution.testing.config = "config/snapshot.toml".to_owned();
+    execution.verbose = true;
+    let args = execution
+        .arguments(TestRunner::Nextest, "run", false, true, None)
+        .unwrap();
+    assert!(args.contains(&"snapshot-profile".to_owned()));
+    assert!(args.iter().any(|arg| arg.ends_with("config/snapshot.toml")));
+    assert!(
+        args.windows(2)
+            .any(|pair| pair == ["--status-level", "pass"])
+    );
+    assert_ne!(
+        TestExecution::load().unwrap().testing.ci_profile,
+        "snapshot-profile"
+    );
+}
+
 /// Analysis uses native Nextest integrations without changing coverage targets or fallback policy.
 #[test]
 fn analysis_commands_share_the_selected_test_backend() {
     for backend in [TestRunner::Nextest, TestRunner::Cargo] {
-        let coverage = coverage_arguments(backend).expect("coverage command");
+        let coverage = TestExecution::load()
+            .unwrap()
+            .coverage_arguments(backend)
+            .expect("coverage command");
         assert_eq!(coverage[0], "llvm-cov");
         assert!(coverage.contains(&"--all-targets".to_owned()));
         assert!(coverage.contains(&"--locked".to_owned()));
@@ -103,14 +128,19 @@ fn automation_test_runner_selection_is_explicit() {
 #[test]
 fn automation_test_arguments_keep_full_gate_complete() {
     let config = configuration::automation().expect("automation settings");
-    let args =
-        arguments(TestRunner::Nextest, "run", false, true, Some("security")).expect("nextest args");
+    let args = TestExecution::load()
+        .unwrap()
+        .arguments(TestRunner::Nextest, "run", false, true, Some("security"))
+        .expect("nextest args");
     assert!(args.contains(&config.testing.ci_profile));
     assert!(args.contains(&"--ignore-default-filter".to_owned()));
     assert!(args.contains(&"--tests".to_owned()));
     assert!(args.contains(&"--locked".to_owned()));
     assert!(args.contains(&"test(/(^|::)security_/)".to_owned()));
-    let unit = arguments(TestRunner::Cargo, "run", true, false, None).expect("cargo args");
+    let unit = TestExecution::load()
+        .unwrap()
+        .arguments(TestRunner::Cargo, "run", true, false, None)
+        .expect("cargo args");
     assert!(!unit.contains(&"--tests".to_owned()));
     assert_eq!(unit[0], "test");
 }
@@ -119,7 +149,10 @@ fn automation_test_arguments_keep_full_gate_complete() {
 #[test]
 fn unit_selection_is_not_all_library_tests() {
     for backend in [TestRunner::Nextest, TestRunner::Cargo] {
-        let args = arguments(backend, "run", true, false, None).unwrap();
+        let args = TestExecution::load()
+            .unwrap()
+            .arguments(backend, "run", true, false, None)
+            .unwrap();
         assert!(
             args.windows(2)
                 .any(|pair| pair == ["--exclude", constants::NEUTRAL_TEST_SUITE])
@@ -136,7 +169,10 @@ fn unit_selection_is_not_all_library_tests() {
                 "unit command did not exclude {category}"
             );
         }
-        let all = arguments(backend, "run", false, false, None).unwrap();
+        let all = TestExecution::load()
+            .unwrap()
+            .arguments(backend, "run", false, false, None)
+            .unwrap();
         assert!(!all.contains(&"--exclude".to_owned()));
     }
 }
@@ -178,7 +214,10 @@ fn verbose_reporting_is_explicit() {
         args.windows(2)
             .any(|pair| pair == ["--status-level", "pass"])
     );
-    let listing = arguments(TestRunner::Nextest, "list", false, true, None).unwrap();
+    let listing = TestExecution::load()
+        .unwrap()
+        .arguments(TestRunner::Nextest, "list", false, true, None)
+        .unwrap();
     assert!(!listing.contains(&"--status-level".to_owned()));
 }
 

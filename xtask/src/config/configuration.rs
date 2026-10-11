@@ -133,7 +133,7 @@ pub(crate) fn configuration_value(content: &str, key: &str) -> Option<String> {
 }
 
 /// Selects a configured executable with an optional per-invocation override.
-fn configured_command(environment: &str, fallback: String) -> Result<String, String> {
+pub(crate) fn configured_command(environment: &str, fallback: String) -> Result<String, String> {
     let command = match env::var(environment) {
         Ok(command) => command,
         Err(env::VarError::NotPresent) => fallback,

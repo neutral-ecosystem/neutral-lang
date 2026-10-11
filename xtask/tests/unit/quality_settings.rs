@@ -111,21 +111,6 @@ fn quality_policy_rejects_invalid_operational_settings() {
             "minimum_seconds_per_target",
             toml::Value::Integer(0),
         ),
-        (
-            "performance",
-            "harness",
-            toml::Value::String("other/performance".to_owned()),
-        ),
-        (
-            "performance",
-            "required_phases",
-            toml::Value::Array(Vec::new()),
-        ),
-        (
-            "performance",
-            "required_phases",
-            toml::Value::Array(vec![toml::Value::String("bad phase".to_owned())]),
-        ),
     ] {
         let mut changed: toml::Value = toml::from_str(policy_text()).unwrap();
         changed[section][field] = value;
@@ -171,5 +156,43 @@ fn mutation_scope_is_a_reviewed_list() {
     ] {
         policy["mutation"]["critical_targets"] = toml::Value::Array(invalid);
         assert!(QualityPolicy::parse(&toml::to_string(&policy).unwrap()).is_err());
+    }
+}
+
+/// Performance requires explicit positive timing/heap budgets with valid operation names.
+#[test]
+fn quality_policy_rejects_invalid_performance_budgets() {
+    for (section, field, value) in [
+        (
+            "performance",
+            "harness",
+            toml::Value::String("other/performance".to_owned()),
+        ),
+        (
+            "performance",
+            "maximum_ns_per_iteration",
+            toml::Value::Table(toml::Table::new()),
+        ),
+        (
+            "performance",
+            "maximum_ns_per_iteration",
+            toml::Value::Table(toml::Table::from_iter([(
+                "bad phase".to_owned(),
+                toml::Value::Integer(1),
+            )])),
+        ),
+        ("performance", "maximum_heap_bytes", toml::Value::Integer(0)),
+        (
+            "performance",
+            "maximum_ns_per_iteration",
+            toml::Value::Table(toml::Table::from_iter([(
+                "compile".to_owned(),
+                toml::Value::Integer(0),
+            )])),
+        ),
+    ] {
+        let mut changed: toml::Value = toml::from_str(policy_text()).unwrap();
+        changed[section][field] = value;
+        assert!(QualityPolicy::parse(&toml::to_string(&changed).unwrap()).is_err());
     }
 }

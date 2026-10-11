@@ -21,7 +21,11 @@ so reader and CLI reporting cannot drift into separate version tables.
 The active reader exposes validated in-process compiler artifacts through
 immutable scalar, nominal-record, and qualified vocabulary traversal; recursive
 type/value/default-provenance validation; exact vocabulary-contract validation;
-and indexed source lookup. `neutral-encoding` owns hostile framed-byte decoding
+and indexed source lookup. Model-level source spans, exact companion coverage,
+canonical ordering and derivation/resource consistency are checked here for both
+in-process and decoded inputs. Complete composition readers reuse checked
+canonical arrays for binary lookup rather than rebuilding declaration/origin indexes.
+`neutral-encoding` owns hostile framed-byte decoding
 and exposes a reader view only after the complete external artifact validates.
 The separate `ValidatedProjectInterface` checks a public-only,
 in-process interface snapshot without compiler linkage. It exposes public

@@ -168,6 +168,21 @@ partitions, warm and changed-unit cache execution, growth, and concurrency.
 Cache and decoding measurements also check results against clean compilation.
 Old document measurements remain separately labeled for compatibility; old-only
 reports no longer satisfy the current performance gate.
+`performance.maximum_ns_per_iteration` in `config/quality-gates.toml` defines
+both the required phase inventory and inclusive timing ceilings. Every direct
+benchmark phase must appear exactly once with positive integer iterations/time;
+missing, duplicate, malformed or over-budget samples fail. Massif's largest
+`mem_heap_B` sample must not exceed `performance.maximum_heap_bytes`; Memcheck
+must still report no errors. Profiler-instrumented timings are not compared
+against direct-run ceilings.
+
+These initial regression envelopes have at least 10× headroom over a local
+release sample (slowest repeated phase about 178 µs/iteration; growth about
+468 µs/iteration; useful heap peak 618,699 bytes). They detect gross regressions,
+not small slowdowns or a portable performance guarantee. Calibrate tighter
+ceilings from repeated, otherwise idle runs on the intended controlled runner;
+review changes to workload, compiler or hardware explicitly rather than raising
+ceilings automatically. Policy edits invalidate previous measurement receipts.
 The optional soak uses the benchmark's extended-soak profile. Use an otherwise
 idle controlled runner; comparing measurements from different machines is not a
 performance regression test.

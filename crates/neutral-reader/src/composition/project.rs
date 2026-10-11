@@ -111,6 +111,7 @@ impl ValidatedCompositionProject {
         }
         check_comparison_work(&ir, composition.policy().work)?;
         modules(&ir)?;
+        canonical_lookup_order(&ir)?;
         let catalogue = Arc::try_new(
             validate_composition_model(&ir.vocabularies, composition, cancellation)
                 .map_err(|e| error(&e))?,
@@ -144,11 +145,7 @@ impl ValidatedCompositionProject {
         let mut origins = ir.origins.iter();
         let mut attribution_work = composition.work;
         for binding in bindings.bindings() {
-            let d = ir
-                .declarations
-                .iter()
-                .find(|d| d.identity == binding.binding().owner)
-                .ok_or(E::Semantic)?;
+            let d = declaration(&ir, &binding.binding().owner)?;
             if d.value.as_ref() != Some(&binding.binding().value) {
                 return Err(E::Semantic);
             }
@@ -191,6 +188,26 @@ impl ValidatedCompositionProject {
     pub(super) const fn effective_composition_limits(&self) -> CompositionLimits {
         self.effective_composition
     }
+}
+
+/// Checks producer ordering before any binary search can confer authority.
+fn canonical_lookup_order(ir: &CompositionProjectIr) -> Result<(), E> {
+    if ir
+        .declarations
+        .windows(2)
+        .any(|p| p[0].identity >= p[1].identity)
+        || ir
+            .source_maps
+            .windows(2)
+            .any(|p| p[0].declaration >= p[1].declaration)
+        || ir
+            .vocabulary_sources
+            .windows(2)
+            .any(|p| (&p[0].identity, &p[0].version) >= (&p[1].identity, &p[1].version))
+    {
+        return Err(E::Semantic);
+    }
+    Ok(())
 }
 
 /// Independently recomputes the interface identity under the intersected reader budget.
@@ -239,10 +256,10 @@ fn declarations(
         if i > 0 && ir.declarations[i - 1].identity >= d.identity {
             return Err(E::Semantic);
         }
-        if !ir
+        if ir
             .modules
-            .iter()
-            .any(|m| m.identity == *d.identity.module())
+            .binary_search_by(|m| m.identity.cmp(d.identity.module()))
+            .is_err()
         {
             return Err(E::Semantic);
         }
@@ -276,33 +293,52 @@ fn declarations(
     Ok((sources, raw))
 }
 
-/// Exact borrowed origin occurrences with fallibly reserved ordered membership.
-type OriginIndex<'a> = neutral_core::ordered::OrderedMap<
-    (&'a ModuleSymbolIdentity, &'a [P]),
-    &'a neutral_ir::composition::project::CompositionOrigin,
->;
+/// Borrow canonical occurrences directly, avoiding a second allocated, shift-heavy index.
+type OriginIndex<'a> = &'a [neutral_ir::composition::project::CompositionOrigin];
 
-/// Charges index shifts and observes cancellation before retaining companion membership.
+/// Validates ordered membership once before binary searches of untrusted occurrences.
 fn index_origins<'a>(
     ir: &'a CompositionProjectIr,
-    mut work: u64,
+    work: u64,
     cancellation: &CancellationToken,
 ) -> Result<OriginIndex<'a>, E> {
-    let mut index = OriginIndex::new();
+    if ir.origins.len() as u64 > work {
+        return Err(E::Limit);
+    }
+    let mut previous = None;
     for origin in &ir.origins {
         if cancellation.is_cancelled() {
             return Err(E::Cancelled);
         }
-        work = work.checked_sub(index.len() as u64).ok_or(E::Limit)?;
-        if index
-            .insert((&origin.binding, origin.path.as_slice()), origin)
-            .map_err(|_| E::Limit)?
-            .is_some()
-        {
+        let key = (&origin.binding, origin.path.as_slice());
+        if previous.is_some_and(|p| p >= key) {
             return Err(E::Companion);
         }
+        previous = Some(key);
     }
-    Ok(index)
+    Ok(&ir.origins)
+}
+
+/// Looks up a checked canonical declaration without retaining another identity copy.
+fn declaration<'a>(
+    ir: &'a CompositionProjectIr,
+    owner: &ModuleSymbolIdentity,
+) -> Result<&'a neutral_ir::composition::project::CompositionDeclaration, E> {
+    ir.declarations
+        .binary_search_by(|d| d.identity.cmp(owner))
+        .map(|i| &ir.declarations[i])
+        .map_err(|_| E::Semantic)
+}
+
+/// Resolves a checked canonical source-map occurrence without scanning every declaration.
+fn source_map<'a>(
+    ir: &'a CompositionProjectIr,
+    owner: &ModuleSymbolIdentity,
+) -> Option<&'a neutral_ir::project::ProjectSourceMap> {
+    ir.source_maps
+        .binary_search_by(|m| m.declaration.cmp(owner))
+        .ok()
+        .map(|i| &ir.source_maps[i])
 }
 
 /// Converts shared contract failures into a source-independent, non-disclosing envelope.
@@ -318,7 +354,13 @@ fn error(e: &CompositionError) -> E {
 
 /// Checks canonical complete module topology without requiring source text or acquisition.
 fn modules(ir: &CompositionProjectIr) -> Result<(), E> {
-    if ir.modules.is_empty() || ir.sources.len() != ir.modules.len() {
+    if ir.modules.is_empty()
+        || ir.sources.len() != ir.modules.len()
+        || ir
+            .modules
+            .windows(2)
+            .any(|p| p[0].identity >= p[1].identity)
+    {
         return Err(E::Semantic);
     }
     for (i, m) in ir.modules.iter().enumerate() {
@@ -331,10 +373,10 @@ fn modules(ir: &CompositionProjectIr) -> Result<(), E> {
         for (j, target) in m.imports.iter().enumerate() {
             if target == m.identity.module_name()
                 || j > 0 && m.imports[j - 1] >= *target
-                || !ir
+                || ir
                     .modules
-                    .iter()
-                    .any(|m| m.identity.module_name() == target)
+                    .binary_search_by(|m| m.identity.module_name().cmp(target))
+                    .is_err()
             {
                 return Err(E::Semantic);
             }
@@ -355,7 +397,10 @@ fn supplied(
     if cancellation.is_cancelled() {
         return Err(E::Cancelled);
     }
-    if !origins.contains_key(&(owner, path.as_slice())) {
+    if origins
+        .binary_search_by(|o| (&o.binding, o.path.as_slice()).cmp(&(owner, path.as_slice())))
+        .is_err()
+    {
         return Err(E::Companion);
     }
     Ok(match value {
@@ -373,7 +418,11 @@ fn supplied(
                 }
                 path.try_retain(1).map_err(|_| E::Limit)?;
                 path.push(P::Field(text(name).map_err(|_| E::Limit)?));
-                let origin = origins.get(&(owner, path.as_slice())).ok_or(E::Companion)?;
+                let origin = &origins[origins
+                    .binary_search_by(|o| {
+                        (&o.binding, o.path.as_slice()).cmp(&(owner, path.as_slice()))
+                    })
+                    .map_err(|_| E::Companion)?];
                 if !matches!(origin.kind, K::Defaulted | K::OmittedOptional) {
                     result.push((
                         text(name).map_err(|_| E::Limit)?,
@@ -439,13 +488,18 @@ fn attribution(
             }
             let bundle = ir
                 .vocabularies
-                .iter()
-                .find(|b| b.identity.identity() == identity && b.identity.version() == version)
+                .binary_search_by(|b| {
+                    (b.identity.identity(), b.identity.version())
+                        .cmp(&(identity.as_str(), version.as_str()))
+                })
+                .ok()
+                .map(|i| &ir.vocabularies[i])
                 .ok_or(E::Companion)?;
             let definition = bundle
                 .definitions
-                .iter()
-                .find(|d| d.name == *type_name)
+                .binary_search_by(|d| d.name.cmp(type_name))
+                .ok()
+                .map(|i| &bundle.definitions[i])
                 .ok_or(E::Companion)?;
             let B::Record(fields) = &definition.body else {
                 return Err(E::Companion);
@@ -458,8 +512,9 @@ fn attribution(
             }
             let source = ir
                 .vocabulary_sources
-                .iter()
-                .find(|s| s.identity == *identity && s.version == *version)
+                .binary_search_by(|s| (&s.identity, &s.version).cmp(&(identity, version)))
+                .ok()
+                .map(|i| &ir.vocabulary_sources[i])
                 .ok_or(E::Companion)?;
             if span.is_some_and(|s| s.is_empty() || s.end() > source.byte_len) {
                 return Err(E::Companion);
@@ -476,13 +531,7 @@ fn attribution(
 /// Resolves a nominal body from complete interpretation facts, without aliases.
 fn body<'a>(ir: &'a CompositionProjectIr, ty: &T) -> Result<&'a B, E> {
     match ty {
-        T::Nominal(owner) => match &ir
-            .declarations
-            .iter()
-            .find(|d| d.identity == *owner)
-            .ok_or(E::Semantic)?
-            .signature
-        {
+        T::Nominal(owner) => match &declaration(ir, owner)?.signature {
             S::Definition(body) => Ok(body),
             S::Binding(_) => Err(E::Semantic),
         },
@@ -492,9 +541,18 @@ fn body<'a>(ir: &'a CompositionProjectIr, ty: &T) -> Result<&'a B, E> {
             name,
         } => ir
             .vocabularies
-            .iter()
-            .find(|b| b.identity.identity() == identity && b.identity.version() == version)
-            .and_then(|b| b.definitions.iter().find(|d| d.name == *name))
+            .binary_search_by(|b| {
+                (b.identity.identity(), b.identity.version())
+                    .cmp(&(identity.as_str(), version.as_str()))
+            })
+            .ok()
+            .map(|i| &ir.vocabularies[i])
+            .and_then(|b| {
+                b.definitions
+                    .binary_search_by(|d| d.name.cmp(name))
+                    .ok()
+                    .map(|i| &b.definitions[i])
+            })
             .map(|d| &d.body)
             .ok_or(E::Semantic),
         _ => Err(E::Semantic),
@@ -520,11 +578,7 @@ fn default_path_check(
     origin: &neutral_ir::composition::project::CompositionOrigin,
     matches: impl Fn(&T, &neutral_ir::composition::CompositionField) -> bool,
 ) -> Result<bool, E> {
-    let declaration = ir
-        .declarations
-        .iter()
-        .find(|d| d.identity == origin.binding)
-        .ok_or(E::Semantic)?;
+    let declaration = declaration(ir, &origin.binding)?;
     let S::Binding(initial) = &declaration.signature else {
         return Err(E::Semantic);
     };
@@ -602,17 +656,13 @@ fn source_attribution(
             && location.span().start() >= map.location.span().start()
             && location.span().end() <= map.location.span().end()
     };
-    if ir
-        .source_maps
-        .iter()
-        .any(|m| m.declaration == origin.binding && contains(m))
-    {
+    if source_map(ir, &origin.binding).is_some_and(contains) {
         return Ok(());
     }
     if default_path_check(
         ir,
         origin,
-        |ty, _| matches!(ty, T::Nominal(owner) if ir.source_maps.iter().any(|m| m.declaration == *owner && contains(m))),
+        |ty, _| matches!(ty, T::Nominal(owner) if source_map(ir, owner).is_some_and(contains)),
     )? {
         return Ok(());
     }
@@ -631,11 +681,7 @@ fn source_attribution(
         if !seen.insert(owner).map_err(|_| E::Limit)? {
             continue;
         }
-        if ir
-            .source_maps
-            .iter()
-            .any(|m| m.declaration == *owner && contains(m))
-        {
+        if source_map(ir, owner).is_some_and(contains) {
             return Ok(());
         }
         for edge in ir
@@ -659,11 +705,6 @@ fn companions(
 ) -> Result<(), E> {
     let mut work = ir.composition_limits.work;
     source_companions(ir, &mut work, cancel)?;
-    let mut index = BTreeMap::new();
-    for d in &ir.declarations {
-        charge_index(&mut work, index.len(), cancel)?;
-        index.insert(&d.identity, d).map_err(|_| E::Limit)?;
-    }
     let mut actual = BTreeSet::new();
     let mut previous = None;
     for edge in &ir.provenance {
@@ -671,13 +712,9 @@ fn companions(
             return Err(E::Cancelled);
         }
         let key = (&edge.from, edge.kind, &edge.to, edge.location);
-        let map = ir
-            .source_maps
-            .iter()
-            .find(|m| m.declaration == edge.from)
-            .ok_or(E::Companion)?;
+        let map = source_map(ir, &edge.from).ok_or(E::Companion)?;
         if previous.is_some_and(|p| p >= key)
-            || !index.contains_key(&edge.to)
+            || declaration(ir, &edge.to).is_err()
             || edge.location.source() != map.location.source()
             || edge.location.span().is_empty()
             || edge.location.span().start() < map.location.span().start()
@@ -726,7 +763,7 @@ fn companions(
             return Err(E::Companion);
         }
         if from.module() != to.module()
-            && (!index.get(to).ok_or(E::Companion)?.public
+            && (!declaration(ir, to)?.public
                 || !reachable(
                     ir,
                     from.module().module_name(),
@@ -738,8 +775,8 @@ fn companions(
             return Err(E::Semantic);
         }
         if *kind == Edge::Value {
-            let left = index.get(from).ok_or(E::Companion)?;
-            let right = index.get(to).ok_or(E::Companion)?;
+            let left = declaration(ir, from)?;
+            let right = declaration(ir, to)?;
             let (S::Binding(a), S::Binding(b), Some(value), Some(target)) =
                 (&left.signature, &right.signature, &left.value, &right.value)
             else {
@@ -824,11 +861,10 @@ fn source_companions(
         }
     }
     for (map, d) in ir.source_maps.iter().zip(&ir.declarations) {
-        let s = ir
+        let s = &ir.sources[ir
             .sources
-            .iter()
-            .find(|s| s.module == d.identity.module().module_name())
-            .ok_or(E::Companion)?;
+            .binary_search_by(|s| s.module.as_str().cmp(d.identity.module().module_name()))
+            .map_err(|_| E::Companion)?];
         if map.declaration != d.identity
             || map.location.source() != s.digest
             || map.location.span().is_empty()
@@ -840,17 +876,18 @@ fn source_companions(
     Ok(())
 }
 
-/// Bounds conservative comparison/lookup work before repeated scans of producer-owned data.
+/// Bounds binary lookups and remaining type/reuse scans before processing producer-owned data.
 fn check_comparison_work(ir: &CompositionProjectIr, limit: u64) -> Result<(), E> {
     let declarations = ir.declarations.len() as u64;
     let modules = ir.modules.len() as u64;
     let facts = ir.composition_resources;
-    let size = declarations
+    let lookup_depth = u64::from(usize::BITS - ir.declarations.len().leading_zeros())
+        + u64::from(usize::BITS - ir.origins.len().leading_zeros());
+    let size = lookup_depth
         .checked_add(modules)
         .and_then(|n| n.checked_add(facts.types))
         .and_then(|n| n.checked_add(facts.fields))
         .and_then(|n| n.checked_add(facts.alternatives))
-        .and_then(|n| n.checked_add(facts.retained_value_nodes))
         .and_then(|n| n.checked_add(1))
         .ok_or(E::Limit)?;
     let paths = ir
@@ -859,9 +896,13 @@ fn check_comparison_work(ir: &CompositionProjectIr, limit: u64) -> Result<(), E>
         .try_fold(0_u64, |n, o| n.checked_add(o.path.len() as u64 + 1))
         .ok_or(E::Limit)?;
     let scans = paths
-        .checked_add(ir.provenance.len() as u64)
-        .and_then(|n| n.checked_add(declarations))
+        .checked_add(declarations)
         .and_then(|n| n.checked_mul(size))
+        .and_then(|n| {
+            (ir.provenance.len() as u64)
+                .checked_mul(facts.retained_value_nodes.checked_add(size)?)
+                .and_then(|reuse| n.checked_add(reuse))
+        })
         .ok_or(E::Limit)?;
     if scans > limit {
         return Err(E::Limit);
@@ -1029,11 +1070,10 @@ fn reachable(
         if !seen.insert(name).map_err(|_| E::Limit)? {
             continue;
         }
-        let module = ir
+        let module = &ir.modules[ir
             .modules
-            .iter()
-            .find(|m| m.identity.module_name() == name)
-            .ok_or(E::Semantic)?;
+            .binary_search_by(|m| m.identity.module_name().cmp(name))
+            .map_err(|_| E::Semantic)?];
         stack
             .try_retain(module.imports.len())
             .map_err(|_| E::Limit)?;

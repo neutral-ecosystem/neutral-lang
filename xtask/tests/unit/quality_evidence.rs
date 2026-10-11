@@ -386,7 +386,7 @@ fn performance_requires_real_profiler_and_matching_profile() {
         "old-only benchmark must not qualify the composition pipeline"
     );
     let mut expanded = String::new();
-    for phase in &settings.policy.performance.required_phases {
+    for phase in settings.policy.performance.maximum_ns_per_iteration.keys() {
         use std::fmt::Write as _;
         writeln!(
             expanded,
@@ -396,6 +396,7 @@ fn performance_requires_real_profiler_and_matching_profile() {
     }
     replace_report(&directory, &mut receipt, "benchmark.stdout", &expanded);
     assert!(validate_reports(&receipt, &directory, &settings).is_ok());
+    check_performance_boundaries(&directory, &mut receipt, &settings, &expanded);
     receipt.gate = QualityGate::PerformanceSoak;
     assert!(validate_reports(&receipt, &directory, &settings).is_err());
     receipt.gate = QualityGate::PerformanceRelease;
@@ -577,4 +578,53 @@ fn measurement_pointer_requires_complete_latest_run() {
         .is_err()
     );
     fs::remove_dir_all(directory).unwrap();
+}
+
+/// Checks malformed reports, inclusive thresholds and exact one-over rejection.
+fn check_performance_boundaries(
+    directory: &Path,
+    receipt: &mut Receipt,
+    settings: &QualitySettings,
+    expanded: &str,
+) {
+    for invalid in [
+        expanded.replace("elapsed-ns=100", "elapsed-ns=18446744073709551615"),
+        expanded.replace("iterations=250", "iterations=0"),
+        expanded.replace("elapsed-ns=100", "elapsed-ns=NaN"),
+        format!("{expanded}{expanded}"),
+        format!("{expanded}PASS performance broken\n"),
+    ] {
+        replace_report(directory, receipt, "benchmark.stdout", &invalid);
+        assert!(validate_reports(receipt, directory, settings).is_err());
+    }
+    replace_report(directory, receipt, "benchmark.stdout", expanded);
+    for invalid in ["mem_heap_B=18446744073709551615\n", "mem_heap_B=bad\n"] {
+        replace_report(directory, receipt, "massif.out", invalid);
+        assert!(validate_reports(receipt, directory, settings).is_err());
+    }
+    replace_report(directory, receipt, "massif.out", "mem_heap_B=100\n");
+    let mut tight = settings.clone();
+    tight.policy.performance.maximum_heap_bytes = 100;
+    for maximum in tight
+        .policy
+        .performance
+        .maximum_ns_per_iteration
+        .values_mut()
+    {
+        *maximum = 100;
+    }
+    let boundary = expanded.replace("iterations=250", "iterations=1");
+    replace_report(directory, receipt, "benchmark.stdout", &boundary);
+    assert!(validate_reports(receipt, directory, &tight).is_ok());
+    replace_report(
+        directory,
+        receipt,
+        "benchmark.stdout",
+        &boundary.replace("elapsed-ns=100", "elapsed-ns=101"),
+    );
+    assert!(validate_reports(receipt, directory, &tight).is_err());
+    replace_report(directory, receipt, "benchmark.stdout", &boundary);
+    replace_report(directory, receipt, "massif.out", "mem_heap_B=101\n");
+    assert!(validate_reports(receipt, directory, &tight).is_err());
+    replace_report(directory, receipt, "massif.out", "mem_heap_B=100\n");
 }

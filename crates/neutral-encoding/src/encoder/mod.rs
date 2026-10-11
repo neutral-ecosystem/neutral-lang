@@ -37,6 +37,10 @@ use fields::{check_depth, encode_text_array, field_key, field_text, field_unsign
 use frame::assemble_frame;
 use logical::{encode_logical, encode_vocabulary_identity};
 
+#[cfg(test)]
+#[path = "../../tests/unit/encoder_companions.rs"]
+mod tests;
+
 /// Encodes one already validated document into Neutral IR Framed CBOR 0.1.
 ///
 /// The function borrows and never mutates the input. Only envelope bytes depend

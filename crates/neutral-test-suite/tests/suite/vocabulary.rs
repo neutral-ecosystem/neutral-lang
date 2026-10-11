@@ -291,6 +291,6 @@ fn security_reader_rejects_missing_vocabulary_contract() {
     let hostile = Arc::new(replace_logical_document(&artifacts, logical));
     assert_eq!(
         ValidatedDocument::from_compiler_output(hostile).unwrap_err(),
-        ReaderError::InvalidVocabularyContract,
+        ReaderError::InvalidDerivation,
     );
 }

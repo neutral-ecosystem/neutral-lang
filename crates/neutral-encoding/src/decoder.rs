@@ -45,7 +45,8 @@ pub(crate) fn parse_section(
     limits: DecodeLimits,
     cancellation: &CancellationToken,
 ) -> Result<LocatedValue, DecodeError> {
-    parse_section_profile(bytes, base_offset, limits, cancellation, false)
+    parse_section_profile(bytes, base_offset, limits, cancellation, false, true)
+        .map(|(value, _)| value)
 }
 
 /// Parses successor wire data with minimal-width integer and length arguments.
@@ -55,7 +56,17 @@ pub(crate) fn parse_canonical_section(
     limits: DecodeLimits,
     cancellation: &CancellationToken,
 ) -> Result<LocatedValue, DecodeError> {
-    parse_section_profile(bytes, base_offset, limits, cancellation, true)
+    parse_section_profile(bytes, base_offset, limits, cancellation, true, true)
+        .map(|(value, _)| value)
+}
+
+/// Checks writer output with the same lexical budgets, without retaining a decode tree.
+pub(crate) fn validate_section(
+    bytes: &[u8],
+    limits: DecodeLimits,
+    cancellation: &CancellationToken,
+) -> Result<(), DecodeError> {
+    parse_section_profile(bytes, 0, limits, cancellation, true, false).map(|_| ())
 }
 
 /// Keeps legacy lexical acceptance separate from explicit canonical successor selection.
@@ -65,7 +76,8 @@ fn parse_section_profile(
     limits: DecodeLimits,
     cancellation: &CancellationToken,
     canonical: bool,
-) -> Result<LocatedValue, DecodeError> {
+    materialize: bool,
+) -> Result<(LocatedValue, usize), DecodeError> {
     let mut parser = Parser {
         bytes,
         position: 0,
@@ -74,6 +86,7 @@ fn parse_section_profile(
         nodes: 0,
         cancellation,
         canonical,
+        materialize,
         allocations: 0,
         allocation_fault: None,
     };
@@ -81,11 +94,13 @@ fn parse_section_profile(
     if parser.position != bytes.len() {
         return Err(parser.error(DecodeErrorClass::MalformedCbor));
     }
-    Ok(value)
+    Ok((value, parser.allocations))
 }
 
 /// Stateful parser that checks bounds before every allocation.
 struct Parser<'a> {
+    /// Validation-only walks share grammar and budgets but retain no untrusted tree.
+    materialize: bool,
     /// Request-local reservation count for tests, never a global allocator override.
     allocations: usize,
     /// One private synthetic allocation failure or cancellation checkpoint.
@@ -106,10 +121,13 @@ struct Parser<'a> {
     canonical: bool,
 }
 
-impl Parser<'_> {
+impl<'a> Parser<'a> {
     /// Checks cancellation before fallible storage growth; tests interrupt the same boundary.
     fn reserve<T>(&mut self, values: &mut Vec<T>, count: usize) -> Result<(), DecodeError> {
         self.check_cancelled()?;
+        if !self.materialize {
+            return Ok(());
+        }
         {
             let current = self.allocations;
             self.allocations += 1;
@@ -182,7 +200,10 @@ impl Parser<'_> {
                 return Err(self.error(DecodeErrorClass::EncodedSizeLimit));
             }
             self.reserve(&mut values, 1)?;
-            values.push(self.value(depth + 1)?);
+            let value = self.value(depth + 1)?;
+            if self.materialize {
+                values.push(value);
+            }
         }
         Ok(values)
     }
@@ -210,7 +231,9 @@ impl Parser<'_> {
                 return Err(Self::error_at(DecodeErrorClass::MalformedCbor, key.offset));
             };
             let value = self.value(depth + 1)?;
-            members.push((key, value));
+            if self.materialize {
+                members.push((key, value));
+            }
         }
         Ok(members)
     }
@@ -229,8 +252,8 @@ impl Parser<'_> {
         Ok(length)
     }
 
-    /// Reads one bounded byte string after validating remaining input.
-    fn byte_string(&mut self, additional: u8, maximum: usize) -> Result<Vec<u8>, DecodeError> {
+    /// Borrows bounded string bytes after checking length, before any retention.
+    fn string_slice(&mut self, additional: u8, maximum: usize) -> Result<&'a [u8], DecodeError> {
         let length = self.argument(additional)?;
         let length =
             usize::try_from(length).map_err(|_| self.error(DecodeErrorClass::EncodedSizeLimit))?;
@@ -244,17 +267,36 @@ impl Parser<'_> {
             .position
             .checked_add(length)
             .ok_or_else(|| self.error(DecodeErrorClass::EncodedSizeLimit))?;
+        let start = self.position;
+        self.position = end;
+        Ok(&self.bytes[start..end])
+    }
+
+    /// Retains byte strings only when constructing an independent decode tree.
+    fn byte_string(&mut self, additional: u8, maximum: usize) -> Result<Vec<u8>, DecodeError> {
+        let bytes = self.string_slice(additional, maximum)?;
+        let length = bytes.len();
         let mut value = Vec::new();
         self.reserve(&mut value, length)?;
-        value.extend_from_slice(&self.bytes[self.position..end]);
-        self.position = end;
+        if self.materialize {
+            value.extend_from_slice(bytes);
+        }
         Ok(value)
     }
 
     /// Reads one bounded valid UTF-8 text string.
     fn text_string(&mut self, additional: u8) -> Result<String, DecodeError> {
-        let bytes = self.byte_string(additional, self.limits.maximum_text_bytes())?;
-        String::from_utf8(bytes).map_err(|_| self.error(DecodeErrorClass::MalformedCbor))
+        let bytes = self.string_slice(additional, self.limits.maximum_text_bytes())?;
+        let length = bytes.len();
+        if std::str::from_utf8(bytes).is_err() {
+            return Err(self.error(DecodeErrorClass::MalformedCbor));
+        }
+        let mut retained = Vec::new();
+        self.reserve(&mut retained, length)?;
+        if self.materialize {
+            retained.extend_from_slice(bytes);
+        }
+        String::from_utf8(retained).map_err(|_| self.error(DecodeErrorClass::MalformedCbor))
     }
 
     /// Reads a supported CBOR argument and rejects indefinite/reserved forms.

@@ -72,13 +72,15 @@ pub fn encode_project(
     }
     let payload = write_ir(project.complete_ir(), Some(cancellation))?;
     // Enforce the same aggregate lexical/depth ceilings as an independent reader.
-    parse_section(&payload, MAGIC.len(), DecodeLimits::hard(), cancellation).map_err(|e| {
-        if e.class() == DecodeErrorClass::Cancelled {
-            EncodingError::Cancelled
-        } else {
-            EncodingError::EncodedSizeLimit
-        }
-    })?;
+    crate::decoder::validate_section(&payload, DecodeLimits::hard(), cancellation).map_err(
+        |e| {
+            if e.class() == DecodeErrorClass::Cancelled {
+                EncodingError::Cancelled
+            } else {
+                EncodingError::EncodedSizeLimit
+            }
+        },
+    )?;
     let mut bytes = MAGIC.to_vec();
     bytes.extend(payload);
     if bytes.len() > crate::constants::MAXIMUM_ARTIFACT_BYTES

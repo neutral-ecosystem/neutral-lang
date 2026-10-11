@@ -5,6 +5,63 @@
 use super::*;
 
 #[test]
+/// Rejects in-process companions that an independent decoder cannot accept.
+fn security_reader_rejects_inconsistent_source_companions() {
+    let original = compile_artifacts(MINIMAL_SOURCE);
+    let source = original.source_map();
+    for length in [1, source.source_byte_length() + 1] {
+        let malformed = neutral_ir::CompilationArtifacts::new(
+            original.logical_document().clone(),
+            neutral_ir::SourceMap::new(
+                source.source_digest(),
+                length,
+                source.module_span(),
+                source.entries().to_vec(),
+            ),
+            original.provenance().to_vec(),
+            original.derivation().clone(),
+        );
+        assert!(ValidatedDocument::from_compiler_output(Arc::new(malformed)).is_err());
+    }
+    let mut entries = source.entries().to_vec();
+    entries.push(entries[0]);
+    let malformed = neutral_ir::CompilationArtifacts::new(
+        original.logical_document().clone(),
+        neutral_ir::SourceMap::new(
+            source.source_digest(),
+            source.source_byte_length(),
+            source.module_span(),
+            entries,
+        ),
+        original.provenance().to_vec(),
+        original.derivation().clone(),
+    );
+    assert!(ValidatedDocument::from_compiler_output(Arc::new(malformed)).is_err());
+    let entry = &source.entries()[0];
+    let malformed = neutral_ir::CompilationArtifacts::new(
+        original.logical_document().clone(),
+        neutral_ir::SourceMap::new(
+            source.source_digest(),
+            source.source_byte_length(),
+            source.module_span(),
+            vec![neutral_ir::SourceMapEntry::new(
+                entry.element_id(),
+                neutral_core::ByteSpan::new(0, 0).unwrap(),
+                entry.type_span(),
+                entry.name_span(),
+                entry.value_span(),
+            )],
+        ),
+        original.provenance().to_vec(),
+        original.derivation().clone(),
+    );
+    assert_eq!(
+        ValidatedDocument::from_compiler_output(Arc::new(malformed)).unwrap_err(),
+        ReaderError::InvalidSourceMap
+    );
+}
+
+#[test]
 /// Verifies the external encoder emits the fixed frame and all five sections.
 fn integration_encoder_emits_complete_fixed_frame() {
     let document = compile_reader(MINIMAL_SOURCE);
