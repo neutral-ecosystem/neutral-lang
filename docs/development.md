@@ -95,6 +95,13 @@ documentation website](https://neutral-lang-doc.younesrabeh.workers.dev/).
 Update Rust documentation, package metadata, or the templates under `xtask/templates/`,
 then regenerate the local output.
 
+The generated API top bar provides Back/Forward (native browser history), Workspace,
+and Codebase map navigation. The map is generated from declared Cargo workspace
+dependencies: select a crate to see who uses it and what it uses, then follow its
+API link. Runtime, build, and test dependencies are labeled separately; optional
+and target-specific declarations are included. Graph-focus URLs can be shared,
+and a text dependency list remains available on narrow screens.
+
 The task-oriented Markdown guides in `docs/` are maintained source documents;
 they are not overwritten by the generator.
 

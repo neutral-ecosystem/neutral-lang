@@ -47,6 +47,114 @@
       padding: 4rem 0;
     }
 
+    .view-navigation {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .view-navigation a,
+    .view-navigation button {
+      padding: 0.55rem 0.8rem;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      font: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .view-navigation a[aria-current="page"],
+    .view-navigation a:hover,
+    .view-navigation button:hover {
+      border-color: var(--accent);
+    }
+
+    a:focus-visible,
+    button:focus-visible,
+    select:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .map-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .map-toolbar select {
+      max-width: 100%;
+      padding: 0.6rem;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      font: inherit;
+    }
+
+    .map-canvas {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 0.65rem;
+      background: var(--surface);
+    }
+
+    .map-canvas svg {
+      display: block;
+      width: 100%;
+      min-width: 48rem;
+    }
+
+    .map-canvas path {
+      fill: none;
+      stroke: var(--muted);
+      stroke-width: 1.5;
+    }
+
+    .map-canvas rect {
+      fill: var(--surface-raised);
+      stroke: var(--border);
+      rx: 8;
+    }
+
+    .map-canvas .map-selected rect,
+    .map-canvas a:hover rect,
+    .map-canvas a:focus rect {
+      stroke: var(--accent);
+      stroke-width: 2;
+    }
+
+    .map-canvas text {
+      fill: var(--text);
+      font: 14px ui-monospace, monospace;
+      text-anchor: middle;
+    }
+
+    .map-canvas .map-kind {
+      fill: var(--muted);
+      font-size: 12px;
+    }
+
+    .map-relations {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+      gap: 1.5rem;
+    }
+
+    .map-relations li {
+      margin-block: 0.7rem;
+      overflow-wrap: anywhere;
+    }
+
+    #map-description {
+      color: var(--muted);
+    }
+
     .eyebrow,
     .package-owner {
       color: var(--accent);
@@ -145,12 +253,15 @@
       background: linear-gradient(145deg, var(--surface-raised), var(--surface));
       border: 1px solid var(--border);
       border-radius: 0.65rem;
+    }
+
+    article.package-card {
       cursor: pointer;
       transition: border-color 120ms ease, transform 120ms ease;
     }
 
-    .package-card:hover,
-    .package-card:focus-within {
+    article.package-card:hover,
+    article.package-card:focus-within {
       border-color: var(--accent);
       transform: translateY(-2px);
     }
@@ -275,6 +386,12 @@
 </head>
 <body>
   <div class="shell">
+    <nav class="view-navigation" aria-label="Documentation navigation">
+      <button type="button" data-history="-1" aria-label="Back" title="Previous browser history entry">←</button>
+      <button type="button" data-history="1" aria-label="Forward" title="Next browser history entry">→</button>
+      <a href="#packages-view" id="packages-navigation">Packages</a>
+      <a href="#codebase-map" id="map-navigation">Codebase map</a>
+    </nav>
     <header>
       <div class="eyebrow">Neutral ecosystem · Rust API</div>
       <h1>Workspace documentation</h1>
@@ -282,6 +399,23 @@
     </header>
 
     <main>
+      <section id="codebase-map" aria-labelledby="map-heading" hidden>
+        <h2 id="map-heading">Codebase map</h2>
+        <p>Explore direct workspace dependencies. Arrows point from a crate to the crates it uses. Select a node to explore its neighborhood.</p>
+        <div class="map-toolbar">
+          <label for="map-package">Focus crate</label>
+          <select id="map-package"></select>
+          <a id="map-api">Open API documentation →</a>
+        </div>
+        <p id="map-description"></p>
+        <div class="map-canvas" id="map-canvas"></div>
+        <p>Runtime, build and test labels describe declared Cargo dependencies, including optional and target-specific declarations—not a resolved build or function call graph.</p>
+        <div class="map-relations">
+          <section><h3>Used by</h3><ul id="map-callers"></ul></section>
+          <section><h3>Depends on</h3><ul id="map-dependencies"></ul></section>
+        </div>
+      </section>
+      <div id="packages-view">
       <section class="package-section">
         <div class="section-heading">
           <h2>Language capabilities</h2>
@@ -318,6 +452,7 @@
       </section>
 
       <p class="empty" id="empty-result">No workspace package matches this filter.</p>
+      </div>
     </main>
 
     <footer>
@@ -335,6 +470,7 @@
     const workspaceIds = new Set(metadata.workspace_members);
     const packages = metadata.packages.filter(isWorkspacePackage);
     const packageNames = new Set(packages.map(packageName));
+    const workspaceEdges = collectWorkspaceEdges();
 
     /** Returns whether one metadata package belongs to the active workspace. */
     function isWorkspacePackage(packageEntry) {
@@ -370,10 +506,148 @@
 
     /** Returns direct dependencies that are also members of this workspace. */
     function workspaceDependencies(packageEntry) {
-      return packageEntry.dependencies
+      return [...new Set(packageEntry.dependencies
         .map(dependencyName)
-        .filter(isWorkspaceDependency)
+        .filter(isWorkspaceDependency))]
         .sort();
+    }
+
+    /** Groups declared workspace edges, retaining every Cargo dependency kind. */
+    function collectWorkspaceEdges() {
+      const edges = new Map();
+      for (const source of packages) {
+        for (const dependency of source.dependencies) {
+          if (!isWorkspaceDependency(dependency.name)) {
+            continue;
+          }
+          const key = `${source.name}/${dependency.name}`;
+          if (!edges.has(key)) {
+            edges.set(key, { from: source.name, to: dependency.name, kinds: new Set() });
+          }
+          const kind = dependency.kind === "dev" ? "test" : dependency.kind || "runtime";
+          edges.get(key).kinds.add(kind);
+        }
+      }
+      return [...edges.values()].sort(compareWorkspaceEdges);
+    }
+
+    /** Keeps graph neighbors and their text equivalents in stable name order. */
+    function compareWorkspaceEdges(left, right) {
+      return left.from.localeCompare(right.from) || left.to.localeCompare(right.to);
+    }
+
+    /** Creates an SVG element without interpreting package metadata as markup. */
+    function mapElement(tag, attributes, text) {
+      const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      for (const [name, value] of Object.entries(attributes)) {
+        element.setAttribute(name, value);
+      }
+      if (text !== undefined) {
+        element.textContent = text;
+      }
+      return element;
+    }
+
+    /** Returns a shareable graph focus URL that also participates in history. */
+    function mapLocation(name) {
+      return `#codebase-map/${encodeURIComponent(name)}`;
+    }
+
+    /** Renders the selected crate, its incoming/outgoing edges and accessible lists. */
+    function renderCodebaseMap(selected) {
+      const incoming = workspaceEdges.filter(edge => edge.to === selected.name);
+      const outgoing = workspaceEdges.filter(edge => edge.from === selected.name);
+      const layout = { width: 1000, nodeWidth: 260, nodeHeight: 60, rowHeight: 90 };
+      const height = (Math.max(incoming.length, outgoing.length, 1) + 1) * layout.rowHeight;
+      const centerY = height / 2;
+      const svg = mapElement("svg", {
+        viewBox: `0 0 ${layout.width} ${height}`,
+        role: "img",
+        "aria-label": `Direct dependencies of ${selected.name}; text links follow below`,
+      });
+
+      /** Draws one focusable crate and labels the dependency kind without color alone. */
+      function addNode(name, x, y, kinds, focused) {
+        const link = mapElement("a", { href: mapLocation(name), class: focused ? "map-selected" : "" });
+        link.append(mapElement("rect", {
+          x, y: y - layout.nodeHeight / 2, width: layout.nodeWidth, height: layout.nodeHeight,
+        }));
+        link.append(mapElement("text", { x: x + layout.nodeWidth / 2, y: y - 4 }, name));
+        link.append(mapElement("text", { x: x + layout.nodeWidth / 2, y: y + 17, class: "map-kind" }, kinds));
+        svg.append(link);
+      }
+
+      /** Connects two columns with a directional edge, drawn behind the crate nodes. */
+      function addEdge(x1, y1, x2, y2) {
+        const middleX = (x1 + x2) / 2;
+        svg.append(mapElement("path", {
+          d: `M ${x1} ${y1} C ${middleX} ${y1}, ${middleX} ${y2}, ${x2} ${y2} M ${x2 - 7} ${y2 - 4} L ${x2} ${y2} L ${x2 - 7} ${y2 + 4}`,
+        }));
+      }
+
+      /** Populates one graph column and the equivalent keyboard-friendly link list. */
+      function addNeighbors(edges, incomingSide, listId) {
+        const list = document.getElementById(listId);
+        list.replaceChildren();
+        if (edges.length === 0) {
+          const empty = document.createElement("li");
+          empty.textContent = "No declared workspace dependencies in this direction.";
+          list.append(empty);
+        }
+        for (const [index, edge] of edges.entries()) {
+          const name = incomingSide ? edge.from : edge.to;
+          const kinds = [...edge.kinds].sort().join(" + ");
+          const y = (height - (edges.length - 1) * layout.rowHeight) / 2 + index * layout.rowHeight;
+          if (incomingSide) {
+            addEdge(20 + layout.nodeWidth, y, 370, centerY);
+          } else {
+            addEdge(370 + layout.nodeWidth, centerY, 720, y);
+          }
+          addNode(name, incomingSide ? 20 : 720, y, kinds, false);
+          const item = document.createElement("li");
+          const focus = document.createElement("a");
+          focus.href = mapLocation(name);
+          focus.textContent = name;
+          const api = createDependencyLink(name);
+          api.textContent = "API";
+          api.setAttribute("aria-label", `${name} API documentation`);
+          item.append(focus, ` (${kinds}) · `, api);
+          list.append(item);
+        }
+      }
+
+      addNeighbors(incoming, true, "map-callers");
+      addNeighbors(outgoing, false, "map-dependencies");
+      addNode(selected.name, 370, centerY, "selected crate", true);
+      document.getElementById("map-canvas").replaceChildren(svg);
+      document.getElementById("map-package").value = selected.name;
+      document.getElementById("map-api").href = `${documentationTarget(selected)}/index.html`;
+      document.getElementById("map-description").textContent = selected.description || "Workspace package.";
+    }
+
+    /** Restores the requested view and graph focus after links or browser history. */
+    function restoreDocumentationView() {
+      const [view, focus] = window.location.hash.slice(1).split("/");
+      const showMap = view === "codebase-map";
+      document.getElementById("codebase-map").hidden = !showMap;
+      document.getElementById("packages-view").hidden = showMap;
+      document.getElementById("map-navigation").setAttribute("aria-current", showMap ? "page" : "false");
+      document.getElementById("packages-navigation").setAttribute("aria-current", showMap ? "false" : "page");
+      if (showMap && packages.length > 0) {
+        const selected = packages.find(entry => encodeURIComponent(entry.name) === focus)
+          || packages[0];
+        renderCodebaseMap(selected);
+      }
+    }
+
+    /** Records a crate selection in the URL so Back restores the previous selection. */
+    function selectMapPackage(event) {
+      window.location.hash = mapLocation(event.target.value);
+    }
+
+    /** Uses native browser history without storing a separate navigation log. */
+    function navigateDocumentationHistory(event) {
+      window.history.go(Number(event.currentTarget.dataset.history));
     }
 
     /** Returns one Cargo dependency's package name. */
@@ -508,7 +782,25 @@
     }
 
     renderWorkspace();
+    for (const entry of [...packages].sort(comparePackageNames)) {
+      const option = document.createElement("option");
+      option.value = entry.name;
+      option.textContent = entry.name;
+      document.getElementById("map-package").append(option);
+    }
+    for (const button of document.querySelectorAll("[data-history]")) {
+      button.addEventListener("click", navigateDocumentationHistory);
+    }
+    document.getElementById("map-package").addEventListener("change", selectMapPackage);
+    window.addEventListener("hashchange", restoreDocumentationView);
+    window.addEventListener("pageshow", restoreDocumentationView);
+    restoreDocumentationView();
     document.getElementById("package-search").addEventListener("input", filterPackages);
+
+    /** Orders the crate selector independently of dependency count. */
+    function comparePackageNames(left, right) {
+      return left.name.localeCompare(right.name);
+    }
   </script>
 </body>
 </html>

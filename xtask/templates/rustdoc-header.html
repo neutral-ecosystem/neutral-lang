@@ -1,5 +1,16 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <style>
+  :root {
+    --neutral-ui-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --neutral-header-height: 3.65rem;
+    scroll-padding-top: calc(var(--neutral-header-height) + 0.75rem);
+  }
+
+  /* Keep Rustdoc's explicit sans-serif setting while improving the default prose font. */
+  :root:not(.sans-serif-fonts) {
+    --font-family: var(--neutral-ui-font);
+  }
+
   :root,
   :root:not([data-theme]),
   :root[data-theme="light"] {
@@ -93,7 +104,7 @@
   }
 
   body.rustdoc {
-    padding-top: 3.65rem;
+    padding-top: var(--neutral-header-height);
   }
 
   #neutral-docs-nav {
@@ -101,7 +112,7 @@
     inset: 0 0 auto;
     z-index: 10000;
     display: flex;
-    min-height: 3.65rem;
+    min-height: var(--neutral-header-height);
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
@@ -123,7 +134,7 @@
     min-width: 0;
     gap: 0.7rem;
     color: var(--main-color);
-    font: 650 0.9rem/1.2 var(--font-family);
+    font: 650 0.9rem/1.2 var(--neutral-ui-font);
     text-decoration: none;
   }
 
@@ -154,32 +165,45 @@
     gap: 0.4rem;
   }
 
-  .neutral-docs-actions a {
+  .neutral-docs-actions button:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .neutral-docs-actions a,
+  .neutral-docs-actions button {
     min-height: 2.15rem;
     padding: 0.46rem 0.78rem;
     color: var(--main-color);
     background: var(--neutral-surface-raised);
     border: 1px solid var(--neutral-nav-border);
     border-radius: 0.5rem;
-    font: 600 0.8rem/1.2 var(--font-family);
+    font: 600 0.8rem/1.2 var(--neutral-ui-font);
     text-decoration: none;
+    cursor: pointer;
   }
 
-  .neutral-docs-actions a:hover {
+  .neutral-docs-actions a:hover,
+  .neutral-docs-actions button:hover,
+  .neutral-docs-actions button[aria-pressed="true"] {
     color: var(--neutral-accent);
     border-color: var(--neutral-accent);
   }
 
   .sidebar {
-    top: 3.65rem;
-    height: calc(100vh - 3.65rem);
+    top: var(--neutral-header-height);
+    height: calc(100vh - var(--neutral-header-height));
     border-right-color: var(--neutral-nav-border);
   }
 
   .sidebar-resizer {
-    top: 3.65rem;
-    height: calc(100% - 3.65rem);
+    top: var(--neutral-header-height);
+    height: calc(100% - var(--neutral-header-height));
     color: var(--neutral-nav-border);
+  }
+
+  .src #sidebar-button {
+    top: calc(var(--neutral-header-height) + 0.5rem);
   }
 
   .sidebar-crate {
@@ -317,6 +341,12 @@
     border-color: var(--neutral-accent);
   }
 
+  .impl > .rightside,
+  .method > .rightside,
+  .trait-impl > .rightside {
+    margin: 0.42rem 0.5rem 0 0.75rem;
+  }
+
   .stab {
     padding: 0.2rem 0.45rem;
     color: var(--neutral-muted);
@@ -350,17 +380,17 @@
     outline-offset: 3px;
   }
 
-  :target {
-    scroll-margin-top: 5rem;
+  body.rustdoc [id] {
+    scroll-margin-top: 0.75rem;
   }
 
   @media (max-width: 700px) {
-    body.rustdoc {
-      padding-top: 3.35rem;
+    :root {
+      --neutral-header-height: 3.35rem;
+      scroll-padding-top: calc(var(--neutral-header-height) + var(--topbar-height) + 0.75rem);
     }
 
     #neutral-docs-nav {
-      min-height: 3.35rem;
       padding: 0.42rem 0.65rem;
     }
 
@@ -374,18 +404,34 @@
       display: none;
     }
 
-    .neutral-docs-actions a {
+    .neutral-docs-brand {
+      flex-shrink: 0;
+    }
+
+    .neutral-docs-actions {
+      min-width: 0;
+      flex-shrink: 1;
+      overflow-x: auto;
+    }
+
+    .neutral-docs-actions > * {
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .neutral-docs-actions a,
+    .neutral-docs-actions button {
       min-height: 2rem;
       padding: 0.4rem 0.62rem;
     }
 
     rustdoc-topbar {
-      top: 3.35rem;
+      top: var(--neutral-header-height);
     }
 
     .sidebar {
-      top: calc(3.35rem + var(--topbar-height));
-      height: calc(100vh - 3.35rem - var(--topbar-height));
+      top: calc(var(--neutral-header-height) + var(--topbar-height));
+      height: calc(100vh - var(--neutral-header-height) - var(--topbar-height));
     }
 
     body.rustdoc > main {
@@ -452,13 +498,59 @@
 
     const actions = document.createElement("div");
     actions.className = "neutral-docs-actions";
+    for (const [label, direction] of [["←", -1], ["→", 1]]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      button.dataset.history = direction;
+      button.setAttribute("aria-label", direction < 0 ? "Back" : "Forward");
+      button.title = direction < 0 ? "Previous browser history entry" : "Next browser history entry";
+      button.addEventListener("click", navigateDocumentationHistory);
+      actions.append(button);
+    }
     const workspace = document.createElement("a");
     workspace.href = `${rootPath}index.html`;
     workspace.textContent = "Workspace";
     actions.append(workspace);
 
+    const map = document.createElement("a");
+    map.href = `${rootPath}index.html#codebase-map`;
+    map.textContent = "Codebase map";
+    actions.append(map);
+
+    const themeToggle = document.createElement("button");
+    themeToggle.id = "neutral-theme-toggle";
+    themeToggle.type = "button";
+    themeToggle.textContent = "Dark mode";
+
+    /** Reflects Rustdoc theme changes, including changes made in its settings. */
+    function syncThemeToggle() {
+      const theme = document.documentElement.dataset.theme;
+      themeToggle.setAttribute("aria-pressed", String(theme === "dark" || theme === "ayu"));
+    }
+
+    /** Applies and persists the requested theme through Rustdoc's settings API. */
+    function toggleNeutralTheme() {
+      const dark = themeToggle.getAttribute("aria-pressed") === "true";
+      updateLocalStorage("use-system-theme", "false");
+      switchTheme(dark ? "light" : "dark", true);
+    }
+
+    themeToggle.addEventListener("click", toggleNeutralTheme);
+    new MutationObserver(syncThemeToggle).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    syncThemeToggle();
+    actions.append(themeToggle);
+
     navigation.append(brand, actions);
     document.body.prepend(navigation);
+  }
+
+  /** Restores the previous or next page, anchor, or search using browser history. */
+  function navigateDocumentationHistory(event) {
+    window.history.go(Number(event.currentTarget.dataset.history));
   }
 
   document.addEventListener("DOMContentLoaded", configureNeutralDocumentation);
