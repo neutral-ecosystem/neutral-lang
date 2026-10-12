@@ -1,10 +1,11 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Finite description expansion — review candidate
+# Finite description expansion
 
 Profile: `neutral.expansion/1`, covering V1-CONS-015..016 and requiring
 [expression/1](EXPRESSIONS.md) and [evaluator/1](EVALUATOR.md).
-Status: review candidate, not frozen or activated. Source/profile, wire, identity
+Status: approved and frozen on 12-10-2026; reviewed bytes are pinned in
+[freeze.toml](freeze.toml). Not activated. Source/profile, wire, identity
 and authoring compatibility/vector activation is a separate gate.
 
 ## Source and typing

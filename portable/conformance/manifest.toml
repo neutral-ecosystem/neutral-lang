@@ -6,6 +6,89 @@ baseline_profile = "0.1"
 target_profile = "1.0"
 
 [[suite]]
+id = "expression-composition-review"
+profile = "neutral.capture/v3; neutral.project-ir/3; neutral.project-identity/3; neutral.authoring/2"
+active_from_stage = 8
+status = "frozen"
+scope = "approved-compatibility-source-amendment-and-literal-oracle-registration-only; not-implemented-or-active"
+input_files = [
+  "portable/specs/fixtures/expressions/positive/arithmetic.neu",
+  "portable/specs/fixtures/expressions/positive/guards.neu",
+  "portable/specs/fixtures/expressions/positive/construction.neu",
+  "portable/specs/fixtures/expressions/positive/match.neu",
+  "portable/specs/fixtures/expressions/positive/deferred.neu",
+  "portable/specs/fixtures/expressions/positive/nullable.neu",
+  "portable/specs/fixtures/expressions/positive/template.neu",
+  "portable/specs/fixtures/expressions/positive/matrix.neu",
+  "portable/specs/fixtures/expressions/positive/matrix-explicit.neu",
+  "portable/specs/fixtures/expressions/positive/matrix-duplicates.neu",
+  "portable/specs/fixtures/expressions/positive/matrix-empty.neu",
+  "portable/specs/fixtures/expressions/positive/restrictions.neu",
+  "portable/specs/fixtures/expressions/positive/hygiene-definition.neu",
+  "portable/specs/fixtures/expressions/positive/hygiene-caller.neu",
+  "portable/specs/fixtures/expressions/negative/branch-type.neu",
+  "portable/specs/fixtures/expressions/negative/branch-name.neu",
+  "portable/specs/fixtures/expressions/negative/division-zero.neu",
+  "portable/specs/fixtures/expressions/negative/comparison-chain.neu",
+  "portable/specs/fixtures/expressions/negative/match-missing.neu",
+  "portable/specs/fixtures/expressions/negative/match-duplicate.neu",
+  "portable/specs/fixtures/expressions/negative/template-recursion.neu",
+  "portable/specs/fixtures/expressions/negative/template-arguments.neu",
+  "portable/specs/fixtures/expressions/negative/template-static.neu",
+  "portable/specs/fixtures/expressions/negative/matrix-shape.neu",
+  "portable/specs/fixtures/expressions/negative/matrix-collision.neu",
+  "portable/specs/fixtures/expressions/negative/matrix-exclusion.neu",
+  "portable/specs/fixtures/expressions/negative/restrictions.neu",
+  "portable/specs/fixtures/expressions/negative/value-cycle.neu",
+  "portable/specs/fixtures/expressions/boundary/product.neu",
+  "portable/specs/fixtures/expressions/boundary/numeric.neu",
+  "portable/specs/fixtures/expressions/boundary/text.neu",
+  "portable/specs/fixtures/expressions/boundary/depth.neu",
+  "portable/specs/fixtures/expressions/boundary/nodes.neu",
+  "portable/specs/fixtures/expressions/negative/imperative.neu",
+  "portable/specs/fixtures/expressions/bundle.json",
+  "portable/specs/fixtures/expressions/positive/output.neu",
+  "portable/specs/fixtures/expressions/negative/interpolation-type.neu",
+  "portable/specs/fixtures/expressions/negative/template-null.neu",
+  "portable/specs/fixtures/expressions/positive/template-guard.neu",
+  "portable/specs/fixtures/expressions/negative/template-unused-static.neu",
+  "portable/specs/fixtures/expressions/positive/identity.neu",
+  "portable/specs/fixtures/expressions/positive/identity-literal.neu",
+  "portable/conformance/oracles/expressions/verify.py",
+  "portable/conformance/oracles/expressions/project_vectors.py",
+  "portable/conformance/oracles/expressions/authoring_vectors.py",
+  "portable/specs/fixtures/expressions/positive/public-template.neu",
+]
+
+[[case]]
+id = "V1-CONS-EXPRESSION-RESULT-CANDIDATES"
+fixture = "portable/specs/fixtures/expressions/cases.json"
+fixture_sha256 = "0dc74642700558eceedfb1fb93867a2aafbee667445d3d8474acdc579c734a4f"
+oracle = "portable/conformance/oracles/expressions/results.json"
+oracle_sha256 = "1d6081e5b53b900bb0f3d560ac1eeb23796935c7e4c1ee7cb6ed353ab9581118"
+
+[[case]]
+id = "V1-CONS-EXPRESSION-VECTOR-CANDIDATES"
+fixture = "portable/specs/fixtures/expressions/vectors.json"
+fixture_sha256 = "4c71ca33aed3c22ed720a9a506bda561b46109580050c74bc96feff20e46bba6"
+oracle = "portable/conformance/oracles/expressions/results.json"
+oracle_sha256 = "1d6081e5b53b900bb0f3d560ac1eeb23796935c7e4c1ee7cb6ed353ab9581118"
+
+[[case]]
+id = "V1-CONS-EXPRESSION-COMPLETE-CANDIDATES"
+fixture = "portable/specs/fixtures/expressions/complete-vectors.json"
+fixture_sha256 = "96d1ff5663b736b04d8fdf22ea2ae9fdbabc0c29d8f139a5958ae14e3bbd8266"
+oracle = "portable/conformance/oracles/expressions/results.json"
+oracle_sha256 = "1d6081e5b53b900bb0f3d560ac1eeb23796935c7e4c1ee7cb6ed353ab9581118"
+
+[[case]]
+id = "V1-CONS-EXPRESSION-AUTHORING-CANDIDATES"
+fixture = "portable/specs/fixtures/expressions/authoring-vectors.json"
+fixture_sha256 = "e987b00f36b136e1fc43df716f29eee1b227c5034a73b66ba408b944ea37a46a"
+oracle = "portable/conformance/oracles/expressions/results.json"
+oracle_sha256 = "1d6081e5b53b900bb0f3d560ac1eeb23796935c7e4c1ee7cb6ed353ab9581118"
+
+[[suite]]
 id = "consumer-graphs"
 profile = "neutral.example-consumer/1; neutral.project-ir/2"
 active_from_stage = 8

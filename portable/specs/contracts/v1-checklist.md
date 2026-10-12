@@ -118,8 +118,8 @@ scope in [consumer readiness](CONSUMER-READINESS.md).
 
 The approved V1-CONS-011..016 extension schedules bounded pure expressions,
 single-`num` exact/rounded decimal arithmetic, typed string/list construction, static/deferred input phases,
-parameterized descriptions, and finite static matrix expansion. It remains
-unchecked in the operational checklist until contract/profile activation,
+parameterized descriptions, and finite static matrix expansion. Its semantic
+contracts are frozen; delivery remains unchecked until profile activation,
 implementation, independent interpretation, and public-boundary evidence pass.
 General functions, mutation, recursive composition, unbounded loops, and effects
 remain excluded; existing profile behavior is not changed by this plan entry.

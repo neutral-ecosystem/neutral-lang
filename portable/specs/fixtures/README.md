@@ -13,3 +13,7 @@ manager, network, or ambient vocabulary resolver.
 Families include capture closure, modules/imports/SCCs, visibility/public
 closure, cross-module reuse/refs, vocabulary locks/location values, project
 IR/views, identities, authoring projection, resource limits, and public probes.
+
+[expressions/](expressions/README.md) contains approved, frozen successor expression
+and finite-composition inputs. Positive filenames describe required acceptance,
+not current compiler support; production activation remains pending.

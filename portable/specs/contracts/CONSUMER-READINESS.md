@@ -2,7 +2,7 @@
 
 # Vocabulary composition and consumer readiness
 
-Status: composition and consumer /1 contracts/oracles frozen; consumer implementation pending; pure-expression extension unfrozen
+Status: composition and consumer /1 contracts/oracles frozen; expression/evaluator/expansion semantic contracts frozen; implementation and extension activation pending
 
 This supplement schedules language infrastructure for `v0.8.0` and `v0.9.0`.
 It does not activate syntax, change an accepted encoding, or introduce an
@@ -19,10 +19,11 @@ binding acquisition, scheduling, backend selection, mapping implementation,
 authorization, and effects; they invoke the evaluator with explicit typed inputs.
 
 The approved Stage 8 extension V1-CONS-011..016 schedules bounded pure
-expressions and finite composition. It is not activated or contract-frozen:
-syntax, profile/feature selection, numeric rules, diagnostics, wire forms,
-identity vectors, and amendments to the current SOURCE exclusions must be
-reviewed before implementation. Existing profiles and vectors are immutable.
+expressions and finite composition. Syntax, semantic profile/feature selection,
+numeric rules and diagnostics are frozen in the three contracts below, but not
+activated. Wire forms, independent identity vectors, authoring compatibility and
+amendments to the current SOURCE exclusions remain a separate gate before
+implementation. Existing profiles and vectors are immutable.
 Neutral evaluates statically known pure expressions under those frozen rules;
 it never resolves external inputs or operation outputs during compilation.
 Later, the same pure semantics evaluate explicitly supplied consumer bindings.
@@ -185,10 +186,10 @@ typed semantic contract across source, IR, wire, independent readers, and
 authoring, with distinct authoring syntax and normalized IR representations;
 do not create a second expression language inside strings or vocabularies.
 
-Concrete written review candidates are [EXPRESSIONS](EXPRESSIONS.md),
+Approved frozen semantic contracts are [EXPRESSIONS](EXPRESSIONS.md),
 [EVALUATOR](EVALUATOR.md) and [EXPANSION](EXPANSION.md). They specify syntax,
 34-digit nonterminating division, explicit evaluator states and deterministic
-expansion rules. They remain unfrozen until written approval; the separate
+expansion rules. Reviewed bytes are pinned in [freeze.toml](freeze.toml); the separate
 IR/wire/authoring compatibility and independent-vector gate remains unchecked.
 
 - **V1-CONS-011:** Freeze and implement a separately versioned bounded pure
@@ -248,8 +249,8 @@ without delegating evaluation to the production evaluator or performing effects.
 
 ### Stage 8 design boundaries
 
-Freeze the following policies before implementing V1-CONS-011..016. They are
-development requirements, not changes to an already accepted source/IR profile.
+The following frozen semantic policies govern V1-CONS-011..016. They do not
+activate or change an existing source/IR profile.
 
 #### Numeric policy — one `num`, deterministic approximation
 
@@ -262,9 +263,9 @@ integer division. Division by zero always fails. An exact result or required
 intermediate that exceeds a resource limit fails rather than silently changing
 the arithmetic context.
 
-The proposed context is 34 significant decimal digits with round-to-nearest,
-ties-to-even for nonterminating division. This precision is a contract-freeze
-decision, not an activated capability or caller-adjustable approximation budget.
+The frozen context is 34 significant decimal digits with round-to-nearest,
+ties-to-even for nonterminating division. This precision is not an activated
+capability or caller-adjustable approximation budget.
 For example, `1 / 8` is exactly `0.125`; `1 / 3` produces a finite rounded
 approximation, and `(1 / 3) * 3` need not equal `1`. Do not reassociate expressions
 or claim algebraic equivalence across rounded intermediates. Freeze normalization,
@@ -418,7 +419,8 @@ The consumer /1 design and boundary-oracle freeze completes only its Stage 8
 contract tasks. The operation/resource/condition/capability corpus is registered
 separately with 31 cases and pinned file bytes. Public reader/authoring implementation,
 hostile/boundary validation and production comparisons remain unchecked.
-V1-CONS-011..016 are not covered by this freeze.
+V1-CONS-011..016 have separately frozen expression/evaluator/expansion semantic
+contracts; their vectors, compatibility and implementation remain pending.
 
 The operational checklist is the sole task tracker. Register reviewed fixture
 families and literal outcomes in the conformance manifest at gate activation;

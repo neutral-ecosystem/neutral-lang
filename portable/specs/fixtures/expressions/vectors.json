@@ -1,0 +1,1856 @@
+{
+  "schema": "neutral.expression-vectors/1",
+  "status": "candidate-review-only; no-production-comparison",
+  "provenance": "literal expected rational results; independent Python integer/Fraction NHT and restricted-CBOR framing; no Neutral production imports",
+  "baseline": {
+    "source": "portable/specs/fixtures/expressions/positive/identity.neu",
+    "source_utf8": "neu \"1.0\"\nmodule example::expressions\n\npublic num result = 1 / 8\n",
+    "source_sha256": "30e9f544ba4f09b7eccfd3dfcb82ffa033c16dd5bf24c752f23ee6a1c76aa010",
+    "profiles": {
+      "capture": "neutral.capture/v3",
+      "source": "1.0",
+      "ir": "neutral.project-ir/3",
+      "wire": "NIR-PROJECT-CBOR/3",
+      "identity": "neutral.project-identity/3",
+      "authoring": "neutral.authoring/2",
+      "expression": "neutral.expression/1",
+      "evaluator": "neutral.evaluator/1",
+      "expansion": "neutral.expansion/1",
+      "decimal": "neutral.decimal/1"
+    },
+    "required_features": [
+      "decimal-division-v1",
+      "finite-expansion-v1",
+      "pure-evaluator-v1",
+      "pure-expressions-v1",
+      "tagged-variants-v1",
+      "vocabulary-composition-v2"
+    ]
+  },
+  "arithmetic": [
+    {
+      "id": "terminating-eighth",
+      "operands": [
+        "1",
+        "8"
+      ],
+      "expected": {
+        "negative": false,
+        "coefficient": "125",
+        "scale": -3
+      }
+    },
+    {
+      "id": "terminating-fortieth",
+      "operands": [
+        "1",
+        "40"
+      ],
+      "expected": {
+        "negative": false,
+        "coefficient": "25",
+        "scale": -3
+      }
+    },
+    {
+      "id": "decimal-not-integer",
+      "operands": [
+        "7",
+        "2"
+      ],
+      "expected": {
+        "negative": false,
+        "coefficient": "35",
+        "scale": -1
+      }
+    },
+    {
+      "id": "third",
+      "operands": [
+        "1",
+        "3"
+      ],
+      "expected": {
+        "negative": false,
+        "coefficient": "3333333333333333333333333333333333",
+        "scale": -34
+      }
+    },
+    {
+      "id": "two-thirds",
+      "operands": [
+        "2",
+        "3"
+      ],
+      "expected": {
+        "negative": false,
+        "coefficient": "6666666666666666666666666666666667",
+        "scale": -34
+      }
+    },
+    {
+      "id": "seventh",
+      "operands": [
+        "1",
+        "7"
+      ],
+      "expected": {
+        "negative": false,
+        "coefficient": "1428571428571428571428571428571429",
+        "scale": -34
+      }
+    },
+    {
+      "id": "negative-sixth",
+      "operands": [
+        "-1",
+        "6"
+      ],
+      "expected": {
+        "negative": true,
+        "coefficient": "1666666666666666666666666666666667",
+        "scale": -34
+      }
+    },
+    {
+      "id": "zero",
+      "operands": [
+        "0",
+        "-3"
+      ],
+      "expected": {
+        "negative": false,
+        "coefficient": "0",
+        "scale": 0
+      }
+    },
+    {
+      "id": "small-scale",
+      "operands": [
+        "1e-40",
+        "3"
+      ],
+      "expected": {
+        "negative": false,
+        "coefficient": "3333333333333333333333333333333333",
+        "scale": -74
+      }
+    },
+    {
+      "id": "large-scale",
+      "operands": [
+        "1e40",
+        "3"
+      ],
+      "expected": {
+        "negative": false,
+        "coefficient": "3333333333333333333333333333333333",
+        "scale": 6
+      }
+    },
+    {
+      "id": "terminating-over34",
+      "operands": [
+        "10000000000000000000000000000000001",
+        "1"
+      ],
+      "expected": {
+        "negative": false,
+        "coefficient": "10000000000000000000000000000000001",
+        "scale": 0
+      }
+    },
+    {
+      "id": "rounding-carry",
+      "operands": [
+        "99999999999999999999999999999999999998",
+        "99999999999999999999999999999999999999"
+      ],
+      "expected": {
+        "negative": false,
+        "coefficient": "1",
+        "scale": 0
+      }
+    }
+  ],
+  "transcripts": [
+    {
+      "id": "complete-captured",
+      "scope": "complete-captured-input",
+      "frames": {
+        "tag": "neutral-nht-v1",
+        "children": [
+          {
+            "tag": "neutral/project-captured/v3",
+            "children": [
+              {
+                "tag": "identity-profile",
+                "payload": {
+                  "text": "neutral.project-identity/3"
+                }
+              },
+              {
+                "tag": "profile",
+                "payload": {
+                  "text": "1.0"
+                }
+              },
+              {
+                "tag": "sources",
+                "children": [
+                  {
+                    "tag": "source",
+                    "children": [
+                      {
+                        "tag": "module",
+                        "payload": {
+                          "text": "example::expressions"
+                        }
+                      },
+                      {
+                        "tag": "source-id",
+                        "payload": {
+                          "text": "source:identity-fixture"
+                        }
+                      },
+                      {
+                        "tag": "digest",
+                        "payload": {
+                          "hex": "30e9f544ba4f09b7eccfd3dfcb82ffa033c16dd5bf24c752f23ee6a1c76aa010"
+                        }
+                      },
+                      {
+                        "tag": "byte-length",
+                        "payload": {
+                          "uint": 65
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "vocabularies",
+                "children": []
+              },
+              {
+                "tag": "features",
+                "children": [
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "decimal-division-v1"
+                    }
+                  },
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "finite-expansion-v1"
+                    }
+                  },
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "pure-evaluator-v1"
+                    }
+                  },
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "pure-expressions-v1"
+                    }
+                  },
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "tagged-variants-v1"
+                    }
+                  },
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "vocabulary-composition-v2"
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "semantic-profiles",
+                "children": [
+                  {
+                    "tag": "expression",
+                    "payload": {
+                      "text": "neutral.expression/1"
+                    }
+                  },
+                  {
+                    "tag": "evaluator",
+                    "payload": {
+                      "text": "neutral.evaluator/1"
+                    }
+                  },
+                  {
+                    "tag": "expansion",
+                    "payload": {
+                      "text": "neutral.expansion/1"
+                    }
+                  },
+                  {
+                    "tag": "decimal",
+                    "payload": {
+                      "text": "neutral.decimal/1"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "transcript_hex": "000e6e65757472616c2d6e68742d763100000000000002dd001b6e65757472616c2f70726f6a6563742d63617074757265642f763300000000000002b800106964656e746974792d70726f66696c65000000000000001a6e65757472616c2e70726f6a6563742d6964656e746974792f33000770726f66696c650000000000000003312e300007736f757263657300000000000000ab0006736f75726365000000000000009b00066d6f64756c6500000000000000146578616d706c653a3a65787072657373696f6e730009736f757263652d69640000000000000017736f757263653a6964656e746974792d666978747572650006646967657374000000000000002030e9f544ba4f09b7eccfd3dfcb82ffa033c16dd5bf24c752f23ee6a1c76aa010000b627974652d6c656e67746800000000000000080000000000000041000c766f636162756c617269657300000000000000000008666561747572657300000000000000db0007666561747572650000000000000013646563696d616c2d6469766973696f6e2d7631000766656174757265000000000000001366696e6974652d657870616e73696f6e2d76310007666561747572650000000000000011707572652d6576616c7561746f722d76310007666561747572650000000000000013707572652d65787072657373696f6e732d763100076665617475726500000000000000127461676765642d76617269616e74732d76310007666561747572650000000000000019766f636162756c6172792d636f6d706f736974696f6e2d7632001173656d616e7469632d70726f66696c65730000000000000096000a65787072657373696f6e00000000000000146e65757472616c2e65787072657373696f6e2f3100096576616c7561746f7200000000000000136e65757472616c2e6576616c7561746f722f310009657870616e73696f6e00000000000000136e65757472616c2e657870616e73696f6e2f310007646563696d616c00000000000000116e65757472616c2e646563696d616c2f31",
+      "sha256": "a36cde24cade181222237a5e63e8f7e3272df7afbf8f1b81448da949cfc07575"
+    },
+    {
+      "id": "complete-logical",
+      "scope": "complete-project-logical",
+      "frames": {
+        "tag": "neutral-nht-v1",
+        "children": [
+          {
+            "tag": "neutral/project-logical/v3",
+            "children": [
+              {
+                "tag": "identity-profile",
+                "payload": {
+                  "text": "neutral.project-identity/3"
+                }
+              },
+              {
+                "tag": "schema",
+                "payload": {
+                  "text": "neutral.project-ir/3"
+                }
+              },
+              {
+                "tag": "profile",
+                "payload": {
+                  "text": "1.0"
+                }
+              },
+              {
+                "tag": "modules",
+                "children": [
+                  {
+                    "tag": "module",
+                    "children": [
+                      {
+                        "tag": "name",
+                        "payload": {
+                          "text": "example::expressions"
+                        }
+                      },
+                      {
+                        "tag": "imports",
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "declarations",
+                "children": [
+                  {
+                    "tag": "declaration",
+                    "children": [
+                      {
+                        "tag": "profile",
+                        "payload": {
+                          "text": "1.0"
+                        }
+                      },
+                      {
+                        "tag": "module",
+                        "payload": {
+                          "text": "example::expressions"
+                        }
+                      },
+                      {
+                        "tag": "declaration",
+                        "payload": {
+                          "text": "result"
+                        }
+                      },
+                      {
+                        "tag": "public",
+                        "payload": {
+                          "hex": "01"
+                        }
+                      },
+                      {
+                        "tag": "signature",
+                        "children": [
+                          {
+                            "tag": "binding",
+                            "children": [
+                              {
+                                "tag": "num",
+                                "children": []
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "value",
+                        "children": [
+                          {
+                            "tag": "constant",
+                            "children": [
+                              {
+                                "tag": "num",
+                                "children": [
+                                  {
+                                    "tag": "negative",
+                                    "payload": {
+                                      "hex": "00"
+                                    }
+                                  },
+                                  {
+                                    "tag": "coefficient",
+                                    "payload": {
+                                      "text": "125"
+                                    }
+                                  },
+                                  {
+                                    "tag": "scale",
+                                    "payload": {
+                                      "int": -3
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "vocabulary-types",
+                "children": []
+              },
+              {
+                "tag": "vocabulary-catalogues",
+                "children": []
+              },
+              {
+                "tag": "vocabulary-dependencies",
+                "children": []
+              },
+              {
+                "tag": "public-edges",
+                "children": []
+              },
+              {
+                "tag": "semantic-profiles",
+                "children": [
+                  {
+                    "tag": "expression",
+                    "payload": {
+                      "text": "neutral.expression/1"
+                    }
+                  },
+                  {
+                    "tag": "evaluator",
+                    "payload": {
+                      "text": "neutral.evaluator/1"
+                    }
+                  },
+                  {
+                    "tag": "expansion",
+                    "payload": {
+                      "text": "neutral.expansion/1"
+                    }
+                  },
+                  {
+                    "tag": "decimal",
+                    "payload": {
+                      "text": "neutral.decimal/1"
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "required-features",
+                "children": [
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "decimal-division-v1"
+                    }
+                  },
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "finite-expansion-v1"
+                    }
+                  },
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "pure-evaluator-v1"
+                    }
+                  },
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "pure-expressions-v1"
+                    }
+                  },
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "tagged-variants-v1"
+                    }
+                  },
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "vocabulary-composition-v2"
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "public-templates",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "transcript_hex": "000e6e65757472616c2d6e68742d76310000000000000445001a6e65757472616c2f70726f6a6563742d6c6f676963616c2f7633000000000000042100106964656e746974792d70726f66696c65000000000000001a6e65757472616c2e70726f6a6563742d6964656e746974792f330006736368656d6100000000000000146e65757472616c2e70726f6a6563742d69722f33000770726f66696c650000000000000003312e3000076d6f64756c6573000000000000004300066d6f64756c65000000000000003300046e616d6500000000000000146578616d706c653a3a65787072657373696f6e730007696d706f7274730000000000000000000c6465636c61726174696f6e73000000000000011a000b6465636c61726174696f6e0000000000000105000770726f66696c650000000000000003312e3000066d6f64756c6500000000000000146578616d706c653a3a65787072657373696f6e73000b6465636c61726174696f6e0000000000000006726573756c7400067075626c696300000000000000010100097369676e6174757265000000000000001e000762696e64696e67000000000000000d00036e756d0000000000000000000576616c756500000000000000610008636f6e7374616e74000000000000004f00036e756d000000000000004200086e65676174697665000000000000000100000b636f656666696369656e74000000000000000331323500057363616c650000000000000008fffffffffffffffd0010766f636162756c6172792d747970657300000000000000000015766f636162756c6172792d636174616c6f6775657300000000000000000017766f636162756c6172792d646570656e64656e636965730000000000000000000c7075626c69632d65646765730000000000000000001173656d616e7469632d70726f66696c65730000000000000096000a65787072657373696f6e00000000000000146e65757472616c2e65787072657373696f6e2f3100096576616c7561746f7200000000000000136e65757472616c2e6576616c7561746f722f310009657870616e73696f6e00000000000000136e65757472616c2e657870616e73696f6e2f310007646563696d616c00000000000000116e65757472616c2e646563696d616c2f31001172657175697265642d666561747572657300000000000000db0007666561747572650000000000000013646563696d616c2d6469766973696f6e2d7631000766656174757265000000000000001366696e6974652d657870616e73696f6e2d76310007666561747572650000000000000011707572652d6576616c7561746f722d76310007666561747572650000000000000013707572652d65787072657373696f6e732d763100076665617475726500000000000000127461676765642d76617269616e74732d76310007666561747572650000000000000019766f636162756c6172792d636f6d706f736974696f6e2d763200107075626c69632d74656d706c617465730000000000000000",
+      "sha256": "0d3a129bf6f8cb3e57c06095900902e1fa59fe7f810c81e59fe554cd9ce2ebfb"
+    },
+    {
+      "id": "public-interface",
+      "scope": "complete-public-interface",
+      "frames": {
+        "tag": "neutral-nht-v1",
+        "children": [
+          {
+            "tag": "neutral/project-interface/v3",
+            "children": [
+              {
+                "tag": "identity-profile",
+                "payload": {
+                  "text": "neutral.project-identity/3"
+                }
+              },
+              {
+                "tag": "schema",
+                "payload": {
+                  "text": "neutral.project-ir/3"
+                }
+              },
+              {
+                "tag": "profile",
+                "payload": {
+                  "text": "1.0"
+                }
+              },
+              {
+                "tag": "modules",
+                "children": [
+                  {
+                    "tag": "module",
+                    "children": [
+                      {
+                        "tag": "name",
+                        "payload": {
+                          "text": "example::expressions"
+                        }
+                      },
+                      {
+                        "tag": "imports",
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "declarations",
+                "children": [
+                  {
+                    "tag": "declaration",
+                    "children": [
+                      {
+                        "tag": "profile",
+                        "payload": {
+                          "text": "1.0"
+                        }
+                      },
+                      {
+                        "tag": "module",
+                        "payload": {
+                          "text": "example::expressions"
+                        }
+                      },
+                      {
+                        "tag": "declaration",
+                        "payload": {
+                          "text": "result"
+                        }
+                      },
+                      {
+                        "tag": "public",
+                        "payload": {
+                          "hex": "01"
+                        }
+                      },
+                      {
+                        "tag": "signature",
+                        "children": [
+                          {
+                            "tag": "binding",
+                            "children": [
+                              {
+                                "tag": "num",
+                                "children": []
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "tag": "value",
+                        "children": [
+                          {
+                            "tag": "constant",
+                            "children": [
+                              {
+                                "tag": "num",
+                                "children": [
+                                  {
+                                    "tag": "negative",
+                                    "payload": {
+                                      "hex": "00"
+                                    }
+                                  },
+                                  {
+                                    "tag": "coefficient",
+                                    "payload": {
+                                      "text": "125"
+                                    }
+                                  },
+                                  {
+                                    "tag": "scale",
+                                    "payload": {
+                                      "int": -3
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "vocabulary-types",
+                "children": []
+              },
+              {
+                "tag": "vocabulary-catalogues",
+                "children": []
+              },
+              {
+                "tag": "vocabulary-dependencies",
+                "children": []
+              },
+              {
+                "tag": "public-edges",
+                "children": []
+              },
+              {
+                "tag": "semantic-profiles",
+                "children": [
+                  {
+                    "tag": "expression",
+                    "payload": {
+                      "text": "neutral.expression/1"
+                    }
+                  },
+                  {
+                    "tag": "evaluator",
+                    "payload": {
+                      "text": "neutral.evaluator/1"
+                    }
+                  },
+                  {
+                    "tag": "expansion",
+                    "payload": {
+                      "text": "neutral.expansion/1"
+                    }
+                  },
+                  {
+                    "tag": "decimal",
+                    "payload": {
+                      "text": "neutral.decimal/1"
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "required-features",
+                "children": [
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "decimal-division-v1"
+                    }
+                  },
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "finite-expansion-v1"
+                    }
+                  },
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "pure-evaluator-v1"
+                    }
+                  },
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "pure-expressions-v1"
+                    }
+                  },
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "tagged-variants-v1"
+                    }
+                  },
+                  {
+                    "tag": "feature",
+                    "payload": {
+                      "text": "vocabulary-composition-v2"
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "public-templates",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "transcript_hex": "000e6e65757472616c2d6e68742d76310000000000000447001c6e65757472616c2f70726f6a6563742d696e746572666163652f7633000000000000042100106964656e746974792d70726f66696c65000000000000001a6e65757472616c2e70726f6a6563742d6964656e746974792f330006736368656d6100000000000000146e65757472616c2e70726f6a6563742d69722f33000770726f66696c650000000000000003312e3000076d6f64756c6573000000000000004300066d6f64756c65000000000000003300046e616d6500000000000000146578616d706c653a3a65787072657373696f6e730007696d706f7274730000000000000000000c6465636c61726174696f6e73000000000000011a000b6465636c61726174696f6e0000000000000105000770726f66696c650000000000000003312e3000066d6f64756c6500000000000000146578616d706c653a3a65787072657373696f6e73000b6465636c61726174696f6e0000000000000006726573756c7400067075626c696300000000000000010100097369676e6174757265000000000000001e000762696e64696e67000000000000000d00036e756d0000000000000000000576616c756500000000000000610008636f6e7374616e74000000000000004f00036e756d000000000000004200086e65676174697665000000000000000100000b636f656666696369656e74000000000000000331323500057363616c650000000000000008fffffffffffffffd0010766f636162756c6172792d747970657300000000000000000015766f636162756c6172792d636174616c6f6775657300000000000000000017766f636162756c6172792d646570656e64656e636965730000000000000000000c7075626c69632d65646765730000000000000000001173656d616e7469632d70726f66696c65730000000000000096000a65787072657373696f6e00000000000000146e65757472616c2e65787072657373696f6e2f3100096576616c7561746f7200000000000000136e65757472616c2e6576616c7561746f722f310009657870616e73696f6e00000000000000136e65757472616c2e657870616e73696f6e2f310007646563696d616c00000000000000116e65757472616c2e646563696d616c2f31001172657175697265642d666561747572657300000000000000db0007666561747572650000000000000013646563696d616c2d6469766973696f6e2d7631000766656174757265000000000000001366696e6974652d657870616e73696f6e2d76310007666561747572650000000000000011707572652d6576616c7561746f722d76310007666561747572650000000000000013707572652d65787072657373696f6e732d763100076665617475726500000000000000127461676765642d76617269616e74732d76310007666561747572650000000000000019766f636162756c6172792d636f6d706f736974696f6e2d763200107075626c69632d74656d706c617465730000000000000000",
+      "sha256": "62dfa284a3084041d9daa45f4f94c04c70e47eafd620bdfecd89551e2d594881"
+    },
+    {
+      "id": "complete-derivation",
+      "scope": "complete-project-derivation",
+      "frames": {
+        "tag": "neutral-nht-v1",
+        "children": [
+          {
+            "tag": "neutral/project-derivation/v3",
+            "children": [
+              {
+                "tag": "identity-profile",
+                "payload": {
+                  "text": "neutral.project-identity/3"
+                }
+              },
+              {
+                "tag": "logical",
+                "payload": {
+                  "hex": "0d3a129bf6f8cb3e57c06095900902e1fa59fe7f810c81e59fe554cd9ce2ebfb"
+                }
+              },
+              {
+                "tag": "captured",
+                "payload": {
+                  "hex": "a36cde24cade181222237a5e63e8f7e3272df7afbf8f1b81448da949cfc07575"
+                }
+              },
+              {
+                "tag": "producer",
+                "payload": {
+                  "text": "independent-fixture-oracle"
+                }
+              },
+              {
+                "tag": "producer-version",
+                "payload": {
+                  "text": "1"
+                }
+              },
+              {
+                "tag": "capture-limits",
+                "children": [
+                  {
+                    "tag": "total-source-bytes",
+                    "payload": {
+                      "uint": 1048576
+                    }
+                  },
+                  {
+                    "tag": "source-bytes-per-unit",
+                    "payload": {
+                      "uint": 1048576
+                    }
+                  },
+                  {
+                    "tag": "source-units",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "source-id-bytes",
+                    "payload": {
+                      "uint": 1024
+                    }
+                  },
+                  {
+                    "tag": "module-id-bytes",
+                    "payload": {
+                      "uint": 1024
+                    }
+                  },
+                  {
+                    "tag": "vocabulary-units",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "vocabulary-bytes-per-unit",
+                    "payload": {
+                      "uint": 1048576
+                    }
+                  },
+                  {
+                    "tag": "total-vocabulary-bytes",
+                    "payload": {
+                      "uint": 1048576
+                    }
+                  },
+                  {
+                    "tag": "imports-per-module",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "import-edges",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "scc-units",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "declarations",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "diagnostics",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "output-bytes",
+                    "payload": {
+                      "uint": 1048576
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "project-limits",
+                "children": [
+                  {
+                    "tag": "modules",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "declarations",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "import-edges",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "nodes",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "text-bytes",
+                    "payload": {
+                      "uint": 1048576
+                    }
+                  },
+                  {
+                    "tag": "artifact-bytes",
+                    "payload": {
+                      "uint": 1048576
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "composition-limits",
+                "children": [
+                  {
+                    "tag": "bundles",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "captured-bytes",
+                    "payload": {
+                      "uint": 1048576
+                    }
+                  },
+                  {
+                    "tag": "dependencies-per-bundle",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "dependency-edges",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "dependency-depth",
+                    "payload": {
+                      "uint": 64
+                    }
+                  },
+                  {
+                    "tag": "total-types",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "total-fields",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "alternatives-per-type",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "total-alternatives",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "choices-per-field",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "total-choices",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "type-depth",
+                    "payload": {
+                      "uint": 64
+                    }
+                  },
+                  {
+                    "tag": "value-depth",
+                    "payload": {
+                      "uint": 64
+                    }
+                  },
+                  {
+                    "tag": "value-nodes",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "work",
+                    "payload": {
+                      "uint": 100000
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "semantic-profiles",
+                "children": [
+                  {
+                    "tag": "expression",
+                    "payload": {
+                      "text": "neutral.expression/1"
+                    }
+                  },
+                  {
+                    "tag": "evaluator",
+                    "payload": {
+                      "text": "neutral.evaluator/1"
+                    }
+                  },
+                  {
+                    "tag": "expansion",
+                    "payload": {
+                      "text": "neutral.expansion/1"
+                    }
+                  },
+                  {
+                    "tag": "decimal",
+                    "payload": {
+                      "text": "neutral.decimal/1"
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "expression-limits",
+                "children": [
+                  {
+                    "tag": "nodes",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "syntax-depth",
+                    "payload": {
+                      "uint": 64
+                    }
+                  },
+                  {
+                    "tag": "evaluation-depth",
+                    "payload": {
+                      "uint": 64
+                    }
+                  },
+                  {
+                    "tag": "bindings",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "dependency-edges",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "work",
+                    "payload": {
+                      "uint": 100000
+                    }
+                  },
+                  {
+                    "tag": "retained-bytes",
+                    "payload": {
+                      "uint": 1048576
+                    }
+                  },
+                  {
+                    "tag": "output-bytes",
+                    "payload": {
+                      "uint": 1048576
+                    }
+                  },
+                  {
+                    "tag": "coefficient-digits",
+                    "payload": {
+                      "uint": 4096
+                    }
+                  },
+                  {
+                    "tag": "absolute-scale",
+                    "payload": {
+                      "uint": 4096
+                    }
+                  },
+                  {
+                    "tag": "diagnostics",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "expansion-limits",
+                "children": [
+                  {
+                    "tag": "definitions",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "applications",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "parameters",
+                    "payload": {
+                      "uint": 64
+                    }
+                  },
+                  {
+                    "tag": "axes",
+                    "payload": {
+                      "uint": 16
+                    }
+                  },
+                  {
+                    "tag": "axis-items",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "product-tuples",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "aggregate-tuples",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "expanded-bindings",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "expanded-nodes",
+                    "payload": {
+                      "uint": 1000
+                    }
+                  },
+                  {
+                    "tag": "depth",
+                    "payload": {
+                      "uint": 64
+                    }
+                  },
+                  {
+                    "tag": "work",
+                    "payload": {
+                      "uint": 100000
+                    }
+                  },
+                  {
+                    "tag": "retained-bytes",
+                    "payload": {
+                      "uint": 1048576
+                    }
+                  },
+                  {
+                    "tag": "output-bytes",
+                    "payload": {
+                      "uint": 1048576
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "transcript_hex": "000e6e65757472616c2d6e68742d76310000000000000950001d6e65757472616c2f70726f6a6563742d64657269766174696f6e2f7633000000000000092900106964656e746974792d70726f66696c65000000000000001a6e65757472616c2e70726f6a6563742d6964656e746974792f3300076c6f676963616c00000000000000200d3a129bf6f8cb3e57c06095900902e1fa59fe7f810c81e59fe554cd9ce2ebfb000863617074757265640000000000000020a36cde24cade181222237a5e63e8f7e3272df7afbf8f1b81448da949cfc07575000870726f6475636572000000000000001a696e646570656e64656e742d666978747572652d6f7261636c65001070726f64756365722d76657273696f6e000000000000000131000e636170747572652d6c696d69747300000000000001d60012746f74616c2d736f757263652d6279746573000000000000000800000000001000000015736f757263652d62797465732d7065722d756e697400000000000000080000000000100000000c736f757263652d756e697473000000000000000800000000000003e8000f736f757263652d69642d627974657300000000000000080000000000000400000f6d6f64756c652d69642d6279746573000000000000000800000000000004000010766f636162756c6172792d756e697473000000000000000800000000000003e80019766f636162756c6172792d62797465732d7065722d756e6974000000000000000800000000001000000016746f74616c2d766f636162756c6172792d6279746573000000000000000800000000001000000012696d706f7274732d7065722d6d6f64756c65000000000000000800000000000003e8000c696d706f72742d6564676573000000000000000800000000000003e800097363632d756e697473000000000000000800000000000003e8000c6465636c61726174696f6e73000000000000000800000000000003e8000b646961676e6f7374696373000000000000000800000000000003e8000c6f75747075742d627974657300000000000000080000000000100000000e70726f6a6563742d6c696d69747300000000000000a800076d6f64756c6573000000000000000800000000000003e8000c6465636c61726174696f6e73000000000000000800000000000003e8000c696d706f72742d6564676573000000000000000800000000000003e800056e6f646573000000000000000800000000000003e8000a746578742d627974657300000000000000080000000000100000000e61727469666163742d6279746573000000000000000800000000001000000012636f6d706f736974696f6e2d6c696d69747300000000000001da000762756e646c6573000000000000000800000000000003e8000e63617074757265642d6279746573000000000000000800000000001000000017646570656e64656e636965732d7065722d62756e646c65000000000000000800000000000003e80010646570656e64656e63792d6564676573000000000000000800000000000003e80010646570656e64656e63792d646570746800000000000000080000000000000040000b746f74616c2d7479706573000000000000000800000000000003e8000c746f74616c2d6669656c6473000000000000000800000000000003e80015616c7465726e6174697665732d7065722d74797065000000000000000800000000000003e80012746f74616c2d616c7465726e617469766573000000000000000800000000000003e8001163686f696365732d7065722d6669656c64000000000000000800000000000003e8000d746f74616c2d63686f69636573000000000000000800000000000003e8000a747970652d646570746800000000000000080000000000000040000b76616c75652d646570746800000000000000080000000000000040000b76616c75652d6e6f646573000000000000000800000000000003e80004776f726b000000000000000800000000000186a0001173656d616e7469632d70726f66696c65730000000000000096000a65787072657373696f6e00000000000000146e65757472616c2e65787072657373696f6e2f3100096576616c7561746f7200000000000000136e65757472616c2e6576616c7561746f722f310009657870616e73696f6e00000000000000136e65757472616c2e657870616e73696f6e2f310007646563696d616c00000000000000116e65757472616c2e646563696d616c2f31001165787072657373696f6e2d6c696d697473000000000000014800056e6f646573000000000000000800000000000003e8000c73796e7461782d64657074680000000000000008000000000000004000106576616c756174696f6e2d646570746800000000000000080000000000000040000862696e64696e6773000000000000000800000000000003e80010646570656e64656e63792d6564676573000000000000000800000000000003e80004776f726b000000000000000800000000000186a0000e72657461696e65642d627974657300000000000000080000000000100000000c6f75747075742d6279746573000000000000000800000000001000000012636f656666696369656e742d64696769747300000000000000080000000000001000000e6162736f6c7574652d7363616c6500000000000000080000000000001000000b646961676e6f7374696373000000000000000800000000000003e80010657870616e73696f6e2d6c696d6974730000000000000179000b646566696e6974696f6e73000000000000000800000000000003e8000c6170706c69636174696f6e73000000000000000800000000000003e8000a706172616d65746572730000000000000008000000000000004000046178657300000000000000080000000000000010000a617869732d6974656d73000000000000000800000000000003e8000e70726f647563742d7475706c6573000000000000000800000000000003e800106167677265676174652d7475706c6573000000000000000800000000000003e80011657870616e6465642d62696e64696e6773000000000000000800000000000003e8000e657870616e6465642d6e6f646573000000000000000800000000000003e800056465707468000000000000000800000000000000400004776f726b000000000000000800000000000186a0000e72657461696e65642d627974657300000000000000080000000000100000000c6f75747075742d627974657300000000000000080000000000100000",
+      "sha256": "24a760db5d7b0ac2b5ce3fe92eab09a6566bf0f53173e4182b7428e2c535e542"
+    },
+    {
+      "id": "complete-artifact",
+      "scope": "complete-project-artifact-contract",
+      "frames": {
+        "tag": "neutral-nht-v1",
+        "children": [
+          {
+            "tag": "neutral/project-artifact/v3",
+            "children": [
+              {
+                "tag": "identity-profile",
+                "payload": {
+                  "text": "neutral.project-identity/3"
+                }
+              },
+              {
+                "tag": "derivation",
+                "payload": {
+                  "hex": "24a760db5d7b0ac2b5ce3fe92eab09a6566bf0f53173e4182b7428e2c535e542"
+                }
+              },
+              {
+                "tag": "kind",
+                "payload": {
+                  "text": "project"
+                }
+              },
+              {
+                "tag": "format",
+                "payload": {
+                  "text": "NIR-PROJECT-CBOR/3"
+                }
+              },
+              {
+                "tag": "roots",
+                "children": []
+              },
+              {
+                "tag": "options",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "transcript_hex": "000e6e65757472616c2d6e68742d763100000000000000e4001b6e65757472616c2f70726f6a6563742d61727469666163742f763300000000000000bf00106964656e746974792d70726f66696c65000000000000001a6e65757472616c2e70726f6a6563742d6964656e746974792f33000a64657269766174696f6e000000000000002024a760db5d7b0ac2b5ce3fe92eab09a6566bf0f53173e4182b7428e2c535e54200046b696e64000000000000000770726f6a6563740006666f726d617400000000000000124e49522d50524f4a4543542d43424f522f330005726f6f7473000000000000000000076f7074696f6e730000000000000000",
+      "sha256": "80bc57ae9e64e904cc87859f955e8f2d802627b4a2664ee44b76edf87d8fb52f"
+    },
+    {
+      "id": "guarded-residual",
+      "scope": "typed-tree-fragment-not-project-identity",
+      "frames": {
+        "tag": "expression",
+        "children": [
+          {
+            "tag": "kind",
+            "payload": {
+              "text": "if"
+            }
+          },
+          {
+            "tag": "type",
+            "children": [
+              {
+                "tag": "num",
+                "children": []
+              }
+            ]
+          },
+          {
+            "tag": "guard",
+            "children": [
+              {
+                "tag": "expression",
+                "children": [
+                  {
+                    "tag": "kind",
+                    "payload": {
+                      "text": "input"
+                    }
+                  },
+                  {
+                    "tag": "type",
+                    "children": [
+                      {
+                        "tag": "bool",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "symbol",
+                    "children": [
+                      {
+                        "tag": "profile",
+                        "payload": {
+                          "text": "1.0"
+                        }
+                      },
+                      {
+                        "tag": "module",
+                        "payload": {
+                          "text": "example::expressions"
+                        }
+                      },
+                      {
+                        "tag": "declaration",
+                        "payload": {
+                          "text": "enabled"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "then",
+            "children": [
+              {
+                "tag": "expression",
+                "children": [
+                  {
+                    "tag": "kind",
+                    "payload": {
+                      "text": "binary"
+                    }
+                  },
+                  {
+                    "tag": "type",
+                    "children": [
+                      {
+                        "tag": "num",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "operator",
+                    "payload": {
+                      "text": "+"
+                    }
+                  },
+                  {
+                    "tag": "left",
+                    "children": [
+                      {
+                        "tag": "expression",
+                        "children": [
+                          {
+                            "tag": "kind",
+                            "payload": {
+                              "text": "input"
+                            }
+                          },
+                          {
+                            "tag": "type",
+                            "children": [
+                              {
+                                "tag": "num",
+                                "children": []
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "symbol",
+                            "children": [
+                              {
+                                "tag": "profile",
+                                "payload": {
+                                  "text": "1.0"
+                                }
+                              },
+                              {
+                                "tag": "module",
+                                "payload": {
+                                  "text": "example::expressions"
+                                }
+                              },
+                              {
+                                "tag": "declaration",
+                                "payload": {
+                                  "text": "count"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "right",
+                    "children": [
+                      {
+                        "tag": "expression",
+                        "children": [
+                          {
+                            "tag": "kind",
+                            "payload": {
+                              "text": "value"
+                            }
+                          },
+                          {
+                            "tag": "type",
+                            "children": [
+                              {
+                                "tag": "num",
+                                "children": []
+                              }
+                            ]
+                          },
+                          {
+                            "tag": "value",
+                            "children": [
+                              {
+                                "tag": "num",
+                                "children": [
+                                  {
+                                    "tag": "negative",
+                                    "payload": {
+                                      "hex": "00"
+                                    }
+                                  },
+                                  {
+                                    "tag": "coefficient",
+                                    "payload": {
+                                      "text": "1"
+                                    }
+                                  },
+                                  {
+                                    "tag": "scale",
+                                    "payload": {
+                                      "int": 0
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tag": "else",
+            "children": [
+              {
+                "tag": "expression",
+                "children": [
+                  {
+                    "tag": "kind",
+                    "payload": {
+                      "text": "value"
+                    }
+                  },
+                  {
+                    "tag": "type",
+                    "children": [
+                      {
+                        "tag": "num",
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "value",
+                    "children": [
+                      {
+                        "tag": "num",
+                        "children": [
+                          {
+                            "tag": "negative",
+                            "payload": {
+                              "hex": "00"
+                            }
+                          },
+                          {
+                            "tag": "coefficient",
+                            "payload": {
+                              "text": "0"
+                            }
+                          },
+                          {
+                            "tag": "scale",
+                            "payload": {
+                              "int": 0
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "transcript_hex": "000a65787072657373696f6e000000000000035000046b696e6400000000000000026966000474797065000000000000000d00036e756d00000000000000000005677561726400000000000000a7000a65787072657373696f6e000000000000009300046b696e640000000000000005696e707574000474797065000000000000000e0004626f6f6c0000000000000000000673796d626f6c0000000000000054000770726f66696c650000000000000003312e3000066d6f64756c6500000000000000146578616d706c653a3a65787072657373696f6e73000b6465636c61726174696f6e0000000000000007656e61626c656400047468656e00000000000001b5000a65787072657373696f6e00000000000001a100046b696e64000000000000000662696e617279000474797065000000000000000d00036e756d000000000000000000086f70657261746f7200000000000000012b00046c65667400000000000000a4000a65787072657373696f6e000000000000009000046b696e640000000000000005696e707574000474797065000000000000000d00036e756d0000000000000000000673796d626f6c0000000000000052000770726f66696c650000000000000003312e3000066d6f64756c6500000000000000146578616d706c653a3a65787072657373696f6e73000b6465636c61726174696f6e0000000000000005636f756e7400057269676874000000000000009e000a65787072657373696f6e000000000000008a00046b696e64000000000000000576616c7565000474797065000000000000000d00036e756d0000000000000000000576616c7565000000000000004d00036e756d000000000000004000086e65676174697665000000000000000100000b636f656666696369656e7400000000000000013100057363616c65000000000000000800000000000000000004656c7365000000000000009e000a65787072657373696f6e000000000000008a00046b696e64000000000000000576616c7565000474797065000000000000000d00036e756d0000000000000000000576616c7565000000000000004d00036e756d000000000000004000086e65676174697665000000000000000100000b636f656666696369656e7400000000000000013000057363616c6500000000000000080000000000000000",
+      "sha256": "77aeda4f037e939884ad72724f8a3731838f9d5d990989e21f366c3203a8c80d"
+    }
+  ],
+  "wire": [
+    {
+      "id": "complete-static-project",
+      "scope": "candidate-complete-project-envelope",
+      "tuple": [
+        "neutral.project-ir/3",
+        [
+          [
+            [
+              "1.0",
+              "example::expressions"
+            ],
+            []
+          ]
+        ],
+        [
+          [
+            [
+              [
+                "1.0",
+                "example::expressions"
+              ],
+              "result"
+            ],
+            true,
+            [
+              "binding",
+              [
+                "num"
+              ]
+            ],
+            [
+              "value",
+              [
+                "num",
+                false,
+                "125",
+                -3
+              ]
+            ]
+          ]
+        ],
+        [],
+        [],
+        {
+          "bytes": "62dfa284a3084041d9daa45f4f94c04c70e47eafd620bdfecd89551e2d594881"
+        },
+        [
+          [
+            "example::expressions",
+            "source:identity-fixture",
+            {
+              "bytes": "30e9f544ba4f09b7eccfd3dfcb82ffa033c16dd5bf24c752f23ee6a1c76aa010"
+            },
+            65
+          ]
+        ],
+        [
+          [
+            [
+              [
+                "1.0",
+                "example::expressions"
+              ],
+              "result"
+            ],
+            [
+              {
+                "bytes": "30e9f544ba4f09b7eccfd3dfcb82ffa033c16dd5bf24c752f23ee6a1c76aa010"
+              },
+              39,
+              64
+            ]
+          ]
+        ],
+        [],
+        [
+          1000,
+          1000,
+          1000,
+          1000,
+          1048576,
+          1048576
+        ],
+        [
+          1,
+          65,
+          0,
+          0,
+          1,
+          0,
+          1
+        ],
+        [],
+        [],
+        [
+          [
+            [
+              [
+                "1.0",
+                "example::expressions"
+              ],
+              "result"
+            ],
+            [],
+            "supplied",
+            [
+              "source",
+              [
+                {
+                  "bytes": "30e9f544ba4f09b7eccfd3dfcb82ffa033c16dd5bf24c752f23ee6a1c76aa010"
+                },
+                39,
+                64
+              ]
+            ]
+          ]
+        ],
+        [
+          1000,
+          1048576,
+          1000,
+          1000,
+          64,
+          1000,
+          1000,
+          1000,
+          1000,
+          1000,
+          1000,
+          64,
+          64,
+          1000,
+          100000
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        [
+          "neutral.expression/1",
+          "neutral.evaluator/1",
+          "neutral.expansion/1",
+          "neutral.decimal/1",
+          [
+            "decimal-division-v1",
+            "finite-expansion-v1",
+            "pure-evaluator-v1",
+            "pure-expressions-v1",
+            "tagged-variants-v1",
+            "vocabulary-composition-v2"
+          ]
+        ],
+        [],
+        [
+          1000,
+          64,
+          64,
+          1000,
+          1000,
+          100000,
+          1048576,
+          1048576,
+          4096,
+          4096,
+          1000
+        ],
+        [
+          1000,
+          1000,
+          64,
+          16,
+          1000,
+          1000,
+          1000,
+          1000,
+          1000,
+          64,
+          100000,
+          1048576,
+          1048576
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          [],
+          []
+        ]
+      ],
+      "magic_hex": "4e455550330d0a1a",
+      "encoded_hex": "4e455550330d0a1a96746e65757472616c2e70726f6a6563742d69722f3381828263312e30746578616d706c653a3a65787072657373696f6e73808184828263312e30746578616d706c653a3a65787072657373696f6e7366726573756c74f5826762696e64696e6781636e756d826576616c756584636e756df463313235228080582062dfa284a3084041d9daa45f4f94c04c70e47eafd620bdfecd89551e2d5948818184746578616d706c653a3a65787072657373696f6e7377736f757263653a6964656e746974792d66697874757265582030e9f544ba4f09b7eccfd3dfcb82ffa033c16dd5bf24c752f23ee6a1c76aa01018418182828263312e30746578616d706c653a3a65787072657373696f6e7366726573756c7483582030e9f544ba4f09b7eccfd3dfcb82ffa033c16dd5bf24c752f23ee6a1c76aa0101827184080861903e81903e81903e81903e81a001000001a0010000087011841000001000180808184828263312e30746578616d706c653a3a65787072657373696f6e7366726573756c748068737570706c6965648266736f7572636583582030e9f544ba4f09b7eccfd3dfcb82ffa033c16dd5bf24c752f23ee6a1c76aa010182718408f1903e81a001000001903e81903e818401903e81903e81903e81903e81903e81903e8184018401903e81a000186a0870000000000000185746e65757472616c2e65787072657373696f6e2f31736e65757472616c2e6576616c7561746f722f31736e65757472616c2e657870616e73696f6e2f31716e65757472616c2e646563696d616c2f318673646563696d616c2d6469766973696f6e2d76317366696e6974652d657870616e73696f6e2d763171707572652d6576616c7561746f722d763173707572652d65787072657373696f6e732d7631727461676765642d76617269616e74732d76317819766f636162756c6172792d636f6d706f736974696f6e2d7632808b1903e8184018401903e81903e81a000186a01a001000001a001000001910001910001903e88d1903e81903e81840101903e81903e81903e81903e81903e818401a000186a01a001000001a001000008700000000000000828080",
+      "sha256": "7a23b3331144742d21003762e2e97ea449f000dfc96bf3b3d61d754a003a1870"
+    },
+    {
+      "id": "deferred-input-node",
+      "scope": "typed-tree-fragment",
+      "tuple": [
+        "input",
+        [
+          "num"
+        ],
+        [
+          [
+            "1.0",
+            "example::expressions"
+          ],
+          "count"
+        ]
+      ],
+      "magic_hex": "",
+      "encoded_hex": "8365696e70757481636e756d828263312e30746578616d706c653a3a65787072657373696f6e7365636f756e74",
+      "sha256": "dde9fbc32e19a0eca75ef2abcbccacd17c3443756c594e14751423c40ebda4b4"
+    },
+    {
+      "id": "binary-node",
+      "scope": "typed-tree-fragment",
+      "tuple": [
+        "binary",
+        [
+          "num"
+        ],
+        "+",
+        [
+          "input",
+          [
+            "num"
+          ],
+          [
+            [
+              "1.0",
+              "example::expressions"
+            ],
+            "count"
+          ]
+        ],
+        [
+          "value",
+          [
+            "num"
+          ],
+          [
+            "num",
+            false,
+            "1",
+            0
+          ]
+        ]
+      ],
+      "magic_hex": "",
+      "encoded_hex": "856662696e61727981636e756d612b8365696e70757481636e756d828263312e30746578616d706c653a3a65787072657373696f6e7365636f756e74836576616c756581636e756d84636e756df4613100",
+      "sha256": "1037b55c04528aeb43c9d8a150087133fa2c0484c5889168c6bfd2592c6bcd90"
+    }
+  ],
+  "matrices": [
+    {
+      "id": "filtered-product",
+      "name": "labels",
+      "axes": [
+        [
+          "linux",
+          "windows"
+        ],
+        [
+          "arm64",
+          "x64"
+        ]
+      ],
+      "exclude": [
+        [
+          "windows",
+          "arm64"
+        ]
+      ],
+      "expected": [
+        {
+          "symbol": "labels__0__0",
+          "value": "linux-arm64"
+        },
+        {
+          "symbol": "labels__0__1",
+          "value": "linux-x64"
+        },
+        {
+          "symbol": "labels__1__1",
+          "value": "windows-x64"
+        }
+      ]
+    },
+    {
+      "id": "duplicate-positions",
+      "name": "labels",
+      "axes": [
+        [
+          "x",
+          "x"
+        ]
+      ],
+      "exclude": [],
+      "expected": [
+        {
+          "symbol": "labels__0",
+          "value": "x"
+        },
+        {
+          "symbol": "labels__1",
+          "value": "x"
+        }
+      ]
+    },
+    {
+      "id": "empty-axis",
+      "name": "labels",
+      "axes": [
+        []
+      ],
+      "exclude": [],
+      "expected": []
+    }
+  ]
+}

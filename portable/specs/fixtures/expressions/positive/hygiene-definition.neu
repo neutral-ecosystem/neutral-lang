@@ -1,0 +1,8 @@
+neu "1.0"
+module example::definitions
+
+public string prefix = "definition-"
+
+public template Label(deferred string suffix) -> string {
+    prefix ++ suffix
+}

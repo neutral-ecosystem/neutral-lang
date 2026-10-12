@@ -1,0 +1,11 @@
+neu "1.0"
+module example::expressions
+
+template Label(static string prefix, static string suffix) -> string {
+    prefix ++ "-" ++ suffix
+}
+
+public expand labels = Label(prefix: platform, suffix: architecture)
+    for (platform in ["linux", "windows"], architecture in ["arm64", "x64"])
+    where true
+    exclude [{ platform: "windows", architecture: "arm64" }]

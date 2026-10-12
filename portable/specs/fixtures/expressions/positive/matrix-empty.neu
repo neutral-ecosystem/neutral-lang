@@ -1,0 +1,9 @@
+neu "1.0"
+module example::expressions
+
+template Item(static num value) -> num {
+    value
+}
+
+List<num> empty = []
+public expand items = Item(value: item) for (item in empty)

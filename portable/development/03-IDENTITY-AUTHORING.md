@@ -93,8 +93,9 @@ invent semantic rules that later need to be replicated in the compiler.
 The [design boundaries](../specs/contracts/CONSUMER-READINESS.md#stage-8-design-boundaries)
 govern evaluation phases, structural versus value versus scheduling edges,
 deferred restrictions, normalized identity, and the non-callable template model.
-Operator grammar, numeric precision/rounding and evaluator states still require concrete freeze
-decisions and vectors; this execution order is not syntax activation.
+Operator grammar, numeric precision/rounding and evaluator states are frozen in
+the expression/evaluator/expansion contracts. Independent vectors and compatibility
+remain pending; this execution order is not syntax activation.
 
 #### Stage 9 handoff
 

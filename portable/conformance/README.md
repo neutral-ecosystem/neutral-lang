@@ -51,5 +51,14 @@ Core-positive inputs compile and independently read; four core-negative families
 have literal NEU-COMP outcomes. Consumer report projections, capability/alternative
 contexts, attribution/privacy and independent exact/one-over controls are pinned,
 but their adapter/comparison is not implemented. This suite is `frozen` only.
-The expression/evaluator/expansion contracts are separate written review
-candidates, not frozen profiles or active conformance entries.
+The expression/evaluator/expansion semantic contracts are separately frozen and
+byte-pinned together with successor compatibility and vectors; production activation remains pending.
+
+The frozen `expression-composition-review` suite registers
+[68 approved requests](../specs/fixtures/expressions/cases.json), 42 `.neu`
+files, one vocabulary bundle and independent arithmetic/NHT/CBOR/matrix vectors
+under the [frozen successor compatibility](../specs/contracts/EXPRESSION-PROFILE.md).
+Written approval is recorded in the freeze manifest; candidate-named snapshot
+IDs and embedded labels remain unchanged to preserve accepted bytes. The standalone
+[oracle check](oracles/expressions/README.md) verifies data consistency only;
+production comparisons and activation remain pending. No fixture was regenerated.

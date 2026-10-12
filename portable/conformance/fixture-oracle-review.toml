@@ -5,6 +5,29 @@ status = "stage7-core-catalogue-and-composition-contract-active"
 profile = "1.0"
 
 [[suite]]
+id = "expression-composition-review"
+status = "approved-frozen; production-comparisons-pending"
+requirements = ["V1-CONS-011", "V1-CONS-012", "V1-CONS-013", "V1-CONS-014", "V1-CONS-015", "V1-CONS-016"]
+fixture_families = ["arithmetic-rounding", "guarded-selection", "matching", "construction", "binding-states", "typed-output", "restrictions", "templates-hygiene", "finite-matrices", "exact-one-over", "compatibility", "minimal-identity-partitions", "wire-envelope-and-fragments"]
+literal_request_cases = 68
+source_files = 42
+captured_bundles = 1
+arithmetic_vectors = 12
+transcript_vectors = 6
+wire_vectors = 3
+matrix_vectors = 3
+complete_project_vectors = 2
+identity_variations = 10
+authoring_projections = 3
+authoring_rejections = 6
+oracle_directory = "portable/conformance/oracles/expressions"
+prepared_date = "2026-10-12"
+review_date = "2026-10-12"
+approval = "explicit user approval of compatibility contract, source amendment and registered literal bytes"
+exclusions = "not production source parsing, shared evaluator, authoring or decoder conformance; independent model projector covers only registered minimal shapes"
+activation = "production folding/shared-evaluator/independent-interpreter, authoring and boundary comparisons before required-active"
+
+[[suite]]
 id = "consumer-graphs"
 status = "reviewed-registered; consumer-comparison-pending"
 requirements = ["V1-CONS-001", "V1-CONS-002", "V1-CONS-003", "V1-CONS-004", "V1-CONS-006"]

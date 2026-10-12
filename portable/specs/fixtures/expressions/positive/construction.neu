@@ -1,0 +1,7 @@
+neu "1.0"
+module example::expressions
+
+string caption = $"count=${text(2 + 3)}"
+string joined = "neu" ++ "tral"
+List<num> items = [1 + 2] ++ [4 / 2, -3]
+bool utf8_order = "z" < "é"

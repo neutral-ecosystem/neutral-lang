@@ -1,9 +1,10 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Shared pure evaluator — review candidate
+# Shared pure evaluator
 
 Profile: `neutral.evaluator/1`, requiring [expression/1](EXPRESSIONS.md).
-Status: review candidate, not frozen or implemented. This is a reusable value
+Status: approved and frozen on 12-10-2026; reviewed bytes are pinned in
+[freeze.toml](freeze.toml). Not implemented or activated. This is a reusable value
 evaluator, not a scheduler, executor or interpreter of arbitrary consumer data.
 
 ## Boundary

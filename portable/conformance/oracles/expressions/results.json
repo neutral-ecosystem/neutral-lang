@@ -1,0 +1,526 @@
+{
+  "schema": "neutral.expression-oracle/1",
+  "status": "literal-review-candidate; no-production-pass-claim",
+  "number_spelling": "finite normalized decimal; all numeric result strings denote num, not string",
+  "projection": "named binding values or explicit failure/demand projection; not a complete public result envelope",
+  "phase_order": "profile/controls, cancellation, syntax/names/types/expansion-validation, selected evaluation, restrictions; first applicable whole-request failure returns no partial artifact",
+  "cases": [
+    {
+      "id": "arithmetic",
+      "status": "value",
+      "values": {
+        "priority": "14",
+        "grouped": "20",
+        "exact": "0.125",
+        "third": "0.3333333333333333333333333333333333",
+        "signed": "-0.1666666666666666666666666666666667",
+        "chained": "0.9999999999999999999999999999999999",
+        "compare": true,
+        "difference": "6",
+        "inverted": true,
+        "equal": true,
+        "less_equal": true,
+        "greater": true
+      }
+    },
+    {
+      "id": "selected-guards",
+      "status": "value",
+      "values": {
+        "selected": "7",
+        "and_guard": false,
+        "or_guard": true
+      }
+    },
+    {
+      "id": "typed-construction",
+      "status": "value",
+      "values": {
+        "caption": "count=5",
+        "joined": "neutral",
+        "items": [
+          "3",
+          "2",
+          "-3"
+        ],
+        "utf8_order": true
+      }
+    },
+    {
+      "id": "exhaustive-match",
+      "status": "value",
+      "values": {
+        "result": "ok"
+      }
+    },
+    {
+      "id": "template-default",
+      "status": "value",
+      "values": {
+        "label": "build-default",
+        "explicit_label": "build-default"
+      }
+    },
+    {
+      "id": "template-deferred-guard",
+      "status": "value",
+      "values": {
+        "result": "0"
+      }
+    },
+    {
+      "id": "matrix-order-filter",
+      "status": "value",
+      "values": {
+        "labels__0__0": "linux-arm64",
+        "labels__0__1": "linux-x64",
+        "labels__1__1": "windows-x64"
+      }
+    },
+    {
+      "id": "matrix-explicit-equivalence",
+      "status": "equivalent",
+      "logical_identity_equal": true,
+      "captured_identity_equal": false
+    },
+    {
+      "id": "duplicate-axis-positions",
+      "status": "value",
+      "values": {
+        "items__0": "1",
+        "items__1": "1"
+      }
+    },
+    {
+      "id": "empty-axis",
+      "status": "value",
+      "generated_symbols": []
+    },
+    {
+      "id": "vocabulary-computed-restrictions",
+      "status": "value",
+      "values": {
+        "result": {
+          "count": "3",
+          "label": "ab",
+          "items": [
+            "2",
+            "3"
+          ],
+          "mode": "safe"
+        }
+      }
+    },
+    {
+      "id": "definition-scope-hygiene",
+      "status": "value",
+      "values": {
+        "label": "definition-ok"
+      }
+    },
+    {
+      "id": "missing-guard",
+      "status": "required-bindings",
+      "names": [
+        "enabled"
+      ]
+    },
+    {
+      "id": "missing-selected-value",
+      "status": "required-bindings",
+      "names": [
+        "count"
+      ]
+    },
+    {
+      "id": "skipped-missing-value",
+      "status": "value",
+      "values": {
+        "result": "0"
+      }
+    },
+    {
+      "id": "supplied-selected-value",
+      "status": "value",
+      "values": {
+        "result": "4"
+      }
+    },
+    {
+      "id": "selected-unavailable",
+      "status": "unavailable",
+      "name": "count",
+      "attribution": null
+    },
+    {
+      "id": "selected-failed",
+      "status": "failure",
+      "phase": "evaluate",
+      "code": "NEU-EVAL-005",
+      "partial_result": false
+    },
+    {
+      "id": "skipped-unavailable",
+      "status": "value",
+      "values": {
+        "result": "0"
+      }
+    },
+    {
+      "id": "skipped-failed",
+      "status": "value",
+      "values": {
+        "result": "0"
+      }
+    },
+    {
+      "id": "skipped-malformed",
+      "status": "failure",
+      "phase": "binding-validation",
+      "code": "NEU-EVAL-003",
+      "partial_result": false
+    },
+    {
+      "id": "duplicate-binding",
+      "status": "failure",
+      "phase": "binding-validation",
+      "code": "NEU-EVAL-002",
+      "partial_result": false
+    },
+    {
+      "id": "unknown-binding",
+      "status": "failure",
+      "phase": "binding-validation",
+      "code": "NEU-EVAL-002",
+      "partial_result": false
+    },
+    {
+      "id": "explicit-null",
+      "status": "value",
+      "values": {
+        "result": null
+      }
+    },
+    {
+      "id": "null-not-missing",
+      "status": "required-bindings",
+      "names": [
+        "maybe"
+      ]
+    },
+    {
+      "id": "skipped-output",
+      "status": "value",
+      "values": {
+        "result": "0"
+      }
+    },
+    {
+      "id": "missing-output",
+      "status": "required-bindings",
+      "keys": [
+        {
+          "kind": "output",
+          "target": [
+            "1.0",
+            "example::expressions",
+            "job"
+          ],
+          "result_type": [
+            "1.0",
+            "example::expressions",
+            "Result"
+          ],
+          "selector": [
+            [
+              "field",
+              "count"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "branch-type",
+      "status": "failure",
+      "phase": "typing",
+      "code": "NEU-EXP-004",
+      "partial_result": false
+    },
+    {
+      "id": "branch-name",
+      "status": "failure",
+      "phase": "typing",
+      "code": "NEU-EXP-003",
+      "partial_result": false
+    },
+    {
+      "id": "division-zero",
+      "status": "failure",
+      "phase": "evaluate",
+      "code": "NEU-EXP-006",
+      "partial_result": false
+    },
+    {
+      "id": "comparison-chain",
+      "status": "failure",
+      "phase": "parse",
+      "code": "NEU-EXP-002",
+      "partial_result": false
+    },
+    {
+      "id": "match-missing",
+      "status": "failure",
+      "phase": "typing",
+      "code": "NEU-EXP-005",
+      "partial_result": false
+    },
+    {
+      "id": "match-duplicate",
+      "status": "failure",
+      "phase": "typing",
+      "code": "NEU-EXP-005",
+      "partial_result": false
+    },
+    {
+      "id": "template-recursion",
+      "status": "failure",
+      "phase": "expansion-validation",
+      "code": "NEU-TPL-005",
+      "partial_result": false
+    },
+    {
+      "id": "template-arguments",
+      "status": "failure",
+      "phase": "expansion-validation",
+      "code": "NEU-TPL-003",
+      "partial_result": false
+    },
+    {
+      "id": "template-static",
+      "status": "failure",
+      "phase": "typing",
+      "code": "NEU-TPL-004",
+      "partial_result": false
+    },
+    {
+      "id": "matrix-shape",
+      "status": "failure",
+      "phase": "typing",
+      "code": "NEU-TPL-004",
+      "partial_result": false
+    },
+    {
+      "id": "matrix-collision",
+      "status": "failure",
+      "phase": "expansion-validation",
+      "code": "NEU-TPL-006",
+      "partial_result": false
+    },
+    {
+      "id": "matrix-exclusion",
+      "status": "failure",
+      "phase": "expansion-validation",
+      "code": "NEU-TPL-007",
+      "partial_result": false
+    },
+    {
+      "id": "restrictions",
+      "status": "failure",
+      "phase": "restriction-validation",
+      "code": "NEU-EXP-008",
+      "partial_result": false
+    },
+    {
+      "id": "value-cycle",
+      "status": "failure",
+      "phase": "typing",
+      "code": "NEU-EXP-007",
+      "partial_result": false
+    },
+    {
+      "id": "imperative",
+      "status": "failure",
+      "phase": "parse",
+      "code": "NEU-EXP-002",
+      "partial_result": false
+    },
+    {
+      "id": "interpolation-type",
+      "status": "failure",
+      "phase": "typing",
+      "code": "NEU-EXP-004",
+      "partial_result": false
+    },
+    {
+      "id": "template-null",
+      "status": "failure",
+      "phase": "typing",
+      "code": "NEU-TPL-004",
+      "partial_result": false
+    },
+    {
+      "id": "template-unused-static",
+      "status": "failure",
+      "phase": "evaluate",
+      "code": "NEU-EXP-006",
+      "partial_result": false
+    },
+    {
+      "id": "filtered-product-exact",
+      "status": "value",
+      "generated_symbols": []
+    },
+    {
+      "id": "filtered-product-one-over",
+      "status": "failure",
+      "phase": "expansion",
+      "code": "NEU-TPL-008",
+      "partial_result": false
+    },
+    {
+      "id": "aggregate-tuples-exact",
+      "status": "value",
+      "generated_symbols": []
+    },
+    {
+      "id": "aggregate-tuples-one-over",
+      "status": "failure",
+      "phase": "expansion",
+      "code": "NEU-TPL-008",
+      "partial_result": false
+    },
+    {
+      "id": "numeric-growth-exact",
+      "status": "value",
+      "values": {
+        "result": "9801"
+      }
+    },
+    {
+      "id": "numeric-growth-one-over",
+      "status": "failure",
+      "phase": "evaluate",
+      "code": "NEU-EXP-009",
+      "partial_result": false
+    },
+    {
+      "id": "utf8-output-exact",
+      "status": "value",
+      "values": {
+        "result": "éa"
+      }
+    },
+    {
+      "id": "utf8-output-one-over",
+      "status": "failure",
+      "phase": "evaluate",
+      "code": "NEU-EXP-009",
+      "partial_result": false
+    },
+    {
+      "id": "residual-depth-exact",
+      "status": "value",
+      "values": {
+        "result": "1"
+      }
+    },
+    {
+      "id": "residual-depth-one-over",
+      "status": "failure",
+      "phase": "evaluate",
+      "code": "NEU-EXP-009",
+      "partial_result": false
+    },
+    {
+      "id": "residual-nodes-exact",
+      "status": "value",
+      "values": {
+        "result": "3"
+      }
+    },
+    {
+      "id": "residual-nodes-one-over",
+      "status": "failure",
+      "phase": "evaluate",
+      "code": "NEU-EXP-009",
+      "partial_result": false
+    },
+    {
+      "id": "already-cancelled",
+      "status": "failure",
+      "phase": "preflight",
+      "code": "NEU-EXP-010",
+      "partial_result": false
+    },
+    {
+      "id": "evaluator-cancelled",
+      "status": "failure",
+      "phase": "preflight",
+      "code": "NEU-EVAL-007",
+      "partial_result": false
+    },
+    {
+      "id": "zero-control",
+      "status": "failure",
+      "phase": "preflight",
+      "code": "NEU-EXP-009",
+      "partial_result": false
+    },
+    {
+      "id": "old-capture",
+      "status": "failure",
+      "phase": "profile",
+      "code": "NEU-EXP-001",
+      "partial_result": false
+    },
+    {
+      "id": "old-reader",
+      "status": "failure",
+      "phase": "reader",
+      "code": "Unsupported",
+      "partial_result": false
+    },
+    {
+      "id": "old-authoring",
+      "status": "failure",
+      "phase": "authoring",
+      "code": "NEU-AUTH-001",
+      "partial_result": false
+    },
+    {
+      "id": "missing-feature",
+      "status": "failure",
+      "phase": "profile",
+      "code": "NEU-EXP-001",
+      "partial_result": false
+    },
+    {
+      "id": "unknown-feature",
+      "status": "failure",
+      "phase": "profile",
+      "code": "NEU-EXP-001",
+      "partial_result": false
+    },
+    {
+      "id": "header-only",
+      "status": "failure",
+      "phase": "profile",
+      "code": "NEU-EXP-001",
+      "partial_result": false
+    },
+    {
+      "id": "static-literal-equivalence",
+      "status": "equivalent",
+      "logical_identity_equal": true,
+      "captured_identity_equal": false
+    },
+    {
+      "id": "public-template-contract",
+      "status": "value",
+      "values": {
+        "result": "1"
+      }
+    }
+  ]
+}

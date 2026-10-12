@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Pure expression contract — review candidate
+# Pure expression contract
 
-Profile: `neutral.expression/1`. Covers V1-CONS-011..014. Status: concrete review
-candidate, not frozen or activated. Review this with [EVALUATOR](EVALUATOR.md) and
-[EXPANSION](EXPANSION.md) before checking the expression contract-freeze gate.
+Profile: `neutral.expression/1`. Covers V1-CONS-011..014. Status: approved and
+frozen on 12-10-2026 with [EVALUATOR](EVALUATOR.md) and [EXPANSION](EXPANSION.md).
+Reviewed bytes are pinned in [freeze.toml](freeze.toml); syntax is not activated.
 
 ## Selection and scope
 

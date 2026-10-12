@@ -1,0 +1,6 @@
+neu "1.0"
+module example::expressions
+
+public string labels__0__0 = "linux-arm64"
+public string labels__0__1 = "linux-x64"
+public string labels__1__1 = "windows-x64"

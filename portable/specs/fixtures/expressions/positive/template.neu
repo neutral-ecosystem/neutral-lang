@@ -1,0 +1,9 @@
+neu "1.0"
+module example::expressions
+
+template Label(static string prefix, deferred string suffix = "default") -> string {
+    prefix ++ suffix
+}
+
+public string label = instantiate Label(prefix: "build-")
+public string explicit_label = "build-default"

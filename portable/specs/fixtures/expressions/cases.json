@@ -1,0 +1,1013 @@
+{
+  "schema": "neutral.expression-fixture/1",
+  "status": "candidate-review-only; not-frozen-or-active",
+  "contract": "portable/specs/contracts/EXPRESSION-PROFILE.md",
+  "profiles": {
+    "capture": "neutral.capture/v3",
+    "source": "1.0",
+    "ir": "neutral.project-ir/3",
+    "wire": "NIR-PROJECT-CBOR/3",
+    "identity": "neutral.project-identity/3",
+    "authoring": "neutral.authoring/2",
+    "expression": "neutral.expression/1",
+    "evaluator": "neutral.evaluator/1",
+    "expansion": "neutral.expansion/1",
+    "decimal": "neutral.decimal/1"
+  },
+  "required_features": [
+    "decimal-division-v1",
+    "finite-expansion-v1",
+    "pure-evaluator-v1",
+    "pure-expressions-v1",
+    "tagged-variants-v1",
+    "vocabulary-composition-v2"
+  ],
+  "defaults": {
+    "controls": {
+      "expression.nodes": 1000,
+      "expression.syntax-depth": 64,
+      "expression.evaluation-depth": 64,
+      "expression.bindings": 1000,
+      "expression.dependency-edges": 1000,
+      "expression.work": 100000,
+      "expression.retained-bytes": 1048576,
+      "expression.output-bytes": 1048576,
+      "expression.coefficient-digits": 4096,
+      "expression.absolute-scale": 4096,
+      "expression.diagnostics": 1000,
+      "expansion.definitions": 1000,
+      "expansion.applications": 1000,
+      "expansion.parameters": 64,
+      "expansion.axes": 16,
+      "expansion.axis-items": 1000,
+      "expansion.product-tuples": 1000,
+      "expansion.aggregate-tuples": 1000,
+      "expansion.expanded-bindings": 1000,
+      "expansion.expanded-nodes": 1000,
+      "expansion.depth": 64,
+      "expansion.work": 100000,
+      "expansion.retained-bytes": 1048576,
+      "expansion.output-bytes": 1048576
+    },
+    "bindings": [],
+    "source_id": "source:expression-fixture",
+    "inherited_controls": "existing capture/composition/reader limits from the complete baseline vector; intersection applies"
+  },
+  "files": [
+    {
+      "path": "portable/specs/fixtures/expressions/positive/arithmetic.neu",
+      "sha256": "f152ccd8e80ac195cef19fab5ce8e0fc78fc12d3830be0b48e36dc1b3b0c8595"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/guards.neu",
+      "sha256": "403bf73d7755749e34c7395dcbc17698f0a1610022093916afff64f3e665c172"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/construction.neu",
+      "sha256": "46d36bc559ce261b8432b104b667d3fbeb5db7d91e861cbe8a005c3812963a68"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/match.neu",
+      "sha256": "25fd8f272dbedce7df32c243e788de1d26843218fde4d0ce5a4aebc3a054d39e"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/deferred.neu",
+      "sha256": "10f86e9c44213b0b15c4b777a0f5ca64a922a27c24410a7f647fa0ffd3aef905"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/nullable.neu",
+      "sha256": "bbf1a130bd2a92bbc2375a44fe86591dc4e0a3a4083d16b37d8e33b2aae6187d"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/template.neu",
+      "sha256": "c2d4ecd6f4740dcfb8e613cab04222a3115f1d22262d6ff043927230deaf0f28"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/matrix.neu",
+      "sha256": "89839f7433b242d80f48682a656233c2c5c3096b050796e30151e6b10db51a6e"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/matrix-explicit.neu",
+      "sha256": "f5bc95fa090a34f2d6c9a95879537efdf9d2caae44216b3235577dde2d245f59"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/matrix-duplicates.neu",
+      "sha256": "30c8d6416e17572e71f49a52d76ace0aabd44139ba2e43e2e3420b00ff6e2dbb"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/matrix-empty.neu",
+      "sha256": "8b5739175326f4935f67166a42230fb2151d6fca3d727494a2795cc4a9c59e68"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/restrictions.neu",
+      "sha256": "b2dc883d5972430a4eda7819c4326c78815f33f6dcbecf036f26552eb0edb4c7"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/hygiene-definition.neu",
+      "sha256": "b113cb6f73a3bb4e31b7f0a8f94ccc87dca4cb3eb9ae5d0e119ab84a931f0000"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/hygiene-caller.neu",
+      "sha256": "98209b67f129eeeaaf49d198beb33a45d97997aa1de7dddcc0bd6c7257ccc901"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/branch-type.neu",
+      "sha256": "a1f0ea458f9088ae011ea5a4691d20697d97dba51fe0f148c3b744f3dc2dcdc9"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/branch-name.neu",
+      "sha256": "43549b1eed8599065807af22de4abaf841a84c184e0f037ac9790fc929421ea4"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/division-zero.neu",
+      "sha256": "02793b6dd23744c919b3217afc9fef06577444674dfedaff1145da365185db10"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/comparison-chain.neu",
+      "sha256": "0ce117e4ba39b55f35e35506d16d7d8f94498801c69e2139a6bd2e36efcc1ca0"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/match-missing.neu",
+      "sha256": "472a9701331e71e3b0ee5cccd7377cb45b25d896effe5e499cc09e66f680e4f0"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/match-duplicate.neu",
+      "sha256": "96adab5fa2e6b8147b0c43ef8295d37e81497d37765c7412a8e3fb0314e609c6"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/template-recursion.neu",
+      "sha256": "482c63a5def37cb2e016f8657aa2f827f16840b91cf8ccbbf5fd926d0cab983d"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/template-arguments.neu",
+      "sha256": "884f67735b4701b1c3ff1e3b044327acc1034ccf6a913b7ae0358b7ae69f51ca"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/template-static.neu",
+      "sha256": "0e21cb021c50c3410ff0d029f5539d0f11b946aa8091d1bda3efa8702dee1f53"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/matrix-shape.neu",
+      "sha256": "b9849a4b6d508f60146b66db11a7175964d0ae84972c2a86de4e493f11dc6685"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/matrix-collision.neu",
+      "sha256": "4dc9036a0bc9730f9bb753261bc92ef1805b7751b36c73c749da8b0596485781"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/matrix-exclusion.neu",
+      "sha256": "fa10b522ee21a23631e7a5e594b2f829fc909dbe587a439a81bca7e8b05ebd39"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/restrictions.neu",
+      "sha256": "cac7d2c59fe232b2a1ee530e88c369c726f0674868382b71a7b325a229b217d5"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/value-cycle.neu",
+      "sha256": "bd101a633e91c136e26e944b47e68795eba476935fe544827efcdf6b13a053a7"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/boundary/product.neu",
+      "sha256": "f0829ff898c6543cc54bdb00778a0f3f19f77c07adf7b9177c4157422b3a6c55"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/boundary/numeric.neu",
+      "sha256": "b60c38527b5169af4d7c72749f4ceb0f4fda06e674e478bfa7264fc60f70724d"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/boundary/text.neu",
+      "sha256": "4a78d6f43e1e53ae15c61387289c6be2a906f7f40873c91f1221783d7d7521b6"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/boundary/depth.neu",
+      "sha256": "347bcb8af34d4991ec49267965db90aef82a98a1e4f027d9c21b017f2fc11ca7"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/boundary/nodes.neu",
+      "sha256": "2f57ca677351c1089f040b3ff3c5570601c75f2d57e2c460ba69985b03ddab27"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/imperative.neu",
+      "sha256": "ea46bbce19bf25713f588177bbf14922503965fd121d502336f38b0267776084"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/bundle.json",
+      "sha256": "402ff27b546437fdc02c90a06783b78730315f4cd140fee203920315af5bcbb1"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/output.neu",
+      "sha256": "315b8300a5909b130d72e054242969dfafe57f9d1e18d9a48a3312939f122786"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/interpolation-type.neu",
+      "sha256": "46c8ee47d4e757510b3e89b13f796834dece3c92c142cd95542176b148e12e8d"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/template-null.neu",
+      "sha256": "95770877ce2629ee101b1bcfe611c4c258dc4cdfa31af2e5a5f09036dd7eadbb"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/template-guard.neu",
+      "sha256": "e76335d35785abbfcdc311ed18c7363b3e4d2f08c771e9da7ad4ff881c1f0195"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/negative/template-unused-static.neu",
+      "sha256": "ffcdd4fde31a18e96457aed1d9d597a094fbef9cd639cf9b4034d3f38346daed"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/identity.neu",
+      "sha256": "30e9f544ba4f09b7eccfd3dfcb82ffa033c16dd5bf24c752f23ee6a1c76aa010"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/identity-literal.neu",
+      "sha256": "8422927b3272d12383070ede823f60b2030fc71f995a54ba9dff062615e3e731"
+    },
+    {
+      "path": "portable/specs/fixtures/expressions/positive/public-template.neu",
+      "sha256": "8a519014d8a505cc7bfeca0d3e65da8d2266657524f1fde92f782e53fa0509d4"
+    }
+  ],
+  "cases": [
+    {
+      "id": "arithmetic",
+      "source": "positive/arithmetic.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "selected-guards",
+      "source": "positive/guards.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "typed-construction",
+      "source": "positive/construction.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "exhaustive-match",
+      "source": "positive/match.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "template-default",
+      "source": "positive/template.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "template-deferred-guard",
+      "source": "positive/template-guard.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "matrix-order-filter",
+      "source": "positive/matrix.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "matrix-explicit-equivalence",
+      "source": "positive/matrix-explicit.neu",
+      "operation": "logical-compare",
+      "other_source": "positive/matrix.neu"
+    },
+    {
+      "id": "duplicate-axis-positions",
+      "source": "positive/matrix-duplicates.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "empty-axis",
+      "source": "positive/matrix-empty.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "vocabulary-computed-restrictions",
+      "source": "positive/restrictions.neu",
+      "operation": "compile",
+      "vocabulary": "bundle.json"
+    },
+    {
+      "id": "definition-scope-hygiene",
+      "source": "positive/hygiene-caller.neu",
+      "operation": "compile",
+      "other_sources": [
+        "positive/hygiene-definition.neu"
+      ]
+    },
+    {
+      "id": "missing-guard",
+      "source": "positive/deferred.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": []
+    },
+    {
+      "id": "missing-selected-value",
+      "source": "positive/deferred.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "enabled"
+            ]
+          },
+          "state": "value",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": "skipped-missing-value",
+      "source": "positive/deferred.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "enabled"
+            ]
+          },
+          "state": "value",
+          "type": "bool",
+          "value": false
+        }
+      ]
+    },
+    {
+      "id": "supplied-selected-value",
+      "source": "positive/deferred.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "enabled"
+            ]
+          },
+          "state": "value",
+          "type": "bool",
+          "value": true
+        },
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "count"
+            ]
+          },
+          "state": "value",
+          "type": "num",
+          "value": "3"
+        }
+      ]
+    },
+    {
+      "id": "selected-unavailable",
+      "source": "positive/deferred.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "enabled"
+            ]
+          },
+          "state": "value",
+          "type": "bool",
+          "value": true
+        },
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "count"
+            ]
+          },
+          "state": "unavailable"
+        }
+      ]
+    },
+    {
+      "id": "selected-failed",
+      "source": "positive/deferred.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "enabled"
+            ]
+          },
+          "state": "value",
+          "type": "bool",
+          "value": true
+        },
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "count"
+            ]
+          },
+          "state": "failed"
+        }
+      ]
+    },
+    {
+      "id": "skipped-unavailable",
+      "source": "positive/deferred.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "enabled"
+            ]
+          },
+          "state": "value",
+          "type": "bool",
+          "value": false
+        },
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "count"
+            ]
+          },
+          "state": "unavailable"
+        }
+      ]
+    },
+    {
+      "id": "skipped-failed",
+      "source": "positive/deferred.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "enabled"
+            ]
+          },
+          "state": "value",
+          "type": "bool",
+          "value": false
+        },
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "count"
+            ]
+          },
+          "state": "failed"
+        }
+      ]
+    },
+    {
+      "id": "skipped-malformed",
+      "source": "positive/deferred.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "enabled"
+            ]
+          },
+          "state": "value",
+          "type": "bool",
+          "value": false
+        },
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "count"
+            ]
+          },
+          "state": "value",
+          "type": "string",
+          "value": "bad"
+        }
+      ]
+    },
+    {
+      "id": "duplicate-binding",
+      "source": "positive/deferred.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "enabled"
+            ]
+          },
+          "state": "value",
+          "type": "bool",
+          "value": false
+        },
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "enabled"
+            ]
+          },
+          "state": "value",
+          "type": "bool",
+          "value": false
+        }
+      ]
+    },
+    {
+      "id": "unknown-binding",
+      "source": "positive/deferred.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "other"
+            ]
+          },
+          "state": "value",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": "explicit-null",
+      "source": "positive/nullable.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "maybe"
+            ]
+          },
+          "state": "value",
+          "type": "nullable-num",
+          "value": null
+        }
+      ]
+    },
+    {
+      "id": "null-not-missing",
+      "source": "positive/nullable.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": []
+    },
+    {
+      "id": "skipped-output",
+      "source": "positive/output.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "enabled"
+            ]
+          },
+          "state": "value",
+          "type": "bool",
+          "value": false
+        }
+      ]
+    },
+    {
+      "id": "missing-output",
+      "source": "positive/output.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "enabled"
+            ]
+          },
+          "state": "value",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": "branch-type",
+      "source": "negative/branch-type.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "branch-name",
+      "source": "negative/branch-name.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "division-zero",
+      "source": "negative/division-zero.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "comparison-chain",
+      "source": "negative/comparison-chain.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "match-missing",
+      "source": "negative/match-missing.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "match-duplicate",
+      "source": "negative/match-duplicate.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "template-recursion",
+      "source": "negative/template-recursion.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "template-arguments",
+      "source": "negative/template-arguments.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "template-static",
+      "source": "negative/template-static.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "matrix-shape",
+      "source": "negative/matrix-shape.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "matrix-collision",
+      "source": "negative/matrix-collision.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "matrix-exclusion",
+      "source": "negative/matrix-exclusion.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "restrictions",
+      "source": "negative/restrictions.neu",
+      "operation": "compile",
+      "vocabulary": "bundle.json"
+    },
+    {
+      "id": "value-cycle",
+      "source": "negative/value-cycle.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "imperative",
+      "source": "negative/imperative.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "interpolation-type",
+      "source": "negative/interpolation-type.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "template-null",
+      "source": "negative/template-null.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "template-unused-static",
+      "source": "negative/template-unused-static.neu",
+      "operation": "compile"
+    },
+    {
+      "id": "filtered-product-exact",
+      "source": "boundary/product.neu",
+      "operation": "compile",
+      "controls": {
+        "expansion.product-tuples": 4
+      }
+    },
+    {
+      "id": "filtered-product-one-over",
+      "source": "boundary/product.neu",
+      "operation": "compile",
+      "controls": {
+        "expansion.product-tuples": 3
+      }
+    },
+    {
+      "id": "aggregate-tuples-exact",
+      "source": "boundary/product.neu",
+      "operation": "compile",
+      "controls": {
+        "expansion.aggregate-tuples": 4
+      }
+    },
+    {
+      "id": "aggregate-tuples-one-over",
+      "source": "boundary/product.neu",
+      "operation": "compile",
+      "controls": {
+        "expansion.aggregate-tuples": 3
+      }
+    },
+    {
+      "id": "numeric-growth-exact",
+      "source": "boundary/numeric.neu",
+      "operation": "compile",
+      "controls": {
+        "expression.coefficient-digits": 4
+      }
+    },
+    {
+      "id": "numeric-growth-one-over",
+      "source": "boundary/numeric.neu",
+      "operation": "compile",
+      "controls": {
+        "expression.coefficient-digits": 3
+      }
+    },
+    {
+      "id": "utf8-output-exact",
+      "source": "boundary/text.neu",
+      "operation": "compile",
+      "controls": {
+        "expression.output-bytes": 3
+      }
+    },
+    {
+      "id": "utf8-output-one-over",
+      "source": "boundary/text.neu",
+      "operation": "compile",
+      "controls": {
+        "expression.output-bytes": 2
+      }
+    },
+    {
+      "id": "residual-depth-exact",
+      "source": "boundary/depth.neu",
+      "operation": "evaluate-binding",
+      "controls": {
+        "expression.evaluation-depth": 3
+      },
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "count"
+            ]
+          },
+          "state": "value",
+          "type": "num",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "id": "residual-depth-one-over",
+      "source": "boundary/depth.neu",
+      "operation": "evaluate-binding",
+      "controls": {
+        "expression.evaluation-depth": 2
+      },
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "count"
+            ]
+          },
+          "state": "value",
+          "type": "num",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "id": "residual-nodes-exact",
+      "source": "boundary/nodes.neu",
+      "operation": "evaluate-binding",
+      "controls": {
+        "expression.nodes": 3
+      },
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "left"
+            ]
+          },
+          "state": "value",
+          "type": "num",
+          "value": "1"
+        },
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "right"
+            ]
+          },
+          "state": "value",
+          "type": "num",
+          "value": "2"
+        }
+      ]
+    },
+    {
+      "id": "residual-nodes-one-over",
+      "source": "boundary/nodes.neu",
+      "operation": "evaluate-binding",
+      "controls": {
+        "expression.nodes": 2
+      },
+      "binding": "result",
+      "bindings": [
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "left"
+            ]
+          },
+          "state": "value",
+          "type": "num",
+          "value": "1"
+        },
+        {
+          "key": {
+            "kind": "input",
+            "symbol": [
+              "1.0",
+              "example::expressions",
+              "right"
+            ]
+          },
+          "state": "value",
+          "type": "num",
+          "value": "2"
+        }
+      ]
+    },
+    {
+      "id": "already-cancelled",
+      "source": "positive/arithmetic.neu",
+      "operation": "compile",
+      "cancelled": true
+    },
+    {
+      "id": "evaluator-cancelled",
+      "source": "positive/deferred.neu",
+      "operation": "evaluate-binding",
+      "binding": "result",
+      "bindings": [],
+      "cancelled": true
+    },
+    {
+      "id": "zero-control",
+      "source": "positive/arithmetic.neu",
+      "operation": "compile",
+      "controls": {
+        "expression.nodes": 0
+      }
+    },
+    {
+      "id": "old-capture",
+      "source": "positive/deferred.neu",
+      "operation": "compatibility",
+      "capture_profile": "neutral.capture/v2"
+    },
+    {
+      "id": "old-reader",
+      "source": "positive/deferred.neu",
+      "operation": "compatibility",
+      "reader_profile": "neutral.project-ir/2"
+    },
+    {
+      "id": "old-authoring",
+      "source": "positive/deferred.neu",
+      "operation": "compatibility",
+      "authoring_profile": "neutral.authoring/1"
+    },
+    {
+      "id": "missing-feature",
+      "source": "positive/deferred.neu",
+      "operation": "compatibility",
+      "remove_feature": "pure-evaluator-v1"
+    },
+    {
+      "id": "unknown-feature",
+      "source": "positive/deferred.neu",
+      "operation": "compatibility",
+      "add_feature": "execute-commands-v1"
+    },
+    {
+      "id": "header-only",
+      "source": "positive/deferred.neu",
+      "operation": "compatibility",
+      "capture_profile": "neutral.capture/v1"
+    },
+    {
+      "id": "static-literal-equivalence",
+      "source": "positive/identity.neu",
+      "operation": "logical-compare",
+      "other_source": "positive/identity-literal.neu"
+    },
+    {
+      "id": "public-template-contract",
+      "source": "positive/public-template.neu",
+      "operation": "compile"
+    }
+  ]
+}

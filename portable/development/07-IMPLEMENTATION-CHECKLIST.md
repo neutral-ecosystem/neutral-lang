@@ -547,7 +547,7 @@ not permission to implement every subsystem before testing any of them.
   [31 literal cases](../specs/fixtures/consumer/graphs/cases.json), 13 source files,
   one captured bundle and [reports](../conformance/oracles/consumer/graphs.json)
   are pinned as frozen-only; consumer implementation/comparison remains pending.
-- [ ] Freeze approved V1-CONS-011..016: pure comparisons/Boolean expressions,
+- [x] Freeze approved V1-CONS-011..016: pure comparisons/Boolean expressions,
   conditional selection/exhaustive matching, single-`num` deterministic decimal
   arithmetic with approximate nonterminating division, typed string/list
   construction, static/deferred inputs, typed parameterized descriptions, and
@@ -556,18 +556,27 @@ not permission to implement every subsystem before testing any of them.
   Nontermination is not an error; distinguish division by zero and resource limits.
   Freeze expression/expansion/evaluator profiles separately without changing
   historical numeric values, wire formats or identity vectors.
-  Concrete review candidates: [expressions](../specs/contracts/EXPRESSIONS.md),
+  Approved and frozen on 12-10-2026: [expressions](../specs/contracts/EXPRESSIONS.md),
   [evaluator](../specs/contracts/EVALUATOR.md), [expansion](../specs/contracts/EXPANSION.md).
-  Written-contract approval remains required before freeze; syntax is not activated.
-- [ ] Freeze the shared pure evaluator contract: explicit typed bindings;
+  Reviewed bytes are pinned in [freeze.toml](../specs/contracts/freeze.toml).
+  Compatibility/vectors and implementation remain separate gates; syntax is not activated.
+- [x] Freeze the shared pure evaluator contract: explicit typed bindings;
   validated value, required-bindings and unavailable/failure states; guarded
   dependencies; retained restrictions; independent work/depth/numeric/output
   limits; cancellation, attribution and deterministic failure reports. No ambient
   I/O, credential lookup, scheduling or backend execution.
-- [ ] Register literal positive/negative/boundary expression/composition fixtures
+- [x] Register literal positive/negative/boundary expression/composition fixtures
   and independent result/transcript vectors before implementation; freeze source,
   IR/wire/authoring feature compatibility and explicitly amend source exclusions
   without reinterpreting existing profiles or vectors.
+  Approved and frozen on 12-10-2026: [successor compatibility](../specs/contracts/EXPRESSION-PROFILE.md),
+  [68 literal cases](../specs/fixtures/expressions/cases.json), 42 source files,
+  one bundle and [independent vectors](../specs/fixtures/expressions/vectors.json).
+  [Complete residual/template artifacts and ten identity variations](../specs/fixtures/expressions/complete-vectors.json)
+  and [authoring projections/rejections](../specs/fixtures/expressions/authoring-vectors.json)
+  are registered and independently checked. Written compatibility/source-amendment
+  and literal-byte approval is recorded in [freeze.toml](../specs/contracts/freeze.toml).
+  Registration is not production conformance; activation remains pending.
 - [ ] Freeze the [Stage 8 design boundaries](../specs/contracts/CONSUMER-READINESS.md#stage-8-design-boundaries):
   guarded static/deferred evaluation, structural/value/scheduling edge separation,
   retained restriction obligations, normalized static/expanded logical identity,

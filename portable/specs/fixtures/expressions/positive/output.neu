@@ -1,0 +1,18 @@
+neu "1.0"
+module example::expressions
+
+public record Job {
+    string name
+}
+
+public record Result {
+    num count
+}
+
+public Job job = { name: "build" }
+public input bool enabled
+public num result = if enabled {
+    output<num>(ref(job), Result, [{ kind: "field", name: "count" }])
+} else {
+    0
+}

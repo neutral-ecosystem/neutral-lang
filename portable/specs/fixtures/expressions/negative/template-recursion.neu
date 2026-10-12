@@ -1,0 +1,8 @@
+neu "1.0"
+module example::expressions
+
+template Recur(static num value) -> num {
+    if true { value } else { instantiate Recur(value: value) }
+}
+
+num result = instantiate Recur(value: 1)

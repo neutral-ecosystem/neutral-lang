@@ -36,9 +36,12 @@ rules for values, records, lists, source literals, or v0 vocabulary encoding.
   graph/map/condition/capability conventions and 31 literal consumer report cases;
   separate core rejection from consumer interpretation, no backend execution.
 - [EXPRESSIONS.md](EXPRESSIONS.md), [EVALUATOR.md](EVALUATOR.md),
-  [EXPANSION.md](EXPANSION.md): concrete V1-CONS-011..016 review candidates for
+  [EXPANSION.md](EXPANSION.md): frozen V1-CONS-011..016 semantic contracts for
   syntax, single-`num` approximate division, shared pure evaluation and finite
-  hygienic templates/matrices. Written approval and activation evidence pending.
+  hygienic templates/matrices. Compatibility and vectors are frozen; activation evidence pending.
+- [EXPRESSION-PROFILE.md](EXPRESSION-PROFILE.md): frozen compatibility for explicit
+  capture/IR/wire/identity /3 and authoring /2, source exclusion amendment and
+  literal expression/composition vectors; implementation and activation pending.
 - [VARIANTS.md](VARIANTS.md): frozen shared source/vocabulary variant grammar,
   typing, nominal ownership and public closure; source activation remains pending.
 - [VOCABULARY-COMPOSITION.md](VOCABULARY-COMPOSITION.md): frozen schema `2.0`
