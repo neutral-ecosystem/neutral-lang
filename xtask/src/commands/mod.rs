@@ -8,5 +8,6 @@ pub(crate) mod distribution;
 pub(crate) mod documentation;
 pub(crate) mod portable;
 pub(crate) mod quality;
+pub(crate) mod source_formatting;
 pub(crate) mod test_execution;
 pub(crate) mod testing;

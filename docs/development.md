@@ -57,6 +57,16 @@ Run `cargo xtask --help` for the authoritative command list. The root
 index. For command order, local defaults, and optional environment overrides,
 see [developer command flow](workflow-optimization.md).
 
+`cargo xtask fmt --write` formats Rust and mutable `.neu` examples together;
+`cargo xtask fmt` checks both without writing. The `dev` command applies the same
+formatting, and CI checks it. Neutral source layout uses four spaces and places
+brace members on separate lines, including nested records and variants. Source
+literal/comment text and existing commas are retained. This is a whitespace
+layout tool for authoring, not a substitute for compilation or semantic validation.
+Configure source directories and intentional exclusions in the `formatting`
+section of [automation.toml](../config/automation.toml). Frozen inputs, negative
+fixtures, and compact-syntax regressions are intentionally excluded by default.
+
 Use `cargo xtask test all` as the primary test command, including doctests.
 Test binaries use Nextest with the execution profiles in `config/nextest.toml`. Focus a
 run with `cargo xtask test security`, `test unit`, or another documented level.

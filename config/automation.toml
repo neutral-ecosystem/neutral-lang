@@ -26,3 +26,19 @@ ci_profile = "ci"
 mutation_profile = "mutation"
 # Concurrent full-scope mutation workers; must be positive.
 mutation_jobs = 2
+
+[formatting]
+indent_width = 4
+# Mutable source examples only: frozen, malformed, and compact-syntax fixtures
+# retain their exact bytes and remain outside the automatic formatting scope.
+roots = [
+    "crates/neutral-test-suite/tests/source_pipeline/fixtures/positive",
+    "crates/neutral-test-suite/tests/source_pipeline/fixtures/cli",
+    "fuzz/seeds",
+]
+exclude = [
+    "crates/neutral-test-suite/tests/source_pipeline/fixtures/positive/single-line-fields.neu",
+    "crates/neutral-test-suite/tests/source_pipeline/fixtures/positive/single-line-fields-comma.neu",
+    "crates/neutral-test-suite/tests/source_pipeline/fixtures/positive/records-no-trailing-comma.neu",
+    "crates/neutral-test-suite/tests/source_pipeline/fixtures/cli/invalid.neu",
+]

@@ -7,6 +7,10 @@ developer, CI, quality, documentation, package, and release-preparation flows.
 It is a non-published workspace package and must remain outside every production
 dependency graph.
 
+`cargo xtask fmt --write` applies Rust formatting and readable `.neu` layout;
+`cargo xtask fmt` checks both. Source roots, excluded fixtures, and indentation
+are configured in `config/automation.toml`. Frozen inputs retain their exact bytes.
+
 Repository checks also enforce `quality/manifest.toml`, keeping durable quality
 policy, maintained reviews, and versioned release evidence complete and
 separate from ignored raw tool output.

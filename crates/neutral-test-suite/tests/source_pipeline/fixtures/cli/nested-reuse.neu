@@ -10,10 +10,14 @@ record Container {
     List<Item> items,
 }
 
-Item original = {}
+Item original = {
+}
 Item copied = original
 List<Item> items = [original, copied]
 List<Item> reused_items = items
-Container holder = { item: copied, items: reused_items, }
+Container holder = {
+    item: copied,
+    items: reused_items,
+}
 Container copied_holder = holder
 Item? widened = original

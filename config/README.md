@@ -11,6 +11,10 @@ only by the frozen portable contracts. Generated reports never belong here.
 
 `automation.toml` owns typed Cargo/Rust compiler command defaults, the
 generated-results root, and the test runner/config/profile selection.
+Its `formatting` section selects mutable `.neu` source roots, exact file or
+subdirectory exclusions, and indentation width. Frozen conformance, portable
+inputs, malformed fixtures, and deliberate single-line syntax tests are outside
+the default formatting scope.
 `testing.mutation_jobs` selects concurrent mutation workers (default two; zero
 is rejected) without changing the reviewed target scope or acceptance threshold.
 `nextest.toml` owns parallelism, timeouts, failure handling, and CI JUnit

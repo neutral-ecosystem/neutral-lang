@@ -27,13 +27,14 @@ pub(crate) fn develop() -> Result<(), String> {
     )
 }
 
-/// Checks or applies Rust formatting across the complete workspace.
+/// Checks or applies Rust formatting and configured Neutral source layout.
 pub(crate) fn format_workspace(write: bool) -> Result<(), String> {
     if write {
-        run_cargo(&["fmt", "--all"])
+        run_cargo(&["fmt", "--all"])?;
     } else {
-        run_cargo(&["fmt", "--all", "--", "--check"])
+        run_cargo(&["fmt", "--all", "--", "--check"])?;
     }
+    super::source_formatting::format_sources(write)
 }
 
 /// Runs warning-free Clippy across every workspace target and feature.

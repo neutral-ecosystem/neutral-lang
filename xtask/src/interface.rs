@@ -61,7 +61,7 @@ Stable commands:\n\
   dev                                            format, check, lint, test, and smoke\n\
   fixtures [sync|check]                          synchronize or verify fixture SHA-256 digests\n\
   environment verify|manifest                    inspect the selected tools\n\
-  fmt [--write]                                  check or apply Rust formatting\n\
+  fmt [--write]                                  check or apply Rust and .neu formatting\n\
   lint                                           run warning-free workspace linting\n\
   check                                          check code and repository contracts\n\
   test unit|smoke|integration|system|conformance|property|security|all\n\
@@ -122,7 +122,7 @@ pub(crate) enum Task {
     EnvironmentVerify,
     /// Print a machine-readable environment manifest.
     EnvironmentManifest,
-    /// Check or write Rust formatting.
+    /// Check or write Rust and configured Neutral source formatting.
     Format {
         /// Whether formatting changes should be applied.
         write: bool,

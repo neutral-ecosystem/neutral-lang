@@ -37,6 +37,17 @@ pub(crate) fn automation() -> Result<Automation, String> {
 pub(crate) fn automation_at(root: &Path) -> Result<Automation, String> {
     let config: Automation = read(root, constants::AUTOMATION_CONFIG_FILE)?;
     require_schema(config.schema_version, "automation configuration")?;
+    if !(1..=8).contains(&config.formatting.indent_width)
+        || config.formatting.roots.is_empty()
+        || config
+            .formatting
+            .roots
+            .iter()
+            .chain(&config.formatting.exclude)
+            .any(|path| !is_safe_relative_path(Path::new(path)))
+    {
+        return Err("formatting requires safe relative paths, nonempty roots, and indentation between 1 and 8 spaces".to_owned());
+    }
     if !is_safe_relative_path(Path::new(&config.output.results_root))
         || !is_safe_relative_path(Path::new(&config.quality.evidence_root))
         || config.quality.advisory_max_age_seconds == 0

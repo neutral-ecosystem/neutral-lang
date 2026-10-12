@@ -1,6 +1,12 @@
 neu "1.0"
 module api
 
-public record Node { Ref<Node> next, }
-public Node first = { next: ref(second), }
-public Node second = { next: ref(first), }
+public record Node {
+    Ref<Node> next,
+}
+public Node first = {
+    next: ref(second),
+}
+public Node second = {
+    next: ref(first),
+}

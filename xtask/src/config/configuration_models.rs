@@ -60,6 +60,20 @@ pub(crate) struct Automation {
     pub(crate) quality: Quality,
     /// Test execution settings.
     pub(crate) testing: Testing,
+    /// Mutable source layout and deliberate fixture exclusions.
+    pub(crate) formatting: Formatting,
+}
+
+/// Layout settings for repository-owned Neutral source examples.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Formatting {
+    /// Spaces per nesting level.
+    pub(crate) indent_width: usize,
+    /// Workspace-relative directories containing mutable source examples.
+    pub(crate) roots: Vec<String>,
+    /// Workspace-relative files or subdirectories intentionally left untouched.
+    pub(crate) exclude: Vec<String>,
 }
 
 /// Executables invoked directly, never through a shell.
