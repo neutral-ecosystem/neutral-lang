@@ -91,9 +91,9 @@ pub fn summarize_project_interface(
 /// Stable host-output prefixes shared by the probe library and binary.
 pub mod output {
     /// Error output category prefix.
-    pub const ERROR: &str = "[error]";
+    pub const ERROR: &str = "FAIL";
     /// Informational output category prefix.
-    pub const INFO: &str = "[info]";
+    pub const INFO: &str = "INFO";
 }
 
 /// Stable consumer-owned diagnostic identifiers.

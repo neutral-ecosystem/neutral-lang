@@ -250,6 +250,7 @@ dependencies = [
 name = "neutral-test-suite"
 version = "0.8.0"
 dependencies = [
+ "neutral-cli",
  "neutral-compiler",
  "neutral-core",
  "neutral-encoding",

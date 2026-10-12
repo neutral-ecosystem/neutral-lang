@@ -101,16 +101,11 @@ impl CliFailure {
 pub fn execute(arguments: impl IntoIterator<Item = String>) -> Result<(), CliFailure> {
     match parse(arguments).map_err(|message| CliFailure::one(ExitClass::Usage, message))? {
         ParseOutcome::Help(usage) => {
-            eprintln!("{} usage: {usage}", constants::INFO);
+            eprintln!("Usage: {usage}");
             Ok(())
         }
         ParseOutcome::Version => {
-            eprintln!(
-                "{} {} {}",
-                constants::INFO,
-                env!("CARGO_PKG_NAME"),
-                env!("CARGO_PKG_VERSION")
-            );
+            eprintln!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
             Ok(())
         }
         ParseOutcome::Profiles => {
@@ -186,7 +181,7 @@ fn capture_project_command(options: &CommandOptions) -> Result<(), CliFailure> {
     let facts = captured.resource_facts();
     eprintln!(
         "{} capture succeeded source-units={} source-bytes={} vocabulary-units={} vocabulary-bytes={}",
-        constants::INFO,
+        constants::PASS,
         facts.source_units(),
         facts.total_source_bytes(),
         facts.vocabulary_units(),
@@ -228,14 +223,14 @@ fn compile_command(
     )
     .map_err(|_| CliFailure::one(ExitClass::Validation, "artifact-encoding-limit"))?;
     write_selected_output(options, encoded.as_bytes())?;
-    eprintln!("{} compile succeeded", constants::INFO);
+    eprintln!("{} compile succeeded", constants::PASS);
     Ok(())
 }
 
 /// Validates source without publishing authoritative output.
 fn validate_command(request: CompilationRequest) -> Result<(), CliFailure> {
     ensure_success(compile(request).map_err(|error| capture_failure(&error))?)?;
-    eprintln!("{} validation succeeded", constants::INFO);
+    eprintln!("{} validation succeeded", constants::PASS);
     Ok(())
 }
 
@@ -243,7 +238,7 @@ fn validate_command(request: CompilationRequest) -> Result<(), CliFailure> {
 fn format_command(request: CompilationRequest, options: &CommandOptions) -> Result<(), CliFailure> {
     let formatted = format_source(request).map_err(format_failure)?;
     write_selected_output(options, formatted.as_bytes())?;
-    eprintln!("{} format succeeded", constants::INFO);
+    eprintln!("{} format succeeded", constants::PASS);
     Ok(())
 }
 

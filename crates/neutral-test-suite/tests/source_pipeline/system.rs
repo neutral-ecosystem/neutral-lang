@@ -281,7 +281,10 @@ fn system_cli_file_to_artifact_to_probe() {
         .unwrap();
     assert!(!failed.status.success());
     assert_eq!(failed.stdout, [] as [u8; 0]);
-    assert!(String::from_utf8_lossy(&failed.stderr).starts_with("[error]"));
+    assert!(
+        String::from_utf8_lossy(&failed.stderr)
+            .starts_with(&format!("{} ", neutral_cli::constants::ERROR))
+    );
     assert_eq!(
         fs::read(&artifact).unwrap(),
         bytes,

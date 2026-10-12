@@ -95,6 +95,30 @@ fn encoded_fixture(document: &ValidatedDocument) -> Vec<u8> {
     .into_bytes()
 }
 
+#[test]
+/// Keeps standalone help and version output free of operational log prefixes.
+fn system_standalone_probe_help_and_version_are_plain_text() {
+    for (argument, expected) in [
+        (
+            "--help",
+            "Usage: neutral-probe [--json] [--root module::declaration ...] <artifact>\n"
+                .to_owned(),
+        ),
+        (
+            "--version",
+            format!("neutral-probe {}\n", env!("CARGO_PKG_VERSION")),
+        ),
+    ] {
+        let result = Command::new(env!("CARGO_BIN_EXE_neutral-probe"))
+            .arg(argument)
+            .output()
+            .expect("probe must execute");
+        assert!(result.status.success());
+        assert_eq!(result.stdout, expected.as_bytes());
+        assert_eq!(result.stderr, []);
+    }
+}
+
 /// Returns a process-unique path for the encoded fixture.
 fn temporary_artifact_path(label: &str) -> PathBuf {
     std::env::temp_dir().join(format!(

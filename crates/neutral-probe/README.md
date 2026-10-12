@@ -18,8 +18,9 @@ qualified-schema, final-value, and provenance summaries plus one consumer-owned
 diagnostic mapped through the public reader source map. Its traversal remains
 generic and contains no fixture-specific interpretation. The standalone binary
 accepts one encoded artifact path, validates it under the hard decoder limits,
-and emits the same shared-renderer `[info]` observations as the in-process
-library, or one bounded `[error]`. With `--json`, stdout is a JSON document
+and emits shared-renderer observations prefixed with `INFO`, or one bounded
+`FAIL` diagnostic on stderr. Help and version text have no prefix.
+With `--json`, stdout is a JSON document
 without log prefixes so it can be parsed by other tools.
 The binary also detects complete `NIR-PROJECT-CBOR/1` and successor
 `NIR-PROJECT-CBOR/2` artifacts. It validates all

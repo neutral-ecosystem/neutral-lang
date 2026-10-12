@@ -32,7 +32,8 @@ cargo run --package neutral-cli -- --help
 
 Use `-` for one selected standard stream. Source and vocabulary data cannot
 both read standard input. Status messages and safe diagnostics always use
-standard error, with `[info]` or `[error]` prefixes, so standard output remains
+standard error, with `INFO`, `PASS`, or `FAIL` prefixes (help and version text
+have no prefix), so standard output remains
 clean when it carries an artifact or formatted source.
 
 Existing files are protected unless `--overwrite` is explicit. File output is

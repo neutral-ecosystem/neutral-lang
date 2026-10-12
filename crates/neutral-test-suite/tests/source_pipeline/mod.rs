@@ -888,7 +888,7 @@ fn system_source_to_standalone_probe() {
             .unwrap();
         assert!(!corrupt.status.success());
         assert_eq!(corrupt.stdout, [] as [u8; 0]);
-        assert!(String::from_utf8_lossy(&corrupt.stderr).starts_with("[error]"));
+        assert!(String::from_utf8_lossy(&corrupt.stderr).starts_with(neutral_probe::output::ERROR));
     }
 }
 
@@ -936,5 +936,5 @@ fn check_executable_roots(
         .unwrap();
     assert!(!private.status.success());
     assert_eq!(private.stdout, [] as [u8; 0]);
-    assert!(String::from_utf8_lossy(&private.stderr).starts_with("[error]"));
+    assert!(String::from_utf8_lossy(&private.stderr).starts_with(neutral_probe::output::ERROR));
 }

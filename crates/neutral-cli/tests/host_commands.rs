@@ -101,7 +101,7 @@ fn system_cli_usage_and_command_help_are_stable() {
     ] {
         let help = run(&[command, constants::HELP]);
         assert_eq!(help.status.code(), Some(0), "{}", stderr(&help));
-        assert!(stderr(&help).contains(usage));
+        assert_eq!(stderr(&help), format!("Usage: {usage}\n"));
         assert_eq!(help.stdout, []);
     }
 }
@@ -176,7 +176,7 @@ fn system_cli_file_commands_have_stable_output_policy() {
         source.to_str().expect("test path must be UTF-8"),
     ]);
     assert_eq!(compile.status.code(), Some(0), "{}", stderr(&compile));
-    assert!(stderr(&compile).contains("[info] compile succeeded"));
+    assert!(stderr(&compile).contains("PASS compile succeeded"));
     let decoded = decode(
         &fs::read(&artifact).expect("artifact must exist"),
         DecodeLimits::hard(),
@@ -190,7 +190,7 @@ fn system_cli_file_commands_have_stable_output_policy() {
         source.to_str().expect("test path must be UTF-8"),
     ]);
     assert_eq!(validate.status.code(), Some(0));
-    assert!(stderr(&validate).contains("[info] validation succeeded"));
+    assert!(stderr(&validate).contains("PASS validation succeeded"));
 
     let format = run(&[
         constants::FORMAT,
@@ -214,7 +214,7 @@ fn system_cli_file_commands_have_stable_output_policy() {
         no_overwrite.status.code(),
         Some(i32::from(constants::EXIT_OUTPUT))
     );
-    assert!(stderr(&no_overwrite).contains("[error] output-exists"));
+    assert!(stderr(&no_overwrite).contains("FAIL output-exists"));
     assert_eq!(
         fs::read(&formatted).expect("existing output must remain"),
         FORMATTED_SOURCE
@@ -259,7 +259,7 @@ fn system_cli_compile_supports_explicit_standard_streams() {
         .expect("source must reach child stdin");
     let output = child.wait_with_output().expect("streaming CLI must finish");
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    assert!(stderr(&output).contains("[info] compile succeeded"));
+    assert!(stderr(&output).contains("PASS compile succeeded"));
     let decoded = decode(
         &output.stdout,
         DecodeLimits::hard(),
@@ -308,7 +308,7 @@ fn system_cli_failure_and_cancellation_leave_no_partial_output() {
         limited.status.code(),
         Some(i32::from(constants::EXIT_VALIDATION))
     );
-    assert!(stderr(&limited).contains("[error] input-limit-exceeded"));
+    assert!(stderr(&limited).contains("FAIL input-limit-exceeded"));
     assert_eq!(
         fs::read(&destination).expect("sentinel must remain after limit failure"),
         sentinel
@@ -327,7 +327,7 @@ fn system_cli_failure_and_cancellation_leave_no_partial_output() {
         cancelled.status.code(),
         Some(i32::from(constants::EXIT_CANCELLED))
     );
-    assert!(stderr(&cancelled).contains("[error] cancelled"));
+    assert!(stderr(&cancelled).contains("FAIL cancelled"));
     assert_eq!(
         fs::read(&destination).expect("sentinel must remain"),
         sentinel
@@ -349,7 +349,7 @@ fn system_cli_host_failures_are_path_safe_and_cleanup_atomic_temporary_files() {
         Some(i32::from(constants::EXIT_INPUT))
     );
     assert!(!stderr(&missing).contains("credential=do-not-print"));
-    assert!(stderr(&missing).contains("[error] input-read-failed"));
+    assert!(stderr(&missing).contains("FAIL input-read-failed"));
 
     let source = root.join("source.neu");
     fs::write(&source, MINIMAL_SOURCE).expect("source must be writable");
@@ -469,5 +469,5 @@ fn system_cli_broken_pipe_has_stable_exit_class() {
         "{}",
         stderr(&output)
     );
-    assert!(stderr(&output).contains("[error] stdout-write-failed"));
+    assert!(stderr(&output).contains("FAIL stdout-write-failed"));
 }

@@ -27,13 +27,11 @@ fn main() {
 fn run(arguments: impl IntoIterator<Item = String>) -> Result<(), String> {
     match arguments.into_iter().collect::<Vec<_>>().as_slice() {
         [argument] if argument == "--help" => emit_stdout(&format!(
-            "{} usage: {} [--json] [--root module::declaration ...] <artifact>\n",
-            output::INFO,
+            "Usage: {} [--json] [--root module::declaration ...] <artifact>\n",
             env!("CARGO_PKG_NAME")
         )),
         [argument] if argument == "--version" => emit_stdout(&format!(
-            "{} {} {}\n",
-            output::INFO,
+            "{} {}\n",
             env!("CARGO_PKG_NAME"),
             env!("CARGO_PKG_VERSION")
         )),

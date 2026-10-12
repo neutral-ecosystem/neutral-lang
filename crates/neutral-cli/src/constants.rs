@@ -65,9 +65,11 @@ pub const MAX_LIST_ITEMS: &str = "--max-list-items";
 /// Value traversal-node limit option spelling.
 pub const MAX_TRAVERSAL_NODES: &str = "--max-traversal-nodes";
 /// Error output category prefix.
-pub const ERROR: &str = "[error]";
+pub const ERROR: &str = "FAIL";
 /// Informational output category prefix.
-pub const INFO: &str = "[info]";
+pub const INFO: &str = "INFO";
+/// Successful command completion prefix.
+pub const PASS: &str = "PASS";
 /// Stable generic CLI usage.
 pub const USAGE: &str =
     "neutral-cli <compile|validate|format|capture-project|profiles> [options] <source>";
