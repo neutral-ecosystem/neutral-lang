@@ -108,7 +108,8 @@ identity vectors must be reviewed before activation.
 - `V1-VOC-011`: required/omitted/null/default distinctions and safe value-origin facts.
 - `V1-CONS-001`: portable operation/input/result/resource and dependency/output data.
 - `V1-CONS-002`: structured condition/deferred-input/symbolic-handle representation,
-  with evaluation and execution explicitly outside core.
+  with consumer-specific interpretation and execution outside core; language
+  expressions use the separately versioned shared pure evaluator below.
 - `V1-CONS-003`: versioned capability/mapping-description/report boundary and external
   plan-context identity separation; no adapter implementation or secret payloads.
 - `V1-CONS-004`: reader-only public interpretive closure and safe diagnostic attribution.
@@ -118,3 +119,28 @@ identity vectors must be reviewed before activation.
 - `V1-CONS-008`: explicit typed public entry discovery and post-compilation selection.
 - `V1-CONS-009`: self-contained compiler-independent contract discovery from artifacts/views.
 - `V1-CONS-010`: exact producer/reader feature negotiation and compatibility matrix.
+- `V1-CONS-011`: pure comparisons, Boolean operators, value-producing conditional
+  selection and exhaustive matching; resolve/type-check all branches and evaluate
+  only selected paths, retaining guarded dependencies without implicit scheduling.
+- `V1-CONS-012`: one `num` type, exact decimal values where possible and
+  deterministic approximate nonterminating division; versioned precision/rounding,
+  distinct division-by-zero/resource-limit errors, no host floating-point defaults.
+- `V1-CONS-013`: bounded typed string/list construction and explicit conversions,
+  with deterministic formatting and no ambient input or effects.
+- `V1-CONS-014`: shared compiler-independent pure evaluator for static folding and
+  explicit typed deferred bindings; value/required-bindings/unavailable/failure
+  states, restriction/visibility checks, safe attribution, independent limits,
+  cancellation and exact feature negotiation. Null is not a missing/failed value.
+- `V1-CONS-015`: compile-time-only descriptions with explicit typed parameters,
+  hygienic names and results; no recursion, implicit ambient capture or callable
+  runtime templates. Deferred values cannot determine generated structure.
+- `V1-CONS-016`: finite static list/matrix expansion with deterministic ordering,
+  collision checks and independent aggregate bounds; deferred inputs cannot set
+  cardinality, names or topology. Preserve separately versioned expression and
+  expansion semantics and historical wire/identity vectors.
+
+The evaluator owns pure value computation; consumers acquire bindings, schedule
+operations, resolve credentials, authorize and perform effects. External bindings
+and execution choices affect consumer plan context, not complete project identity;
+declared expression/arithmetic profiles remain semantic identity inputs. These
+extension requirements are scheduled, not frozen syntax or passing evidence.

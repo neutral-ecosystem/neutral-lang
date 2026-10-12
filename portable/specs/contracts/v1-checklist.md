@@ -117,7 +117,7 @@ scope in [consumer readiness](CONSUMER-READINESS.md).
 - [ ] V1-AUTH-006 — Generic Editor probe has no compiler-private dependency.
 
 The approved V1-CONS-011..016 extension schedules bounded pure expressions,
-exact arithmetic, typed string/list construction, static/deferred input phases,
+single-`num` exact/rounded decimal arithmetic, typed string/list construction, static/deferred input phases,
 parameterized descriptions, and finite static matrix expansion. It remains
 unchecked in the operational checklist until contract/profile activation,
 implementation, independent interpretation, and public-boundary evidence pass.
@@ -128,6 +128,15 @@ composition, and full authoring integration, with evidence per slice. See the
 [design boundaries](CONSUMER-READINESS.md#stage-8-design-boundaries) for guarded
 dependencies, deferred restriction obligations, normalized logical identity,
 and the separation of source-preserving authoring from expanded semantic IR.
+Require a shared compiler-independent pure evaluator for both static folding and
+explicit deferred bindings, with guarded dependencies, type/restriction checks,
+distinct required/unavailable/null/failure states, independent budgets and safe
+diagnostics. Consumers retain acquisition, scheduling, authorization, credentials
+and effects. Nonterminating division is approximated under a separately frozen
+precision/rounding context, not rejected; division by zero and resource limits
+remain errors. Templates/matrices have static cardinality, names and topology.
+New expression/expansion/evaluator features require explicit compatibility and
+new profile vectors; historical wire formats and identities remain unchanged.
 
 ## Stage 9 — release (`v0.9.0 -> v1.0.0`)
 

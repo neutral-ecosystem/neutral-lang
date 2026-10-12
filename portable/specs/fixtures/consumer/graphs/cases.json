@@ -1,0 +1,400 @@
+{
+  "schema": "neutral.example-consumer-fixture/1",
+  "status": "registered-contract-only; consumer-implementation-pending",
+  "contract": "portable/specs/contracts/EXAMPLE-CONSUMER.md",
+  "capture": {
+    "request": "neutral.capture/v2",
+    "source_profile": "1.0",
+    "ir": "neutral.project-ir/2",
+    "module": "example::graph",
+    "source_id": "source:example-graph",
+    "required_features": [
+      "tagged-variants-v1",
+      "vocabulary-composition-v2"
+    ],
+    "vocabulary": {
+      "file": "bundle.json",
+      "identity": "ExampleConsumer",
+      "version": "1.0.0",
+      "encoding_version": "1.0",
+      "schema_version": "2.0",
+      "features": [
+        "vocabulary-composition-v2"
+      ],
+      "sha256": "4ffa669c912c724610db2c84a6bd6169d1f07e4c27c92176419490bd68a82cf8"
+    }
+  },
+  "files": [
+    {
+      "file": "bundle.json",
+      "sha256": "4ffa669c912c724610db2c84a6bd6169d1f07e4c27c92176419490bd68a82cf8"
+    },
+    {
+      "file": "fan-out-join.neu",
+      "sha256": "de42f68ecf9e9424ddf3a2666d03bb2493b50b67afeb2062e84f7de3a92ea67d"
+    },
+    {
+      "file": "prerequisite-cycle.neu",
+      "sha256": "8ecbd23fe2792893f591d802cf16046d72d5a8ceb34c10a9de29be1498b1a00e"
+    },
+    {
+      "file": "output-cycle.neu",
+      "sha256": "099ab755858f9e482327c290f4631d738c84d76803e6a374b4be64c35b95c7de"
+    },
+    {
+      "file": "duplicate-map-key.neu",
+      "sha256": "bdcf1ea2080db177eae5668839662a218be4907fd6856c57c50dc8a99b67272d"
+    },
+    {
+      "file": "unknown-output.neu",
+      "sha256": "99f7df0303da5082858c986f1504543779030edd6538b642c72c2688fc25caa7"
+    },
+    {
+      "file": "skipped-output.neu",
+      "sha256": "036c9a11d02c3fbf2f643acd29c014434309b46a6c71cf87cfdf9c0009ddf58e"
+    },
+    {
+      "file": "condition-output.neu",
+      "sha256": "8344c29d62d9fd1140f93ac84a486c68f18cb3bbcf37c0dbca286cad30f7be56"
+    },
+    {
+      "file": "wrong-type.neu",
+      "sha256": "48211987b326078c2e37aa7d9cc0cb8c274abd11906b664bb0bdafb7492cd521"
+    },
+    {
+      "file": "private-reference.neu",
+      "sha256": "dcb169d964fe0acee8b4dbe1b2298383ca9caafe9f38b29db0c02e83199a77a9"
+    },
+    {
+      "file": "unknown-tag.neu",
+      "sha256": "e8b343db9c91c7c7a3432a3b6ecd2fc71f723d6f5be0e2a5229dc5d1dbdf3cba"
+    },
+    {
+      "file": "missing-kind.neu",
+      "sha256": "6f4602102f7b04ccee32149caca730e1cf38982838fd62ca853636cc71c0c589"
+    },
+    {
+      "file": "deferred-input-handle.neu",
+      "sha256": "7615100daab6dd99e4c0208b5c79af506de044738104e8fe44d9bb7ae1a8ccfc"
+    },
+    {
+      "file": "unknown-request.json",
+      "sha256": "95c98a94e029c09eec6aa94cdbf70fbe2a808c9b3c62ced89c58875948b7e308"
+    },
+    {
+      "file": "duplicate-request.json",
+      "sha256": "f7867ba35d46efbe84dec45ed1387fc9d3fa3f3563ab403963129f7bcc34cdbb"
+    },
+    {
+      "file": "condition-output-false.neu",
+      "sha256": "fd8c58358b461147cd211f668bb33501fc811837d67ceaa4e89c563171c98d6a"
+    }
+  ],
+  "defaults": {
+    "schema": "neutral.example-consumer-request/1",
+    "entry": [
+      "1.0",
+      "example::graph",
+      "pipeline"
+    ],
+    "target": {
+      "adapter_revision": "example-adapter/1",
+      "target_revision": "example-target/1",
+      "supported": [
+        "emit",
+        "join",
+        "transform"
+      ],
+      "alternatives": []
+    },
+    "bindings": {
+      "outputs": {
+        "seed": {
+          "value": "ready"
+        },
+        "left": {
+          "value": "left"
+        },
+        "right": {
+          "value": "right"
+        }
+      },
+      "inputs": {},
+      "handles": []
+    },
+    "controls": {
+      "operations": 16,
+      "prerequisites": 32,
+      "outputs": 32,
+      "entries": 8,
+      "map_entries": 16,
+      "diagnostics": 16,
+      "work": 10000,
+      "output_bytes": 65536
+    },
+    "alternative": null
+  },
+  "cases": [
+    {
+      "id": "fan-out-join",
+      "source": "fan-out-join.neu"
+    },
+    {
+      "id": "map-entry-unique",
+      "source": "fan-out-join.neu"
+    },
+    {
+      "id": "map-entry-duplicate",
+      "source": "duplicate-map-key.neu"
+    },
+    {
+      "id": "prerequisite-cycle",
+      "source": "prerequisite-cycle.neu"
+    },
+    {
+      "id": "output-cycle",
+      "source": "output-cycle.neu"
+    },
+    {
+      "id": "condition-output-true",
+      "source": "condition-output.neu"
+    },
+    {
+      "id": "condition-output-false",
+      "source": "condition-output-false.neu",
+      "bindings": {
+        "outputs": {
+          "seed": {
+            "value": "not-ready"
+          }
+        }
+      }
+    },
+    {
+      "id": "condition-output-unavailable",
+      "source": "condition-output.neu",
+      "bindings": {
+        "outputs": {}
+      }
+    },
+    {
+      "id": "selected-output-unavailable",
+      "source": "fan-out-join.neu",
+      "bindings": {
+        "outputs": {}
+      }
+    },
+    {
+      "id": "skipped-output-not-demanded",
+      "source": "skipped-output.neu",
+      "bindings": {
+        "outputs": {
+          "seed": {
+            "value": "ready"
+          }
+        }
+      }
+    },
+    {
+      "id": "unknown-output-member",
+      "source": "unknown-output.neu"
+    },
+    {
+      "id": "unsupported-capability",
+      "source": "fan-out-join.neu",
+      "target": {
+        "adapter_revision": "example-adapter/1",
+        "target_revision": "example-target/1",
+        "supported": [
+          "emit",
+          "join"
+        ],
+        "alternatives": []
+      }
+    },
+    {
+      "id": "explicit-alternative-required",
+      "source": "fan-out-join.neu",
+      "target": {
+        "adapter_revision": "example-adapter/1",
+        "target_revision": "example-target/1",
+        "supported": [
+          "emit",
+          "join"
+        ],
+        "alternatives": [
+          {
+            "id": "compatible-adapter",
+            "adapter_revision": "example-adapter/2",
+            "target_revision": "example-target/1",
+            "supported": [
+              "emit",
+              "join",
+              "transform"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "explicit-alternative-unapproved",
+      "source": "fan-out-join.neu",
+      "target": {
+        "adapter_revision": "example-adapter/1",
+        "target_revision": "example-target/1",
+        "supported": [
+          "emit",
+          "join"
+        ],
+        "alternatives": [
+          {
+            "id": "compatible-adapter",
+            "adapter_revision": "example-adapter/2",
+            "target_revision": "example-target/1",
+            "supported": [
+              "emit",
+              "join",
+              "transform"
+            ]
+          }
+        ]
+      },
+      "alternative": {
+        "id": "compatible-adapter",
+        "approved": false
+      }
+    },
+    {
+      "id": "explicit-alternative-approved",
+      "source": "fan-out-join.neu",
+      "target": {
+        "adapter_revision": "example-adapter/2",
+        "target_revision": "example-target/1",
+        "supported": [
+          "emit",
+          "join",
+          "transform"
+        ],
+        "alternatives": [
+          {
+            "id": "compatible-adapter",
+            "adapter_revision": "example-adapter/2",
+            "target_revision": "example-target/1",
+            "supported": [
+              "emit",
+              "join",
+              "transform"
+            ]
+          }
+        ]
+      },
+      "alternative": {
+        "id": "compatible-adapter",
+        "approved": true
+      },
+      "input_revision": "example-inputs/2"
+    },
+    {
+      "id": "public-reuse-origin-redacted",
+      "source": "fan-out-join.neu"
+    },
+    {
+      "id": "operation-limit-exact",
+      "source": "fan-out-join.neu",
+      "controls": {
+        "operations": 4
+      }
+    },
+    {
+      "id": "operation-limit-over",
+      "source": "fan-out-join.neu",
+      "controls": {
+        "operations": 3
+      }
+    },
+    {
+      "id": "prerequisite-limit-exact",
+      "source": "fan-out-join.neu",
+      "controls": {
+        "prerequisites": 4
+      }
+    },
+    {
+      "id": "prerequisite-limit-over",
+      "source": "fan-out-join.neu",
+      "controls": {
+        "prerequisites": 3
+      }
+    },
+    {
+      "id": "output-limit-exact",
+      "source": "fan-out-join.neu",
+      "controls": {
+        "outputs": 4
+      }
+    },
+    {
+      "id": "output-limit-over",
+      "source": "fan-out-join.neu",
+      "controls": {
+        "outputs": 3
+      }
+    },
+    {
+      "id": "malformed-request-unknown-member",
+      "source": "fan-out-join.neu",
+      "request_file": "unknown-request.json"
+    },
+    {
+      "id": "malformed-request-duplicate-member",
+      "source": "fan-out-join.neu",
+      "request_file": "duplicate-request.json"
+    },
+    {
+      "id": "missing-entry",
+      "source": "fan-out-join.neu",
+      "entry": [
+        "1.0",
+        "example::graph",
+        "missing"
+      ]
+    },
+    {
+      "id": "cancelled",
+      "source": "fan-out-join.neu",
+      "cancelled": true
+    },
+    {
+      "id": "external-input-handle",
+      "source": "deferred-input-handle.neu",
+      "bindings": {
+        "inputs": {
+          "configuration": "release"
+        },
+        "handles": [
+          {
+            "scope": "example",
+            "name": "credential",
+            "state": "available"
+          }
+        ]
+      }
+    },
+    {
+      "id": "core-type",
+      "source": "wrong-type.neu"
+    },
+    {
+      "id": "core-private-reference",
+      "source": "private-reference.neu"
+    },
+    {
+      "id": "core-unknown-tag",
+      "source": "unknown-tag.neu"
+    },
+    {
+      "id": "core-missing-field",
+      "source": "missing-kind.neu"
+    }
+  ]
+}

@@ -1,0 +1,354 @@
+{
+  "format": "neutral-vocabulary-bundle",
+  "encoding_version": "1.0",
+  "schema_version": "2.0",
+  "identity": "ExampleConsumer",
+  "version": "1.0.0",
+  "required_features": [
+    "vocabulary-composition-v2"
+  ],
+  "dependencies": [],
+  "types": [
+    {
+      "kind": "record",
+      "name": "Resource",
+      "public": true,
+      "fields": [
+        {
+          "name": "name",
+          "type": { "kind": "string" },
+          "presence": "required",
+          "restrictions": {}
+        },
+        {
+          "name": "location",
+          "type": { "kind": "url" },
+          "presence": "required",
+          "restrictions": {}
+        }
+      ]
+    },
+    {
+      "kind": "record",
+      "name": "Entry",
+      "public": true,
+      "fields": [
+        {
+          "name": "key",
+          "type": {
+            "kind": "string"
+          },
+          "presence": "required",
+          "restrictions": {}
+        },
+        {
+          "name": "value",
+          "type": {
+            "kind": "string"
+          },
+          "presence": "required",
+          "restrictions": {}
+        }
+      ]
+    },
+    {
+      "kind": "record",
+      "name": "Handle",
+      "public": true,
+      "fields": [
+        {
+          "name": "scope",
+          "type": {
+            "kind": "string"
+          },
+          "presence": "required",
+          "restrictions": {}
+        },
+        {
+          "name": "name",
+          "type": {
+            "kind": "string"
+          },
+          "presence": "required",
+          "restrictions": {}
+        }
+      ]
+    },
+    {
+      "kind": "record",
+      "name": "Output",
+      "public": true,
+      "fields": [
+        {
+          "name": "producer",
+          "type": {
+            "kind": "ref",
+            "target": {
+              "kind": "nominal",
+              "name": "Operation"
+            }
+          },
+          "presence": "required",
+          "restrictions": {}
+        },
+        {
+          "name": "member",
+          "type": {
+            "kind": "string"
+          },
+          "presence": "required",
+          "restrictions": {}
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "name": "Deferred",
+      "public": true,
+      "alternatives": [
+        {
+          "tag": "literal",
+          "type": {
+            "kind": "string"
+          }
+        },
+        {
+          "tag": "input",
+          "type": {
+            "kind": "string"
+          }
+        },
+        {
+          "tag": "output",
+          "type": {
+            "kind": "nominal",
+            "name": "Output"
+          }
+        },
+        {
+          "tag": "handle",
+          "type": {
+            "kind": "nominal",
+            "name": "Handle"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "record",
+      "name": "Input",
+      "public": true,
+      "fields": [
+        {
+          "name": "name",
+          "type": {
+            "kind": "string"
+          },
+          "presence": "required",
+          "restrictions": {}
+        },
+        {
+          "name": "value",
+          "type": {
+            "kind": "nominal",
+            "name": "Deferred"
+          },
+          "presence": "required",
+          "restrictions": {}
+        }
+      ]
+    },
+    {
+      "kind": "record",
+      "name": "Equals",
+      "public": true,
+      "fields": [
+        {
+          "name": "output",
+          "type": {
+            "kind": "nominal",
+            "name": "Output"
+          },
+          "presence": "required",
+          "restrictions": {}
+        },
+        {
+          "name": "value",
+          "type": {
+            "kind": "string"
+          },
+          "presence": "required",
+          "restrictions": {}
+        }
+      ]
+    },
+    {
+      "kind": "variant",
+      "name": "Condition",
+      "public": true,
+      "alternatives": [
+        {
+          "tag": "literal",
+          "type": {
+            "kind": "bool"
+          }
+        },
+        {
+          "tag": "equals",
+          "type": {
+            "kind": "nominal",
+            "name": "Equals"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "record",
+      "name": "Operation",
+      "public": true,
+      "fields": [
+        {
+          "name": "resources",
+          "type": {
+            "kind": "list",
+            "element": {
+              "kind": "ref",
+              "target": { "kind": "nominal", "name": "Resource" }
+            }
+          },
+          "presence": "defaulted",
+          "restrictions": {},
+          "default": { "kind": "list", "items": [] }
+        },
+        {
+          "name": "kind",
+          "type": {
+            "kind": "string"
+          },
+          "presence": "required",
+          "restrictions": {
+            "choices": [
+              {
+                "kind": "string",
+                "value": "emit"
+              },
+              {
+                "kind": "string",
+                "value": "join"
+              },
+              {
+                "kind": "string",
+                "value": "transform"
+              }
+            ]
+          }
+        },
+        {
+          "name": "arguments",
+          "type": {
+            "kind": "list",
+            "element": {
+              "kind": "nominal",
+              "name": "Entry"
+            }
+          },
+          "presence": "defaulted",
+          "restrictions": {},
+          "default": {
+            "kind": "list",
+            "items": []
+          }
+        },
+        {
+          "name": "inputs",
+          "type": {
+            "kind": "list",
+            "element": {
+              "kind": "nominal",
+              "name": "Input"
+            }
+          },
+          "presence": "defaulted",
+          "restrictions": {},
+          "default": {
+            "kind": "list",
+            "items": []
+          }
+        },
+        {
+          "name": "needs",
+          "type": {
+            "kind": "list",
+            "element": {
+              "kind": "ref",
+              "target": {
+                "kind": "nominal",
+                "name": "Operation"
+              }
+            }
+          },
+          "presence": "defaulted",
+          "restrictions": {},
+          "default": {
+            "kind": "list",
+            "items": []
+          }
+        },
+        {
+          "name": "when",
+          "type": {
+            "kind": "nominal",
+            "name": "Condition"
+          },
+          "presence": "defaulted",
+          "restrictions": {},
+          "default": {
+            "kind": "variant",
+            "tag": "literal",
+            "payload": {
+              "kind": "bool",
+              "value": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "kind": "record",
+      "name": "Graph",
+      "public": true,
+      "fields": [
+        {
+          "name": "operations",
+          "type": {
+            "kind": "list",
+            "element": {
+              "kind": "ref",
+              "target": {
+                "kind": "nominal",
+                "name": "Operation"
+              }
+            }
+          },
+          "presence": "required",
+          "restrictions": {}
+        },
+        {
+          "name": "entries",
+          "type": {
+            "kind": "list",
+            "element": {
+              "kind": "ref",
+              "target": {
+                "kind": "nominal",
+                "name": "Operation"
+              }
+            }
+          },
+          "presence": "required",
+          "restrictions": {}
+        }
+      ]
+    }
+  ]
+}

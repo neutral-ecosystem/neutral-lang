@@ -42,5 +42,14 @@ The `consumer-boundary` suite freezes 32 literal requests/oracles under
 [Consumer/1](../specs/contracts/CONSUMER-PROFILE.md), with separately checked
 contract/input/oracle byte pins. Selectors, entry discovery, attribution/privacy,
 closure, compatibility, limits and cancellation have literal expected outcomes.
-This is not production validation; the broader operation-graph corpus and public
-protocol implementation remain pending. Its status is `frozen`, not `required`.
+This is not production validation; graph cases are registered separately below
+and public protocol implementation remains pending. Status is `frozen`, not `required`.
+
+The `consumer-graphs` suite registers 31 literal cases, 13 file-backed source
+inputs and one captured vocabulary under the [example convention](../specs/contracts/EXAMPLE-CONSUMER.md).
+Core-positive inputs compile and independently read; four core-negative families
+have literal NEU-COMP outcomes. Consumer report projections, capability/alternative
+contexts, attribution/privacy and independent exact/one-over controls are pinned,
+but their adapter/comparison is not implemented. This suite is `frozen` only.
+The expression/evaluator/expansion contracts are separate written review
+candidates, not frozen profiles or active conformance entries.

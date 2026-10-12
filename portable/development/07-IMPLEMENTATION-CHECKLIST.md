@@ -539,14 +539,31 @@ not permission to implement every subsystem before testing any of them.
   [32 literal cases](../specs/fixtures/consumer/boundary.json) and
   [oracles](../conformance/oracles/consumer/boundary.json) are pinned in the
   [freeze record](../specs/contracts/freeze.toml), frozen but not required-active.
-- [ ] Register project-neutral operation graph, map-entry, condition/output,
+- [x] Register project-neutral operation graph, map-entry, condition/output,
   unsupported-capability, explicit-alternative, source-attribution, privacy,
   and malformed/limit fixtures with literal expected consumer reports.
+  Use file-backed `.neu` and captured vocabulary inputs; separate core type
+  rejection from core-valid consumer cycle, availability and capability failures.
+  [31 literal cases](../specs/fixtures/consumer/graphs/cases.json), 13 source files,
+  one captured bundle and [reports](../conformance/oracles/consumer/graphs.json)
+  are pinned as frozen-only; consumer implementation/comparison remains pending.
 - [ ] Freeze approved V1-CONS-011..016: pure comparisons/Boolean expressions,
-  conditional selection/exhaustive matching, exact arithmetic, typed string/list
+  conditional selection/exhaustive matching, single-`num` deterministic decimal
+  arithmetic with approximate nonterminating division, typed string/list
   construction, static/deferred inputs, typed parameterized descriptions, and
   finite static matrix expansion; specify syntax, scope, types, short-circuit
-  behavior, division/representability, diagnostics, independent bounds, and phases.
+  behavior, division precision/rounding, diagnostics, independent bounds, and phases.
+  Nontermination is not an error; distinguish division by zero and resource limits.
+  Freeze expression/expansion/evaluator profiles separately without changing
+  historical numeric values, wire formats or identity vectors.
+  Concrete review candidates: [expressions](../specs/contracts/EXPRESSIONS.md),
+  [evaluator](../specs/contracts/EVALUATOR.md), [expansion](../specs/contracts/EXPANSION.md).
+  Written-contract approval remains required before freeze; syntax is not activated.
+- [ ] Freeze the shared pure evaluator contract: explicit typed bindings;
+  validated value, required-bindings and unavailable/failure states; guarded
+  dependencies; retained restrictions; independent work/depth/numeric/output
+  limits; cancellation, attribution and deterministic failure reports. No ambient
+  I/O, credential lookup, scheduling or backend execution.
 - [ ] Register literal positive/negative/boundary expression/composition fixtures
   and independent result/transcript vectors before implementation; freeze source,
   IR/wire/authoring feature compatibility and explicitly amend source exclusions
@@ -575,8 +592,16 @@ Slice 2 — pure semantics and identity:
 - [ ] Implement one bounded typed expression model through source, compiler,
   IR, encoding, and reader, including pure static normalization and
   retained deferred operands/dependencies; no external input lookup or effects.
+- [ ] Implement a shared compiler-independent pure evaluator used by both static
+  folding and deferred evaluation. Keep one `num`; use identical exact/rounded
+  decimal semantics and errors in both paths, never host floating-point defaults.
+  Accept explicit typed bindings only; report required bindings without acquisition.
 - [ ] Type-check every branch without eagerly evaluating unselected or
-  deferred-guarded error paths; define static expression-cycle rejection.
+  deferred-guarded error paths; resolve every name, define static expression-cycle
+  rejection, and never demand outputs from unselected branches.
+- [ ] Validate supplied bindings and calculated results against exact types,
+  visibility and retained vocabulary restrictions. Keep missing, unavailable,
+  explicit null and failed distinct; fail atomically with safe source attribution.
 - [ ] Implement canonical static-value/deferred-expression identities and
   independent interpretation before dependent expansion/authoring integration.
 
@@ -585,7 +610,8 @@ Slice 3 — compile-time description composition:
 - [ ] Implement hygienic typed parameter binding and finite static list/matrix
   expansion with deterministic identities, source origins, cancellation, and
   fallible independent expansion/work/storage limits; reject recursive templates
-  and deferred expansion sizes.
+  and deferred expansion sizes, generated names or topology. Deferred values may
+  populate already expanded descriptions, not control their structure.
 - [ ] Lower templates to expanded semantic descriptions, preserving source forms
   and expansion mappings separately for authoring; reject runtime callable values,
   generated-name collisions, and aggregate nested expansion/work overflow.
@@ -620,6 +646,9 @@ Slice 4 — complete authoring integration:
   parameter/expansion origins through standalone readers and generic authoring;
   verify no-op projection/formatting, public-view closure/redaction, and explicit
   rejection of unsupported expression features by consumer probes.
+- [ ] Exercise the shared evaluator from a compiler-independent reader consumer;
+  negotiate required expression/arithmetic/evaluator features before evaluation,
+  and keep explicit prerequisites separate from guarded value dependencies.
 - [ ] Verify reader-only binding checks retain and enforce unresolved numeric,
   choice, length, and reference restrictions before sample operation dispatch;
   no actual backend operations or credential resolution are performed.
@@ -648,6 +677,10 @@ Slice 4 — complete authoring integration:
 - [ ] Pass expression typing, short-circuit/unselected-branch errors, exhaustive
   matching, arithmetic/division boundaries, Unicode/conversion, parameter scope,
   duplicate generated symbols, finite matrix ordering and exact/one-over suites.
+- [ ] Compare static folding, the shared deferred evaluator and an independent
+  interpreter against literal exact/rounded decimal vectors: `1 / 8`, `1 / 3`,
+  signed rounding, precision boundaries, division by zero and resource limits.
+  Prove skipped branches do not demand unavailable outputs or evaluate errors.
 - [ ] Pass static/deferred phase and missing/skipped-output consumer cases,
   cancellation/allocation faults, independent interpretation, expression identity
   vectors, and actual clean/cache equivalence without running backend operations.
@@ -706,6 +739,8 @@ and all source-bound measurements invalidated by the changed inputs.
   and reader-only end-to-end examples combining typed parameters, finite matrices,
   output selectors, and conditions; preserve unavailable/skipped-output failures
   and reject unsupported capabilities without silent semantic degradation.
+  Compare compiler folding and compiler-independent shared evaluation under the
+  identical arithmetic/profile context; unsupported required features fail closed.
 
 ### `v0.9.4` — release validation gate
 

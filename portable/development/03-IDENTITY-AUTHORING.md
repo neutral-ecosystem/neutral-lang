@@ -55,15 +55,19 @@ attribution, typed member selectors, explicit entry
 discovery, self-contained contract facts, and producer/reader compatibility
 negotiation. The approved V1-CONS-011..016 extension adds bounded pure
 comparisons/Boolean expressions, conditional selection and exhaustive matching,
-exact arithmetic, typed string/list construction, explicit static/deferred input
+single-`num` deterministic decimal arithmetic (including rounded nonterminating
+division), typed string/list construction, explicit static/deferred input
 phases, parameterized descriptions, and finite static matrix expansion.
 Freeze syntax and one typed semantic contract across source/IR/wire/reader/authoring before
 implementation, with independently versioned feature discovery, identities,
 diagnostics, and limits. Amend current source exclusions explicitly at activation;
 do not reinterpret an existing profile or frozen vector.
 
-Neutral owns bounded static evaluation and description expansion under the new
-contract. Scheduling, mapping execution, deferred condition/expression evaluation,
+Neutral owns a shared pure evaluator for bounded static folding and deferred
+evaluation, plus compile-time description expansion under the new contracts.
+Compatible consumers supply typed bindings explicitly; the evaluator returns a
+validated value, required bindings or an unavailable/failure result. It performs
+no acquisition or ambient I/O. Scheduling, mapping execution, binding acquisition,
 credentials, authorization, and backend behavior remain external responsibilities.
 No executor, mutation, general functions, recursive composition, or unbounded
 loops are introduced.
@@ -76,8 +80,9 @@ integration, and boundary tests before starting the dependent slice:
 
 1. Typed selectors, static/deferred input phases, retained restriction
    obligations, entry discovery, and exact feature compatibility.
-2. Pure expressions, deterministic static normalization, guarded deferred
-   dependencies, canonical identities, and independent interpretation.
+2. Pure expressions and shared compiler-independent evaluation, deterministic
+   static normalization/decimal rounding, guarded deferred dependencies, binding
+   and result validation, canonical identities, and independent interpretation.
 3. Compile-time typed templates and finite list/matrix expansion over that
    semantic model, with aggregate bounds and expansion/source mappings.
 4. Full generic authoring integration over the settled contracts, including
@@ -88,7 +93,7 @@ invent semantic rules that later need to be replicated in the compiler.
 The [design boundaries](../specs/contracts/CONSUMER-READINESS.md#stage-8-design-boundaries)
 govern evaluation phases, structural versus value versus scheduling edges,
 deferred restrictions, normalized identity, and the non-callable template model.
-Operator grammar and numeric representability still require concrete freeze
+Operator grammar, numeric precision/rounding and evaluator states still require concrete freeze
 decisions and vectors; this execution order is not syntax activation.
 
 #### Stage 9 handoff
@@ -111,3 +116,7 @@ capability reports with safe source attribution. Prove presentation-only edits
 preserve semantic identity, while semantic constraints/defaults change it.
 Register these as reviewed fixture families, not completed evidence, until
 schema freeze, implementation, hostile/limit testing, and integration pass.
+The probe also evaluates pure expressions using the shared evaluator with
+explicit bindings, without compiler-private access or backend effects. Compare
+it with static folding and an independent interpreter, including skipped outputs,
+restrictions, unsupported required features and exact/rounded arithmetic.

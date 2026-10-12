@@ -5,6 +5,19 @@ status = "stage7-core-catalogue-and-composition-contract-active"
 profile = "1.0"
 
 [[suite]]
+id = "consumer-graphs"
+status = "reviewed-registered; consumer-comparison-pending"
+requirements = ["V1-CONS-001", "V1-CONS-002", "V1-CONS-003", "V1-CONS-004", "V1-CONS-006"]
+fixture_families = ["fan-out-join-resource", "map-entry", "prerequisite-output-cycle", "condition-output-availability", "unsupported-capability", "explicit-alternative", "source-attribution-private-reuse", "core-type-visibility-tag-required-field", "malformed-request", "independent-exact-one-over", "cancellation"]
+literal_request_cases = 31
+source_files = 13
+captured_bundles = 1
+oracle_directory = "portable/conformance/oracles/consumer"
+review_date = "2026-10-12"
+exclusions = "not consumer implementation, full Consumer/1 identity-envelope comparison, backend execution, credential resolution or expression activation"
+activation = "compare unchanged literals through a reviewed reader-only consumer adapter before required-active"
+
+[[suite]]
 id = "consumer-boundary"
 status = "reviewed-frozen-contract-only; production-comparison-pending"
 requirements = ["V1-CONS-001", "V1-CONS-002", "V1-CONS-003", "V1-CONS-004", "V1-CONS-005", "V1-CONS-006", "V1-CONS-007", "V1-CONS-008", "V1-CONS-009", "V1-CONS-010"]

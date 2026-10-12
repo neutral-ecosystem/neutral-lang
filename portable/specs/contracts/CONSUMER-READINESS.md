@@ -13,8 +13,10 @@ fixture, and identity-vector decisions in the implementation checklist.
 
 Neutral owns bounded structural validation, typed data, exact vocabulary locks,
 complete IR, reader views, identity, source attribution, and authoring projection.
-Independent consumers own scheduling, deferred expression evaluation, backend selection,
-mapping implementation, authorization, acquisition, and effects.
+The approved Stage 8 extension also requires a shared, compiler-independent pure
+evaluator for static folding and deferred values. Independent consumers own
+binding acquisition, scheduling, backend selection, mapping implementation,
+authorization, and effects; they invoke the evaluator with explicit typed inputs.
 
 The approved Stage 8 extension V1-CONS-011..016 schedules bounded pure
 expressions and finite composition. It is not activated or contract-frozen:
@@ -23,6 +25,8 @@ identity vectors, and amendments to the current SOURCE exclusions must be
 reviewed before implementation. Existing profiles and vectors are immutable.
 Neutral evaluates statically known pure expressions under those frozen rules;
 it never resolves external inputs or operation outputs during compilation.
+Later, the same pure semantics evaluate explicitly supplied consumer bindings.
+This adds value evaluation, not an operation executor or an ambient runtime.
 
 Vocabularies remain closed data. Neither a semantic bundle nor presentation
 metadata can load code, run a validator callback, grant privileges, or resolve a
@@ -102,7 +106,10 @@ Stage 8 must close these requirements alongside the authoring bridge:
 [CONSUMER-PROFILE](CONSUMER-PROFILE.md) freezes the concrete V1-CONS-001..010
 ownership/protocol boundary, member paths, source attribution, entry discovery,
 closed reports and exact compatibility table, with 32 pinned literal oracles.
-It does not activate implementation or the separate operation-graph corpus.
+It does not activate implementation. The separate
+[example convention](EXAMPLE-CONSUMER.md) now registers 31 literal graph/map/
+condition/capability/privacy cases with file-backed sources and captured vocabulary;
+consumer implementation and unchanged-oracle comparisons remain pending.
 
 - **V1-CONS-001:** Publish project-neutral, file-backed examples of typed
   operation descriptions, arguments/results, reusable resources, explicit
@@ -113,7 +120,7 @@ It does not activate implementation or the separate operation-graph corpus.
   inputs, including operation-output references, literal values, and symbolic
   credential handles. Conditions are structured typed records, not shell or
   embedded backend expression strings. Freeze their representational types and
-  interpreter boundary; evaluation, output availability, scheduling cycles,
+  interpreter boundary; consumer condition interpretation, output availability, scheduling cycles,
   failure policies, retries, timeout behavior, and desired-state/idempotence
   semantics remain consumer responsibilities. This data boundary alone grants
   no computation syntax; V1-CONS-011..016 separately schedule pure expressions
@@ -178,17 +185,27 @@ typed semantic contract across source, IR, wire, independent readers, and
 authoring, with distinct authoring syntax and normalized IR representations;
 do not create a second expression language inside strings or vocabularies.
 
+Concrete written review candidates are [EXPRESSIONS](EXPRESSIONS.md),
+[EVALUATOR](EVALUATOR.md) and [EXPANSION](EXPANSION.md). They specify syntax,
+34-digit nonterminating division, explicit evaluator states and deterministic
+expansion rules. They remain unfrozen until written approval; the separate
+IR/wire/authoring compatibility and independent-vector gate remains unchecked.
+
 - **V1-CONS-011:** Freeze and implement a separately versioned bounded pure
-  expression contract: typed equality and ordered comparisons, Boolean operators,
-  value-producing conditional selection, and exhaustive closed-variant matching.
+  expression contract: typed equality and ordered comparisons, `&&`, `||`, `!`,
+  value-producing `if ... else`, and exhaustive closed-variant `match`.
   Specify admissible operand types, precedence, evaluation order, short-circuit
   behavior, branch result compatibility, and missing/duplicate match alternatives.
   All branches are type-checked; unselected branches are not evaluated. Reject
   effects and implicit coercions. Expressions are not imperative statements.
-- **V1-CONS-012:** Support pure exact-number addition, subtraction, multiplication,
-  division, and unary negation. Freeze representability and division semantics,
-  including nonterminating results, division by zero, and intermediate/result
-  bounds; never silently round or inherit host floating-point behavior. Bound
+- **V1-CONS-012:** Keep one `num` type for pure addition, subtraction,
+  multiplication, division, and unary negation; no integer-division mode or
+  fraction type. Preserve exact decimal values/results when possible and support
+  the closest decimal approximation for nonterminating division, using an
+  explicitly versioned deterministic precision/rounding rule. Nontermination
+  alone is not an error. Distinguish division by zero from resource-limit failure;
+  never inherit host floating-point behavior or silently reduce precision to fit
+  a caller budget. Freeze intermediate/result bounds and numeric rules below. Bound
   expression depth, nodes, work, numeric growth, and retained/output bytes, with
   cancellation and fallible allocation before expansion.
 - **V1-CONS-013:** Support typed string/list construction and interpolation with
@@ -200,9 +217,10 @@ do not create a second expression language inside strings or vocabularies.
   inputs, and deferred operation-output selectors in expression contracts.
   Freeze dependency retention, static/deferred phase classification, binding
   rules, and unavailable/error states without overloading null/omission/default.
-  Statically known evaluation is deterministic and bounded; deferred evaluation
-  belongs to an explicitly compatible consumer. Reader-only consumers receive
-  complete operand/result types and dependencies. Unsupported expression features
+  Statically known evaluation is deterministic and bounded; a compatible consumer
+  supplies typed bindings to the shared pure evaluator for deferred evaluation.
+  Reader-only consumers receive complete operand/result types, guarded
+  dependencies, and retained restriction obligations. Unsupported expression features
   fail explicitly rather than falling back to backend strings or weaker meaning.
 - **V1-CONS-015:** Support bounded reusable descriptions with typed parameters
   and declared results. Freeze parameter binding/default rules, lexical scope,
@@ -215,21 +233,79 @@ do not create a second expression language inside strings or vocabularies.
   filtering/exclusion semantics, generated symbol uniqueness, and attribution.
   Bound dimensions, Cartesian-product work, expanded nodes, and output size
   independently; reject one-over requests before proportional allocation.
-  Deferred inputs cannot determine compile-time expansion. Dynamic fan-out,
+  Deferred inputs cannot determine expansion cardinality, names, or topology;
+  they may populate already expanded typed descriptions. Dynamic fan-out,
   reassignment, unrestricted recursion, and `while` remain out of scope.
 
 All six requirements must retain public interpretive closure, safe source
 attribution, version compatibility, and independently checked identities.
 Consumer plan keys bind selected entries, mapping/target revisions, and relevant
 external input bindings separately from complete Neutral project identity.
-No consumer-specific executor, evaluator implementation, or backend adapter is
-required inside Neutral; independent test interpreters verify the frozen pure
-semantics without performing effects.
+A shared pure evaluator is required inside Neutral, independently usable without
+compiler-private ASTs. No consumer-specific executor or backend adapter belongs
+inside it. Independent test interpreters verify the same versioned semantics
+without delegating evaluation to the production evaluator or performing effects.
 
 ### Stage 8 design boundaries
 
 Freeze the following policies before implementing V1-CONS-011..016. They are
 development requirements, not changes to an already accepted source/IR profile.
+
+#### Numeric policy — one `num`, deterministic approximation
+
+Keep literal decimals and existing stored numeric values exact. Addition,
+subtraction, multiplication and negation preserve exact decimal results within
+independent numeric/work limits. Division retains a terminating exact result when
+it fits those limits; a nonterminating quotient is rounded to the nearest decimal
+under the separately versioned arithmetic context, not rejected or truncated as
+integer division. Division by zero always fails. An exact result or required
+intermediate that exceeds a resource limit fails rather than silently changing
+the arithmetic context.
+
+The proposed context is 34 significant decimal digits with round-to-nearest,
+ties-to-even for nonterminating division. This precision is a contract-freeze
+decision, not an activated capability or caller-adjustable approximation budget.
+For example, `1 / 8` is exactly `0.125`; `1 / 3` produces a finite rounded
+approximation, and `(1 / 3) * 3` need not equal `1`. Do not reassociate expressions
+or claim algebraic equivalence across rounded intermediates. Freeze normalization,
+rounding boundaries, scale/digit/work limits and literal vectors before activation.
+Compiler folding and deferred evaluation must produce identical values/errors
+under the same context, independently of host architecture or floating-point mode.
+
+Existing number encodings/identity vectors are unchanged. New arithmetic and
+expression/expansion semantics require separately versioned contracts and
+compatible IR/wire/authoring features; do not append them to frozen profiles.
+
+#### Shared pure evaluator and explicit binding boundary
+
+Use one typed semantic model and production evaluation implementation for
+compile-time folding and compiler-independent deferred evaluation. It takes
+validated expression/profile facts, explicit typed bindings and independent
+controls/cancellation; it returns a validated value, required bindings, or an
+explicit unavailable/failure result. Missing bindings, unavailable outputs,
+explicit null and failed evaluation are distinct states, never implicit defaults.
+The evaluator reports binding needs; it never fetches or waits for an output.
+
+Consumers acquire bindings and own operation scheduling, credential resolution,
+authorization and effects. Evaluation has no ambient filesystem, network,
+environment, clock, randomness or callback access, and no runtime function calls,
+mutation or unbounded loops. Data-only consumer conditions can remain interpreted
+by their exact consumer contract; adopting the language expression profile uses
+this shared evaluator rather than backend-specific expression strings.
+
+Before accepting supplied inputs or returning calculated values, validate exact
+types, vocabulary restrictions, visibility and target contracts. Validate the
+supplied envelope boundedly, but demand values only along selected guarded paths.
+Every unresolved obligation retains safe source/contract attribution. No error
+publishes a partial accepted result or replaces a successful cache generation.
+
+Independently bound expression nodes/depth, binding count/bytes, work, numeric
+growth, retained dependencies, diagnostics and output bytes. Check budgets and
+cancellation before allocation/expansion, use fallible retention, and keep
+diagnostic ordering deterministic. Negotiation covers arithmetic context,
+operator semantics, result states, restriction enforcement and required evaluator
+features, not just expression tag recognition. Reject unsupported semantics before
+evaluation or consumer execution; callers cannot weaken them via local settings.
 
 #### Evaluation phases and dependencies
 
@@ -237,8 +313,8 @@ development requirements, not changes to an already accepted source/IR profile.
 | --- | --- | --- |
 | Literal or pure expression with known operands | Normalize to a typed value, or return a bounded evaluation error | Consume the validated value |
 | External input or future output selector | Validate type, public target contract, and retained constraints; do not resolve it | Bind and validate the supplied value |
-| Ordinary operator with a deferred operand | Retain a typed expression and its potential value dependencies | Evaluate using the frozen operator semantics after required bindings exist |
-| Conditional, match, or short-circuit operator | Type-check every branch; evaluate only a statically selected path; otherwise retain guarded branches | Evaluate the guard and selected path only |
+| Ordinary operator with a deferred operand | Retain a typed expression and its potential value dependencies | Supply bindings to the shared evaluator under the negotiated semantics |
+| Conditional, match, or short-circuit operator | Type-check every branch; evaluate only a statically selected path; otherwise retain guarded branches | Shared evaluator evaluates the guard and selected path only |
 
 An unselected branch cannot fail through value evaluation or demand a future
 output. An invalid type, missing symbol, or private target anywhere is still a
@@ -266,7 +342,7 @@ values. Report an explicit failure rather than executing with invalid data.
 Freeze which checks are statically discharged versus retained obligations, and
 test both successful binding and type/restriction/availability failures.
 
-Consumer compatibility covers operator semantics, exact numeric behavior,
+Consumer compatibility covers operator semantics, deterministic numeric/rounding behavior,
 conversions, deferred-value states, restriction enforcement, and evaluation
 budgets, not just recognition of expression tags. Unsupported required behavior
 is rejected before operation execution. Consumers may lower expressions to a
@@ -290,8 +366,9 @@ meaning. Templates have no runtime callable identity: their expanded public
 symbols and values participate under normal module-symbol/type rules.
 Static parameter changes affect logical identity only when they change expanded
 meaning or an exported contract. External input values, entry selection,
-mapping/target revisions, and consumer evaluation policy remain consumer plan
-context; changing a referenced input's declared type/contract changes project
+mapping/target revisions, and non-semantic consumer execution policy remain consumer plan
+context. The declared evaluator/arithmetic profile is project meaning, not mutable
+plan context; changing a referenced input's declared type/contract changes project
 meaning. Define derivation/artifact partitions separately and publish equivalent
 and non-equivalent vectors in a new profile without altering historical vectors.
 
@@ -302,7 +379,7 @@ parameters and declared result shapes, not callable values. No runtime dispatch,
 recursive calls, higher-order parameters, mutation, or implicit ambient capture.
 Reject recursive expansion even in otherwise unselected template branches.
 Static parameters may determine expansion; deferred parameters may populate
-typed values but cannot determine expansion cardinality or symbol names.
+typed values but cannot determine expansion cardinality, symbol names or topology.
 All references are explicit and hygienically bound; generated public names must
 be deterministic and collision-checked, never based on process-global counters.
 
@@ -338,8 +415,8 @@ they do not depend on compiler-side acquisition or reinterpret source syntax.
 ## Evidence and completion
 
 The consumer /1 design and boundary-oracle freeze completes only its Stage 8
-contract tasks. The full operation/resource/condition/capability source and
-vocabulary fixture registration, public reader/authoring implementation,
+contract tasks. The operation/resource/condition/capability corpus is registered
+separately with 31 cases and pinned file bytes. Public reader/authoring implementation,
 hostile/boundary validation and production comparisons remain unchecked.
 V1-CONS-011..016 are not covered by this freeze.
 

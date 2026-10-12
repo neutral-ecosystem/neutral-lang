@@ -1,0 +1,1344 @@
+{
+  "schema": "neutral.example-consumer-oracle/1",
+  "scope": "literal-consumer-report-projections; not-execution-or-implemented-consumer-evidence",
+  "identity_envelope_rule": "bind to the independently validated project logical identity; never invent a digest or replace it with source hash",
+  "cases": [
+    {
+      "id": "fan-out-join",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "accepted",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": []
+      },
+      "facts": {
+        "prerequisites": [
+          [
+            "left",
+            "seed"
+          ],
+          [
+            "right",
+            "seed"
+          ],
+          [
+            "join",
+            "left"
+          ],
+          [
+            "join",
+            "right"
+          ]
+        ],
+        "output_connections": 4,
+        "resources": [
+          "shared"
+        ],
+        "entries": [
+          "join"
+        ],
+        "topological_order": [
+          "seed",
+          "left",
+          "right",
+          "join"
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "map-entry-unique",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "accepted",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": []
+      },
+      "facts": {
+        "map_entries": [
+          [
+            "label",
+            "public materialized label"
+          ]
+        ],
+        "duplicate_policy": "reject"
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "map-entry-duplicate",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "rejected",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-005",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "seed"
+            ],
+            "path": [
+              {
+                "kind": "field",
+                "name": "arguments"
+              },
+              {
+                "kind": "index",
+                "index": 1
+              },
+              {
+                "kind": "field",
+                "name": "key"
+              }
+            ],
+            "primary": {
+              "state": "available",
+              "source_digest": "sha256:bdcf1ea2080db177eae5668839662a218be4907fd6856c57c50dc8a99b67272d",
+              "start": 376,
+              "end": 383
+            },
+            "related": []
+          }
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "prerequisite-cycle",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "rejected",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-001",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "seed"
+            ],
+            "path": [
+              {
+                "kind": "field",
+                "name": "needs"
+              },
+              {
+                "kind": "index",
+                "index": 0
+              }
+            ],
+            "primary": {
+              "state": "available",
+              "source_digest": "sha256:8ecbd23fe2792893f591d802cf16046d72d5a8ceb34c10a9de29be1498b1a00e",
+              "start": 283,
+              "end": 292
+            },
+            "related": []
+          }
+        ]
+      },
+      "facts": {
+        "cycle_kind": "prerequisite",
+        "cycle": [
+          "join",
+          "left",
+          "seed",
+          "join"
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "output-cycle",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "rejected",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-001",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "seed"
+            ],
+            "path": [
+              {
+                "kind": "field",
+                "name": "inputs"
+              },
+              {
+                "kind": "index",
+                "index": 0
+              },
+              {
+                "kind": "field",
+                "name": "value"
+              }
+            ],
+            "primary": {
+              "state": "available",
+              "source_digest": "sha256:099ab755858f9e482327c290f4631d738c84d76803e6a374b4be64c35b95c7de",
+              "start": 345,
+              "end": 354
+            },
+            "related": []
+          }
+        ]
+      },
+      "facts": {
+        "cycle_kind": "demanded-output",
+        "cycle": [
+          "join",
+          "left",
+          "seed",
+          "join"
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "condition-output-true",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "accepted",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": []
+      },
+      "facts": {
+        "left_enabled": true,
+        "guard_output": [
+          "seed",
+          "value"
+        ],
+        "guard_value": "ready"
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "condition-output-false",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "accepted",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": []
+      },
+      "facts": {
+        "left_enabled": false,
+        "skipped": [
+          "left",
+          "join"
+        ],
+        "guard_output": [
+          "seed",
+          "value"
+        ],
+        "guard_value": "not-ready"
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "condition-output-unavailable",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "rejected",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-002",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "left"
+            ],
+            "path": [
+              {
+                "kind": "field",
+                "name": "when"
+              },
+              {
+                "kind": "field",
+                "name": "output"
+              }
+            ],
+            "primary": {
+              "state": "available",
+              "source_digest": "sha256:8344c29d62d9fd1140f93ac84a486c68f18cb3bbcf37c0dbca286cad30f7be56",
+              "start": 547,
+              "end": 556
+            },
+            "related": []
+          }
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "selected-output-unavailable",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "rejected",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-002",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "left"
+            ],
+            "path": [
+              {
+                "kind": "field",
+                "name": "inputs"
+              },
+              {
+                "kind": "index",
+                "index": 0
+              },
+              {
+                "kind": "field",
+                "name": "value"
+              }
+            ],
+            "primary": {
+              "state": "available",
+              "source_digest": "sha256:de42f68ecf9e9424ddf3a2666d03bb2493b50b67afeb2062e84f7de3a92ea67d",
+              "start": 593,
+              "end": 602
+            },
+            "related": []
+          }
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "skipped-output-not-demanded",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "accepted",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": []
+      },
+      "facts": {
+        "skipped": [
+          "join"
+        ],
+        "undemanded_outputs": [
+          [
+            "left",
+            "value"
+          ],
+          [
+            "right",
+            "value"
+          ]
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "unknown-output-member",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "rejected",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-003",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "left"
+            ],
+            "path": [
+              {
+                "kind": "field",
+                "name": "inputs"
+              },
+              {
+                "kind": "index",
+                "index": 0
+              },
+              {
+                "kind": "field",
+                "name": "value"
+              },
+              {
+                "kind": "field",
+                "name": "member"
+              }
+            ],
+            "primary": {
+              "state": "available",
+              "source_digest": "sha256:99f7df0303da5082858c986f1504543779030edd6538b642c72c2688fc25caa7",
+              "start": 612,
+              "end": 621
+            },
+            "related": []
+          }
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "unsupported-capability",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "rejected",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-004",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "left"
+            ],
+            "path": [
+              {
+                "kind": "field",
+                "name": "kind"
+              }
+            ],
+            "primary": {
+              "state": "available",
+              "source_digest": "sha256:de42f68ecf9e9424ddf3a2666d03bb2493b50b67afeb2062e84f7de3a92ea67d",
+              "start": 414,
+              "end": 425
+            },
+            "related": []
+          }
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "explicit-alternative-required",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "alternative-required",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-004",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "left"
+            ],
+            "path": [
+              {
+                "kind": "field",
+                "name": "kind"
+              }
+            ],
+            "primary": {
+              "state": "available",
+              "source_digest": "sha256:de42f68ecf9e9424ddf3a2666d03bb2493b50b67afeb2062e84f7de3a92ea67d",
+              "start": 414,
+              "end": 425
+            },
+            "related": []
+          }
+        ]
+      },
+      "facts": {
+        "alternative": "compatible-adapter",
+        "automatic_selection": false
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "explicit-alternative-unapproved",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "rejected",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-009",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "pipeline"
+            ],
+            "path": [],
+            "primary": {
+              "state": "unavailable",
+              "reason": "not-source-origin"
+            },
+            "related": []
+          }
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "explicit-alternative-approved",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "accepted",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/2",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/2"
+        },
+        "diagnostics": []
+      },
+      "facts": {
+        "alternative": "compatible-adapter",
+        "revalidated": true
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "public-reuse-origin-redacted",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "accepted",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": []
+      },
+      "facts": {
+        "value": "public materialized label",
+        "occurrence": {
+          "state": "available",
+          "source_digest": "sha256:de42f68ecf9e9424ddf3a2666d03bb2493b50b67afeb2062e84f7de3a92ea67d",
+          "start": 349,
+          "end": 357
+        },
+        "origin": {
+          "kind": "reuse",
+          "location": {
+            "state": "unavailable",
+            "reason": "redacted"
+          }
+        },
+        "private_names_in_report": []
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "operation-limit-exact",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "accepted",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": []
+      },
+      "facts": {
+        "operations": 4
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "operation-limit-over",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "rejected",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-007",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "pipeline"
+            ],
+            "path": [],
+            "primary": {
+              "state": "unavailable",
+              "reason": "not-source-origin"
+            },
+            "related": []
+          }
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "prerequisite-limit-exact",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "accepted",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": []
+      },
+      "facts": {
+        "prerequisites": 4
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "prerequisite-limit-over",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "rejected",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-007",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "pipeline"
+            ],
+            "path": [],
+            "primary": {
+              "state": "unavailable",
+              "reason": "not-source-origin"
+            },
+            "related": []
+          }
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "output-limit-exact",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "accepted",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": []
+      },
+      "facts": {
+        "output_connections": 4
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "output-limit-over",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "rejected",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-007",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "pipeline"
+            ],
+            "path": [],
+            "primary": {
+              "state": "unavailable",
+              "reason": "not-source-origin"
+            },
+            "related": []
+          }
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "malformed-request-unknown-member",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "rejected",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-006",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "pipeline"
+            ],
+            "path": [],
+            "primary": {
+              "state": "unavailable",
+              "reason": "not-source-origin"
+            },
+            "related": []
+          }
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "malformed-request-duplicate-member",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "rejected",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-006",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "pipeline"
+            ],
+            "path": [],
+            "primary": {
+              "state": "unavailable",
+              "reason": "not-source-origin"
+            },
+            "related": []
+          }
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "missing-entry",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "rejected",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "missing"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-010",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "missing"
+            ],
+            "path": [],
+            "primary": {
+              "state": "unavailable",
+              "reason": "not-source-origin"
+            },
+            "related": []
+          }
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "cancelled",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "rejected",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": [
+          {
+            "phase": "consumer",
+            "code": "EXC-011",
+            "subject": [
+              "1.0",
+              "example::graph",
+              "pipeline"
+            ],
+            "path": [],
+            "primary": {
+              "state": "unavailable",
+              "reason": "not-source-origin"
+            },
+            "related": []
+          }
+        ]
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "external-input-handle",
+      "core": {
+        "status": "accepted"
+      },
+      "report": {
+        "schema": "neutral.example-consumer-report/1",
+        "phase": "consumer",
+        "status": "accepted",
+        "entry": [
+          "1.0",
+          "example::graph",
+          "pipeline"
+        ],
+        "context": {
+          "adapter_revision": "example-adapter/1",
+          "target_revision": "example-target/1",
+          "input_revision": "example-inputs/1"
+        },
+        "diagnostics": []
+      },
+      "facts": {
+        "symbolic_handles": [
+          [
+            "example",
+            "credential"
+          ]
+        ],
+        "credentials_resolved": false
+      },
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "core-type",
+      "core": {
+        "status": "rejected",
+        "code": "NEU-COMP-004"
+      },
+      "report": null,
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "core-private-reference",
+      "core": {
+        "status": "rejected",
+        "code": "NEU-COMP-007"
+      },
+      "report": null,
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "core-unknown-tag",
+      "core": {
+        "status": "rejected",
+        "code": "NEU-COMP-003"
+      },
+      "report": null,
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    },
+    {
+      "id": "core-missing-field",
+      "core": {
+        "status": "rejected",
+        "code": "NEU-COMP-005"
+      },
+      "report": null,
+      "invariants": {
+        "backend_executed": false,
+        "credentials_resolved": false,
+        "private_provenance_exposed": false,
+        "project_identity_changed_by_context": false,
+        "partial_accepted_result": false
+      }
+    }
+  ]
+}

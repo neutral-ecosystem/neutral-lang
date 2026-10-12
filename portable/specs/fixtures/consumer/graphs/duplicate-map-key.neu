@@ -1,0 +1,69 @@
+neu "1.0"
+module example::graph
+use ExampleConsumer as domain
+
+string internal = "public materialized label"
+
+public domain::Resource shared = {
+    name: "shared",
+    location: "https://example.invalid/artifacts",
+}
+
+public domain::Operation seed = {
+    kind: "emit",
+    resources: [ref(shared)],
+    arguments: [
+        { key: "label", value: internal },
+        { key: "label", value: "duplicate" },
+    ],
+}
+public domain::Operation left = {
+    kind: "transform",
+    needs: [ref(seed)],
+    inputs: [
+        {
+            name: "message",
+            value: {
+                tag: "output",
+                payload: { producer: ref(seed), member: "value" },
+            },
+        },
+    ],
+}
+public domain::Operation right = {
+    kind: "transform",
+    needs: [ref(seed)],
+    inputs: [
+        {
+            name: "message",
+            value: {
+                tag: "output",
+                payload: { producer: ref(seed), member: "value" },
+            },
+        },
+    ],
+}
+public domain::Operation join = {
+    kind: "join",
+    needs: [ref(left), ref(right)],
+    inputs: [
+        {
+            name: "left",
+            value: {
+                tag: "output",
+                payload: { producer: ref(left), member: "value" },
+            },
+        },
+        {
+            name: "right",
+            value: {
+                tag: "output",
+                payload: { producer: ref(right), member: "value" },
+            },
+        },
+    ],
+}
+public domain::Graph pipeline = {
+    operations: [ref(seed), ref(left), ref(right), ref(join)],
+    entries: [ref(join)],
+}

@@ -34,9 +34,10 @@ core rejection and consumer interpretation rejection as separate phases.
 
 The approved Stage 8 expression/composition extension (V1-CONS-011..016)
 requires literal operator/type/phase oracles, short-circuit and unselected-branch
-errors, exhaustive matching, exact arithmetic/division and conversion boundaries,
+errors, exhaustive matching, exact/rounded single-`num` decimal arithmetic and conversion boundaries,
 typed parameter scope, and finite matrix ordering/expansion limits. Compare
-production static evaluation with an independent test interpreter; verify
+production static folding and shared compiler-independent deferred evaluation
+with an independent test interpreter; verify
 deferred missing/skipped outputs at the consumer boundary, not as compiler
 execution failures. Include reader-only combined examples, required-feature
 rejection, public-view redaction, cancellation/allocation faults, semantic identity
@@ -54,6 +55,22 @@ explicit prerequisites have separate expected reports. Compare static expression
 with literals and template applications with explicit expansions for logical
 equivalence while captured identities/source evidence differ. Authoring preserves
 template source structure; semantic readers preserve expanded meaning.
+
+Numeric vectors must cover exact `1 / 8`, approximate `1 / 3`, signed rounding,
+the frozen precision/tie rule, division by zero, and intermediate/result/work
+limits. Nonterminating division alone is not a rejection case. Verify numeric
+results do not depend on host floating-point behavior or evaluator settings;
+caller resource limits cannot silently lower precision. Preserve historical
+numeric/wire/identity vectors and use separate new-profile vectors.
+
+Require file-backed `.neu`/vocabulary operation, map-entry and report examples,
+with distinct core type errors and consumer cycle/availability/capability failures.
+Cover evaluator value/required-bindings/unavailable/failure states, explicit null,
+bad binding/result types and restrictions, safe source attribution, deterministic
+diagnostics and atomic failure. Verify unsupported required evaluator features
+fail before evaluation/execution. Deferred values cannot determine template/matrix
+cardinality, names or topology; test each independent aggregate expansion limit.
+No evaluator test may acquire bindings, read ambient state or perform effects.
 
 Stage 9 admits only feature-complete inputs. Missing semantic implementation or
 unresolved semantics return to Stage 8. Qualification fixes invalidate dependent

@@ -1,0 +1,45 @@
+{
+  "schema": "neutral.example-consumer-request/1",
+  "entry": [
+    "1.0",
+    "example::graph",
+    "pipeline"
+  ],
+  "target": {
+    "adapter_revision": "example-adapter/1",
+    "target_revision": "example-target/1",
+    "supported": [
+      "emit",
+      "join",
+      "transform"
+    ],
+    "alternatives": []
+  },
+  "bindings": {
+    "outputs": {
+      "seed": {
+        "value": "ready"
+      },
+      "left": {
+        "value": "left"
+      },
+      "right": {
+        "value": "right"
+      }
+    },
+    "inputs": {},
+    "handles": []
+  },
+  "controls": {
+    "operations": 16,
+    "prerequisites": 32,
+    "outputs": 32,
+    "entries": 8,
+    "map_entries": 16,
+    "diagnostics": 16,
+    "work": 10000,
+    "output_bytes": 65536
+  },
+  "alternative": null,
+  "unexpected": true
+}

@@ -5,6 +5,38 @@ status = "v1-release-train"
 baseline_profile = "0.1"
 target_profile = "1.0"
 
+[[suite]]
+id = "consumer-graphs"
+profile = "neutral.example-consumer/1; neutral.project-ir/2"
+active_from_stage = 8
+status = "frozen"
+scope = "file-backed-input-and-literal-consumer-report-registration-only"
+input_files = [
+  "portable/specs/fixtures/consumer/graphs/bundle.json",
+  "portable/specs/fixtures/consumer/graphs/condition-output-false.neu",
+  "portable/specs/fixtures/consumer/graphs/condition-output.neu",
+  "portable/specs/fixtures/consumer/graphs/deferred-input-handle.neu",
+  "portable/specs/fixtures/consumer/graphs/duplicate-map-key.neu",
+  "portable/specs/fixtures/consumer/graphs/duplicate-request.json",
+  "portable/specs/fixtures/consumer/graphs/fan-out-join.neu",
+  "portable/specs/fixtures/consumer/graphs/missing-kind.neu",
+  "portable/specs/fixtures/consumer/graphs/output-cycle.neu",
+  "portable/specs/fixtures/consumer/graphs/prerequisite-cycle.neu",
+  "portable/specs/fixtures/consumer/graphs/private-reference.neu",
+  "portable/specs/fixtures/consumer/graphs/skipped-output.neu",
+  "portable/specs/fixtures/consumer/graphs/unknown-output.neu",
+  "portable/specs/fixtures/consumer/graphs/unknown-request.json",
+  "portable/specs/fixtures/consumer/graphs/unknown-tag.neu",
+  "portable/specs/fixtures/consumer/graphs/wrong-type.neu",
+]
+
+[[case]]
+id = "V1-CONS-GRAPH-REPORT-LITERALS"
+fixture = "portable/specs/fixtures/consumer/graphs/cases.json"
+fixture_sha256 = "5a9b6df3186131d7d1a6e3a79534f3d8a7756c1816a974e1827a3f7767bc8840"
+oracle = "portable/conformance/oracles/consumer/graphs.json"
+oracle_sha256 = "c52673d935560464c603c640c3995ef7f7f9bab9dbe327041b21b15574b19df1"
+
 # Each case added during a stage names exact fixture and oracle paths and the
 # release stage that activates it. No path is active until its bytes and oracle
 # are reviewed. The v0.1 corpus remains a required inherited suite.

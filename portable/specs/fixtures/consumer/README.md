@@ -6,8 +6,8 @@ This directory owns literal facts and requests for the frozen
 [consumer protocol](../../contracts/CONSUMER-PROFILE.md). Its 32 cases cover
 typed field/list/variant selection, future-result obligations, exact entry
 selection, public attribution/privacy, incomplete contracts, compatibility,
-limits and cancellation. The broader operation/resource/condition source and
-vocabulary graph corpus is a separate unchecked registration task.
+limits and cancellation. The [graph corpus](graphs/README.md) separately registers
+31 source/vocabulary consumer cases; neither suite claims implemented consumers.
 
 `boundary.json` supplies an exact profile tuple, complete controls, public/private
 type and binding facts, original source bytes, and case requests. Artifact labels
