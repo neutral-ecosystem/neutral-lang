@@ -44,6 +44,22 @@ changes, and actual clean/cache equivalence. Stage 9 reruns the complete corpus
 and independent interpretation against final inputs; Stage 8 demos do not replace
 release qualification. No tests acquire credentials or perform backend effects.
 
+Test each Stage 8 slice before its dependent slice begins. Independent pure
+interpretation must not delegate operator evaluation or canonicalization to the
+production evaluator; compare both with literal expected values/errors and
+transcripts. Cover deferred guards with selected/unselected unavailable outputs
+and invalid arithmetic, always-on branch type checking, and retained restriction
+checks after binding. Structural references, guarded value dependencies, and
+explicit prerequisites have separate expected reports. Compare static expressions
+with literals and template applications with explicit expansions for logical
+equivalence while captured identities/source evidence differ. Authoring preserves
+template source structure; semantic readers preserve expanded meaning.
+
+Stage 9 admits only feature-complete inputs. Missing semantic implementation or
+unresolved semantics return to Stage 8. Qualification fixes invalidate dependent
+evidence: rerun final integration and the measurements whose source-bound inputs
+changed, rather than treating earlier passing receipts as evidence for new inputs.
+
 ## Gate integrity
 
 The conformance manifest names every active fixture and oracle. Missing,

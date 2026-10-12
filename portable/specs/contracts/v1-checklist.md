@@ -123,8 +123,18 @@ unchecked in the operational checklist until contract/profile activation,
 implementation, independent interpretation, and public-boundary evidence pass.
 General functions, mutation, recursive composition, unbounded loops, and effects
 remain excluded; existing profile behavior is not changed by this plan entry.
+Implement selectors/input phases first, then pure semantics/identities, finite
+composition, and full authoring integration, with evidence per slice. See the
+[design boundaries](CONSUMER-READINESS.md#stage-8-design-boundaries) for guarded
+dependencies, deferred restriction obligations, normalized logical identity,
+and the separation of source-preserving authoring from expanded semantic IR.
 
 ## Stage 9 — release (`v0.9.0 -> v1.0.0`)
+
+Entry requires all Stage 8 semantic features implemented and reviewed. Only
+qualification defects and migration/compatibility corrections belong here;
+missing features or changed semantics return to Stage 8 and invalidate affected
+evidence. Final integration and source-bound measurements must match final inputs.
 
 - [ ] V1-CONF-001 — Every v1 requirement has fixture/oracle and traceability.
 - [ ] V1-CONF-002 — All named core and authoring diagnostics have negative cases.

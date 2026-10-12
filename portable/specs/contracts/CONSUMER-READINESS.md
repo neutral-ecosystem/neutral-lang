@@ -21,7 +21,7 @@ expressions and finite composition. It is not activated or contract-frozen:
 syntax, profile/feature selection, numeric rules, diagnostics, wire forms,
 identity vectors, and amendments to the current SOURCE exclusions must be
 reviewed before implementation. Existing profiles and vectors are immutable.
-Neutral may evaluate statically known pure expressions under those frozen rules;
+Neutral evaluates statically known pure expressions under those frozen rules;
 it never resolves external inputs or operation outputs during compilation.
 
 Vocabularies remain closed data. Neither a semantic bundle nor presentation
@@ -168,8 +168,9 @@ Stage 8 must close these requirements alongside the authoring bridge:
 
 ### Approved Stage 8 extension — pure expressions and finite composition
 
-These requirements are planned, not implemented or passing evidence. Use one
-typed semantic model across source, IR, wire, independent readers, and authoring;
+These requirements are planned, not implemented or passing evidence. Share one
+typed semantic contract across source, IR, wire, independent readers, and
+authoring, with distinct authoring syntax and normalized IR representations;
 do not create a second expression language inside strings or vocabularies.
 
 - **V1-CONS-011:** Freeze and implement a separately versioned bounded pure
@@ -219,6 +220,94 @@ external input bindings separately from complete Neutral project identity.
 No consumer-specific executor, evaluator implementation, or backend adapter is
 required inside Neutral; independent test interpreters verify the frozen pure
 semantics without performing effects.
+
+### Stage 8 design boundaries
+
+Freeze the following policies before implementing V1-CONS-011..016. They are
+development requirements, not changes to an already accepted source/IR profile.
+
+#### Evaluation phases and dependencies
+
+| Expression | Compilation behavior | Consumer behavior |
+| --- | --- | --- |
+| Literal or pure expression with known operands | Normalize to a typed value, or return a bounded evaluation error | Consume the validated value |
+| External input or future output selector | Validate type, public target contract, and retained constraints; do not resolve it | Bind and validate the supplied value |
+| Ordinary operator with a deferred operand | Retain a typed expression and its potential value dependencies | Evaluate using the frozen operator semantics after required bindings exist |
+| Conditional, match, or short-circuit operator | Type-check every branch; evaluate only a statically selected path; otherwise retain guarded branches | Evaluate the guard and selected path only |
+
+An unselected branch cannot fail through value evaluation or demand a future
+output. An invalid type, missing symbol, or private target anywhere is still a
+compile-time error. Do not eagerly fold a potentially failing branch whose guard
+is deferred. Publish literal vectors for known and deferred guards, including
+division by zero and missing/skipped outputs in selected/unselected paths.
+
+Keep three relationships distinct: structural references checked during typing,
+potential value dependencies (including their guards), and explicit consumer
+execution prerequisites. A future output reference is not automatically a
+scheduling edge. Core rejects static expression/template expansion cycles;
+consumers validate their own output-availability and execution graphs. Consumers
+must not conservatively require an unselected output merely because it appears
+in a guarded expression. Unavailable bindings and evaluation failures are
+explicit consumer result states, not null, omission, or materialized defaults.
+
+#### Deferred restrictions and compatibility
+
+Compilation proves structural typing and restrictions for known values; it does
+not certify unknown future values. Retain every unresolved restriction and its
+safe source/contract attribution in standalone IR and public views. A consumer
+must validate bound inputs, selected outputs, and calculated results before
+passing them to an operation, using the same exact restriction rules as static
+values. Report an explicit failure rather than executing with invalid data.
+Freeze which checks are statically discharged versus retained obligations, and
+test both successful binding and type/restriction/availability failures.
+
+Consumer compatibility covers operator semantics, exact numeric behavior,
+conversions, deferred-value states, restriction enforcement, and evaluation
+budgets, not just recognition of expression tags. Unsupported required behavior
+is rejected before operation execution. Consumers may lower expressions to a
+backend only when the frozen semantics are preserved; no backend's coercion,
+rounding, null, or short-circuit rules become Neutral defaults.
+
+#### Canonical identity
+
+Captured identity retains source, expression, and template-definition changes.
+Logical identity uses normalized static values and expanded descriptions:
+`2 + 3` and `5` have the same logical meaning when the surrounding typed contracts
+are identical. Source spelling, expansion provenance, and unused template
+definitions do not independently change logical identity. Any exported semantic
+contract remains an identity input.
+
+Deferred expressions retain versioned canonical typed operator/operand structure
+and stable symbolic targets. Do not attempt general algebraic equivalence,
+commutative reordering, or effectful evaluation. Compile-time selected branches
+normalize under the frozen rules; retained deferred branches retain their
+meaning. Templates have no runtime callable identity: their expanded public
+symbols and values participate under normal module-symbol/type rules.
+Static parameter changes affect logical identity only when they change expanded
+meaning or an exported contract. External input values, entry selection,
+mapping/target revisions, and consumer evaluation policy remain consumer plan
+context; changing a referenced input's declared type/contract changes project
+meaning. Define derivation/artifact partitions separately and publish equivalent
+and non-equivalent vectors in a new profile without altering historical vectors.
+
+#### Templates, expansion, and authoring
+
+Templates are compile-time description constructors with explicitly named typed
+parameters and declared result shapes, not callable values. No runtime dispatch,
+recursive calls, higher-order parameters, mutation, or implicit ambient capture.
+Reject recursive expansion even in otherwise unselected template branches.
+Static parameters may determine expansion; deferred parameters may populate
+typed values but cannot determine expansion cardinality or symbol names.
+All references are explicit and hygienically bound; generated public names must
+be deterministic and collision-checked, never based on process-global counters.
+
+Complete semantic IR retains expanded descriptions and residual deferred
+expressions, not executable template definitions. The authoring model separately
+retains template definitions, applications, matrix axes, and safe source mappings;
+it must not reconstruct original templates from expanded IR. Freeze both the
+source-preserving authoring round trip and the meaning-preserving IR round trip.
+Bounds cover aggregate nested expansion and Cartesian-product work even when
+filters discard results; per-template limits alone are insufficient.
 
 Map-like data uses typed key/value entry records and lists; duplicate-key and
 lookup policy belong to the declared consumer contract. A graph of operation

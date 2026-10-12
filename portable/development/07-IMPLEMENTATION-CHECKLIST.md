@@ -509,6 +509,13 @@ unimplemented authoring projection. Source evidence is checked, not authenticate
 
 Target transition: `v0.8.0 -> v0.9.0`.
 
+Execute in dependency order: (1) selectors/input phases/compatibility,
+(2) pure expressions and identities, (3) templates/finite expansion,
+(4) full authoring integration. Each slice needs reviewed contracts, literal
+oracles, implementation, public integration, and boundary evidence before its
+dependent slice starts. The `.1`–`.4` gates below summarize release readiness,
+not permission to implement every subsystem before testing any of them.
+
 ### `v0.8.1` — contract and fixture gate
 
 - [ ] Freeze profile discovery, descriptor catalogue, overlay, editable model,
@@ -534,31 +541,56 @@ Target transition: `v0.8.0 -> v0.9.0`.
   and independent result/transcript vectors before implementation; freeze source,
   IR/wire/authoring feature compatibility and explicitly amend source exclusions
   without reinterpreting existing profiles or vectors.
+- [ ] Freeze the [Stage 8 design boundaries](../specs/contracts/CONSUMER-READINESS.md#stage-8-design-boundaries):
+  guarded static/deferred evaluation, structural/value/scheduling edge separation,
+  retained restriction obligations, normalized static/expanded logical identity,
+  non-callable template semantics, and distinct source-authoring/semantic IR views.
 
 ### `v0.8.2` — core implementation gate
+
+Slice 1 — consumer contract foundation:
+
+- [ ] Implement the closed data-only capability/report boundary and examples;
+  do not add an executor, backend adapter, or implicit deferred evaluation.
+- [ ] Implement bounded public field-level attribution and typed selectors;
+  preserve safe supplied/default/reuse origins without runtime evaluation.
+- [ ] Implement explicit typed entry discovery and complete contract facts in
+  standalone artifacts/views with exact profile/feature compatibility discovery.
+- [ ] Retain typed external/output inputs and unresolved restriction obligations;
+  expose separately guarded value dependencies and explicit prerequisite data,
+  with consumer binding/availability/failure reports and no implicit scheduler.
+
+Slice 2 — pure semantics and identity:
+
+- [ ] Implement one bounded typed expression model through source, compiler,
+  IR, encoding, and reader, including pure static normalization and
+  retained deferred operands/dependencies; no external input lookup or effects.
+- [ ] Type-check every branch without eagerly evaluating unselected or
+  deferred-guarded error paths; define static expression-cycle rejection.
+- [ ] Implement canonical static-value/deferred-expression identities and
+  independent interpretation before dependent expansion/authoring integration.
+
+Slice 3 — compile-time description composition:
+
+- [ ] Implement hygienic typed parameter binding and finite static list/matrix
+  expansion with deterministic identities, source origins, cancellation, and
+  fallible independent expansion/work/storage limits; reject recursive templates
+  and deferred expansion sizes.
+- [ ] Lower templates to expanded semantic descriptions, preserving source forms
+  and expansion mappings separately for authoring; reject runtime callable values,
+  generated-name collisions, and aggregate nested expansion/work overflow.
+
+Slice 4 — complete authoring integration:
 
 - [ ] Implement deterministic static catalogue and project overlay.
 - [ ] Implement closed bounded editable model with connections as the sole
   reuse/reference edge representation.
 - [ ] Implement deterministic multi-source projection and mappings.
 - [ ] Extend catalogue/model/projection for composite vocabulary fields,
-  semantic defaults/restrictions, and consumer data connections; semantic
-  restrictions remain compiler-owned, not presentation hints.
-- [ ] Implement the closed data-only capability/report boundary and examples;
-  do not add an executor, backend adapter, or implicit condition evaluation.
-- [ ] Implement bounded public field-level attribution and typed selectors;
-  preserve safe supplied/default/reuse origins without runtime evaluation.
-- [ ] Implement explicit typed entry discovery and complete contract facts in
-  standalone artifacts/views with exact profile/feature compatibility discovery.
+  semantic defaults/restrictions, expressions, template applications, matrices,
+  and consumer connections; authoring cannot invent or weaken semantic rules.
 - [ ] Cover variants, cross-vocabulary types, selectors, and origin distinctions
   in generic authoring discovery, editing, projection, and diagnostics.
-- [ ] Implement one bounded typed expression model through source, compiler,
-  IR, encoding, reader, and authoring, including pure static evaluation and
-  retained deferred operands/dependencies; no external input lookup or effects.
-- [ ] Implement hygienic typed parameter binding and finite static list/matrix
-  expansion with deterministic identities, source origins, cancellation, and
-  fallible independent expansion/work/storage limits; reject recursive templates
-  and deferred expansion sizes.
 
 ### `v0.8.3` — public integration gate
 
@@ -578,6 +610,12 @@ Target transition: `v0.8.0 -> v0.9.0`.
   parameter/expansion origins through standalone readers and generic authoring;
   verify no-op projection/formatting, public-view closure/redaction, and explicit
   rejection of unsupported expression features by consumer probes.
+- [ ] Verify reader-only binding checks retain and enforce unresolved numeric,
+  choice, length, and reference restrictions before sample operation dispatch;
+  no actual backend operations or credential resolution are performed.
+- [ ] Verify authoring round trips preserve template/application/matrix source
+  structure, while semantic IR round trips preserve expanded meaning without
+  requiring template reconstruction from IR.
 
 ### `v0.8.4` — validation gate
 
@@ -603,6 +641,12 @@ Target transition: `v0.8.0 -> v0.9.0`.
 - [ ] Pass static/deferred phase and missing/skipped-output consumer cases,
   cancellation/allocation faults, independent interpretation, expression identity
   vectors, and actual clean/cache equivalence without running backend operations.
+- [ ] Compare selected/unselected unavailable and invalid-value paths; verify
+  structural typing checks all branches, guarded outputs do not become implicit
+  prerequisites, and bound values/results obey retained restrictions.
+- [ ] Prove static-expression/literal and template/explicit-expansion logical
+  equivalence, captured/source-evidence differences, canonical deferred-expression
+  non-equivalence, and external-binding/project-identity separation.
 
 ### Promote to `v0.9.0`
 
@@ -615,21 +659,31 @@ Target transition: `v0.8.0 -> v0.9.0`.
 
 Target transition: `v0.9.0 -> v1.0.0`.
 
+Entry requires feature-complete Stage 8 with no deferred semantic implementation.
+Stage 9 permits defect fixes, migration work, and compatibility corrections only.
+New features or changed operator/type/identity semantics return to Stage 8 contract
+review and invalidate affected evidence; changes require fresh final integration
+and all source-bound measurements invalidated by the changed inputs.
+
 ### `v0.9.1` — complete contract and corpus gate
 
 - [ ] Freeze all v1 requirements, contracts, diagnostic registries, examples,
   fixtures, oracles, vectors, manifest, and traceability.
 - [ ] Confirm there are no planned active cases or unresolved portability
   exceptions.
-- [ ] Freeze the complete V1-CONS-011..016 operator/type/phase and bounded
+- [ ] Audit the already frozen V1-CONS-011..016 operator/type/phase and bounded
   composition corpus, compatibility matrix, literal results, diagnostics, and
-  identity vectors; no unspecified division, conversion, or expansion behavior.
+  identity vectors; unresolved division, conversion, or expansion semantics
+  block entry and return to Stage 8 rather than being designed during qualification.
 
-### `v0.9.2` — complete implementation gate
+### `v0.9.2` — defect closure and migration gate
 
-- [ ] Implement every remaining v1 requirement and remove temporary feature
-  gates that are not part of the public profile contract.
+- [ ] Confirm all approved v1 features are implemented; close qualification
+  defects and remove temporary gates not part of the public profile contract.
+  Return missing semantic features to Stage 8; do not expand release scope here.
 - [ ] Complete migration tooling/documentation without altering v0.1 meaning.
+- [ ] Revalidate affected contracts/oracles and regenerate invalidated evidence
+  after fixes; rerun final public integration against the corrected inputs.
 
 ### `v0.9.3` — public consumer gate
 
@@ -653,7 +707,10 @@ Target transition: `v0.9.0 -> v1.0.0`.
 - [ ] Pass expression/composition hostile-input, arithmetic-growth, short-circuit,
   exact/one-over expansion, cancellation/allocation, concurrent determinism, and
   clean/cache suites. Verify semantic expression/parameter changes affect the
-  correct identities while external bindings remain consumer plan context.
+  correct identities only when normalized meaning or exported contracts change;
+  equivalent static values/expansions remain logically equal, while external
+  bindings remain consumer plan context. Test deferred restriction enforcement
+  and guarded dependencies independently from consumer scheduling.
 - [ ] Verify every checklist item and traceability row has retained evidence.
 - [ ] Review release notes, supported profiles, limits, exclusions, and public
   compatibility policy.

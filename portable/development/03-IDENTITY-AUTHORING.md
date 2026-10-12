@@ -57,7 +57,7 @@ negotiation. The approved V1-CONS-011..016 extension adds bounded pure
 comparisons/Boolean expressions, conditional selection and exhaustive matching,
 exact arithmetic, typed string/list construction, explicit static/deferred input
 phases, parameterized descriptions, and finite static matrix expansion.
-Freeze syntax and one typed source/IR/wire/reader/authoring model before
+Freeze syntax and one typed semantic contract across source/IR/wire/reader/authoring before
 implementation, with independently versioned feature discovery, identities,
 diagnostics, and limits. Amend current source exclusions explicitly at activation;
 do not reinterpret an existing profile or frozen vector.
@@ -67,6 +67,37 @@ contract. Scheduling, mapping execution, deferred condition/expression evaluatio
 credentials, authorization, and backend behavior remain external responsibilities.
 No executor, mutation, general functions, recursive composition, or unbounded
 loops are introduced.
+
+#### Required implementation order
+
+The release target is unchanged, but Stage 8 is not one parallel implementation
+batch. Complete each slice's contracts, literal oracles, implementation, public
+integration, and boundary tests before starting the dependent slice:
+
+1. Typed selectors, static/deferred input phases, retained restriction
+   obligations, entry discovery, and exact feature compatibility.
+2. Pure expressions, deterministic static normalization, guarded deferred
+   dependencies, canonical identities, and independent interpretation.
+3. Compile-time typed templates and finite list/matrix expansion over that
+   semantic model, with aggregate bounds and expansion/source mappings.
+4. Full generic authoring integration over the settled contracts, including
+   source-preserving template edits and meaning-preserving expanded IR views.
+
+Catalogue/profile infrastructure may be prepared earlier, but authoring must not
+invent semantic rules that later need to be replicated in the compiler.
+The [design boundaries](../specs/contracts/CONSUMER-READINESS.md#stage-8-design-boundaries)
+govern evaluation phases, structural versus value versus scheduling edges,
+deferred restrictions, normalized identity, and the non-callable template model.
+Operator grammar and numeric representability still require concrete freeze
+decisions and vectors; this execution order is not syntax activation.
+
+#### Stage 9 handoff
+
+Stage 8 exits feature-complete with all approved semantic scope implemented and
+independently tested. Stage 9 qualifies those final inputs; it is not a place to
+finish deferred features. Defects and migration/compatibility corrections may be
+fixed during qualification, but semantic scope changes return to Stage 8 review.
+Regenerate affected evidence and rerun final integration after any change.
 
 ## Exit evidence
 

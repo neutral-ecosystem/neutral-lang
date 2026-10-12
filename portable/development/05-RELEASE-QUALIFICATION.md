@@ -32,5 +32,17 @@ interpretation, bounded parameter/matrix expansion, and explicit unsupported
 feature rejection. Existing source exclusions must be amended through reviewed
 profile activation, never inferred from the approved development scope alone.
 
+Stage 8 promotion also requires the ordered selector/phase, expression/identity,
+finite-composition, and authoring slices to be complete. Unknown future values
+retain explicit consumer validation obligations; successful compilation is not
+proof that such values already satisfy vocabulary restrictions. Logical identity
+tracks normalized static values/expanded meaning and canonical deferred
+expressions, not source spelling or external bound values.
+
+Stage 9 is qualification-only: accept feature-complete inputs, fix defects, and
+finish migration/compatibility work. Missing features or changed semantics return
+to Stage 8 review. Any fix invalidates affected evidence and requires fresh final
+integration plus all measurements bound to changed inputs before approval.
+
 No release may claim conformance from design acceptance, an implementation demo,
 or one consumer integration alone.
