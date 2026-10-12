@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 # SPDX-License-Identifier: Apache-2.0
+# Checks Linux bootstrap prerequisites and delegates environment setup to xtask.
 
 set -eu
 . "$(dirname "$0")/logging.sh"

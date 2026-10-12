@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 # SPDX-License-Identifier: Apache-2.0
+# Delegates release preparation, publication, or tagging to xtask from the repository root.
 
 set -eu
 . "$(dirname "$0")/logging.sh"

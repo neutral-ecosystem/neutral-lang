@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 # SPDX-License-Identifier: Apache-2.0
+# Provides shared Linux failure logging with terminal-aware red status labels.
 
 NEUTRAL_LOG_FAIL='FAIL'
 NEUTRAL_LOG_RED='\033[31m'

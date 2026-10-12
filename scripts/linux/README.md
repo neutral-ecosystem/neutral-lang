@@ -1,4 +1,5 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- Describes the Linux scripts, prerequisites, logging, and development and release commands. -->
 
 # Linux workflow adapter
 

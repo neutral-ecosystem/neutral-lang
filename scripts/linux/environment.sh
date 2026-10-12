@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 # SPDX-License-Identifier: Apache-2.0
+# Delegates environment verification or manifest reporting to xtask.
 
 set -eu
 . "$(dirname "$0")/logging.sh"

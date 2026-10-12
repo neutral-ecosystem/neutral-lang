@@ -1,4 +1,5 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- Explains the platform scripts and their role as entry points to xtask workflows. -->
 
 # Platform adapters
 
