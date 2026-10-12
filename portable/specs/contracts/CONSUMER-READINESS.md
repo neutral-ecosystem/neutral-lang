@@ -251,6 +251,8 @@ without delegating evaluation to the production evaluator or performing effects.
 
 The following frozen semantic policies govern V1-CONS-011..016. They do not
 activate or change an existing source/IR profile.
+Approved and frozen on 12-10-2026; byte pins and scope are recorded in
+[freeze.toml](freeze.toml). Implementation and activation remain separate gates.
 
 #### Numeric policy — one `num`, deterministic approximation
 
@@ -385,7 +387,11 @@ All references are explicit and hygienically bound; generated public names must
 be deterministic and collision-checked, never based on process-global counters.
 
 Complete semantic IR retains expanded descriptions and residual deferred
-expressions, not executable template definitions. The authoring model separately
+expressions, not executable template definitions. Exported public template
+contracts retain their canonical parameters, result type and typed body under
+[EXPRESSION-PROFILE](EXPRESSION-PROFILE.md); these are inspectable semantic
+contracts, not callable values or runtime expansion instructions. Private
+template definitions are not retained as semantic IR. The authoring model separately
 retains template definitions, applications, matrix axes, and safe source mappings;
 it must not reconstruct original templates from expanded IR. Freeze both the
 source-preserving authoring round trip and the meaning-preserving IR round trip.

@@ -577,10 +577,13 @@ not permission to implement every subsystem before testing any of them.
   are registered and independently checked. Written compatibility/source-amendment
   and literal-byte approval is recorded in [freeze.toml](../specs/contracts/freeze.toml).
   Registration is not production conformance; activation remains pending.
-- [ ] Freeze the [Stage 8 design boundaries](../specs/contracts/CONSUMER-READINESS.md#stage-8-design-boundaries):
+- [x] Freeze the [Stage 8 design boundaries](../specs/contracts/CONSUMER-READINESS.md#stage-8-design-boundaries):
   guarded static/deferred evaluation, structural/value/scheduling edge separation,
   retained restriction obligations, normalized static/expanded logical identity,
   non-callable template semantics, and distinct source-authoring/semantic IR views.
+  Approved and byte-pinned on 12-10-2026 in [freeze.toml](../specs/contracts/freeze.toml).
+  Public template contracts remain inspectable, not executable; implementation
+  and production conformance remain unchecked below.
 
 ### `v0.8.2` — core implementation gate
 

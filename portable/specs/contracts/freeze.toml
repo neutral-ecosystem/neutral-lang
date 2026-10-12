@@ -22,6 +22,8 @@ authoring_contract = "1.0.0-plan"
 external_ir_encoding = "NIR-CBOR/1.0-plan"
 
 [fixture_corpus]
+consumer_readiness_contract_path = "portable/specs/contracts/CONSUMER-READINESS.md"
+consumer_readiness_contract_sha256 = "e97aad193f9f7d01ae934151dd188fc55bb40d4c4e104cd231aa34776186436f"
 expression_candidate_authoring_verifier_path = "portable/conformance/oracles/expressions/authoring_vectors.py"
 expression_candidate_authoring_verifier_sha256 = "0ec6cfba7782814d144a16d4c4bc9af32ca2c70bc23700633446463ff6d46135"
 expression_candidate_project_verifier_path = "portable/conformance/oracles/expressions/project_vectors.py"
@@ -211,3 +213,11 @@ approval = "explicit user approval: successor tuple, lexical binders, wire/trans
 remaining = "production implementation and independent conformance comparisons before activation"
 activation = "frozen-only; no production capability advertised"
 snapshot_policy = "candidate-named pin keys, fixture IDs and embedded candidate status strings identify the reviewed snapshots; this record and manifest suite status govern approval without rewriting fixture bytes"
+
+[stage8_design_boundary_gate]
+inputs = "fixture_corpus.consumer_readiness_contract, expression_contract, evaluator_contract, expansion_contract, expression_candidate_contract"
+status = "approved-design-boundaries-frozen; implementation-pending"
+review_date = "2026-10-12"
+scope = "guarded static/deferred evaluation; structural/value/scheduling edge separation; retained restriction obligations; normalized static/expanded logical identity; non-callable public template contracts; source-authoring/semantic IR separation"
+approval = "explicit user request to freeze the Stage 8 design boundaries"
+activation = "none; production implementation, independent comparisons and activation gates remain required"
