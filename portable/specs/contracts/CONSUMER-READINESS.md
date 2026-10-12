@@ -13,8 +13,16 @@ fixture, and identity-vector decisions in the implementation checklist.
 
 Neutral owns bounded structural validation, typed data, exact vocabulary locks,
 complete IR, reader views, identity, source attribution, and authoring projection.
-Independent consumers own scheduling, expression evaluation, backend selection,
+Independent consumers own scheduling, deferred expression evaluation, backend selection,
 mapping implementation, authorization, acquisition, and effects.
+
+The approved Stage 8 extension V1-CONS-011..016 schedules bounded pure
+expressions and finite composition. It is not activated or contract-frozen:
+syntax, profile/feature selection, numeric rules, diagnostics, wire forms,
+identity vectors, and amendments to the current SOURCE exclusions must be
+reviewed before implementation. Existing profiles and vectors are immutable.
+Neutral may evaluate statically known pure expressions under those frozen rules;
+it never resolves external inputs or operation outputs during compilation.
 
 Vocabularies remain closed data. Neither a semantic bundle nor presentation
 metadata can load code, run a validator callback, grant privileges, or resolve a
@@ -102,8 +110,10 @@ Stage 8 must close these requirements alongside the authoring bridge:
   embedded backend expression strings. Freeze their representational types and
   interpreter boundary; evaluation, output availability, scheduling cycles,
   failure policies, retries, timeout behavior, and desired-state/idempotence
-  semantics remain consumer responsibilities. No new core arithmetic, function,
-  loop, secret scalar, built-in map, or execution syntax is implied.
+  semantics remain consumer responsibilities. This data boundary alone grants
+  no computation syntax; V1-CONS-011..016 separately schedule pure expressions
+  and bounded composition. General functions, unbounded loops, mutation, secret
+  scalars, built-in maps, and execution syntax remain excluded.
 - **V1-CONS-003:** Enable closed, versioned data envelopes for externally
   supplied capability/mapping descriptions and consumer validation reports.
   Identify contract revision, adapter revision, supported/unsupported capability,
@@ -155,6 +165,60 @@ Stage 8 must close these requirements alongside the authoring bridge:
   package versions. Unknown required features and unsupported versions fail
   before exposing accepted data; no silent downgrade is allowed. Freeze a
   tested producer/reader compatibility matrix and migration/rejection fixtures.
+
+### Approved Stage 8 extension — pure expressions and finite composition
+
+These requirements are planned, not implemented or passing evidence. Use one
+typed semantic model across source, IR, wire, independent readers, and authoring;
+do not create a second expression language inside strings or vocabularies.
+
+- **V1-CONS-011:** Freeze and implement a separately versioned bounded pure
+  expression contract: typed equality and ordered comparisons, Boolean operators,
+  value-producing conditional selection, and exhaustive closed-variant matching.
+  Specify admissible operand types, precedence, evaluation order, short-circuit
+  behavior, branch result compatibility, and missing/duplicate match alternatives.
+  All branches are type-checked; unselected branches are not evaluated. Reject
+  effects and implicit coercions. Expressions are not imperative statements.
+- **V1-CONS-012:** Support pure exact-number addition, subtraction, multiplication,
+  division, and unary negation. Freeze representability and division semantics,
+  including nonterminating results, division by zero, and intermediate/result
+  bounds; never silently round or inherit host floating-point behavior. Bound
+  expression depth, nodes, work, numeric growth, and retained/output bytes, with
+  cancellation and fallible allocation before expansion.
+- **V1-CONS-013:** Support typed string/list construction and interpolation with
+  explicit conversions and deterministic formatting. Freeze admissible types,
+  Unicode behavior, list element compatibility, and independent size/work limits.
+  No shell substitution, implicit command escaping, credential resolution, or
+  environment lookup occurs; generated strings remain inert values.
+- **V1-CONS-014:** Distinguish literal/static values, externally supplied typed
+  inputs, and deferred operation-output selectors in expression contracts.
+  Freeze dependency retention, static/deferred phase classification, binding
+  rules, and unavailable/error states without overloading null/omission/default.
+  Statically known evaluation is deterministic and bounded; deferred evaluation
+  belongs to an explicitly compatible consumer. Reader-only consumers receive
+  complete operand/result types and dependencies. Unsupported expression features
+  fail explicitly rather than falling back to backend strings or weaker meaning.
+- **V1-CONS-015:** Support bounded reusable descriptions with typed parameters
+  and declared results. Freeze parameter binding/default rules, lexical scope,
+  hygienic substitution, type compatibility, expansion identity and attribution,
+  and independent invocation/expansion limits. Reject recursive composition and
+  implicit capture of ambient inputs. These are immutable description templates,
+  not general callable functions or execution units.
+- **V1-CONS-016:** Support finite deterministic expansion over statically known
+  lists for repeated descriptions and multi-dimensional matrices. Freeze order,
+  filtering/exclusion semantics, generated symbol uniqueness, and attribution.
+  Bound dimensions, Cartesian-product work, expanded nodes, and output size
+  independently; reject one-over requests before proportional allocation.
+  Deferred inputs cannot determine compile-time expansion. Dynamic fan-out,
+  reassignment, unrestricted recursion, and `while` remain out of scope.
+
+All six requirements must retain public interpretive closure, safe source
+attribution, version compatibility, and independently checked identities.
+Consumer plan keys bind selected entries, mapping/target revisions, and relevant
+external input bindings separately from complete Neutral project identity.
+No consumer-specific executor, evaluator implementation, or backend adapter is
+required inside Neutral; independent test interpreters verify the frozen pure
+semantics without performing effects.
 
 Map-like data uses typed key/value entry records and lists; duplicate-key and
 lookup policy belong to the declared consumer contract. A graph of operation

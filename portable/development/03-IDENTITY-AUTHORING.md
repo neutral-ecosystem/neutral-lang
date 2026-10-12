@@ -46,16 +46,27 @@ ordinary reuse and identity-reference edges. The compiler, not the Editor,
 remains the source authority.
 
 Before `v0.9.0`, complete
-[V1-CONS-001..010](../specs/contracts/CONSUMER-READINESS.md): project-neutral
+[V1-CONS-001..016](../specs/contracts/CONSUMER-READINESS.md): project-neutral
 operation/input/result/resource data examples, explicit prerequisite/output
 connections, structured deferred conditions and symbolic handles, and versioned
 capability/mapping-description/report interfaces. Extend authoring discovery and
 projection for the composite vocabulary schema. Add precise public source
 attribution, typed member selectors, explicit entry
 discovery, self-contained contract facts, and producer/reader compatibility
-negotiation. Scheduling, mapping execution,
-condition evaluation, credentials, authorization, and backend behavior remain
-external responsibilities; no executor or new computation syntax is introduced.
+negotiation. The approved V1-CONS-011..016 extension adds bounded pure
+comparisons/Boolean expressions, conditional selection and exhaustive matching,
+exact arithmetic, typed string/list construction, explicit static/deferred input
+phases, parameterized descriptions, and finite static matrix expansion.
+Freeze syntax and one typed source/IR/wire/reader/authoring model before
+implementation, with independently versioned feature discovery, identities,
+diagnostics, and limits. Amend current source exclusions explicitly at activation;
+do not reinterpret an existing profile or frozen vector.
+
+Neutral owns bounded static evaluation and description expansion under the new
+contract. Scheduling, mapping execution, deferred condition/expression evaluation,
+credentials, authorization, and backend behavior remain external responsibilities.
+No executor, mutation, general functions, recursive composition, or unbounded
+loops are introduced.
 
 ## Exit evidence
 

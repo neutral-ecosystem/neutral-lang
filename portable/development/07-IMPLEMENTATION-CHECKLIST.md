@@ -505,7 +505,7 @@ Both declaration origins share one semantic model. Presentation inputs remain
 separate Stage 8 work; the frozen identity exclusion is tested here, not an
 unimplemented authoring projection. Source evidence is checked, not authenticated.
 
-## Stage 8 — dynamic authoring bridge and Editor probe
+## Stage 8 — authoring bridge, pure expressions, and finite composition
 
 Target transition: `v0.8.0 -> v0.9.0`.
 
@@ -525,6 +525,15 @@ Target transition: `v0.8.0 -> v0.9.0`.
 - [ ] Register project-neutral operation graph, map-entry, condition/output,
   unsupported-capability, explicit-alternative, source-attribution, privacy,
   and malformed/limit fixtures with literal expected consumer reports.
+- [ ] Freeze approved V1-CONS-011..016: pure comparisons/Boolean expressions,
+  conditional selection/exhaustive matching, exact arithmetic, typed string/list
+  construction, static/deferred inputs, typed parameterized descriptions, and
+  finite static matrix expansion; specify syntax, scope, types, short-circuit
+  behavior, division/representability, diagnostics, independent bounds, and phases.
+- [ ] Register literal positive/negative/boundary expression/composition fixtures
+  and independent result/transcript vectors before implementation; freeze source,
+  IR/wire/authoring feature compatibility and explicitly amend source exclusions
+  without reinterpreting existing profiles or vectors.
 
 ### `v0.8.2` — core implementation gate
 
@@ -543,6 +552,13 @@ Target transition: `v0.8.0 -> v0.9.0`.
   standalone artifacts/views with exact profile/feature compatibility discovery.
 - [ ] Cover variants, cross-vocabulary types, selectors, and origin distinctions
   in generic authoring discovery, editing, projection, and diagnostics.
+- [ ] Implement one bounded typed expression model through source, compiler,
+  IR, encoding, reader, and authoring, including pure static evaluation and
+  retained deferred operands/dependencies; no external input lookup or effects.
+- [ ] Implement hygienic typed parameter binding and finite static list/matrix
+  expansion with deterministic identities, source origins, cancellation, and
+  fallible independent expansion/work/storage limits; reject recursive templates
+  and deferred expansion sizes.
 
 ### `v0.8.3` — public integration gate
 
@@ -558,6 +574,10 @@ Target transition: `v0.8.0 -> v0.9.0`.
 - [ ] Verify compiler-free readers locate selected members and public entry
   points, explain field-level failures, and discover all necessary contract facts
   without reparsing source, fetching schemas, or depending on another project.
+- [ ] Expose expression types, static/deferred phase facts, dependencies, and
+  parameter/expansion origins through standalone readers and generic authoring;
+  verify no-op projection/formatting, public-view closure/redaction, and explicit
+  rejection of unsupported expression features by consumer probes.
 
 ### `v0.8.4` — validation gate
 
@@ -577,11 +597,17 @@ Target transition: `v0.8.0 -> v0.9.0`.
 - [ ] Pass member-path/type/bounds, ambiguous/private/missing-root, attribution
   redaction, static fan-out/join, self-contained artifact, and producer/reader
   compatibility/unknown-required-feature suites, including old-profile regressions.
+- [ ] Pass expression typing, short-circuit/unselected-branch errors, exhaustive
+  matching, arithmetic/division boundaries, Unicode/conversion, parameter scope,
+  duplicate generated symbols, finite matrix ordering and exact/one-over suites.
+- [ ] Pass static/deferred phase and missing/skipped-output consumer cases,
+  cancellation/allocation faults, independent interpretation, expression identity
+  vectors, and actual clean/cache equivalence without running backend operations.
 
 ### Promote to `v0.9.0`
 
 - [ ] Confirm Stage 8 checklist, manifest, and traceability are complete.
-- [ ] Confirm V1-VOC-005..011 and V1-CONS-001..010 have complete public evidence
+- [ ] Confirm V1-VOC-005..011 and V1-CONS-001..016 have complete public evidence
   and no dependency on a separate product implementation.
 - [ ] Release `v0.9.0`; update the ledger to `released`.
 
@@ -595,6 +621,9 @@ Target transition: `v0.9.0 -> v1.0.0`.
   fixtures, oracles, vectors, manifest, and traceability.
 - [ ] Confirm there are no planned active cases or unresolved portability
   exceptions.
+- [ ] Freeze the complete V1-CONS-011..016 operator/type/phase and bounded
+  composition corpus, compatibility matrix, literal results, diagnostics, and
+  identity vectors; no unspecified division, conversion, or expansion behavior.
 
 ### `v0.9.2` — complete implementation gate
 
@@ -609,6 +638,10 @@ Target transition: `v0.9.0 -> v1.0.0`.
 - [ ] Pass the project-neutral consumer boundary probe over composite vocabulary
   data, conditions/output connections, capability reports, source attribution,
   and identity separation without mapper execution or core-owned product semantics.
+- [ ] Pass independent pure-expression interpretation against literal oracles
+  and reader-only end-to-end examples combining typed parameters, finite matrices,
+  output selectors, and conditions; preserve unavailable/skipped-output failures
+  and reject unsupported capabilities without silent semantic degradation.
 
 ### `v0.9.4` — release validation gate
 
@@ -617,6 +650,10 @@ Target transition: `v0.9.0 -> v1.0.0`.
   malformed/hostile input, limits, determinism, concurrency, soak, performance,
   security, dependency, and license gates.
 - [ ] Pass all identity vectors and clean/incremental equivalence tests.
+- [ ] Pass expression/composition hostile-input, arithmetic-growth, short-circuit,
+  exact/one-over expansion, cancellation/allocation, concurrent determinism, and
+  clean/cache suites. Verify semantic expression/parameter changes affect the
+  correct identities while external bindings remain consumer plan context.
 - [ ] Verify every checklist item and traceability row has retained evidence.
 - [ ] Review release notes, supported profiles, limits, exclusions, and public
   compatibility policy.

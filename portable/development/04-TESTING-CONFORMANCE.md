@@ -32,6 +32,18 @@ operation/resource/condition/output/capability/report and authoring cases before
 `v0.9.0`. Freeze literal outcomes and schema versions before activation; keep
 core rejection and consumer interpretation rejection as separate phases.
 
+The approved Stage 8 expression/composition extension (V1-CONS-011..016)
+requires literal operator/type/phase oracles, short-circuit and unselected-branch
+errors, exhaustive matching, exact arithmetic/division and conversion boundaries,
+typed parameter scope, and finite matrix ordering/expansion limits. Compare
+production static evaluation with an independent test interpreter; verify
+deferred missing/skipped outputs at the consumer boundary, not as compiler
+execution failures. Include reader-only combined examples, required-feature
+rejection, public-view redaction, cancellation/allocation faults, semantic identity
+changes, and actual clean/cache equivalence. Stage 9 reruns the complete corpus
+and independent interpretation against final inputs; Stage 8 demos do not replace
+release qualification. No tests acquire credentials or perform backend effects.
+
 ## Gate integrity
 
 The conformance manifest names every active fixture and oracle. Missing,

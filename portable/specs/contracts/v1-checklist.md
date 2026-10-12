@@ -98,10 +98,10 @@ complete V1-ID-001..005. Literal/adversarial framing, root-invariant complete
 identities, reader-only probe reporting, and actual bounded syntax-cache
 equivalence are verified. Release promotion remains a separate gate.
 
-## Stage 8 — authoring (`v0.8.0 -> v0.9.0`)
+## Stage 8 — authoring and finite composition (`v0.8.0 -> v0.9.0`)
 
 The `v0.8.0` promotion also requires the newly scheduled V1-VOC-005..011
-extension; `v0.9.0` requires V1-CONS-001..010. These are not covered by the
+extension; `v0.9.0` requires V1-CONS-001..016. These are not covered by the
 completed identity items above. Their unchecked contract/implementation/public
 validation tasks live only in the
 [operational checklist](../../development/07-IMPLEMENTATION-CHECKLIST.md), with
@@ -116,6 +116,14 @@ scope in [consumer readiness](CONSUMER-READINESS.md).
   round trip.
 - [ ] V1-AUTH-006 — Generic Editor probe has no compiler-private dependency.
 
+The approved V1-CONS-011..016 extension schedules bounded pure expressions,
+exact arithmetic, typed string/list construction, static/deferred input phases,
+parameterized descriptions, and finite static matrix expansion. It remains
+unchecked in the operational checklist until contract/profile activation,
+implementation, independent interpretation, and public-boundary evidence pass.
+General functions, mutation, recursive composition, unbounded loops, and effects
+remain excluded; existing profile behavior is not changed by this plan entry.
+
 ## Stage 9 — release (`v0.9.0 -> v1.0.0`)
 
 - [ ] V1-CONF-001 — Every v1 requirement has fixture/oracle and traceability.
@@ -123,6 +131,9 @@ scope in [consumer readiness](CONSUMER-READINESS.md).
 - [ ] V1-CONF-003 — Reader, generic authoring, and project-neutral consumer-boundary probes pass.
 - [ ] V1-CONF-004 — Limits, hostile input, deterministic, concurrency, and
   clean/incremental-equivalence evidence pass.
+- [ ] V1-CONF-005 — Independent expression/composition oracles, static/deferred
+  consumer examples, arithmetic/expansion boundaries, compatibility rejection,
+  and identity/clean-cache equivalence pass against final inputs.
 - [ ] V1-REL-001 — Release notes publish profiles, limits, exclusions, and
   migration behavior.
 - [ ] V1-REL-002 — Retained evidence approves `v0.9.4 -> v1.0.0`.

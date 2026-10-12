@@ -21,11 +21,16 @@ profiles and state that consumer execution and authoring-client UX are not Neutr
 
 `v0.8.0` additionally requires the composite vocabulary extension gate
 (V1-VOC-005..011); `v0.9.0` additionally requires the consumer data/authoring
-boundary (V1-CONS-001..010). Both must be schema-reviewed, registered in the
+boundary and approved pure-expression/finite-composition extension
+(V1-CONS-001..016). Both must be schema-reviewed, registered in the
 conformance manifest, implemented, and independently validated before promotion.
 Previously retained Stage 7 identity evidence does not complete these additions.
 The final gate requires their full compatibility, limits, identity, privacy,
 and reader/authoring evidence, without depending on another project or executor.
+The extension requires frozen static/deferred semantics, independent pure
+interpretation, bounded parameter/matrix expansion, and explicit unsupported
+feature rejection. Existing source exclusions must be amended through reviewed
+profile activation, never inferred from the approved development scope alone.
 
 No release may claim conformance from design acceptance, an implementation demo,
 or one consumer integration alone.
