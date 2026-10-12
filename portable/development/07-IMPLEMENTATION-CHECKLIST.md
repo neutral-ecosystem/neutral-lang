@@ -527,13 +527,18 @@ not permission to implement every subsystem before testing any of them.
   [26 literal requests](../specs/fixtures/authoring/foundation.json) and
   [oracles](../conformance/oracles/authoring/foundation.json) are registered as
   frozen, not required-active; production comparisons remain implementation work.
-- [ ] Freeze [V1-CONS-001..010](../specs/contracts/CONSUMER-READINESS.md):
+- [x] Freeze [V1-CONS-001..010](../specs/contracts/CONSUMER-READINESS.md):
   operation/input/result/resource data, explicit prerequisites/output connections,
   structured conditions/deferred inputs, symbolic handles, capability/mapping
   descriptions, validation reports, and consumer/core ownership boundaries.
-- [ ] Freeze field/element source attribution, typed member selectors, explicit
+  [Consumer/1](../specs/contracts/CONSUMER-PROFILE.md) freezes the protocol and
+  ownership boundaries; production implementation remains pending.
+- [x] Freeze field/element source attribution, typed member selectors, explicit
   entry discovery, self-contained artifact contracts, required-feature negotiation,
   and the producer/reader compatibility matrix with literal fixture oracles.
+  [32 literal cases](../specs/fixtures/consumer/boundary.json) and
+  [oracles](../conformance/oracles/consumer/boundary.json) are pinned in the
+  [freeze record](../specs/contracts/freeze.toml), frozen but not required-active.
 - [ ] Register project-neutral operation graph, map-entry, condition/output,
   unsupported-capability, explicit-alternative, source-attribution, privacy,
   and malformed/limit fixtures with literal expected consumer reports.

@@ -1,0 +1,1011 @@
+{
+  "schema": "neutral.consumer-fixture/1",
+  "scope": "frozen-reader-protocol-facts; not-accepted-artifacts-or-production-evidence",
+  "profiles": {
+    "source": "1.0",
+    "ir": "neutral.project-ir/2",
+    "wire": "NIR-PROJECT-CBOR/2",
+    "identity": "neutral.project-identity/2",
+    "consumer": "neutral.consumer/1",
+    "project_features": [
+      "tagged-variants-v1",
+      "vocabulary-composition-v2"
+    ],
+    "consumer_features": [
+      "entry-discovery-v1",
+      "member-selectors-v1",
+      "value-attribution-v1"
+    ]
+  },
+  "controls": {
+    "request_bytes": 65536,
+    "report_bytes": 65536,
+    "selectors": 32,
+    "roots": 32,
+    "candidates": 32,
+    "locations": 32,
+    "closure_edges": 128,
+    "path_segments": 16,
+    "text_bytes": 4096,
+    "diagnostics": 32,
+    "work": 1000000
+  },
+  "artifacts": {
+    "main": {
+      "profiles": {
+        "source": "1.0",
+        "ir": "neutral.project-ir/2",
+        "wire": "NIR-PROJECT-CBOR/2",
+        "identity": "neutral.project-identity/2",
+        "consumer": "neutral.consumer/1",
+        "project_features": [
+          "tagged-variants-v1",
+          "vocabulary-composition-v2"
+        ],
+        "consumer_features": [
+          "entry-discovery-v1",
+          "member-selectors-v1",
+          "value-attribution-v1"
+        ]
+      },
+      "types": [
+        {
+          "id": [
+            "source",
+            "example",
+            "Service"
+          ],
+          "public": true,
+          "kind": "record",
+          "fields": [
+            {
+              "name": "label",
+              "type": [
+                "core",
+                "string"
+              ],
+              "presence": "required",
+              "restrictions": {}
+            },
+            {
+              "name": "ports",
+              "type": {
+                "kind": "list",
+                "element": [
+                  "core",
+                  "num"
+                ]
+              },
+              "presence": "required",
+              "restrictions": {}
+            }
+          ]
+        },
+        {
+          "id": [
+            "source",
+            "example",
+            "State"
+          ],
+          "public": true,
+          "kind": "variant",
+          "alternatives": [
+            {
+              "tag": "failed",
+              "type": [
+                "core",
+                "num"
+              ]
+            },
+            {
+              "tag": "ready",
+              "type": [
+                "core",
+                "string"
+              ]
+            }
+          ]
+        },
+        {
+          "id": [
+            "source",
+            "example",
+            "Empty"
+          ],
+          "public": true,
+          "kind": "record",
+          "fields": []
+        }
+      ],
+      "bindings": [
+        {
+          "symbol": [
+            "1.0",
+            "example",
+            "api"
+          ],
+          "public": true,
+          "type": [
+            "source",
+            "example",
+            "Service"
+          ],
+          "value": {
+            "label": "api",
+            "ports": [
+              "80",
+              "443"
+            ]
+          }
+        },
+        {
+          "symbol": [
+            "1.0",
+            "example",
+            "hidden"
+          ],
+          "public": false,
+          "type": [
+            "source",
+            "example",
+            "Service"
+          ],
+          "value": {
+            "label": "internal",
+            "ports": []
+          }
+        },
+        {
+          "symbol": [
+            "1.0",
+            "example",
+            "copied"
+          ],
+          "public": true,
+          "type": [
+            "source",
+            "example",
+            "Service"
+          ],
+          "value": {
+            "label": "internal",
+            "ports": []
+          }
+        },
+        {
+          "symbol": [
+            "1.0",
+            "example",
+            "status"
+          ],
+          "public": true,
+          "type": [
+            "source",
+            "example",
+            "State"
+          ],
+          "value": {
+            "tag": "ready",
+            "payload": "ok"
+          }
+        },
+        {
+          "symbol": [
+            "1.0",
+            "example",
+            "pointer"
+          ],
+          "public": true,
+          "type": {
+            "kind": "ref",
+            "target": [
+              "source",
+              "example",
+              "Service"
+            ]
+          },
+          "value": {
+            "ref": [
+              "1.0",
+              "example",
+              "api"
+            ]
+          }
+        }
+      ],
+      "source_utf8": "neu \"1.0\"\nmodule example\n\npublic record Service {\n    string label,\n    List<num> ports,\n}\npublic variant State {\n    string ready,\n    num failed,\n}\npublic Service api = {\n    label: \"api\",\n    ports: [80, 443],\n}\nService hidden = {\n    label: \"internal\",\n    ports: [],\n}\npublic Service copied = hidden\npublic State status = { tag: \"ready\", payload: \"ok\" }\npublic Ref<Service> pointer = ref(api)\npublic record Empty {}\n"
+    },
+    "invalid-span": {
+      "base": "main",
+      "fault": {
+        "kind": "origin-span",
+        "symbol": [
+          "1.0",
+          "example",
+          "api"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "label"
+          }
+        ],
+        "start": 0,
+        "end": 1000000
+      }
+    },
+    "incomplete-contract": {
+      "base": "main",
+      "fault": {
+        "kind": "missing-type",
+        "type": [
+          "source",
+          "example",
+          "Service"
+        ]
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "selector-field",
+      "operation": "select",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.member-selector/1",
+        "mode": "value",
+        "root": [
+          "1.0",
+          "example",
+          "api"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "label"
+          }
+        ],
+        "expected_type": [
+          "core",
+          "string"
+        ]
+      }
+    },
+    {
+      "id": "selector-list-index",
+      "operation": "select",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.member-selector/1",
+        "mode": "value",
+        "root": [
+          "1.0",
+          "example",
+          "api"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "ports"
+          },
+          {
+            "kind": "index",
+            "index": 1
+          }
+        ],
+        "expected_type": [
+          "core",
+          "num"
+        ]
+      }
+    },
+    {
+      "id": "selector-index-out-of-range",
+      "operation": "select",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.member-selector/1",
+        "mode": "value",
+        "root": [
+          "1.0",
+          "example",
+          "api"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "ports"
+          },
+          {
+            "kind": "index",
+            "index": 2
+          }
+        ],
+        "expected_type": [
+          "core",
+          "num"
+        ]
+      }
+    },
+    {
+      "id": "selector-type-future-index",
+      "operation": "select",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.member-selector/1",
+        "mode": "type",
+        "root": [
+          "source",
+          "example",
+          "Service"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "ports"
+          },
+          {
+            "kind": "index",
+            "index": 2
+          }
+        ],
+        "expected_type": [
+          "core",
+          "num"
+        ]
+      }
+    },
+    {
+      "id": "selector-wrong-type",
+      "operation": "select",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.member-selector/1",
+        "mode": "value",
+        "root": [
+          "1.0",
+          "example",
+          "api"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "label"
+          }
+        ],
+        "expected_type": [
+          "core",
+          "num"
+        ]
+      }
+    },
+    {
+      "id": "selector-missing-field",
+      "operation": "select",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.member-selector/1",
+        "mode": "value",
+        "root": [
+          "1.0",
+          "example",
+          "api"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "missing"
+          }
+        ],
+        "expected_type": [
+          "core",
+          "string"
+        ]
+      }
+    },
+    {
+      "id": "selector-private-root",
+      "operation": "select",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.member-selector/1",
+        "mode": "value",
+        "root": [
+          "1.0",
+          "example",
+          "hidden"
+        ],
+        "path": [],
+        "expected_type": [
+          "source",
+          "example",
+          "Service"
+        ]
+      }
+    },
+    {
+      "id": "selector-no-implicit-deref",
+      "operation": "select",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.member-selector/1",
+        "mode": "value",
+        "root": [
+          "1.0",
+          "example",
+          "pointer"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "label"
+          }
+        ],
+        "expected_type": [
+          "core",
+          "string"
+        ]
+      }
+    },
+    {
+      "id": "selector-negative-index",
+      "operation": "select",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.member-selector/1",
+        "mode": "value",
+        "root": [
+          "1.0",
+          "example",
+          "api"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "ports"
+          },
+          {
+            "kind": "index",
+            "index": -1
+          }
+        ],
+        "expected_type": [
+          "core",
+          "num"
+        ]
+      }
+    },
+    {
+      "id": "selector-variant-value",
+      "operation": "select",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.member-selector/1",
+        "mode": "value",
+        "root": [
+          "1.0",
+          "example",
+          "status"
+        ],
+        "path": [
+          {
+            "kind": "alternative",
+            "tag": "ready"
+          }
+        ],
+        "expected_type": [
+          "core",
+          "string"
+        ]
+      }
+    },
+    {
+      "id": "selector-variant-wrong-active-tag",
+      "operation": "select",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.member-selector/1",
+        "mode": "value",
+        "root": [
+          "1.0",
+          "example",
+          "status"
+        ],
+        "path": [
+          {
+            "kind": "alternative",
+            "tag": "failed"
+          }
+        ],
+        "expected_type": [
+          "core",
+          "num"
+        ]
+      }
+    },
+    {
+      "id": "entry-enumerate",
+      "operation": "entries",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.entry-request/1",
+        "contract": [
+          "source",
+          "example",
+          "Service"
+        ],
+        "selection": {
+          "kind": "enumerate"
+        }
+      }
+    },
+    {
+      "id": "entry-ambiguous",
+      "operation": "entries",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.entry-request/1",
+        "contract": [
+          "source",
+          "example",
+          "Service"
+        ],
+        "selection": {
+          "kind": "unique"
+        }
+      }
+    },
+    {
+      "id": "entry-unique",
+      "operation": "entries",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.entry-request/1",
+        "contract": [
+          "source",
+          "example",
+          "State"
+        ],
+        "selection": {
+          "kind": "unique"
+        }
+      }
+    },
+    {
+      "id": "entry-no-matching-binding",
+      "operation": "entries",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.entry-request/1",
+        "contract": [
+          "source",
+          "example",
+          "Empty"
+        ],
+        "selection": {
+          "kind": "unique"
+        }
+      }
+    },
+    {
+      "id": "entry-explicit-empty",
+      "operation": "entries",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.entry-request/1",
+        "contract": [
+          "source",
+          "example",
+          "Service"
+        ],
+        "selection": {
+          "kind": "explicit",
+          "roots": []
+        }
+      }
+    },
+    {
+      "id": "entry-explicit-private",
+      "operation": "entries",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.entry-request/1",
+        "contract": [
+          "source",
+          "example",
+          "Service"
+        ],
+        "selection": {
+          "kind": "explicit",
+          "roots": [
+            [
+              "1.0",
+              "example",
+              "hidden"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "entry-explicit-order",
+      "operation": "entries",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.entry-request/1",
+        "contract": [
+          "source",
+          "example",
+          "Service"
+        ],
+        "selection": {
+          "kind": "explicit",
+          "roots": [
+            [
+              "1.0",
+              "example",
+              "copied"
+            ],
+            [
+              "1.0",
+              "example",
+              "api"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "origin-field",
+      "operation": "origin",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.value-origin/1",
+        "symbol": [
+          "1.0",
+          "example",
+          "api"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "label"
+          }
+        ]
+      }
+    },
+    {
+      "id": "origin-list-element",
+      "operation": "origin",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.value-origin/1",
+        "symbol": [
+          "1.0",
+          "example",
+          "api"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "ports"
+          },
+          {
+            "kind": "index",
+            "index": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "origin-private-reuse-redacted",
+      "operation": "origin",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.value-origin/1",
+        "symbol": [
+          "1.0",
+          "example",
+          "copied"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "label"
+          }
+        ]
+      }
+    },
+    {
+      "id": "origin-invalid-span",
+      "operation": "origin",
+      "artifact": "invalid-span",
+      "request": {
+        "schema": "neutral.value-origin/1",
+        "symbol": [
+          "1.0",
+          "example",
+          "api"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "label"
+          }
+        ]
+      }
+    },
+    {
+      "id": "incomplete-contract",
+      "operation": "select",
+      "artifact": "incomplete-contract",
+      "request": {
+        "schema": "neutral.member-selector/1",
+        "mode": "value",
+        "root": [
+          "1.0",
+          "example",
+          "api"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "label"
+          }
+        ],
+        "expected_type": [
+          "core",
+          "string"
+        ]
+      }
+    },
+    {
+      "id": "compat-legacy-document",
+      "operation": "compatibility",
+      "artifact": "main",
+      "request": {
+        "producer": {
+          "source": "0.1",
+          "ir": "neutral.ir/0.1",
+          "wire": "NIR-CBOR/0.1",
+          "identity": "legacy",
+          "consumer": "neutral.consumer/1",
+          "project_features": [],
+          "consumer_features": [
+            "entry-discovery-v1",
+            "member-selectors-v1",
+            "value-attribution-v1"
+          ]
+        },
+        "reader": [
+          "legacy-document"
+        ]
+      }
+    },
+    {
+      "id": "compat-project-one",
+      "operation": "compatibility",
+      "artifact": "main",
+      "request": {
+        "producer": {
+          "source": "1.0",
+          "ir": "neutral.project-ir/1",
+          "wire": "NIR-PROJECT-CBOR/1",
+          "identity": "neutral.project-identity/1",
+          "consumer": "neutral.consumer/1",
+          "project_features": [],
+          "consumer_features": [
+            "entry-discovery-v1",
+            "member-selectors-v1",
+            "value-attribution-v1"
+          ]
+        },
+        "reader": [
+          "project-one"
+        ]
+      }
+    },
+    {
+      "id": "compat-project-two",
+      "operation": "compatibility",
+      "artifact": "main",
+      "request": {
+        "producer": {
+          "source": "1.0",
+          "ir": "neutral.project-ir/2",
+          "wire": "NIR-PROJECT-CBOR/2",
+          "identity": "neutral.project-identity/2",
+          "consumer": "neutral.consumer/1",
+          "project_features": [
+            "tagged-variants-v1",
+            "vocabulary-composition-v2"
+          ],
+          "consumer_features": [
+            "entry-discovery-v1",
+            "member-selectors-v1",
+            "value-attribution-v1"
+          ]
+        },
+        "reader": [
+          "project-two",
+          "neutral.consumer/1",
+          "entry-discovery-v1",
+          "member-selectors-v1",
+          "value-attribution-v1"
+        ]
+      }
+    },
+    {
+      "id": "compat-reader-without-consumer",
+      "operation": "compatibility",
+      "artifact": "main",
+      "request": {
+        "producer": {
+          "source": "1.0",
+          "ir": "neutral.project-ir/2",
+          "wire": "NIR-PROJECT-CBOR/2",
+          "identity": "neutral.project-identity/2",
+          "consumer": "neutral.consumer/1",
+          "project_features": [
+            "tagged-variants-v1",
+            "vocabulary-composition-v2"
+          ],
+          "consumer_features": [
+            "entry-discovery-v1",
+            "member-selectors-v1",
+            "value-attribution-v1"
+          ]
+        },
+        "reader": [
+          "project-two"
+        ]
+      }
+    },
+    {
+      "id": "compat-missing-required-feature",
+      "operation": "compatibility",
+      "artifact": "main",
+      "request": {
+        "producer": {
+          "source": "1.0",
+          "ir": "neutral.project-ir/2",
+          "wire": "NIR-PROJECT-CBOR/2",
+          "identity": "neutral.project-identity/2",
+          "consumer": "neutral.consumer/1",
+          "project_features": [
+            "tagged-variants-v1",
+            "vocabulary-composition-v2"
+          ],
+          "consumer_features": [
+            "entry-discovery-v1",
+            "member-selectors-v1",
+            "value-attribution-v1"
+          ]
+        },
+        "reader": [
+          "project-two",
+          "neutral.consumer/1",
+          "entry-discovery-v1",
+          "member-selectors-v1"
+        ]
+      }
+    },
+    {
+      "id": "compat-unknown-wire",
+      "operation": "compatibility",
+      "artifact": "main",
+      "request": {
+        "producer": {
+          "source": "1.0",
+          "ir": "neutral.project-ir/2",
+          "wire": "NIR-PROJECT-CBOR/999",
+          "identity": "neutral.project-identity/2",
+          "consumer": "neutral.consumer/1",
+          "project_features": [
+            "tagged-variants-v1",
+            "vocabulary-composition-v2"
+          ],
+          "consumer_features": [
+            "entry-discovery-v1",
+            "member-selectors-v1",
+            "value-attribution-v1"
+          ]
+        },
+        "reader": [
+          "project-two",
+          "neutral.consumer/1",
+          "entry-discovery-v1",
+          "member-selectors-v1",
+          "value-attribution-v1"
+        ]
+      }
+    },
+    {
+      "id": "selector-limit-exact",
+      "operation": "select",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.member-selector/1",
+        "mode": "value",
+        "root": [
+          "1.0",
+          "example",
+          "api"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "ports"
+          },
+          {
+            "kind": "index",
+            "index": 0
+          }
+        ],
+        "expected_type": [
+          "core",
+          "num"
+        ],
+        "controls": {
+          "path_segments": 2
+        }
+      }
+    },
+    {
+      "id": "selector-limit-over",
+      "operation": "select",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.member-selector/1",
+        "mode": "value",
+        "root": [
+          "1.0",
+          "example",
+          "api"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "ports"
+          },
+          {
+            "kind": "index",
+            "index": 0
+          }
+        ],
+        "expected_type": [
+          "core",
+          "num"
+        ],
+        "controls": {
+          "path_segments": 1
+        }
+      }
+    },
+    {
+      "id": "cancelled",
+      "operation": "select",
+      "artifact": "main",
+      "request": {
+        "schema": "neutral.member-selector/1",
+        "mode": "value",
+        "root": [
+          "1.0",
+          "example",
+          "api"
+        ],
+        "path": [
+          {
+            "kind": "field",
+            "name": "label"
+          }
+        ],
+        "expected_type": [
+          "core",
+          "string"
+        ],
+        "cancelled": true
+      }
+    }
+  ]
+}

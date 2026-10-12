@@ -2,7 +2,7 @@
 
 # Vocabulary composition and consumer readiness
 
-Status: composition contract/oracles frozen; implementation and authoring gate review pending
+Status: composition and consumer /1 contracts/oracles frozen; consumer implementation pending; pure-expression extension unfrozen
 
 This supplement schedules language infrastructure for `v0.8.0` and `v0.9.0`.
 It does not activate syntax, change an accepted encoding, or introduce an
@@ -98,6 +98,11 @@ exact/one-over dependency/type limits. No historical gate claims these additions
 ## `v0.9.0` — consumer-facing data and authoring
 
 Stage 8 must close these requirements alongside the authoring bridge:
+
+[CONSUMER-PROFILE](CONSUMER-PROFILE.md) freezes the concrete V1-CONS-001..010
+ownership/protocol boundary, member paths, source attribution, entry discovery,
+closed reports and exact compatibility table, with 32 pinned literal oracles.
+It does not activate implementation or the separate operation-graph corpus.
 
 - **V1-CONS-001:** Publish project-neutral, file-backed examples of typed
   operation descriptions, arguments/results, reusable resources, explicit
@@ -331,6 +336,12 @@ closure. Consumers receive validated immutable artifacts and derivation facts;
 they do not depend on compiler-side acquisition or reinterpret source syntax.
 
 ## Evidence and completion
+
+The consumer /1 design and boundary-oracle freeze completes only its Stage 8
+contract tasks. The full operation/resource/condition/capability source and
+vocabulary fixture registration, public reader/authoring implementation,
+hostile/boundary validation and production comparisons remain unchecked.
+V1-CONS-011..016 are not covered by this freeze.
 
 The operational checklist is the sole task tracker. Register reviewed fixture
 families and literal outcomes in the conformance manifest at gate activation;

@@ -10,6 +10,20 @@ target_profile = "1.0"
 # are reviewed. The v0.1 corpus remains a required inherited suite.
 
 [[suite]]
+id = "consumer-boundary"
+profile = "neutral.consumer/1; neutral.project-ir/2"
+active_from_stage = 8
+status = "frozen"
+scope = "contract-and-literal-oracles-only; production-activation-pending"
+
+[[case]]
+id = "V1-CONS-BOUNDARY-LITERALS"
+fixture = "portable/specs/fixtures/consumer/boundary.json"
+fixture_sha256 = "a56c4b86452123547f8b7e7e0bd186f78aec5a1420862c05b0616f06076c8ef1"
+oracle = "portable/conformance/oracles/consumer/boundary.json"
+oracle_sha256 = "d4249cc5c5c7f10e053e601401ef54067e4a08816c80b82740aaba3f9dee6bb0"
+
+[[suite]]
 id = "authoring-foundation"
 profile = "neutral.authoring/1; neutral.project-ir/2"
 active_from_stage = 8

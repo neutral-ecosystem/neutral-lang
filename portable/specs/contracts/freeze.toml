@@ -30,6 +30,12 @@ authoring_fixture_path = "portable/specs/fixtures/authoring/foundation.json"
 authoring_fixture_sha256 = "ad073df4b2bb37bd3e8f75dd724e4bc199da6c1e43cc0e401d8893195ac796fb"
 authoring_oracle_path = "portable/conformance/oracles/authoring/foundation.json"
 authoring_oracle_sha256 = "530e837cb28c0a090945d880b4c4844501dc8ef86cd9123a67cd6c8fc82dd84e"
+consumer_contract_path = "portable/specs/contracts/CONSUMER-PROFILE.md"
+consumer_contract_sha256 = "4167baacca66984f633440c9c2026fbd3457453122b475c050940939ae30a0eb"
+consumer_fixture_path = "portable/specs/fixtures/consumer/boundary.json"
+consumer_fixture_sha256 = "a56c4b86452123547f8b7e7e0bd186f78aec5a1420862c05b0616f06076c8ef1"
+consumer_oracle_path = "portable/conformance/oracles/consumer/boundary.json"
+consumer_oracle_sha256 = "d4249cc5c5c7f10e053e601401ef54067e4a08816c80b82740aaba3f9dee6bb0"
 status = "stage1 through stage7 identity, catalogue and explicit successor composition suites active; frozen inputs remain pinned"
 
 [stage2_contract_gate]
@@ -65,7 +71,7 @@ status = "identity-and-explicit-composition-extension-integration-validation-com
 
 [consumer_readiness_plan]
 consumer_readiness_path = "portable/specs/contracts/CONSUMER-READINESS.md"
-status = "scheduled; schema-protocol-and-fixture-review-required"
+status = "consumer-foundation-contract-and-boundary-oracles-frozen; operation-graph-corpus-and-implementation-pending"
 vocabulary_composition_target = "v0.8.0"
 consumer_authoring_target = "v0.9.0"
 
@@ -107,3 +113,11 @@ status = "foundation-contract-frozen-and-26-literal-cases-registered; implementa
 review_date = "2026-10-12"
 scope = "V1-AUTH-001..006 foundation contracts only; first two v0.8.1 tasks"
 activation = "frozen suite; public production comparisons and generic Editor integration required before required-active"
+
+[stage8_consumer_contract_gate]
+profile = "neutral.consumer/1"
+inputs = "fixture_corpus.consumer_contract, consumer_fixture, consumer_oracle"
+status = "contract-frozen-and-32-literal-cases-registered; implementation-pending"
+review_date = "2026-10-12"
+scope = "V1-CONS-001..010 contracts and reader boundary oracles; operation-graph corpus remains separate"
+activation = "frozen suite; independent public production comparisons required before required-active"

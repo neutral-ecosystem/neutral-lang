@@ -5,6 +5,17 @@ status = "stage7-core-catalogue-and-composition-contract-active"
 profile = "1.0"
 
 [[suite]]
+id = "consumer-boundary"
+status = "reviewed-frozen-contract-only; production-comparison-pending"
+requirements = ["V1-CONS-001", "V1-CONS-002", "V1-CONS-003", "V1-CONS-004", "V1-CONS-005", "V1-CONS-006", "V1-CONS-007", "V1-CONS-008", "V1-CONS-009", "V1-CONS-010"]
+fixture_families = ["typed-member-selectors", "future-result-obligations", "public-entry-selection", "field-element-attribution", "private-origin-redaction", "self-contained-closure", "producer-reader-compatibility", "exact-one-over", "cancellation"]
+literal_request_cases = 32
+oracle_directory = "portable/conformance/oracles/consumer"
+review_date = "2026-10-12"
+exclusions = "not production comparison, broader operation-graph corpus, backend execution, or expression/template activation"
+activation = "implement public reader protocol and compare unchanged literal requests/oracles before changing suite to required"
+
+[[suite]]
 id = "authoring-foundation"
 status = "reviewed-frozen-contract-only; production-comparison-pending"
 requirements = ["V1-AUTH-001", "V1-AUTH-002", "V1-AUTH-003", "V1-AUTH-004", "V1-AUTH-005", "V1-AUTH-006"]

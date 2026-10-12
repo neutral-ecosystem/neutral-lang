@@ -29,6 +29,9 @@ rules for values, records, lists, source literals, or v0 vocabulary encoding.
 - [CONSUMER-READINESS.md](CONSUMER-READINESS.md): scheduled `v0.8.0` composite
   vocabulary schema and `v0.9.0` project-neutral reader/authoring data boundaries;
   schema and fixture review must precede activation.
+- [CONSUMER-PROFILE.md](CONSUMER-PROFILE.md): frozen consumer /1 data/reader
+  boundary, typed selectors, safe attribution, entry discovery, reports and
+  exact producer/reader compatibility; 32 literal oracles, implementation pending.
 - [VARIANTS.md](VARIANTS.md): frozen shared source/vocabulary variant grammar,
   typing, nominal ownership and public closure; source activation remains pending.
 - [VOCABULARY-COMPOSITION.md](VOCABULARY-COMPOSITION.md): frozen schema `2.0`

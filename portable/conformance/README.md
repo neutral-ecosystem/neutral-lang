@@ -37,3 +37,10 @@ implementation, public production comparisons, or the generic Editor probe.
 Existing composition pins remain historical checkpoints and are not regenerated
 when later-stage registry entries are appended. Authoring inputs have their own
 byte pins verified through the active freeze's fixture-corpus section.
+
+The `consumer-boundary` suite freezes 32 literal requests/oracles under
+[Consumer/1](../specs/contracts/CONSUMER-PROFILE.md), with separately checked
+contract/input/oracle byte pins. Selectors, entry discovery, attribution/privacy,
+closure, compatibility, limits and cancellation have literal expected outcomes.
+This is not production validation; the broader operation-graph corpus and public
+protocol implementation remain pending. Its status is `frozen`, not `required`.

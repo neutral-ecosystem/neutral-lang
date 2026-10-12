@@ -1,0 +1,337 @@
+{
+  "schema": "neutral.consumer-oracle/1",
+  "scope": "literal-reader-contract-results; public-production-comparison-pending",
+  "cases": [
+    {
+      "id": "selector-field",
+      "status": "accepted",
+      "resolved_type": [
+        "core",
+        "string"
+      ],
+      "value": "api",
+      "availability_obligations": [],
+      "canonical_identity": [
+        "neutral.member-selector/1",
+        "value",
+        [
+          "1.0",
+          "example",
+          "api"
+        ],
+        [
+          [
+            "field",
+            "label"
+          ]
+        ],
+        [
+          "core",
+          "string"
+        ]
+      ]
+    },
+    {
+      "id": "selector-list-index",
+      "status": "accepted",
+      "resolved_type": [
+        "core",
+        "num"
+      ],
+      "value": "443",
+      "availability_obligations": []
+    },
+    {
+      "id": "selector-index-out-of-range",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-003"
+    },
+    {
+      "id": "selector-type-future-index",
+      "status": "accepted",
+      "resolved_type": [
+        "core",
+        "num"
+      ],
+      "value_available": false,
+      "availability_obligations": [
+        {
+          "kind": "index",
+          "path": [
+            {
+              "kind": "field",
+              "name": "ports"
+            },
+            {
+              "kind": "index",
+              "index": 2
+            }
+          ]
+        }
+      ],
+      "canonical_identity": [
+        "neutral.member-selector/1",
+        "type",
+        [
+          "source",
+          "example",
+          "Service"
+        ],
+        [
+          [
+            "field",
+            "ports"
+          ],
+          [
+            "index",
+            2
+          ]
+        ],
+        [
+          "core",
+          "num"
+        ]
+      ]
+    },
+    {
+      "id": "selector-wrong-type",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-004"
+    },
+    {
+      "id": "selector-missing-field",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-003"
+    },
+    {
+      "id": "selector-private-root",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-005"
+    },
+    {
+      "id": "selector-no-implicit-deref",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-004"
+    },
+    {
+      "id": "selector-negative-index",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-002"
+    },
+    {
+      "id": "selector-variant-value",
+      "status": "accepted",
+      "resolved_type": [
+        "core",
+        "string"
+      ],
+      "value": "ok",
+      "availability_obligations": []
+    },
+    {
+      "id": "selector-variant-wrong-active-tag",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-003"
+    },
+    {
+      "id": "entry-enumerate",
+      "status": "accepted",
+      "candidates": [
+        [
+          "1.0",
+          "example",
+          "api"
+        ],
+        [
+          "1.0",
+          "example",
+          "copied"
+        ]
+      ],
+      "project_identity_unchanged": true
+    },
+    {
+      "id": "entry-ambiguous",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-007"
+    },
+    {
+      "id": "entry-unique",
+      "status": "accepted",
+      "roots": [
+        [
+          "1.0",
+          "example",
+          "status"
+        ]
+      ],
+      "project_identity_unchanged": true
+    },
+    {
+      "id": "entry-no-matching-binding",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-006"
+    },
+    {
+      "id": "entry-explicit-empty",
+      "status": "accepted",
+      "roots": [],
+      "view_values": [],
+      "project_identity_unchanged": true
+    },
+    {
+      "id": "entry-explicit-private",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-005"
+    },
+    {
+      "id": "entry-explicit-order",
+      "status": "accepted",
+      "roots": [
+        [
+          "1.0",
+          "example",
+          "api"
+        ],
+        [
+          "1.0",
+          "example",
+          "copied"
+        ]
+      ],
+      "project_identity_unchanged": true
+    },
+    {
+      "id": "origin-field",
+      "status": "accepted",
+      "presence": "supplied",
+      "occurrence": {
+        "state": "available",
+        "source_digest": "sha256:265887d7f4408f5501dbf3c8568e445e30aaffa65b3f7b7b34328aa7f6bc56e3",
+        "start": 184,
+        "end": 189
+      },
+      "origin": {
+        "kind": "supplied"
+      }
+    },
+    {
+      "id": "origin-list-element",
+      "status": "accepted",
+      "presence": "supplied",
+      "occurrence": {
+        "state": "available",
+        "source_digest": "sha256:265887d7f4408f5501dbf3c8568e445e30aaffa65b3f7b7b34328aa7f6bc56e3",
+        "start": 207,
+        "end": 210
+      },
+      "origin": {
+        "kind": "supplied"
+      }
+    },
+    {
+      "id": "origin-private-reuse-redacted",
+      "status": "accepted",
+      "presence": "supplied",
+      "occurrence": {
+        "state": "available",
+        "source_digest": "sha256:265887d7f4408f5501dbf3c8568e445e30aaffa65b3f7b7b34328aa7f6bc56e3",
+        "start": 298,
+        "end": 304
+      },
+      "origin": {
+        "kind": "reuse",
+        "location": {
+          "state": "unavailable",
+          "reason": "redacted"
+        }
+      },
+      "private_source_identifiers_exposed": false
+    },
+    {
+      "id": "origin-invalid-span",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-008"
+    },
+    {
+      "id": "incomplete-contract",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-009"
+    },
+    {
+      "id": "compat-legacy-document",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-001"
+    },
+    {
+      "id": "compat-project-one",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-001"
+    },
+    {
+      "id": "compat-project-two",
+      "status": "accepted",
+      "consumer_requests_allowed": true
+    },
+    {
+      "id": "compat-reader-without-consumer",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-001"
+    },
+    {
+      "id": "compat-missing-required-feature",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-001"
+    },
+    {
+      "id": "compat-unknown-wire",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-001"
+    },
+    {
+      "id": "selector-limit-exact",
+      "status": "accepted",
+      "resolved_type": [
+        "core",
+        "num"
+      ],
+      "value": "80"
+    },
+    {
+      "id": "selector-limit-over",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-010"
+    },
+    {
+      "id": "cancelled",
+      "status": "rejected",
+      "phase": "reader-contract",
+      "code": "NEU-CONS-011"
+    }
+  ],
+  "failure_invariants": {
+    "partial_results": false,
+    "private_origin_exposed": false,
+    "backend_executed": false,
+    "credential_resolved": false,
+    "project_identity_changed_by_selection": false
+  }
+}
