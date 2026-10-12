@@ -10,6 +10,20 @@ target_profile = "1.0"
 # are reviewed. The v0.1 corpus remains a required inherited suite.
 
 [[suite]]
+id = "authoring-foundation"
+profile = "neutral.authoring/1; neutral.project-ir/2"
+active_from_stage = 8
+status = "frozen"
+scope = "contract-and-literal-registration-only; production-activation-pending"
+
+[[case]]
+id = "V1-AUTH-FOUNDATION-LITERALS"
+fixture = "portable/specs/fixtures/authoring/foundation.json"
+fixture_sha256 = "ad073df4b2bb37bd3e8f75dd724e4bc199da6c1e43cc0e401d8893195ac796fb"
+oracle = "portable/conformance/oracles/authoring/foundation.json"
+oracle_sha256 = "530e837cb28c0a090945d880b4c4844501dc8ef86cd9123a67cd6c8fc82dd84e"
+
+[[suite]]
 id = "composition-catalogue"
 profile = "vocabulary-schema-2.0; legacy-schema-1.0-leaf"
 active_from_stage = 7

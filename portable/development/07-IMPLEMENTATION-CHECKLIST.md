@@ -518,10 +518,15 @@ not permission to implement every subsystem before testing any of them.
 
 ### `v0.8.1` — contract and fixture gate
 
-- [ ] Freeze profile discovery, descriptor catalogue, overlay, editable model,
+- [x] Freeze profile discovery, descriptor catalogue, overlay, editable model,
   mappings, projection, formatting, diagnostics, and authoring limits.
-- [ ] Register core/vocabulary catalogue, model, stale-revision, projection,
+  Foundation: [AUTHORING/1](../specs/contracts/AUTHORING.md), pinned in the
+  [freeze record](../specs/contracts/freeze.toml); extensions remain separate gates.
+- [x] Register core/vocabulary catalogue, model, stale-revision, projection,
   round-trip, and mismatch fixtures.
+  [26 literal requests](../specs/fixtures/authoring/foundation.json) and
+  [oracles](../conformance/oracles/authoring/foundation.json) are registered as
+  frozen, not required-active; production comparisons remain implementation work.
 - [ ] Freeze [V1-CONS-001..010](../specs/contracts/CONSUMER-READINESS.md):
   operation/input/result/resource data, explicit prerequisites/output connections,
   structured conditions/deferred inputs, symbolic handles, capability/mapping

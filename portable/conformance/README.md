@@ -29,3 +29,11 @@ authority is the manifest, review and freeze record. No source-header, fallback
 or compiler CLI selection of the successor pipeline is implied.
 Core acceptance and consumer interpretation failures must have separate oracles;
 no backend execution or external product implementation is required.
+
+The `authoring-foundation` suite registers 26 pinned requests/oracles under
+[AUTHORING/1](../specs/contracts/AUTHORING.md). Its status is `frozen`, not
+`required`: foundation contract/fixture completion does not establish bridge
+implementation, public production comparisons, or the generic Editor probe.
+Existing composition pins remain historical checkpoints and are not regenerated
+when later-stage registry entries are appended. Authoring inputs have their own
+byte pins verified through the active freeze's fixture-corpus section.

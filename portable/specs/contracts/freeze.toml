@@ -24,6 +24,12 @@ external_ir_encoding = "NIR-CBOR/1.0-plan"
 [fixture_corpus]
 manifest_path = "portable/conformance/manifest.toml"
 fixture_oracle_review_path = "portable/conformance/fixture-oracle-review.toml"
+authoring_contract_path = "portable/specs/contracts/AUTHORING.md"
+authoring_contract_sha256 = "47e6ab46947aacc1d858206fb564d3fb3c2207e03bea4e42e424079cd9e8426e"
+authoring_fixture_path = "portable/specs/fixtures/authoring/foundation.json"
+authoring_fixture_sha256 = "ad073df4b2bb37bd3e8f75dd724e4bc199da6c1e43cc0e401d8893195ac796fb"
+authoring_oracle_path = "portable/conformance/oracles/authoring/foundation.json"
+authoring_oracle_sha256 = "530e837cb28c0a090945d880b4c4844501dc8ef86cd9123a67cd6c8fc82dd84e"
 status = "stage1 through stage7 identity, catalogue and explicit successor composition suites active; frozen inputs remain pinned"
 
 [stage2_contract_gate]
@@ -93,3 +99,11 @@ ir_schema = "neutral.project-ir/2"
 wire_format = "NIR-PROJECT-CBOR/2"
 status = "frozen-contracts-and-vectors; production-integration-validation-complete"
 activation = "explicit-successor-suite-required; unchanged-frozen-inputs-compared-through-production-boundaries; no-implicit-cli-or-source-header-selection"
+
+[stage8_authoring_contract_gate]
+profile = "neutral.authoring/1"
+inputs = "fixture_corpus.authoring_contract, authoring_fixture, authoring_oracle"
+status = "foundation-contract-frozen-and-26-literal-cases-registered; implementation-pending"
+review_date = "2026-10-12"
+scope = "V1-AUTH-001..006 foundation contracts only; first two v0.8.1 tasks"
+activation = "frozen suite; public production comparisons and generic Editor integration required before required-active"

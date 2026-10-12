@@ -23,7 +23,9 @@ rules for values, records, lists, source literals, or v0 vocabulary encoding.
   domain-separated captured/logical/derivation/artifact transcripts and vectors.
 - [VOCABULARY.md](VOCABULARY.md): exact data-only vocabulary locks and authoring
   metadata boundary.
-- [AUTHORING.md](AUTHORING.md): the separately versioned Editor bridge.
+- [AUTHORING.md](AUTHORING.md): frozen separately versioned authoring foundation,
+  closed model/metadata, stale revisions, deterministic projection/mappings,
+  diagnostics and controls; 26 literal cases registered, implementation pending.
 - [CONSUMER-READINESS.md](CONSUMER-READINESS.md): scheduled `v0.8.0` composite
   vocabulary schema and `v0.9.0` project-neutral reader/authoring data boundaries;
   schema and fixture review must precede activation.

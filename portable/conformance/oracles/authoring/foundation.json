@@ -1,0 +1,309 @@
+{
+  "schema": "neutral.authoring-oracle/1",
+  "scope": "literal-contract-expectations; production-comparison-pending",
+  "cases": [
+    {
+      "id": "core-catalogue",
+      "status": "accepted",
+      "primitive_ids": [
+        [
+          "core",
+          "bool"
+        ],
+        [
+          "core",
+          "num"
+        ],
+        [
+          "core",
+          "path"
+        ],
+        [
+          "core",
+          "string"
+        ],
+        [
+          "core",
+          "url"
+        ]
+      ]
+    },
+    {
+      "id": "vocabulary-catalogue",
+      "status": "accepted",
+      "vocabulary_ids": [
+        [
+          "vocabulary",
+          "Example",
+          "1.0.0",
+          "Work"
+        ]
+      ],
+      "field": {
+        "name": "label",
+        "type": [
+          "core",
+          "string"
+        ],
+        "presence": "required",
+        "restrictions": {}
+      },
+      "alias_duplicates": 0
+    },
+    {
+      "id": "presentation-only",
+      "status": "accepted",
+      "semantic_descriptors_equal": true,
+      "presentation_equal": false,
+      "semantic_inputs_changed": false
+    },
+    {
+      "id": "unknown-profile",
+      "status": "rejected",
+      "code": "NEU-AUTH-001"
+    },
+    {
+      "id": "unknown-feature",
+      "status": "rejected",
+      "code": "NEU-AUTH-001"
+    },
+    {
+      "id": "metadata-semantic-override",
+      "status": "rejected",
+      "code": "NEU-AUTH-002"
+    },
+    {
+      "id": "open-overlay",
+      "status": "accepted",
+      "symbols": [
+        {
+          "module": "example",
+          "name": "answer",
+          "type": [
+            "core",
+            "num"
+          ],
+          "public": true
+        }
+      ],
+      "model": "scalar"
+    },
+    {
+      "id": "redacted-source",
+      "status": "rejected",
+      "code": "NEU-AUTH-005"
+    },
+    {
+      "id": "stale-source",
+      "status": "rejected",
+      "code": "NEU-AUTH-003"
+    },
+    {
+      "id": "stale-metadata",
+      "status": "rejected",
+      "code": "NEU-AUTH-003"
+    },
+    {
+      "id": "unknown-model-member",
+      "status": "rejected",
+      "code": "NEU-AUTH-002"
+    },
+    {
+      "id": "dangling-connection",
+      "status": "rejected",
+      "code": "NEU-AUTH-004"
+    },
+    {
+      "id": "duplicate-input",
+      "status": "rejected",
+      "code": "NEU-AUTH-004"
+    },
+    {
+      "id": "project-scalar",
+      "status": "accepted",
+      "sources": [
+        {
+          "source_id": "source:example",
+          "module": "example",
+          "source_utf8": "neu \"1.0\"\nmodule example\n\npublic num answer = 42\n"
+        }
+      ],
+      "mappings": [
+        {
+          "model_id": "answer",
+          "source_id": "source:example",
+          "start": 26,
+          "end": 48,
+          "role": "declaration"
+        },
+        {
+          "model_id": "number",
+          "source_id": "source:example",
+          "start": 46,
+          "end": 48,
+          "role": "value"
+        }
+      ]
+    },
+    {
+      "id": "project-reuse",
+      "status": "accepted",
+      "sources": [
+        {
+          "source_id": "source:example",
+          "module": "example",
+          "source_utf8": "neu \"1.0\"\nmodule example\n\npublic num answer = 42\npublic num copy = answer\n"
+        }
+      ],
+      "mappings": [
+        {
+          "model_id": "answer",
+          "source_id": "source:example",
+          "start": 26,
+          "end": 48,
+          "role": "declaration"
+        },
+        {
+          "model_id": "number",
+          "source_id": "source:example",
+          "start": 46,
+          "end": 48,
+          "role": "value"
+        },
+        {
+          "model_id": "copy",
+          "source_id": "source:example",
+          "start": 49,
+          "end": 73,
+          "role": "declaration"
+        },
+        {
+          "model_id": "copy-input",
+          "source_id": "source:example",
+          "start": 67,
+          "end": 73,
+          "role": "connection"
+        },
+        {
+          "model_id": "copy-input",
+          "source_id": "source:example",
+          "start": 67,
+          "end": 73,
+          "role": "value"
+        }
+      ]
+    },
+    {
+      "id": "project-unicode-mappings",
+      "status": "accepted",
+      "sources": [
+        {
+          "source_id": "source:example",
+          "module": "example",
+          "source_utf8": "neu \"1.0\"\nmodule example\n\npublic string greeting = \"café\"\n"
+        }
+      ],
+      "mappings": [
+        {
+          "model_id": "greeting",
+          "source_id": "source:example",
+          "start": 26,
+          "end": 58,
+          "role": "declaration"
+        },
+        {
+          "model_id": "text",
+          "source_id": "source:example",
+          "start": 51,
+          "end": 58,
+          "role": "value"
+        }
+      ]
+    },
+    {
+      "id": "format-idempotent",
+      "status": "accepted",
+      "sources": [
+        {
+          "source_id": "source:example",
+          "module": "example",
+          "source_utf8": "neu \"1.0\"\nmodule example\n\npublic num answer = 42\n"
+        }
+      ],
+      "second_pass_byte_identical": true,
+      "logical_identity_equal": true
+    },
+    {
+      "id": "round-trip",
+      "status": "accepted",
+      "sources": [
+        {
+          "source_id": "source:example",
+          "module": "example",
+          "source_utf8": "neu \"1.0\"\nmodule example\n\npublic num answer = 42\npublic num copy = answer\n"
+        }
+      ],
+      "canonical_passes_byte_identical": true,
+      "logical_identity_equal": true,
+      "reuse_connection_retained": true
+    },
+    {
+      "id": "compiler-rejected",
+      "status": "rejected",
+      "code": "NEU-AUTH-008",
+      "core_diagnostics_required": true
+    },
+    {
+      "id": "accepted-meaning-mismatch",
+      "status": "rejected",
+      "code": "NEU-AUTH-009"
+    },
+    {
+      "id": "nodes-exact",
+      "status": "accepted",
+      "nodes": 3
+    },
+    {
+      "id": "nodes-over",
+      "status": "rejected",
+      "code": "NEU-AUTH-006"
+    },
+    {
+      "id": "output-exact",
+      "status": "accepted",
+      "output_bytes": 49
+    },
+    {
+      "id": "output-over",
+      "status": "rejected",
+      "code": "NEU-AUTH-006"
+    },
+    {
+      "id": "cancelled",
+      "status": "rejected",
+      "code": "NEU-AUTH-007"
+    },
+    {
+      "id": "project-record-default-omission",
+      "status": "accepted",
+      "sources": [
+        {
+          "source_id": "source:example",
+          "module": "example",
+          "source_utf8": "neu \"1.0\"\nmodule example\n\npublic record Service {\n    string label,\n    num replicas = 1,\n}\npublic Service api = {\n    label: \"api\",\n}\n"
+        }
+      ],
+      "omitted_fields": [
+        "api.replicas"
+      ],
+      "default_value_retained": "1",
+      "multiline_aggregates": true
+    }
+  ],
+  "failure_invariants": {
+    "partial_buffers": false,
+    "partial_mappings": false,
+    "partial_ir": false,
+    "replaces_previous_generation": false
+  }
+}

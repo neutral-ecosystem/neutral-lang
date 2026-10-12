@@ -1,0 +1,796 @@
+{
+  "schema": "neutral.authoring-fixture/1",
+  "scope": "frozen-foundation-contract-only; no-production-activation",
+  "profiles": {
+    "core": "1.0",
+    "capture": "neutral.capture/v2",
+    "ir": "neutral.project-ir/2",
+    "authoring": "neutral.authoring/1",
+    "required_features": [
+      "tagged-variants-v1",
+      "vocabulary-composition-v2"
+    ]
+  },
+  "controls": {
+    "input_bytes": 65536,
+    "descriptors": 64,
+    "properties": 128,
+    "units": 8,
+    "nodes": 128,
+    "connections": 64,
+    "depth": 16,
+    "metadata_entries": 32,
+    "text_bytes": 4096,
+    "mappings": 256,
+    "output_bytes": 65536,
+    "diagnostics": 32,
+    "work": 1000000
+  },
+  "inputs": {
+    "vocabularies": {
+      "example": {
+        "format": "neutral-vocabulary-bundle",
+        "encoding_version": "1.0",
+        "schema_version": "2.0",
+        "identity": "Example",
+        "version": "1.0.0",
+        "required_features": [
+          "vocabulary-composition-v2"
+        ],
+        "dependencies": [],
+        "types": [
+          {
+            "kind": "record",
+            "name": "Work",
+            "public": true,
+            "fields": [
+              {
+                "name": "label",
+                "type": {
+                  "kind": "string"
+                },
+                "presence": "required",
+                "restrictions": {}
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "metadata": {
+      "none": {
+        "schema": "neutral.authoring-metadata/1",
+        "entries": []
+      },
+      "labels": {
+        "schema": "neutral.authoring-metadata/1",
+        "entries": [
+          {
+            "target": [
+              "vocabulary",
+              "Example",
+              "1.0.0",
+              "Work"
+            ],
+            "label": "Work item",
+            "description": "Plain <text>, not markup",
+            "group": "Examples"
+          }
+        ]
+      },
+      "semantic-override": {
+        "schema": "neutral.authoring-metadata/1",
+        "entries": [
+          {
+            "target": [
+              "vocabulary",
+              "Example",
+              "1.0.0",
+              "Work"
+            ],
+            "label": "Work item",
+            "description": "Plain <text>, not markup",
+            "group": "Examples",
+            "default": "forbidden"
+          }
+        ]
+      },
+      "core-labels": {
+        "schema": "neutral.authoring-metadata/1",
+        "entries": [
+          {
+            "target": [
+              "core",
+              "num"
+            ],
+            "label": "Exact number"
+          }
+        ]
+      }
+    },
+    "models": {
+      "scalar": {
+        "schema": "neutral.authoring-model/1",
+        "units": [
+          {
+            "id": "u",
+            "source_id": "source:example",
+            "module": "example",
+            "imports": [],
+            "uses": [],
+            "declarations": [
+              {
+                "id": "answer",
+                "kind": "binding",
+                "name": "answer",
+                "public": true,
+                "type": [
+                  "core",
+                  "num"
+                ],
+                "value": {
+                  "id": "number",
+                  "kind": "num",
+                  "value": "42"
+                }
+              }
+            ],
+            "comments": []
+          }
+        ],
+        "connections": []
+      },
+      "reuse": {
+        "schema": "neutral.authoring-model/1",
+        "units": [
+          {
+            "id": "u",
+            "source_id": "source:example",
+            "module": "example",
+            "imports": [],
+            "uses": [],
+            "declarations": [
+              {
+                "id": "answer",
+                "kind": "binding",
+                "name": "answer",
+                "public": true,
+                "type": [
+                  "core",
+                  "num"
+                ],
+                "value": {
+                  "id": "number",
+                  "kind": "num",
+                  "value": "42"
+                }
+              },
+              {
+                "id": "copy",
+                "kind": "binding",
+                "name": "copy",
+                "public": true,
+                "type": [
+                  "core",
+                  "num"
+                ],
+                "value": {
+                  "id": "copy-input",
+                  "kind": "input"
+                }
+              }
+            ],
+            "comments": []
+          }
+        ],
+        "connections": [
+          {
+            "kind": "reuse",
+            "target": "answer",
+            "input": "copy-input"
+          }
+        ]
+      },
+      "unknown-member": {
+        "schema": "neutral.authoring-model/1",
+        "units": [
+          {
+            "id": "u",
+            "source_id": "source:example",
+            "module": "example",
+            "imports": [],
+            "uses": [],
+            "declarations": [
+              {
+                "id": "answer",
+                "kind": "binding",
+                "name": "answer",
+                "public": true,
+                "type": [
+                  "core",
+                  "num"
+                ],
+                "value": {
+                  "id": "number",
+                  "kind": "num",
+                  "value": "42"
+                }
+              }
+            ],
+            "comments": []
+          }
+        ],
+        "connections": [],
+        "script": "execute"
+      },
+      "dangling": {
+        "schema": "neutral.authoring-model/1",
+        "units": [
+          {
+            "id": "u",
+            "source_id": "source:example",
+            "module": "example",
+            "imports": [],
+            "uses": [],
+            "declarations": [
+              {
+                "id": "answer",
+                "kind": "binding",
+                "name": "answer",
+                "public": true,
+                "type": [
+                  "core",
+                  "num"
+                ],
+                "value": {
+                  "id": "number",
+                  "kind": "num",
+                  "value": "42"
+                }
+              },
+              {
+                "id": "copy",
+                "kind": "binding",
+                "name": "copy",
+                "public": true,
+                "type": [
+                  "core",
+                  "num"
+                ],
+                "value": {
+                  "id": "copy-input",
+                  "kind": "input"
+                }
+              }
+            ],
+            "comments": []
+          }
+        ],
+        "connections": [
+          {
+            "kind": "reuse",
+            "target": "missing",
+            "input": "copy-input"
+          }
+        ]
+      },
+      "duplicate-input": {
+        "schema": "neutral.authoring-model/1",
+        "units": [
+          {
+            "id": "u",
+            "source_id": "source:example",
+            "module": "example",
+            "imports": [],
+            "uses": [],
+            "declarations": [
+              {
+                "id": "answer",
+                "kind": "binding",
+                "name": "answer",
+                "public": true,
+                "type": [
+                  "core",
+                  "num"
+                ],
+                "value": {
+                  "id": "number",
+                  "kind": "num",
+                  "value": "42"
+                }
+              },
+              {
+                "id": "copy",
+                "kind": "binding",
+                "name": "copy",
+                "public": true,
+                "type": [
+                  "core",
+                  "num"
+                ],
+                "value": {
+                  "id": "copy-input",
+                  "kind": "input"
+                }
+              }
+            ],
+            "comments": []
+          }
+        ],
+        "connections": [
+          {
+            "kind": "reuse",
+            "target": "answer",
+            "input": "copy-input"
+          },
+          {
+            "kind": "reuse",
+            "target": "answer",
+            "input": "copy-input"
+          }
+        ]
+      },
+      "unicode": {
+        "schema": "neutral.authoring-model/1",
+        "units": [
+          {
+            "id": "u",
+            "source_id": "source:example",
+            "module": "example",
+            "imports": [],
+            "uses": [],
+            "declarations": [
+              {
+                "id": "greeting",
+                "kind": "binding",
+                "name": "greeting",
+                "public": true,
+                "type": [
+                  "core",
+                  "string"
+                ],
+                "value": {
+                  "id": "text",
+                  "kind": "string",
+                  "value": "café"
+                }
+              }
+            ],
+            "comments": []
+          }
+        ],
+        "connections": []
+      },
+      "record": {
+        "schema": "neutral.authoring-model/1",
+        "units": [
+          {
+            "id": "u",
+            "source_id": "source:example",
+            "module": "example",
+            "imports": [],
+            "uses": [],
+            "declarations": [
+              {
+                "id": "service",
+                "kind": "record",
+                "name": "Service",
+                "public": true,
+                "fields": [
+                  {
+                    "name": "label",
+                    "type": [
+                      "core",
+                      "string"
+                    ],
+                    "presence": "required",
+                    "restrictions": {}
+                  },
+                  {
+                    "name": "replicas",
+                    "type": [
+                      "core",
+                      "num"
+                    ],
+                    "presence": "defaulted",
+                    "restrictions": {},
+                    "default": {
+                      "id": "replicas-default",
+                      "kind": "num",
+                      "value": "1"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "api",
+                "kind": "binding",
+                "name": "api",
+                "public": true,
+                "type": [
+                  "source",
+                  "example",
+                  "Service"
+                ],
+                "value": {
+                  "id": "api-value",
+                  "kind": "record",
+                  "fields": [
+                    {
+                      "name": "label",
+                      "value": {
+                        "id": "label-value",
+                        "kind": "string",
+                        "value": "api"
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "comments": []
+          }
+        ],
+        "connections": []
+      }
+    },
+    "sources": {
+      "canonical": [
+        {
+          "source_id": "source:example",
+          "module": "example",
+          "source_utf8": "neu \"1.0\"\nmodule example\n\npublic num answer = 42\n"
+        }
+      ],
+      "reuse": [
+        {
+          "source_id": "source:example",
+          "module": "example",
+          "source_utf8": "neu \"1.0\"\nmodule example\n\npublic num answer = 42\npublic num copy = answer\n"
+        }
+      ],
+      "unicode": [
+        {
+          "source_id": "source:example",
+          "module": "example",
+          "source_utf8": "neu \"1.0\"\nmodule example\n\npublic string greeting = \"café\"\n"
+        }
+      ],
+      "noncanonical": [
+        {
+          "source_id": "source:example",
+          "module": "example",
+          "source_utf8": "neu \"1.0\"\r\nmodule example\r\npublic num answer=42\r\n"
+        }
+      ],
+      "changed": [
+        {
+          "source_id": "source:example",
+          "module": "example",
+          "source_utf8": "neu \"1.0\"\nmodule example\n\npublic num answer = 43\n"
+        }
+      ],
+      "invalid": [
+        {
+          "source_id": "source:example",
+          "module": "example",
+          "source_utf8": "neu \"1.0\"\nmodule example\npublic num answer = \"wrong\"\n"
+        }
+      ],
+      "record": [
+        {
+          "source_id": "source:example",
+          "module": "example",
+          "source_utf8": "neu \"1.0\"\nmodule example\n\npublic record Service {\n    string label,\n    num replicas = 1,\n}\npublic Service api = {\n    label: \"api\",\n}\n"
+        }
+      ]
+    },
+    "snapshots": {
+      "initial": {
+        "sources": "canonical",
+        "vocabularies": [],
+        "metadata": "none"
+      },
+      "reuse": {
+        "sources": "reuse",
+        "vocabularies": [],
+        "metadata": "none"
+      },
+      "unicode": {
+        "sources": "unicode",
+        "vocabularies": [],
+        "metadata": "none"
+      },
+      "changed-source": {
+        "sources": "changed",
+        "vocabularies": [],
+        "metadata": "none"
+      },
+      "changed-metadata": {
+        "sources": "canonical",
+        "vocabularies": [],
+        "metadata": "core-labels"
+      },
+      "redacted": {
+        "sources": null,
+        "vocabularies": [],
+        "metadata": "none"
+      },
+      "record": {
+        "sources": "record",
+        "vocabularies": [],
+        "metadata": "none"
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "core-catalogue",
+      "operation": "discover",
+      "request": {
+        "vocabularies": [],
+        "metadata": "none"
+      }
+    },
+    {
+      "id": "vocabulary-catalogue",
+      "operation": "discover",
+      "request": {
+        "vocabularies": [
+          "example"
+        ],
+        "metadata": "none",
+        "source_aliases": [
+          "first",
+          "second"
+        ]
+      }
+    },
+    {
+      "id": "presentation-only",
+      "operation": "discover",
+      "request": {
+        "vocabularies": [
+          "example"
+        ],
+        "metadata": "labels",
+        "compare_metadata": "none"
+      }
+    },
+    {
+      "id": "unknown-profile",
+      "operation": "discover",
+      "request": {
+        "profiles": {
+          "core": "1.0",
+          "capture": "neutral.capture/v2",
+          "ir": "neutral.project-ir/2",
+          "authoring": "neutral.authoring/999",
+          "required_features": [
+            "tagged-variants-v1",
+            "vocabulary-composition-v2"
+          ]
+        },
+        "vocabularies": [],
+        "metadata": "none"
+      }
+    },
+    {
+      "id": "unknown-feature",
+      "operation": "discover",
+      "request": {
+        "profiles": {
+          "core": "1.0",
+          "capture": "neutral.capture/v2",
+          "ir": "neutral.project-ir/2",
+          "authoring": "neutral.authoring/1",
+          "required_features": [
+            "tagged-variants-v1",
+            "vocabulary-composition-v2",
+            "unknown-required-feature"
+          ]
+        },
+        "vocabularies": [],
+        "metadata": "none"
+      }
+    },
+    {
+      "id": "metadata-semantic-override",
+      "operation": "discover",
+      "request": {
+        "vocabularies": [
+          "example"
+        ],
+        "metadata": "semantic-override"
+      }
+    },
+    {
+      "id": "open-overlay",
+      "operation": "open",
+      "request": {
+        "snapshot": "initial"
+      }
+    },
+    {
+      "id": "redacted-source",
+      "operation": "open",
+      "request": {
+        "snapshot": "redacted"
+      }
+    },
+    {
+      "id": "stale-source",
+      "operation": "project",
+      "request": {
+        "base_snapshot": "initial",
+        "current_snapshot": "changed-source",
+        "model": "scalar"
+      }
+    },
+    {
+      "id": "stale-metadata",
+      "operation": "project",
+      "request": {
+        "base_snapshot": "initial",
+        "current_snapshot": "changed-metadata",
+        "model": "scalar"
+      }
+    },
+    {
+      "id": "unknown-model-member",
+      "operation": "project",
+      "request": {
+        "base_snapshot": "initial",
+        "current_snapshot": "initial",
+        "model": "unknown-member"
+      }
+    },
+    {
+      "id": "dangling-connection",
+      "operation": "project",
+      "request": {
+        "base_snapshot": "reuse",
+        "current_snapshot": "reuse",
+        "model": "dangling"
+      }
+    },
+    {
+      "id": "duplicate-input",
+      "operation": "project",
+      "request": {
+        "base_snapshot": "reuse",
+        "current_snapshot": "reuse",
+        "model": "duplicate-input"
+      }
+    },
+    {
+      "id": "project-scalar",
+      "operation": "project",
+      "request": {
+        "base_snapshot": "initial",
+        "current_snapshot": "initial",
+        "model": "scalar"
+      }
+    },
+    {
+      "id": "project-reuse",
+      "operation": "project",
+      "request": {
+        "base_snapshot": "reuse",
+        "current_snapshot": "reuse",
+        "model": "reuse"
+      }
+    },
+    {
+      "id": "project-unicode-mappings",
+      "operation": "project",
+      "request": {
+        "base_snapshot": "unicode",
+        "current_snapshot": "unicode",
+        "model": "unicode"
+      }
+    },
+    {
+      "id": "format-idempotent",
+      "operation": "format",
+      "request": {
+        "sources": "noncanonical",
+        "repeat": 2
+      }
+    },
+    {
+      "id": "round-trip",
+      "operation": "round-trip",
+      "request": {
+        "snapshot": "reuse",
+        "model": "reuse",
+        "cycles": 2
+      }
+    },
+    {
+      "id": "compiler-rejected",
+      "operation": "verify",
+      "request": {
+        "snapshot": "initial",
+        "model": "scalar",
+        "candidate_sources": "invalid"
+      }
+    },
+    {
+      "id": "accepted-meaning-mismatch",
+      "operation": "verify",
+      "request": {
+        "snapshot": "initial",
+        "model": "scalar",
+        "candidate_sources": "changed"
+      }
+    },
+    {
+      "id": "nodes-exact",
+      "operation": "project",
+      "request": {
+        "base_snapshot": "initial",
+        "current_snapshot": "initial",
+        "model": "scalar",
+        "controls": {
+          "nodes": 3
+        }
+      }
+    },
+    {
+      "id": "nodes-over",
+      "operation": "project",
+      "request": {
+        "base_snapshot": "initial",
+        "current_snapshot": "initial",
+        "model": "scalar",
+        "controls": {
+          "nodes": 2
+        }
+      }
+    },
+    {
+      "id": "output-exact",
+      "operation": "project",
+      "request": {
+        "base_snapshot": "initial",
+        "current_snapshot": "initial",
+        "model": "scalar",
+        "controls": {
+          "output_bytes": 49
+        }
+      }
+    },
+    {
+      "id": "output-over",
+      "operation": "project",
+      "request": {
+        "base_snapshot": "initial",
+        "current_snapshot": "initial",
+        "model": "scalar",
+        "controls": {
+          "output_bytes": 48
+        }
+      }
+    },
+    {
+      "id": "cancelled",
+      "operation": "project",
+      "request": {
+        "base_snapshot": "initial",
+        "current_snapshot": "initial",
+        "model": "scalar",
+        "cancelled": true
+      }
+    },
+    {
+      "id": "project-record-default-omission",
+      "operation": "project",
+      "request": {
+        "base_snapshot": "record",
+        "current_snapshot": "record",
+        "model": "record"
+      }
+    }
+  ]
+}

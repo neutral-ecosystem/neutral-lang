@@ -5,6 +5,17 @@ status = "stage7-core-catalogue-and-composition-contract-active"
 profile = "1.0"
 
 [[suite]]
+id = "authoring-foundation"
+status = "reviewed-frozen-contract-only; production-comparison-pending"
+requirements = ["V1-AUTH-001", "V1-AUTH-002", "V1-AUTH-003", "V1-AUTH-004", "V1-AUTH-005", "V1-AUTH-006"]
+fixture_families = ["core-vocabulary-catalogue", "metadata-semantic-separation", "model-connections", "stale-source-and-metadata", "projection-utf8-mappings", "format-idempotence", "round-trip", "compiler-rejection-and-mismatch", "exact-one-over", "cancellation", "redacted-source"]
+literal_request_cases = 26
+oracle_directory = "portable/conformance/oracles/authoring"
+review_date = "2026-10-12"
+exclusions = "not an implemented bridge, active conformance pass, generic Editor probe, consumer protocol, or expression/template authoring activation"
+activation = "implement foundation and compare unchanged literal requests/oracles through public authoring/compiler/reader boundaries before changing suite to required"
+
+[[suite]]
 id = "composition-catalogue"
 status = "reviewed-active-standalone-catalogue-only"
 requirements = ["V1-VOC-005", "V1-VOC-006", "V1-VOC-007", "V1-VOC-008", "V1-VOC-009", "V1-VOC-010", "V1-VOC-011"]
