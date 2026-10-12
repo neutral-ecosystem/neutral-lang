@@ -6,6 +6,11 @@ This directory is the supported Linux entry layer for Neutral contributors and
 release operators. It is owned by repository operations and has no authority
 over language behavior or release policy.
 
+Usage failures use the red `FAIL` label on supported terminals. `NO_COLOR`,
+`CARGO_TERM_COLOR=never`, redirected output, and dumb terminals keep it plain;
+`CARGO_TERM_COLOR=always` forces color. Successful output and workflow progress
+come from the delegated `cargo xtask` command using its standard status labels.
+
 | Script | Responsibility | Inputs | Outputs | Delegates to |
 | --- | --- | --- | --- | --- |
 | `bootstrap.sh` | Verify the Linux host, architecture, TLS/archive/checksum tools, Rust, and Cargo | Repository checkout and optional command overrides | Bootstrap environment evidence | `cargo xtask bootstrap` |
