@@ -24,6 +24,8 @@ mod pipeline;
 const VECTORS: &str = include_str!("fixtures/identity/vectors.json");
 /// Shared source inputs; consumers do not need to know the fixture directory layout.
 mod sources {
+    /// Supplied/null/default/reuse distinctions and explicitly nullable traversal barriers.
+    pub(super) const SELECTORS: &str = include_str!("fixtures/source/selectors.neu");
     /// Public records, bindings and a private reuse source for consumer envelopes.
     pub(super) const CONSUMER: &str = include_str!("fixtures/source/consumer.neu");
     /// Source defaults and immutable reuse with checked occurrence evidence.

@@ -16,6 +16,7 @@ composition_contract/
     ├── mod.rs              shared pipeline helpers and round-trip tests
     ├── allocation.rs       failure/cancellation sweeps
     ├── consumer.rs         closed description/report envelopes
+    ├── selectors.rs        public member traversal and safe origin projection
     ├── graphs.rs           module and vocabulary graph families
     ├── hardening.rs        cache, hostile input and independent bounds
     ├── reader_probe.rs     public views, source evidence and standalone probe

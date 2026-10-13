@@ -3,6 +3,7 @@
 # Source regression inputs
 
 Readable `.neu` programs cover source defaults/reuse, valid reference cycles,
-invalid value-reuse cycles and public/private consumer descriptions. Shared source
+invalid value-reuse cycles, public/private consumer descriptions and typed selector
+null/default/reuse distinctions (`selectors.neu`). Shared source
 constants in the suite root feed compilation, reader/probe, cache and allocation
 tests. Invalid programs are intentional rejection cases, not examples to repair.

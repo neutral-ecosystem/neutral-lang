@@ -3,7 +3,7 @@
 # Complete composition pipeline tests
 
 `mod.rs` owns shared capture/compile/reader helpers and source-to-artifact cases.
-Sibling modules cover allocation failures, consumer envelopes, graph assembly,
+Sibling modules cover allocation failures, consumer envelopes and typed selectors, graph assembly,
 cache/boundary hardening and independent reader/probe inspection. `identity/`
 compares production identity layers against literal independent expectations.
 Source inputs come from the parent suite's `sources` module; fixture paths are

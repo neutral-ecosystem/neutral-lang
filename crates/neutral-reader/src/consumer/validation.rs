@@ -23,11 +23,11 @@ use neutral_ir::{
 /// Explicit registration over a complete validated project; no consumer code runs here.
 pub struct ConsumerBoundary<'p, 'a> {
     /// Independently checked complete project authority.
-    project: &'p ValidatedCompositionProject,
+    pub(super) project: &'p ValidatedCompositionProject,
     /// Explicit consumer registration; never invokes a callback.
     protocol: ConsumerProtocol<'a>,
     /// Positive caller controls intersected with hard ceilings.
-    limits: ConsumerLimits,
+    pub(super) limits: ConsumerLimits,
     /// Complete logical identity computed once, without consumer context.
     identity: CompositionLogicalIdentity,
 }
@@ -253,7 +253,7 @@ impl<'p, 'a> ConsumerBoundary<'p, 'a> {
 }
 
 /// Per-request accounting; existing validated payload storage is borrowed, not rematerialized.
-struct Budget<'a> {
+pub(super) struct Budget<'a> {
     /// Effective independent request controls.
     limits: ConsumerLimits,
     /// Request-local signal checked before every bounded operation.
@@ -265,7 +265,7 @@ struct Budget<'a> {
 }
 impl<'a> Budget<'a> {
     /// Starts independent accounting for one atomic request.
-    fn new(limits: ConsumerLimits, cancellation: &'a CancellationToken) -> Self {
+    pub(super) fn new(limits: ConsumerLimits, cancellation: &'a CancellationToken) -> Self {
         Self {
             limits,
             cancellation,
@@ -274,7 +274,7 @@ impl<'a> Budget<'a> {
         }
     }
     /// Checks cancellation and charges work before traversal or comparison.
-    fn work(&mut self, count: u64) -> Result<(), ConsumerError> {
+    pub(super) fn work(&mut self, count: u64) -> Result<(), ConsumerError> {
         if self.cancellation.is_cancelled() {
             return Err(ConsumerError::Cancelled);
         }
@@ -285,7 +285,7 @@ impl<'a> Budget<'a> {
         Ok(())
     }
     /// Charges aggregate envelope data before retention or expansion.
-    fn bytes(&mut self, count: u64) -> Result<(), ConsumerError> {
+    pub(super) fn bytes(&mut self, count: u64) -> Result<(), ConsumerError> {
         self.work(1)?;
         self.bytes = self.bytes.checked_add(count).ok_or(ConsumerError::Limit)?;
         if self.bytes > self.limits.bytes {
@@ -294,7 +294,7 @@ impl<'a> Budget<'a> {
         Ok(())
     }
     /// Bounds a public identifier; caller ownership, not heuristics, excludes secrets.
-    fn text(&mut self, text: &str) -> Result<(), ConsumerError> {
+    pub(super) fn text(&mut self, text: &str) -> Result<(), ConsumerError> {
         self.work(text.len() as u64 + 1)?;
         if text.len() as u64 > self.limits.text_bytes {
             return Err(ConsumerError::Limit);
@@ -306,13 +306,16 @@ impl<'a> Budget<'a> {
         Ok(())
     }
     /// Checks every identity component before comparing it with reader authority.
-    fn symbol(&mut self, symbol: &ModuleSymbolIdentity) -> Result<(), ConsumerError> {
+    pub(super) fn symbol(&mut self, symbol: &ModuleSymbolIdentity) -> Result<(), ConsumerError> {
         self.text(symbol.module().language_behavior_version())?;
         self.text(symbol.module().module_name())?;
         self.text(symbol.declaration_name())
     }
     /// Charges comparisons against already checked project keys without retaining them.
-    fn authority_symbol(&mut self, symbol: &ModuleSymbolIdentity) -> Result<(), ConsumerError> {
+    pub(super) fn authority_symbol(
+        &mut self,
+        symbol: &ModuleSymbolIdentity,
+    ) -> Result<(), ConsumerError> {
         self.work(symbol.module().language_behavior_version().len() as u64)?;
         self.work(symbol.module().module_name().len() as u64)?;
         self.work(symbol.declaration_name().len() as u64 + 1)
@@ -362,7 +365,7 @@ impl<'a> Budget<'a> {
 }
 
 /// Looks up a public binding while keeping absent and private targets indistinguishable.
-fn binding<'p>(
+pub(super) fn binding<'p>(
     project: &'p ValidatedCompositionProject,
     owner: &ModuleSymbolIdentity,
     budget: &mut Budget<'_>,
@@ -383,7 +386,7 @@ fn binding<'p>(
 }
 
 /// Requires an exact public nominal source or vocabulary contract, never duck typing.
-fn public_type(
+pub(super) fn public_type(
     project: &ValidatedCompositionProject,
     ty: &ProjectPublicType,
     budget: &mut Budget<'_>,
@@ -494,7 +497,7 @@ fn location(
 }
 
 /// Reuse evidence can belong to a private declaration even when its consuming binding is public.
-fn public_location(
+pub(super) fn public_location(
     project: &ValidatedCompositionProject,
     location: neutral_core::SourceLocation,
     budget: &mut Budget<'_>,

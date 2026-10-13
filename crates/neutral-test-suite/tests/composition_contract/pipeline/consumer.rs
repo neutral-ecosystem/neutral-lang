@@ -177,7 +177,7 @@ fn security_consumer_public_reuse_cannot_disclose_private_origin() {
 }
 
 /// Independently decodes bytes and checks the complete round trip before envelope testing.
-fn roundtrip(
+pub(super) fn roundtrip(
     project: &ValidatedCompositionProject,
     cancel: &CancellationToken,
 ) -> ValidatedCompositionProject {
@@ -572,15 +572,15 @@ fn security_consumer_independent_limits_reject_at_acceptance_boundary() {
     }
 }
 
-fn owner(name: &str) -> ModuleSymbolIdentity {
+pub(super) fn owner(name: &str) -> ModuleSymbolIdentity {
     ModuleSymbolIdentity::new(LogicalModuleIdentity::new("1.0", "example"), name)
 }
 
-fn project() -> ValidatedCompositionProject {
+pub(super) fn project() -> ValidatedCompositionProject {
     compile(&source_case(sources::CONSUMER))
 }
 
-fn protocol(contract: &T) -> ConsumerProtocol<'_> {
+pub(super) fn protocol(contract: &T) -> ConsumerProtocol<'_> {
     ConsumerProtocol {
         report_contract: contract,
         supported_features: &["emit", "join"],

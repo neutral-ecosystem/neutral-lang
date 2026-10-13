@@ -1,0 +1,25 @@
+neu "1.0"
+module example
+
+public record Selection {
+    string? maybe,
+    List<string>? labels,
+    string label = "fallback",
+}
+
+record Hidden {
+    string secret,
+}
+
+public Selection supplied = {
+    maybe: null,
+    labels: ["one"],
+    label: "fallback",
+}
+
+public Selection defaulted = {
+    maybe: null,
+    labels: ["one"],
+}
+
+public Selection copied = supplied

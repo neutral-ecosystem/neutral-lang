@@ -15,7 +15,9 @@ use neutral_ir::{
     ModuleSymbolIdentity, composition::ValuePathSegment, project_interface::ProjectPublicType,
 };
 
+mod selectors;
 mod validation;
+pub use selectors::*;
 pub use validation::ConsumerBoundary;
 
 /// Frozen description envelope schema, independent of language and wire versions.
@@ -105,7 +107,7 @@ pub struct ConsumerLimits {
     pub path_segments: u64,
     /// Validation visits and conservative comparison work.
     pub work: u64,
-    /// Retained diagnostic index bytes.
+    /// Retained projection structs, obligation arrays and diagnostic index bytes, excluding borrowed authority.
     pub output_bytes: u64,
 }
 

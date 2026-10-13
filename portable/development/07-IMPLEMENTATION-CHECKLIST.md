@@ -595,8 +595,12 @@ Slice 1 — consumer contract foundation:
   projects, exact public contracts, explicit features/context and real logical
   identity. File-backed examples test statuses, privacy, limits and atomic failures.
   JSON transport codecs and full consumer-profile activation are not implied.
-- [ ] Implement bounded public field-level attribution and typed selectors;
+- [x] Implement bounded public field-level attribution and typed selectors;
   preserve safe supplied/default/reuse origins without runtime evaluation.
+  Reader-only typed field/index/alternative lookup checks exact public types and
+  retains type-mode availability obligations. Origin projection preserves checked
+  default/reuse ownership and safe occurrences with explicit redaction/absence;
+  decoded-artifact tests cover independent bounds, allocation faults and cancellation.
 - [ ] Implement explicit typed entry discovery and complete contract facts in
   standalone artifacts/views with exact profile/feature compatibility discovery.
 - [ ] Retain typed external/output inputs and unresolved restriction obligations;

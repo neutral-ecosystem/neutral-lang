@@ -26,6 +26,7 @@ mod graphs;
 mod hardening;
 mod identity;
 mod reader_probe;
+mod selectors;
 
 /// Creates fallible successor shared ownership for fixtures; allocation failure fails the test.
 fn shared<T>(value: T) -> Arc<T> {
