@@ -44,6 +44,8 @@ The central changes are:
   the expected variant type. Its body supplies that alternative's record payload.
 - `@success("done")` supplies a variant in an expression without spelling its
   wire-oriented `tag` and `payload` fields.
+- `alias steps = checks.jobs.quality.steps` names a static construction destination;
+  `[[steps @command]]` appends to that same list without repeating its full path.
 
 The vocabulary still owns `Workflow`, `Job`, `Step`, field names, restrictions
 and alternatives. Neutral owns the generic construction syntax. Installing a
@@ -82,20 +84,22 @@ id = "ci"
 runner.os = "linux"
 runner.architecture = "x86_64"
 
-[[checks.jobs.quality.steps @checkout]]
+alias steps = checks.jobs.quality.steps
 
-[[checks.jobs.quality.steps @rust_toolchain]]
+[[steps @checkout]]
+
+[[steps @rust_toolchain]]
 channel = "stable"
 components = ["rustfmt", "clippy"]
 
-[[checks.jobs.quality.steps @install_tool]]
+[[steps @install_tool]]
 tool = "cargo-nextest"
 
-[[checks.jobs.quality.steps @command]]
+[[steps @command]]
 executable = "cargo"
 arguments = ["xtask", "ci", "pr"]
 
-[[checks.jobs.quality.steps @retain_artifacts]]
+[[steps @retain_artifacts]]
 name = "workflow-evidence"
 paths = [
     "test-results/workflows",
@@ -114,6 +118,11 @@ intended materialized meaning.
 `quality` is a local construction label. `id = "ci"` is actual domain data.
 They are deliberately different: labels must not secretly fill a field, become
 a job identifier or alter consumer scheduling.
+
+`steps` is a construction alias for that job's list. It is not a value binding,
+copy, runtime reference or extra semantic declaration. The fully qualified
+`[[checks.jobs.quality.steps @command]]` form remains valid and equivalent under
+the same new profile.
 
 An empty `@checkout` section means an explicitly supplied empty record payload.
 It succeeds only if the selected payload's required/defaulted-field rules allow
@@ -134,6 +143,7 @@ binding_table = "[" ["public"] type binding ["@" tag] "]"
 child_table   = "[" construction_path ["@" tag] "]"
 array_row     = "[[" construction_path ["@" tag] ["as" label] "]]"
 field_entry   = field_path "=" expression
+path_alias    = "alias" identifier "=" construction_path
 ```
 
 Names, types and expressions retain their own grammar. Tags and row labels are
@@ -308,6 +318,93 @@ Retain Neutral's existing comments and string rules. Do not import TOML's
 comments, dates or string normalization accidentally merely because table
 headers look familiar. Do not require SPDX comments in `.neu` examples.
 
+### 3.5 Explicit construction aliases
+
+An alias abbreviates a known construction path, not a type or value:
+
+```neu
+alias steps = checks.jobs.quality.steps
+
+[[steps @checkout]]
+
+[[steps @command]]
+executable = "cargo"
+arguments = ["xtask", "ci", "pr"]
+```
+
+Aliases may target record constructors as well as list destinations. A record
+prefix can keep its field path explicit while shortening repeated headers:
+
+```neu
+alias job = checks.jobs.quality
+
+[[job.steps @rust_toolchain]]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+```
+
+These are separate example fragments after the job's declaration, not extra steps
+to concatenate with the complete CI example. The original `[[...]]` syntax stays;
+there is no `item`, `add`, implicit current job or relative-parent operator.
+
+Proposed scope and safety rules:
+
+- `alias` is contextual only in the new source profile. Do not add it to a
+  historical protected-name set or change old-profile bindings named `alias`.
+- Aliases are module-local, non-exportable and non-reassignable, available from
+  declaration to end of that source module. They cannot cross modules implicitly.
+- A declaration is at module level and ends any preceding table body. Later
+  fields require an explicit header; they do not continue the previous section.
+- The target uses a fully spelled local construction path. Its root and any
+  traversed row labels must already be declared. A final record/list field may
+  still be awaiting its first constructor; the expected type must identify it.
+- Initially reject alias-to-alias declarations, forward aliases, dynamic paths,
+  scalar targets, imported/reused values and ref dereferencing. This avoids
+  recursive expansion and keeps lookup bounded and explainable.
+- Alias names cannot collide with module bindings, import/vocabulary aliases or
+  other construction aliases, including later declarations. Row labels retain
+  their separate list-local scope. Never silently shadow one meaning with another.
+- Use an alias only as the leading segment of a child/array construction header.
+  It cannot appear as an expression value, type, `ref` target or field RHS.
+- Resolve to the canonical destination before duplicate/single-assignment checks.
+  Full paths and aliases cannot bypass duplicate fields, repeated record headers,
+  list-literal/row conflicts or aggregate limits.
+- Renaming an alias with all uses updated, or expanding it to the full path,
+  preserves normalized logical meaning under the same profile. Captured bytes
+  and authoring evidence change; no cross-profile digest equality is promised.
+- Preserve declaration/use spans for diagnostics and editor navigation. Values
+  retain their actual supplied/default/reuse origins, not invented alias origins.
+- Bound alias count, target depth, expanded path length and aggregate resolution
+  work before allocation, with cancellation and fallible-retention coverage.
+
+### 3.6 Related ergonomics without another semantic system
+
+Keep the optimizations small and orthogonal:
+
+| Repetition | Supported direction | What it must not mean |
+| --- | --- | --- |
+| Repeated destination path | Explicit construction alias, usable as a header prefix. | Copying data, runtime mutation or implicit parent selection. |
+| Small nested record | Existing proposed dotted field entries. | Reading fields in expressions or deep-merging a default aggregate. |
+| Variant envelopes | Existing proposed `@tag` headers and `@tag(expression)`. | A function call, global tag inference or extensible closed variants. |
+| Repeated values/lists | Ordinary typed immutable bindings and reuse. | A destination alias or hidden list concatenation. |
+| Repeated parameterized structure | Governed typed templates/static expansion. | Runtime loops, dynamic topology or a second macro language. |
+
+For example, a value binding can share a list while the alias shares its destination:
+
+```neu
+List<string> rust_components = ["rustfmt", "clippy"]
+
+[[steps @rust_toolchain]]
+channel = "stable"
+components = rust_components
+```
+
+This is a fragment after `steps` has been declared. A whole-list binding may also
+initialize a compatible field, but then array headers cannot append to that same
+field. Retain single assignment; no implicit concatenation or override syntax.
+Using a vocabulary's declared defaults remains optional author choice, with
+omission preserved by the editor rather than silently materialized into source.
+
 ## 4. Variants should look like typed choices, not transport envelopes
 
 The existing [variant contract](../portable/specs/contracts/VARIANTS.md) uses
@@ -469,9 +566,9 @@ Extracting an existing nested value into a named binding is a semantic refactor,
 not mere formatting: it can alter declarations, reference edges, complete project
 identity and provenance. The editor must make that change explicit.
 
-Try named bindings and short explicit roots before adding construction aliases.
-Lexical path aliases remain deferred until real workloads prove they are needed;
-do not introduce relative/current-parent shorthand in their place.
+Use named bindings for shared values/graphs and construction aliases for repeated
+destination spelling. They solve different problems. Neither permits implicit
+relative/current-parent selection or changes a vocabulary's field types.
 
 ### Embedded configuration: same language, different vocabulary
 
@@ -658,7 +755,7 @@ needs TOML interoperability; do not build two new frontends in the first slice.
 | Concern | Decision / risk control |
 | --- | --- |
 | Too much punctuation | Table bodies have `key = value`; record/list nesting moves to headers, variant wrappers disappear. Ordinary list brackets remain. |
-| Very long paths | Use short root names and local row labels, editor breadcrumbs and completion. No relative-header or implicit-current-parent shorthand in the first design. Review a multi-job example before freeze. |
+| Very long paths | Use explicit construction aliases, short root names and local row labels, with editor breadcrumbs/completion. Preserve full-path forms; no implicit current parent, alias chains or runtime path evaluation. |
 | Hidden schema behavior | Header names, fields and tags resolve against exact public types. No inferred discriminator, field injection or plugin-defined grammar. |
 | Ordered lists | Array-header order is value order. Do not sort jobs, steps, arguments or paths while formatting. Labels are not ordering keys. |
 | Maps | A list of entries remains a list unless its contract explicitly provides checked map semantics. Do not infer map semantics from named rows or silently discard duplicate domain keys. |
@@ -715,15 +812,16 @@ The implementation reach is broader than adding `[` to one parser:
 | Compiler parsing and semantic construction | Build one private typed construction representation; lower tables and shorthand into the shared value/expression model. No second record/type validator. |
 | Defaults, companions and identity | Preserve supplied/default/reuse facts, exact field/tag spans and intended logical equivalence; bind source-format facts to the correct identity layer. |
 | Formatter and repository source tooling | Preserve table styles and list order; update only maintained mutable inputs, never bulk-reformat archived/frozen fixtures. |
-| Public authoring model and editor | Represent tables, labels, comments and construction paths; stale-revision checks, completion and safe round-trip projection. |
+| Public authoring model and editor | Represent tables, labels, construction aliases, comments and paths; declaration/use navigation, stale-revision checks, completion and safe round-trip projection. |
 | IR, encoding, reader and probe | Reuse unchanged semantic models where sufficient. If retained authoring/derivation facts require new formats, version those facts explicitly rather than leak construction paths into logical values. |
 | Cache and test infrastructure | Key parsing by exact syntax profile; clean/warm/changed equivalence, cancellation/failure recovery, independent decode, bounds and fuzz coverage. |
 | Guides and packages | Update examples, syntax highlighting and documented commands; do not let libraries define their own incompatible table dialects. |
 
 A minimal implementation sequence after design approval would be: typed record
 roots and child records; ordered record/variant rows and labels; shorthand
-variants; formatter/authoring/diagnostics; full compatibility and adversarial
-qualification. Add the TOML adapter as a separate requirement only if selected.
+variants and bounded construction aliases; formatter/authoring/diagnostics;
+full compatibility and adversarial qualification. Add the TOML adapter as a
+separate requirement only if selected.
 Do not announce any slice as complete merely because one pretty CI file parses.
 
 ## 9. Required acceptance examples before activation
@@ -769,6 +867,12 @@ results of this documentation change.
 | Shared embedded bus / cloud or Linux resource graph | Retain reference sharing and public closure; do not duplicate resources into a containment tree. |
 | Reuse cycle versus typed-ref cycle versus scheduling cycle | Apply the correct core or consumer rule, with distinct diagnostic ownership. |
 | Third-party operation outside a domain's closed variant | No implicit tag extension; require the reviewed checked assembly contract or reject. |
+| Full path versus alias/prefix spelling | Same normalized typed values and ordered rows under the same profile; distinct captured bytes, no extra semantic binding. |
+| Alias rename and editor expand/collapse | Preserve meaning, comments, declaration/use attribution and source form; do not refactor values or change graph sharing. |
+| Unknown/forward/chained/dynamic alias or scalar/ref/import target | Reject deterministically before construction; no parser fallback, evaluation or acquisition. |
+| Alias name collides with any module binding/import/use alias | Reject without shadowing, regardless of later declaration position. |
+| Full path and alias write the same field or mix list assignment/rows | Apply canonical-destination duplicate/single-assignment rules; no limit bypass. |
+| Exact/one-over alias count, expanded path and resolution-work controls | Bounded rejection, cancellation and allocation-failure recovery; no partial publication. |
 | TOML frontend, if later selected | Exact numeric tokens, unsupported-value rejection, bounded capture, checked original spans and complete independent artifact. |
 
 ## 10. Review gates before freeze
@@ -781,10 +885,11 @@ touching implementation:
    metadata must agree. Exact header spelling and profile identifiers still need
    written review. The example `neu "1.0"` alone does not select table syntax.
 2. Freeze construction scope, duplicate/default behavior, interleaved sections,
-   ordinary binding dependencies and their distinction from row labels.
+   ordinary binding dependencies and their distinction from row labels and
+   construction aliases. Specify alias collision, canonicalization and bounds.
 3. Prove nested multi-job CI and shared embedded/cloud/Linux resource graphs.
-   Use tables, named bindings and references where each is appropriate; do not
-   add path aliases merely to shorten the first example.
+   Use tables, named bindings, references and explicit construction aliases where
+   each is appropriate; retain equivalent fully qualified header forms.
 4. Prove closed variants and independently supplied operation assembly without
    `Any`, implicit subtyping or library-defined syntax.
 5. Review structured expression projection separately from dotted construction

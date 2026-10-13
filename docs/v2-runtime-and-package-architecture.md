@@ -499,6 +499,13 @@ must preserve its explicit parent; moving ordered rows may change meaning.
 Extracting nested data into named bindings/references is an explicit semantic
 refactor, potentially changing identity and provenance, not automatic formatting.
 
+Explicit module-local construction aliases shorten destinations, for example
+`alias steps = checks.jobs.quality.steps` followed by `[[steps @command]]`.
+They are header-only path abbreviations, not values, public symbols or executable
+instructions. Preserve alias definitions/uses in the authoring model and expand
+to canonical destinations before duplicate, type and resource checks. Do not
+allow alias chains, shadowing or implicit current-parent selection.
+
 Preserve original source, comments, aliases, templates, omissions and expression
 forms through the public source-authoring model. `.nir` and expanded execution
 plans cannot reconstruct those choices alone.
@@ -630,75 +637,52 @@ the editor and exporter obtain validated typed facts instead of reparsing string
 
 ### Proposed `.neu` example
 
-This source uses existing-style data syntax with **new proposed vocabulary
-types**. It is a design target, not a fixture that currently compiles. A completed
-v2 host selects its supported source profile; the `1.0` header below is not a
-claim that a package release called v2 must introduce `neu "2.0"`.
-
-This is the record-literal semantic baseline, not a recommendation to expose
-wire-style wrappers in everyday authoring. The
-[source syntax proposal](source-syntax-proposal.md) rewrites the same example
-using typed tables and explicit variant selection, and audits optional TOML
-capture. Its new syntax requires separate approval and is not implemented here.
+This source uses **proposed typed tables, explicit variants and vocabulary
+types**. It is a design target, not a fixture that currently compiles. The
+[source syntax proposal](source-syntax-proposal.md) defines the draft surface
+and review gates, including bootstrap-readable grammar selection and matching
+capture metadata. The `neu "1.0"` header below retains semantic context only;
+it does not select this new grammar. Exact selection syntax remains under review.
 
 ```neu
 neu "1.0"
 module neutral::automation
 use NeutralCi as ci
 
-public ci::Workflow checks = {
-    name: "Neutral CI",
-    push_branches: ["main"],
-    manual: true,
-    jobs: [
-        {
-            id: "ci",
-            runner: {
-                os: "linux",
-                architecture: "x86_64",
-            },
-            steps: [
-                {
-                    tag: "checkout",
-                    payload: {},
-                },
-                {
-                    tag: "rust_toolchain",
-                    payload: {
-                        channel: "stable",
-                        components: ["rustfmt", "clippy"],
-                    },
-                },
-                {
-                    tag: "install_tool",
-                    payload: {
-                        tool: "cargo-nextest",
-                    },
-                },
-                {
-                    tag: "command",
-                    payload: {
-                        executable: "cargo",
-                        arguments: ["xtask", "ci", "pr"],
-                    },
-                },
-                {
-                    tag: "retain_artifacts",
-                    payload: {
-                        name: "workflow-evidence",
-                        paths: [
-                            "test-results/workflows",
-                            "test-results/tests",
-                            "target/nextest/ci/junit.xml",
-                        ],
-                        always: true,
-                        retention_days: 14,
-                    },
-                },
-            ],
-        },
-    ],
-}
+[public ci::Workflow checks]
+name = "Neutral CI"
+push_branches = ["main"]
+manual = true
+
+[[checks.jobs as quality]]
+id = "ci"
+runner.os = "linux"
+runner.architecture = "x86_64"
+
+alias steps = checks.jobs.quality.steps
+
+[[steps @checkout]]
+
+[[steps @rust_toolchain]]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+
+[[steps @install_tool]]
+tool = "cargo-nextest"
+
+[[steps @command]]
+executable = "cargo"
+arguments = ["xtask", "ci", "pr"]
+
+[[steps @retain_artifacts]]
+name = "workflow-evidence"
+paths = [
+    "test-results/workflows",
+    "test-results/tests",
+    "target/nextest/ci/junit.xml",
+]
+always = true
+retention_days = 14
 ```
 
 These proposed fields are deliberately ordinary data. The contract defines that
@@ -706,6 +690,14 @@ jobs have unique IDs, steps are sequential within a job, later ordinary steps
 stop on failure, and `always` retention is attempted independently without turning
 a failed quality command into success. List order here is semantically meaningful.
 Future job dependencies use explicit typed edges, not inference from source order.
+
+`quality` is a local construction label, not the job's domain ID; `id = "ci"`
+supplies that separately. `steps` abbreviates the exact list destination without
+copying it or introducing a semantic binding; full-path headers remain valid.
+Each `@tag` selects an alternative of the exact declared
+`Step` variant and its table supplies the record payload. Empty checkout is an
+explicit empty record, valid only if its payload contract permits it. No package
+installation, operation dispatch or execution occurs while constructing these values.
 
 Job/process outcomes are provider results, not values magically produced by
 compilation. The proof needs no deferred expression or live result binding.
@@ -941,8 +933,9 @@ selection, interleaved construction scope, list order, reuse/ref distinctions an
 editor round trips against independent semantic reading. Keep closed-domain
 variants separate from checked third-party operation assembly. The syntax proposal
 is not frozen until these examples and its compatibility amendment are reviewed.
-Package/mapping work can use existing supported source meanwhile; optional TOML
-capture and construction aliases are not prerequisites for this vertical slice.
+Package/mapping work can use existing supported source meanwhile. Construction
+aliases are planned source ergonomics, not a package/runtime protocol requirement;
+fully qualified headers remain available. Optional TOML capture is a separate milestone.
 
 ### C. Prove binding and offline GitHub export
 

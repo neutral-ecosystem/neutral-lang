@@ -872,6 +872,57 @@ Do not turn every application requirement into a compiler primitive.
 | Native code generation, LLVM or an MCU interpreter | Separate measured requirement, not a v2 prerequisite. | Mapping/protocol/safety gaps are not compiler-backend problems. |
 | A universal operation executor | Do not make it mandatory. | CI providers and diagnostic devices have materially different lifecycle and authority models. |
 
+### Future source surface: containment and shared graphs
+
+Future examples use the proposed [hybrid syntax](source-syntax-proposal.md):
+typed tables for records, explicit `@tag` constructors for variants, and ordinary
+typed references for shared resources. The complete
+[CI example](v2-runtime-and-package-architecture.md#proposed-neu-example) uses
+ordered array sections rather than nested `tag`/`payload` source envelopes.
+These forms are not part of the completed-v1 baseline assessed above and are not
+implemented or frozen by this audit.
+
+The proposed header syntax also supports explicit construction aliases such as
+`alias steps = checks.jobs.quality.steps` and `[[steps @command]]`, with optional
+record-prefix abbreviation. Keep aliases module-local and header-only, reject
+chains/shadowing/dynamic targets, and check canonical destinations for duplicates
+and bounds. Aliases abbreviate destinations; ordinary typed bindings/templates
+reuse values. Dotted construction and declared defaults reduce repetition without
+adding implicit merging, field projection or execution semantics.
+
+A hypothetical embedded vocabulary can describe a shared bus without deep nesting:
+
+```neu
+neu "1.0"
+module example::shared_device
+use ExampleEmbedded as embedded
+
+[public embedded::Bus control_bus]
+kind = "i2c"
+frequency_hz = 400000
+
+[public embedded::Sensor temperature]
+bus = ref(control_bus)
+address = 72
+
+[public embedded::Project board]
+name = "room-sensor"
+sensors = [ref(temperature)]
+```
+
+This proposed contract must declare `Sensor.bus: Ref<Bus>` and
+`Project.sensors: List<Ref<Sensor>>`; the syntax does not infer those types or
+introduce structural coercion. Other sensors may share the same bus binding.
+Domain validation still owns numeric integrality, supported combinations, wiring
+and operational safety. No device access occurs through `ref` or table construction.
+
+The retained `neu "1.0"` header is semantic context, not a selector for the new
+grammar. Bootstrap-readable syntax selection and capture agreement must be
+specified before activation. Public closure and source/identity distinctions
+remain required, and extracting nested data into named bindings is a semantic
+refactor rather than formatting. The same pattern applies to shared cloud/Linux
+resources; it does not define a universal scheduler or executor.
+
 ### Minimum logical boundaries
 
 These are responsibilities, **not a directive to create one crate or repository
@@ -1023,8 +1074,11 @@ construction scope, default/duplicate rules and identity-aware editor refactors.
 Prove multi-job CI, shared embedded resources, cloud/Linux graphs and third-party
 operation composition with literal oracles and editor round trips. Dotted field
 construction is not expression-level projection; shorthand does not extend a
-closed variant. Neither optional TOML capture nor lexical construction aliases
-should block the first package/mapping kit. Existing supported source remains a
+closed variant. Include explicit construction aliases in the source/authoring
+review, with normalized logical equivalence rather than captured-identity equality,
+checked scope/collisions and bounded resolution. Retain full-path forms and separate alias ergonomics from shared
+resource/value reuse. Optional TOML capture should not block the first
+package/mapping kit. Existing supported source remains a
 valid adoption route while a successor syntax profile is reviewed.
 
 Choose the first non-Rust boundary, define runtime result transport, and add
