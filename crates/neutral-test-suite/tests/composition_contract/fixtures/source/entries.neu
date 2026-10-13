@@ -1,0 +1,28 @@
+neu "1.0"
+module example
+
+public record Service {
+    string label,
+    List<num> ports,
+}
+
+public variant State {
+    num failed,
+    string ready,
+}
+
+public record Empty {}
+
+public Service api = {
+    label: "api",
+    ports: [80, 443],
+}
+
+Service hidden = {
+    label: "internal",
+    ports: [],
+}
+
+public Service copied = hidden
+public State status = { tag: "ready", payload: "ok" }
+public Ref<Service> pointer = ref(api)

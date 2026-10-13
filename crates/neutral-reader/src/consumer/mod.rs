@@ -3,8 +3,9 @@
 //! Closed, data-only consumer envelopes over independently validated public values.
 //!
 //! Validation binds reports to the complete logical project, not to a selected
-//! view. It does not establish the truth of a consumer decision, authorize effects,
-//! discover entries, choose alternatives or evaluate deferred values. Transport
+//! view. Typed entries select exact public contracts and retain interpretive closure.
+//! It does not establish the truth of a consumer decision, authorize effects,
+//! choose alternatives or evaluate deferred values. Transport
 //! codecs must independently reject unknown fields and bound raw input bytes.
 
 #![doc = include_str!("README.md")]
@@ -15,8 +16,12 @@ use neutral_ir::{
     ModuleSymbolIdentity, composition::ValuePathSegment, project_interface::ProjectPublicType,
 };
 
+mod compatibility;
+mod entries;
 mod selectors;
 mod validation;
+pub use compatibility::*;
+pub use entries::*;
 pub use selectors::*;
 pub use validation::ConsumerBoundary;
 
@@ -93,6 +98,12 @@ pub struct ConsumerProtocol<'a> {
 /// Independent positive envelope controls, intersected with frozen hard ceilings.
 #[derive(Clone, Copy, Debug)]
 pub struct ConsumerLimits {
+    /// Independently bounded selected roots per request.
+    pub roots: u64,
+    /// Independently bounded matching candidates per enumeration.
+    pub candidates: u64,
+    /// Interpretive dependency edges followed during public closure.
+    pub closure_edges: u64,
     /// Aggregate retained envelope data bytes (not transport encoding bytes).
     pub bytes: u64,
     /// Individual identifier/text bytes.
@@ -114,6 +125,9 @@ pub struct ConsumerLimits {
 impl Default for ConsumerLimits {
     fn default() -> Self {
         Self {
+            roots: 1_000_000,
+            candidates: 1_000_000,
+            closure_edges: 1_000_000,
             bytes: 67_108_864,
             text_bytes: 1_048_576,
             features: 1_000_000,
@@ -123,6 +137,44 @@ impl Default for ConsumerLimits {
             work: 100_000_000,
             output_bytes: 100_000_000,
         }
+    }
+}
+
+impl ConsumerLimits {
+    /// Intersects independent caller/reader/hard controls before any request can retain data.
+    pub(super) fn effective(self, work: u64) -> Result<Self, ConsumerError> {
+        let hard = Self::default();
+        let limits = Self {
+            roots: self.roots.min(hard.roots),
+            candidates: self.candidates.min(hard.candidates),
+            closure_edges: self.closure_edges.min(hard.closure_edges),
+            bytes: self.bytes.min(hard.bytes),
+            text_bytes: self.text_bytes.min(hard.text_bytes),
+            features: self.features.min(hard.features),
+            diagnostics: self.diagnostics.min(hard.diagnostics),
+            locations: self.locations.min(hard.locations),
+            path_segments: self.path_segments.min(hard.path_segments),
+            work: self.work.min(hard.work).min(work),
+            output_bytes: self.output_bytes.min(hard.output_bytes),
+        };
+        if [
+            limits.roots,
+            limits.candidates,
+            limits.closure_edges,
+            limits.bytes,
+            limits.text_bytes,
+            limits.features,
+            limits.diagnostics,
+            limits.locations,
+            limits.path_segments,
+            limits.work,
+            limits.output_bytes,
+        ]
+        .contains(&0)
+        {
+            return Err(ConsumerError::Limit);
+        }
+        Ok(limits)
     }
 }
 

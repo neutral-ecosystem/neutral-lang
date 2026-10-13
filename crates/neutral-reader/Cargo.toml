@@ -14,5 +14,8 @@ neutral-core = { path = "../neutral-core" }
 neutral-ir = { path = "../neutral-ir" }
 neutral-vocabulary = { path = "../neutral-vocabulary" }
 
+[dev-dependencies]
+neutral-core = { path = "../neutral-core", features = ["allocation-testing"] }
+
 [lints]
 workspace = true

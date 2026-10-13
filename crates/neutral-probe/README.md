@@ -67,6 +67,16 @@ vocabulary default owners remain without captured-byte spans. Complete logical
 identity is independent of selection. The same `--json`/`--root` commands above
 work for these library-produced artifacts without compiler linkage.
 
+`composition::inspect_composition_entries_encoded` accepts a
+`CompositionEntryProbeRequest`: exact consumer/artifact compatibility selection,
+typed `EntryRequest` and independent `ConsumerLimits`. It negotiates features,
+independently decodes bytes, checks actual retained profile/bundle facts, then
+discovers/selects entries and derives complete redacted public closure. Unknown
+profiles/features, ambiguous/missing unique entries, private/wrong-type roots,
+allocation failures and cancellation return no partial summary. Empty explicit
+selection stays empty; complete logical identity is selection-independent.
+This is a reader-only library API, not a new CLI flag or JSON request decoder.
+
 `composition::render_composition_summary_json(&summary, &cancellation)` returns
 `Result<String, CompositionProbeError>`. It writes escaped JSON directly into
 fallible private output; allocation failure or cancellation returns an error,

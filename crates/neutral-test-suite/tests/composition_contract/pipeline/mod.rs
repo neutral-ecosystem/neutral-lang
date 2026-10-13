@@ -22,6 +22,7 @@ use neutral_reader::composition::ValidatedCompositionProject;
 use std::fmt::Write as _;
 mod allocation;
 mod consumer;
+mod entries;
 mod graphs;
 mod hardening;
 mod identity;

@@ -75,6 +75,11 @@ impl std::fmt::Debug for ValidatedCompositionProject {
     }
 }
 impl ValidatedCompositionProject {
+    /// Returns the exact implemented captured-project tuple, not standalone source availability.
+    #[must_use]
+    pub const fn profile_facts(&self) -> profile::CompositionProfileDescriptor<'static> {
+        profile::COMPOSITION_PROFILE
+    }
     /// Rechecks complete source/vocabulary semantics and companions without compiler linkage.
     ///
     /// # Errors

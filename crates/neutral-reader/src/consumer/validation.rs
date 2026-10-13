@@ -43,34 +43,7 @@ impl<'p, 'a> ConsumerBoundary<'p, 'a> {
         limits: ConsumerLimits,
         cancellation: &CancellationToken,
     ) -> Result<Self, ConsumerError> {
-        let hard = ConsumerLimits::default();
-        let limits = ConsumerLimits {
-            bytes: limits.bytes.min(hard.bytes),
-            text_bytes: limits.text_bytes.min(hard.text_bytes),
-            features: limits.features.min(hard.features),
-            diagnostics: limits.diagnostics.min(hard.diagnostics),
-            locations: limits.locations.min(hard.locations),
-            path_segments: limits.path_segments.min(hard.path_segments),
-            work: limits
-                .work
-                .min(hard.work)
-                .min(project.effective_composition_limits().work),
-            output_bytes: limits.output_bytes.min(hard.output_bytes),
-        };
-        if [
-            limits.bytes,
-            limits.text_bytes,
-            limits.features,
-            limits.diagnostics,
-            limits.locations,
-            limits.path_segments,
-            limits.work,
-            limits.output_bytes,
-        ]
-        .contains(&0)
-        {
-            return Err(ConsumerError::Limit);
-        }
+        let limits = limits.effective(project.effective_composition_limits().work)?;
         let mut budget = Budget::new(limits, cancellation);
         budget.list(protocol.supported_features, limits.features)?;
         budget.list(protocol.diagnostic_codes, limits.diagnostics)?;
@@ -264,6 +237,10 @@ pub(super) struct Budget<'a> {
     work: u64,
 }
 impl<'a> Budget<'a> {
+    /// Preserves already charged work across a dependent public projection.
+    pub(super) fn remaining_work(&self) -> u64 {
+        self.limits.work - self.work
+    }
     /// Starts independent accounting for one atomic request.
     pub(super) fn new(limits: ConsumerLimits, cancellation: &'a CancellationToken) -> Self {
         Self {
@@ -349,7 +326,7 @@ impl<'a> Budget<'a> {
         Ok(())
     }
     /// Validates a closed canonical registry or feature request without allocating.
-    fn list(&mut self, values: &[&str], maximum: u64) -> Result<(), ConsumerError> {
+    pub(super) fn list(&mut self, values: &[&str], maximum: u64) -> Result<(), ConsumerError> {
         self.work(1)?;
         if values.len() as u64 > maximum {
             return Err(ConsumerError::Limit);

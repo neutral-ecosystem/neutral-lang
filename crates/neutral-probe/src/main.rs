@@ -113,6 +113,7 @@ fn inspect_composition(bytes: &[u8], json: bool, roots: Option<&[String]>) -> Re
         &CancellationToken::new(),
     )
     .map_err(|error| match error {
+        CompositionProbeError::Consumer(e) => e.to_string(),
         CompositionProbeError::Decode(e) => render_decode_error(e),
         CompositionProbeError::View(e) => format!("{} {e:?}", e.schema()),
         CompositionProbeError::Identity(e) => format!(

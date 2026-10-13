@@ -5,6 +5,10 @@
 use neutral_core::CancellationToken;
 use neutral_core::allocation::{RetainCapacity, TryClone, text};
 use neutral_encoding::{DecodeError, DecodeLimits, composition::decode_composition_project};
+use neutral_reader::consumer::{
+    CONSUMER_FEATURES, ConsumerBoundary, ConsumerCompatibilityRequest, ConsumerError,
+    ConsumerLimits, ConsumerProtocol, EntryRequest, negotiate_consumer,
+};
 use neutral_reader::{
     IdentityError, IdentityLimits, MAX_TRANSCRIPT_BYTES, MAX_TRANSCRIPT_NODES,
     ModuleSymbolIdentity, ProjectLimits,
@@ -18,6 +22,8 @@ use std::fmt::Write as _;
 /// Atomic inspection failures without private root names or partial projections.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CompositionProbeError {
+    /// Typed consumer selection, negotiation or independent projection policy failed.
+    Consumer(ConsumerError),
     /// Hostile wire or complete reader validation failed.
     Decode(DecodeError),
     /// Selection is invalid, private, unknown, duplicate or cancelled.
@@ -39,6 +45,69 @@ pub struct CompositionProbeSummary {
     pub interface_fingerprint: String,
     /// Dependency-closed public-only contracts, values, reference paths and safe origins.
     pub view: CompositionView,
+}
+
+/// Explicit headless protocol and entry selection; no runtime or authoring capability is implied.
+#[derive(Clone, Copy)]
+pub struct CompositionEntryProbeRequest<'a> {
+    /// Exact required artifact/consumer tuples and features.
+    pub compatibility: ConsumerCompatibilityRequest<'a>,
+    /// Exact public contract and entry selection.
+    pub entry: EntryRequest<'a>,
+    /// Independent consumer request/projection controls.
+    pub limits: ConsumerLimits,
+}
+
+/// Independently decodes bytes and discovers/selects typed entries with complete public closure.
+///
+/// # Errors
+/// Rejects incompatible profiles/features, hostile bytes, invalid roots, missing contracts,
+/// independent bounds, allocation or cancellation before any summary is published.
+pub fn inspect_composition_entries_encoded(
+    bytes: &[u8],
+    wire: DecodeLimits,
+    project: ProjectLimits,
+    composition: ProjectCompositionLimits,
+    request: &CompositionEntryProbeRequest<'_>,
+    cancel: &CancellationToken,
+) -> Result<CompositionProbeSummary, CompositionProbeError> {
+    let supported = negotiate_consumer(&request.compatibility, request.limits, cancel)
+        .map_err(CompositionProbeError::Consumer)?;
+    let project = decode_composition_project(bytes, wire, project, composition, cancel)
+        .map_err(CompositionProbeError::Decode)?;
+    supported
+        .validate_project(&project, &request.compatibility, request.limits, cancel)
+        .map_err(CompositionProbeError::Consumer)?;
+    // The owned summary and its fingerprint are additional to the entry/view retained model.
+    let overhead = (std::mem::size_of::<CompositionProbeSummary>() as u64)
+        .checked_add(project.complete_ir().interface_digest.as_bytes().len() as u64 * 2)
+        .ok_or(CompositionProbeError::Consumer(ConsumerError::Limit))?;
+    let limits = ConsumerLimits {
+        output_bytes: request
+            .limits
+            .output_bytes
+            .checked_sub(overhead)
+            .ok_or(CompositionProbeError::Consumer(ConsumerError::Limit))?,
+        ..request.limits
+    };
+    let boundary = ConsumerBoundary::new(
+        &project,
+        ConsumerProtocol {
+            report_contract: request.entry.contract,
+            supported_features: CONSUMER_FEATURES,
+            diagnostic_codes: &[],
+        },
+        limits,
+        cancel,
+    )
+    .map_err(CompositionProbeError::Consumer)?;
+    let selected = boundary
+        .entries(&request.entry, cancel)
+        .map_err(CompositionProbeError::Consumer)?;
+    let view = selected
+        .derive_view(cancel)
+        .map_err(CompositionProbeError::Consumer)?;
+    summary(&project, view, boundary.project_identity(), cancel)
 }
 
 /// Independently inspects successor bytes; omitted roots select all public exports, explicit empty selects none.
@@ -131,6 +200,17 @@ pub fn inspect_composition_encoded(
     )
     .map_err(CompositionProbeError::Identity)?
     .identity();
+    summary(&project, view, logical_identity, cancel)
+}
+
+/// Shares safe complete facts between ordinary-root and typed-entry inspection without recomputing identities.
+fn summary(
+    project: &neutral_reader::composition::ValidatedCompositionProject,
+    view: CompositionView,
+    logical_identity: CompositionLogicalIdentity,
+    cancel: &CancellationToken,
+) -> Result<CompositionProbeSummary, CompositionProbeError> {
+    let ir = project.complete_ir();
     let mut fingerprint = String::new();
     fingerprint
         .try_retain_exact(ir.interface_digest.as_bytes().len() * 2)

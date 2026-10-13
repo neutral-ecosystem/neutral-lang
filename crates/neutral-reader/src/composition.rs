@@ -46,7 +46,7 @@ pub use references::{
     ReferenceTypeSegment,
 };
 pub use scope::CompositionTypeCatalogue;
-pub use view::{CompositionView, CompositionViewRequest};
+pub use view::{CompositionView, CompositionViewLimits, CompositionViewRequest};
 
 /// Safe lookup failures containing no private type names, captured text or host paths.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

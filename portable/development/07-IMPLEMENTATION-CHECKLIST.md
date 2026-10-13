@@ -601,11 +601,17 @@ Slice 1 — consumer contract foundation:
   retains type-mode availability obligations. Origin projection preserves checked
   default/reuse ownership and safe occurrences with explicit redaction/absence;
   decoded-artifact tests cover independent bounds, allocation faults and cancellation.
-- [ ] Implement explicit typed entry discovery and complete contract facts in
+- [x] Implement explicit typed entry discovery and complete contract facts in
   standalone artifacts/views with exact profile/feature compatibility discovery.
+  Reader/probe APIs select exact public binding contracts, preserve complete
+  redacted interpretation closure, and negotiate exact artifact tuples/features.
+  Decoded-fixture, independent-bound, allocation/cancellation and recovery tests
+  pass; standalone source activation and JSON transport are not implied.
 - [ ] Retain typed external/output inputs and unresolved restriction obligations;
   expose separately guarded value dependencies and explicit prerequisite data,
   with consumer binding/availability/failure reports and no implicit scheduler.
+  Depends on Slice 2's typed expression `/3` model across source, IR, wire and
+  reader; ordinary materialized `/2` values do not satisfy deferred retention.
 
 Slice 2 — pure semantics and identity:
 

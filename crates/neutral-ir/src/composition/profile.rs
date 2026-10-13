@@ -63,3 +63,42 @@ pub const TAG: &str = "tag";
 pub const PAYLOAD: &str = "payload";
 /// Hard retained-item and traversal ceiling shared by raw successor consumers.
 pub const MAX_ITEMS: u64 = 1_000_000;
+/// Independent public projection work ceiling, separate from artifact bytes.
+pub const MAX_VIEW_WORK: u64 = 100_000_000;
+/// Independent retained public projection bytes, not a transport serialization limit.
+pub const MAX_VIEW_OUTPUT_BYTES: u64 = 100_000_000;
+
+/// Exact artifact/capture tuple, distinct from package releases and standalone source availability.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CompositionProfileDescriptor<'a> {
+    /// Source behavior within an explicitly selected capture.
+    pub source_profile: &'a str,
+    /// Required captured-project envelope.
+    pub capture_profile: &'a str,
+    /// Complete logical project schema.
+    pub project_ir: &'a str,
+    /// Post-compilation public selection schema.
+    pub view: &'a str,
+    /// Whole-request outcome schema.
+    pub result: &'a str,
+    /// Independently decoded binary format.
+    pub encoding: &'a str,
+    /// Governed identity/transcript profile.
+    pub identity: &'a str,
+    /// Exact sorted required project features.
+    pub required_features: &'a [&'a str],
+}
+
+/// Facts shared by explicit producers, independent readers and public views.
+/// Bundle schemas/revisions remain per-bundle facts; a project may contain adapted and native leaves.
+pub const COMPOSITION_PROFILE: CompositionProfileDescriptor<'static> =
+    CompositionProfileDescriptor {
+        source_profile: neutral_core::profile::V1_SOURCE_PROFILE,
+        capture_profile: CAPTURE_REQUEST_VERSION,
+        project_ir: PROJECT_IR_SCHEMA,
+        view: PROJECT_VIEW_SCHEMA,
+        result: PROJECT_RESULT_SCHEMA,
+        encoding: ENCODING,
+        identity: IDENTITY_PROFILE,
+        required_features: REQUIRED_FEATURES,
+    };
