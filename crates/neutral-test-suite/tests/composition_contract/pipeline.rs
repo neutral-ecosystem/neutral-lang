@@ -22,6 +22,8 @@ use neutral_reader::composition::ValidatedCompositionProject;
 use std::fmt::Write as _;
 #[path = "allocation.rs"]
 mod allocation;
+#[path = "consumer.rs"]
+mod consumer;
 #[path = "graphs.rs"]
 mod graphs;
 #[path = "hardening.rs"]

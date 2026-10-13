@@ -589,8 +589,12 @@ not permission to implement every subsystem before testing any of them.
 
 Slice 1 — consumer contract foundation:
 
-- [ ] Implement the closed data-only capability/report boundary and examples;
+- [x] Implement the closed data-only capability/report boundary and examples;
   do not add an executor, backend adapter, or implicit deferred evaluation.
+  `neutral-reader::consumer` validates typed envelopes against complete decoded
+  projects, exact public contracts, explicit features/context and real logical
+  identity. File-backed examples test statuses, privacy, limits and atomic failures.
+  JSON transport codecs and full consumer-profile activation are not implied.
 - [ ] Implement bounded public field-level attribution and typed selectors;
   preserve safe supplied/default/reuse origins without runtime evaluation.
 - [ ] Implement explicit typed entry discovery and complete contract facts in

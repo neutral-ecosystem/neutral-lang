@@ -1,0 +1,23 @@
+neu "1.0"
+module example
+
+public record Capability {
+    string kind,
+    List<string> labels = ["portable", "typed"],
+}
+public record Receipt {
+    string status,
+}
+public Capability description = {
+    kind: "emit",
+}
+public Capability entry = {
+    kind: "join"
+}
+
+
+Capability private_description = {
+    kind: "secret"
+}
+
+public Capability copied = private_description

@@ -9,6 +9,10 @@ cross-artifact checks and provenance validation without compiler linkage.
 `neutral-reader` validates external Neutral artifacts and exposes immutable,
 typed reader views over accepted logical data.
 
+The [consumer envelope boundary](src/consumer/README.md) checks closed capability
+descriptions and context-bound reports against public composition contracts.
+It does not execute operations, approve alternatives or evaluate deferred inputs.
+
 It depends on core, IR, and vocabulary contracts. It does not acquire artifacts
 or perform vocabulary lookup: callers supply the bytes and the exact captured
 vocabulary contract. The CLI and standalone probe use this boundary to inspect

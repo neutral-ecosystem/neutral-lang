@@ -19,6 +19,7 @@ use neutral_ir::{
 use std::sync::Arc;
 
 pub mod composition;
+pub mod consumer;
 mod project;
 mod project_identity;
 mod project_interface;

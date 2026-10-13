@@ -185,7 +185,7 @@ impl ValidatedCompositionProject {
         &self.bindings
     }
     /// Keeps post-validation work within the independent consumer's policy.
-    pub(super) const fn effective_composition_limits(&self) -> CompositionLimits {
+    pub(crate) const fn effective_composition_limits(&self) -> CompositionLimits {
         self.effective_composition
     }
 }

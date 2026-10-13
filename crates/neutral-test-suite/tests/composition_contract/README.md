@@ -2,6 +2,13 @@
 
 # Composition contract oracle
 
+`consumer.rs` and `consumer.neu` exercise the closed typed description/report
+boundary over compiled and independently decoded projects: exact nominal payloads,
+feature/code registration, complete identity and external context, explicit decision
+statuses, canonical diagnostics, checked public evidence/private reuse redaction,
+independent limits, cancellation and allocation-failure recovery. These do not
+implement consumer graph execution, entry discovery or deferred evaluation.
+
 Runtime-owned copies of reviewed inputs live here so tests do not depend on the
 portable plan. `reference.py` is a test-only Python encoder of the frozen /2
 transcript grammar. It reuses only unchanged /1 framing primitives from the
