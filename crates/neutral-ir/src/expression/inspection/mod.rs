@@ -125,6 +125,55 @@ fn inspect_retention(
     })
 }
 
+/// Preflights a complete public template, including every parameter/default and body.
+///
+/// # Errors
+/// Rejects structural/count/work/storage bounds or cancellation without allocation.
+/// Parameter scope, phases, visibility and exact typing still require semantic validation.
+pub fn inspect_public_template_retention(
+    template: &super::templates::PublicTemplate,
+    limits: ExpressionLimits,
+    expansion: super::templates::ExpansionLimits,
+    cancellation: &CancellationToken,
+) -> Result<ExpressionInspection, E> {
+    let expansion = expansion.intersect(super::templates::ExpansionLimits::hard());
+    if expansion.values().contains(&0) || template.parameters.len() as u64 > expansion.parameters {
+        return Err(E::Limit);
+    }
+    let limits = ExpressionLimits {
+        work: limits.work.min(expansion.work),
+        retained_bytes: limits.retained_bytes.min(expansion.retained_bytes),
+        output_bytes: limits.output_bytes.min(expansion.output_bytes),
+        ..limits
+    };
+    inspect_retention(limits, cancellation, |state| {
+        // expression() counts root slots; exclude the inline body/default from metadata charges.
+        state.charge(
+            (std::mem::size_of::<super::templates::PublicTemplate>()
+                - std::mem::size_of::<Expression>()) as u64,
+        )?;
+        state.symbol(&template.identity)?;
+        state.ty(&template.result_type, 0)?;
+        for parameter in &template.parameters {
+            let inline_default = if parameter.default.is_some() {
+                std::mem::size_of::<Expression>()
+            } else {
+                0
+            };
+            state.charge(
+                (std::mem::size_of::<super::templates::TemplateParameter>() - inline_default)
+                    as u64,
+            )?;
+            state.text(&parameter.name)?;
+            state.ty(&parameter.ty, 0)?;
+            if let Some(default) = &parameter.default {
+                state.expression(default, 1)?;
+            }
+        }
+        state.expression(&template.body, 1)
+    })
+}
+
 /// Request-local counters, shared across every descendant and deep payload.
 struct Inspection<'a> {
     /// Independently intersected controls.

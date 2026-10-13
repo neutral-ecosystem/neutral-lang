@@ -54,7 +54,7 @@ impl<'a> State<'a> {
     }
 
     /// Every body shares the remaining request work and retention budget.
-    fn retention_limits(&self) -> ExpressionLimits {
+    pub(super) fn retention_limits(&self) -> ExpressionLimits {
         ExpressionLimits {
             work: self.budget.work,
             retained_bytes: self.budget.bytes,

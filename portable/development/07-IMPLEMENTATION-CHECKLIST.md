@@ -613,8 +613,9 @@ Slice 1 — consumer contract foundation:
   Raw `/3` project data and compiler-independent all-branch semantic checks retain
   derived restriction/selector obligations and recompute all seven expression facts.
   Shared work/retention budgets, exact/one-over controls and allocation/cancellation
-  recovery tests pass. Public templates, complete source/IR/wire/reader integration,
-  evaluation and guarded consumer binding/dependency reports remain; model validity
+  recovery tests pass. Public template frames/defaults are typed without instantiation.
+  Complete source/IR/wire/reader integration, evaluation, expansion and guarded
+  consumer binding/dependency reports remain; model validity
   alone does not satisfy this gate or activate `/3`.
 
 Slice 2 — pure semantics and identity:

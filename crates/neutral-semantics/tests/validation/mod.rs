@@ -24,6 +24,8 @@ use neutral_semantics::{
 use neutral_vocabulary::{VocabularyLimits, composition::CompositionLimits};
 mod facts;
 mod hardening;
+mod template_obligations;
+mod templates;
 
 fn symbol(name: &str) -> ModuleSymbolIdentity {
     ModuleSymbolIdentity::new(LogicalModuleIdentity::new("1.0", "example"), name)

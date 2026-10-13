@@ -70,11 +70,24 @@ impl ExpressionValidationError {
     }
 }
 
+/// Exact retained root within one owner, distinct from its tree's child-index path.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ExpressionRoot {
+    /// Ordinary binding residual.
+    Binding,
+    /// Exported template body.
+    TemplateBody,
+    /// Default of the zero-based declared template parameter.
+    TemplateDefault(usize),
+}
+
 /// Canonical retained expression site, separate from source attribution.
 #[derive(Debug, Eq, PartialEq)]
 pub struct ExpressionSite {
     /// Exact declaration/template owner.
     pub owner: ModuleSymbolIdentity,
+    /// Separates template defaults from their body without inventing wire child indices.
+    pub root: ExpressionRoot,
     /// Canonical child-index path.
     pub node_path: Vec<u64>,
 }

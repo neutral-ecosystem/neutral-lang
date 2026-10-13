@@ -3,8 +3,8 @@
 //! Independent all-branch semantic checks over complete raw data, never source or wire fallback.
 
 use crate::model::{
-    AvailabilityObligation, ExpressionValidationError, RestrictionObligation, SemanticLimits,
-    ValidatedExpressionModel,
+    AvailabilityObligation, ExpressionRoot, ExpressionValidationError, RestrictionObligation,
+    SemanticLimits, ValidatedExpressionModel,
 };
 use neutral_core::{CancellationToken, allocation::Shared};
 use neutral_ir::{
@@ -26,6 +26,7 @@ mod declarations;
 mod matching;
 mod operators;
 mod selectors;
+mod templates;
 mod trees;
 mod types;
 mod values;
@@ -35,7 +36,7 @@ use ExpressionValidationError as E;
 ///
 /// # Errors
 /// Rejects unknown profiles, malformed/private/forged types, stale facts, independent
-/// bounds, allocation or cancellation. Public templates are currently unavailable;
+/// bounds, allocation or cancellation. Template validation does not instantiate bodies;
 /// complete source companions and artifact identities require a separate reader boundary.
 pub fn validate_expression_model(
     ir: Shared<ExpressionProjectIr>,
@@ -46,9 +47,6 @@ pub fn validate_expression_model(
         return Err(E::Cancelled);
     }
     if ir.schema != profile::PROJECT_IR_SCHEMA || !ir.semantic_profiles.matches_frozen() {
-        return Err(E::Unsupported);
-    }
-    if !ir.public_templates.is_empty() {
         return Err(E::Unsupported);
     }
     let limits = SemanticLimits {
@@ -108,10 +106,12 @@ pub fn validate_expression_model(
         path: Vec::new(),
         frames: [None; profile::MAX_DEPTH],
         frame_count: 0,
+        root: ExpressionRoot::Binding,
     };
     for d in &ir.declarations {
         state.declaration(d)?;
     }
+    state.templates()?;
     if state.facts != ir.expression_resources {
         return Err(E::Resources);
     }
@@ -277,8 +277,19 @@ struct State<'a> {
     restrictions: Vec<RestrictionObligation>,
     /// Current canonical node occurrence path.
     path: Vec<u64>,
-    /// Match payload frames; public templates remain explicitly unsupported for now.
-    frames: [Option<&'a neutral_ir::project_interface::ProjectPublicType>; profile::MAX_DEPTH],
+    /// Match-payload or template-parameter frames, bounded independently of attacker depth.
+    frames: [Option<Frame<'a>>; profile::MAX_DEPTH],
     /// Active lexical frames.
     frame_count: usize,
+    /// Actual retained root, separate from its canonical child path.
+    root: ExpressionRoot,
+}
+
+/// Borrowed lexical scope; template defaults expose only the earlier parameter slice.
+#[derive(Clone, Copy)]
+enum Frame<'a> {
+    /// One arm-local payload at slot zero.
+    Payload(&'a neutral_ir::project_interface::ProjectPublicType),
+    /// Ordered template parameters available in this body/default scope.
+    Parameters(&'a [neutral_ir::expression::templates::TemplateParameter]),
 }

@@ -22,6 +22,49 @@ fn inspection_exposes_aggregate_retention_cost_without_allocation() {
     assert_eq!(allocations, 0);
 }
 
+#[test]
+fn template_inline_roots_are_counted_once_at_exact_retention_boundary() {
+    use neutral_ir::expression::templates::{
+        ExpansionLimits, ParameterPhase, PublicTemplate, TemplateParameter,
+    };
+    let template = PublicTemplate {
+        identity: symbol("Choose"),
+        parameters: vec![TemplateParameter {
+            name: "flag".into(),
+            phase: ParameterPhase::Static,
+            ty: T::Bool,
+            default: Some(leaf(true)),
+        }],
+        result_type: T::Bool,
+        body: Expression {
+            ty: T::Bool,
+            node: ExpressionNode::Bound { depth: 0, slot: 0 },
+        },
+    };
+    // Both root Expressions are inline; only the vector slot and owned UTF-8 text add storage.
+    let bytes = (std::mem::size_of::<PublicTemplate>()
+        + std::mem::size_of::<TemplateParameter>()
+        + 3
+        + 7
+        + 6
+        + 4) as u64;
+    let inspect = |bytes| {
+        inspect_public_template_retention(
+            &template,
+            ExpressionLimits {
+                retained_bytes: bytes,
+                ..ExpressionLimits::hard()
+            },
+            ExpansionLimits::hard(),
+            &CancellationToken::new(),
+        )
+    };
+    let (result, reservations) = observe(None, || inspect(bytes));
+    assert_eq!(result.unwrap().retained_bytes, bytes);
+    assert_eq!(reservations, 0);
+    assert_eq!(inspect(bytes - 1), Err(ExpressionShapeError::Limit));
+}
+
 fn inspect(
     tree: &Expression,
     limits: ExpressionLimits,

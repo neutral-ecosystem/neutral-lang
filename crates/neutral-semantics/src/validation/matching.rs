@@ -34,7 +34,7 @@ impl<'a> State<'a> {
             if self.frame_count >= self.frames.len() {
                 return Err(E::Limit);
             }
-            self.frames[self.frame_count] = Some(&arm.payload_type);
+            self.frames[self.frame_count] = Some(super::Frame::Payload(&arm.payload_type));
             self.frame_count += 1;
             let result = self.child(&arm.body, index as u64 + 1, public, owner, depth + 1);
             self.frame_count -= 1;

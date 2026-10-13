@@ -71,7 +71,7 @@ fn restriction_checks_consume_shared_work_instead_of_resetting_it() {
 }
 
 #[test]
-fn stale_facts_and_unsupported_templates_cannot_be_accepted() {
+fn stale_binding_and_template_facts_cannot_be_accepted() {
     let mut ir = project(vec![binding(
         "result",
         T::Bool,
@@ -87,7 +87,7 @@ fn stale_facts_and_unsupported_templates_cannot_be_accepted() {
             result_type: T::Bool,
             body: leaf(true),
         });
-    assert_eq!(validate(ir).unwrap_err(), E::Unsupported);
+    assert_eq!(validate(ir).unwrap_err(), E::Resources);
 }
 
 #[test]

@@ -65,7 +65,7 @@ Update `Cargo.toml`, owning manifests/READMEs, dependency-boundary enforcement a
 
 - [x] Write `unselected_branch_forged_type_is_rejected`, `bound_scope_depth_slot_and_type_are_checked`, `public_expression_cannot_leak_private_owners`, `match_requires_every_exact_alternative`, and `output_selector_retains_future_obligations`. Assert named NEU-EXP classifications and literal obligation paths/types.
 - [ ] Observe failures before implementing validation. Validate all types/operators/branches, exact nominal revision, contextual null/list/record/variant values, complete public closure and lexical frames. Reject static value cycles, dangling inputs and illegal output selectors; keep producer/result association explicitly consumer-owned.
-- [x] Write/implement independent fact recomputation for all seven frozen facts, including wire-text counts; reject forged producer facts rather than trusting raw shape counts. Public template bodies remain rejected pending their validation; no nonempty template facts are accepted yet.
+- [x] Write/implement independent fact recomputation for all seven frozen facts, including wire-text counts; reject forged producer facts rather than trusting raw shape counts. Public template bodies/defaults are now independently typed and included in literal retained-fact tests.
 - [ ] Run negative/exact-one-over/cancellation/allocation sweeps. Retain previous accepted model and require a subsequent successful request after every failure.
 
 ## Task 3: Bounded deterministic decimal and typed value operations

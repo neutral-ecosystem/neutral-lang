@@ -131,14 +131,20 @@ impl<'a> State<'a> {
             N::Bound { depth, slot } => self.bound(*depth, *slot, &e.ty),
         }
     }
-    /// Rejects orphan, oversized or differently typed match-payload lexical references.
+    /// Rejects orphan, oversized or differently typed payload/parameter lexical references.
     fn bound(&self, depth: u64, slot: u64, ty: &T) -> Result<(), E> {
         let depth = usize::try_from(depth).map_err(|_| E::TypeMismatch)?;
         let index = self
             .frame_count
             .checked_sub(depth.checked_add(1).ok_or(E::TypeMismatch)?)
             .ok_or(E::TypeMismatch)?;
-        if slot != 0 || self.frames[index] != Some(ty) {
+        let slot = usize::try_from(slot).map_err(|_| E::TypeMismatch)?;
+        let resolved = match self.frames[index] {
+            Some(super::Frame::Payload(ty)) if slot == 0 => Some(ty),
+            Some(super::Frame::Parameters(parameters)) => parameters.get(slot).map(|p| &p.ty),
+            _ => None,
+        };
+        if resolved != Some(ty) {
             return Err(E::TypeMismatch);
         }
         Ok(())
@@ -162,6 +168,7 @@ impl<'a> State<'a> {
         self.budget.storage(bytes)?;
         Ok(ExpressionSite {
             owner: owner.try_clone().map_err(|_| E::Limit)?,
+            root: self.root,
             node_path: self.path.try_clone().map_err(|_| E::Limit)?,
         })
     }
