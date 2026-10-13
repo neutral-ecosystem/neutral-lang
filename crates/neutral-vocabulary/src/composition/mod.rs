@@ -18,7 +18,9 @@ pub use bindings::{
 pub use model::validate_composition_model;
 pub use scope::{ValidatedCompositionScope, validate_composition_scope};
 pub use supplied::{ValidatedCompositionValue, materialize_composition_value};
-pub use values::check_composition_field_restrictions;
+pub use values::{
+    check_composition_field_restrictions, check_composition_field_restrictions_budgeted,
+};
 
 use crate::{VocabularyError, VocabularyLimits, VocabularyLock};
 use neutral_core::{CancellationToken, VocabularyContentDigest};

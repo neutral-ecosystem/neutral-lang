@@ -13,7 +13,7 @@ use crate::{
 };
 use std::collections::BTreeMap;
 
-/// Immutable validated logical Neutral document.
+/// Immutable logical Neutral document; independent reader validation establishes validity.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LogicalDocument {
     /// Logical module identity.
@@ -27,7 +27,10 @@ pub struct LogicalDocument {
 }
 
 impl LogicalDocument {
-    /// Creates a validated logical document.
+    /// Groups a module and declarations without validating names, types or reference edges.
+    ///
+    /// Producers must establish semantic validity before use; untrusted values
+    /// require independent reader checks. This constructor does not reorder declarations.
     #[must_use]
     pub fn new(module: LogicalModuleIdentity, declarations: Vec<Declaration>) -> Self {
         Self {
@@ -38,7 +41,10 @@ impl LogicalDocument {
         }
     }
 
-    /// Creates a validated logical document containing nominal records and bindings.
+    /// Groups nominal records and bindings without checking their consistency.
+    ///
+    /// Canonical record order, symbol uniqueness and reference validity remain
+    /// producer/reader responsibilities; allocation ownership is transferred unchanged.
     #[must_use]
     pub fn with_record_types(
         module: LogicalModuleIdentity,
@@ -53,7 +59,7 @@ impl LogicalDocument {
         }
     }
 
-    /// Attaches the exact validated captured vocabulary contract.
+    /// Attaches an exact captured vocabulary contract without validating its declarations.
     #[must_use]
     pub fn with_vocabulary(mut self, vocabulary: VocabularyContract) -> Self {
         self.vocabulary = Some(vocabulary);

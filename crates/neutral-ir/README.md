@@ -54,7 +54,12 @@ Start with [lib.rs](src/lib.rs), the stable public facade. Private modules group
 [complete artifacts](src/artifacts.rs) remain separate from logical meaning.
 Public imports still use the crate root. Continue with [project.rs](src/project.rs)
 for complete multi-unit meaning versus companions.
-The [composition model](src/composition.rs) shares raw composite vocabulary
+The [source layout guide](src/README.md) maps module responsibilities and the
+[test guide](tests/README.md) explains local versus cross-crate coverage.
+Frozen document selectors live in [profile.rs](src/profile.rs), with crate-root
+re-exports for compatibility. Identical version strings are not interchangeable
+contracts, and no protocol selector is inferred from the Cargo package version.
+The [composition model](src/composition/mod.rs) shares raw composite vocabulary
 contracts and closed defaults with validators and future readers. It preserves
 absence/null distinctions and exact numeric comparison; construction does not
 establish validity or extend frozen project schemas.
@@ -86,10 +91,17 @@ Both use separately typed /2 transcripts; /1 profiles and vectors are unchanged.
 The [identity writer](src/project_identity/framing.rs) explains bounded in-place
 framing and why malformed canonical order is rejected instead of silently sorted.
 
+[The expression module](src/expression/README.md) owns raw typed successor trees,
+including external/output leaves,
+guards and lexical references. Allocation-free shape inspection and bounded
+fallible copying cover every retained branch and nested payload. Neither grants
+semantic validation authority nor activates successor source, wire or evaluation
+profiles; complete reader integration remains required.
+
 ## Command
 
 Use `cargo xtask test all` for complete repository validation, including doctests.
-The focused Cargo command below runs this crate's test binaries only.
+The focused Cargo command below runs this crate's tests and doctests only.
 
 This is a library crate. Verify its public logical-model contracts with:
 

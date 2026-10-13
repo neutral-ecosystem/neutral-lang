@@ -12,5 +12,8 @@ owner = "logical-model"
 [dependencies]
 neutral-core = { path = "../neutral-core" }
 
+[dev-dependencies]
+neutral-core = { path = "../neutral-core", features = ["allocation-testing"] }
+
 [lints]
 workspace = true

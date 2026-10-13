@@ -79,6 +79,7 @@ pub(crate) fn verify_pure_source_effects(root: &Path) -> Result<(), String> {
         constants::NEUTRAL_IR,
         constants::NEUTRAL_VOCABULARY,
         constants::NEUTRAL_COMPILER,
+        constants::NEUTRAL_SEMANTICS,
     ] {
         let mut files = Vec::new();
         collect_regular_files(
@@ -176,6 +177,14 @@ pub(crate) fn direct_dependency_policy() -> BTreeMap<&'static str, BTreeSet<&'st
             ]),
         ),
         (constants::NEUTRAL_IR, set([constants::NEUTRAL_CORE])),
+        (
+            constants::NEUTRAL_SEMANTICS,
+            set([
+                constants::NEUTRAL_CORE,
+                constants::NEUTRAL_IR,
+                constants::NEUTRAL_VOCABULARY,
+            ]),
+        ),
         (
             constants::NEUTRAL_PROBE,
             set([

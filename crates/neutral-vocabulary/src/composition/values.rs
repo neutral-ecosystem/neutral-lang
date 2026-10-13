@@ -220,11 +220,44 @@ pub fn check_composition_field_restrictions(
     limits: super::CompositionLimits,
     cancellation: &neutral_core::CancellationToken,
 ) -> Result<(), E> {
+    let mut remaining_work = limits.work;
+    check_composition_field_restrictions_budgeted(
+        field,
+        value,
+        limits,
+        &mut remaining_work,
+        cancellation,
+    )
+}
+
+/// Checks restrictions while charging the caller's aggregate remaining work.
+///
+/// # Errors
+/// Rejects invalid or violated restrictions, exhausted work and cancellation.
+pub fn check_composition_field_restrictions_budgeted(
+    field: &CompositionField,
+    value: &neutral_ir::composition::BindingValue,
+    mut limits: super::CompositionLimits,
+    remaining_work: &mut u64,
+    cancellation: &neutral_core::CancellationToken,
+) -> Result<(), E> {
+    limits.work = limits.work.min(*remaining_work);
     limits.validate()?;
     let mut budget = Budget::new(limits, cancellation);
-    super::scope::preflight_type(&field.ty, &mut budget)?;
-    super::scope::preflight_restrictions(field, &mut budget)?;
-    let restrictions = validate_restrictions(field, &mut budget)?;
+    let result = check_field_restrictions(field, value, &mut budget);
+    *remaining_work = remaining_work.saturating_sub(budget.work);
+    result
+}
+
+/// Shares the restriction rules between standalone and aggregate callers.
+fn check_field_restrictions(
+    field: &CompositionField,
+    value: &neutral_ir::composition::BindingValue,
+    budget: &mut Budget<'_>,
+) -> Result<(), E> {
+    super::scope::preflight_type(&field.ty, budget)?;
+    super::scope::preflight_restrictions(field, budget)?;
+    let restrictions = validate_restrictions(field, budget)?;
     let ty = if let T::Nullable(inner) = &field.ty {
         inner.as_ref()
     } else {
@@ -236,7 +269,7 @@ pub fn check_composition_field_restrictions(
     {
         return Err(E::InvalidValue);
     }
-    check_restrictions(&restrictions, value, &mut budget).map_err(|e| {
+    check_restrictions(&restrictions, value, budget).map_err(|e| {
         if e == E::InvalidDefault {
             E::InvalidValue
         } else {

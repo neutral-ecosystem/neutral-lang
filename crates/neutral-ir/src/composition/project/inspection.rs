@@ -39,6 +39,43 @@ struct Inspector<'a> {
     facts: CompositionResourceFacts,
 }
 
+/// Preflights borrowed nominal bodies before any recursive source-definition copy.
+///
+/// # Errors
+/// Returns bounded resource/allocation or cancellation failure, without a fake project envelope.
+pub fn inspect_composition_bodies<'a>(
+    bodies: impl IntoIterator<Item = &'a CompositionBody>,
+    limits: ProjectLimits,
+    policy: CompositionPolicy,
+    cancellation: &CancellationToken,
+) -> Result<CompositionBodyInspection, CompositionShapeError> {
+    let mut inspector = Inspector {
+        limits,
+        policy,
+        cancellation,
+        work: 0,
+        text: 0,
+        facts: CompositionResourceFacts::from_values([0; 7]),
+    };
+    inspector.step(1)?;
+    for body in bodies {
+        inspector.body(body)?;
+    }
+    Ok(CompositionBodyInspection {
+        facts: inspector.facts,
+        work: inspector.work,
+    })
+}
+
+/// Borrowed contract facts and comparison/copy work, not validated contract authority.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CompositionBodyInspection {
+    /// Independently counted raw body occurrences.
+    pub facts: CompositionResourceFacts,
+    /// Checked traversal and key work available for aggregate caller accounting.
+    pub work: u64,
+}
+
 impl Inspector<'_> {
     /// Charges checked inspection work before proportional traversal or allocation.
     fn step(&mut self, n: u64) -> Result<(), CompositionShapeError> {

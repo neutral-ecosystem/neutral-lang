@@ -4,6 +4,7 @@ members = [
     "crates/neutral-core",
     "crates/neutral-ir",
     "crates/neutral-vocabulary",
+    "crates/neutral-semantics",
     "crates/neutral-compiler",
     "crates/neutral-reader",
     "crates/neutral-encoding",

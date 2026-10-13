@@ -59,7 +59,7 @@ fn artifact_equivalence_compares_the_logical_payload_only() {
 }
 
 /// Frozen language behavior version used by standalone IR test graphs.
-const TEST_LANGUAGE_BEHAVIOR_VERSION: &str = "0.1.0";
+const TEST_LANGUAGE_BEHAVIOR_VERSION: &str = super::LANGUAGE_BEHAVIOR_VERSION;
 
 /// Builds one complete reference graph with caller-selected local ID spellings.
 fn reference_document(ids: [u64; 4]) -> LogicalDocument {

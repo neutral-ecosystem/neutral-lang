@@ -610,8 +610,12 @@ Slice 1 — consumer contract foundation:
 - [ ] Retain typed external/output inputs and unresolved restriction obligations;
   expose separately guarded value dependencies and explicit prerequisite data,
   with consumer binding/availability/failure reports and no implicit scheduler.
-  Depends on Slice 2's typed expression `/3` model across source, IR, wire and
-  reader; ordinary materialized `/2` values do not satisfy deferred retention.
+  Raw `/3` project data and compiler-independent all-branch semantic checks retain
+  derived restriction/selector obligations and recompute all seven expression facts.
+  Shared work/retention budgets, exact/one-over controls and allocation/cancellation
+  recovery tests pass. Public templates, complete source/IR/wire/reader integration,
+  evaluation and guarded consumer binding/dependency reports remain; model validity
+  alone does not satisfy this gate or activate `/3`.
 
 Slice 2 — pure semantics and identity:
 

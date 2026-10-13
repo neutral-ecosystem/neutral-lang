@@ -181,6 +181,8 @@ pub const NEUTRAL_CORE: &str = "neutral-core";
 pub const NEUTRAL_ENCODING: &str = "neutral-encoding";
 /// Workspace package name for the intermediate representation.
 pub const NEUTRAL_IR: &str = "neutral-ir";
+/// Workspace package name for compiler-independent pure expression semantics.
+pub const NEUTRAL_SEMANTICS: &str = "neutral-semantics";
 /// Workspace package name for the probe executable.
 pub const NEUTRAL_PROBE: &str = "neutral-probe";
 /// Workspace package name for the reader.

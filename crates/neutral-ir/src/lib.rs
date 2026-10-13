@@ -13,6 +13,9 @@
 //! describes only the public signature surface, while [`project_identity`]
 //! defines content-sensitive identity layers. Do not substitute an interface
 //! fingerprint or graph-local label for a complete project identity.
+//! [`composition`] shares nominal contracts and closed defaults; [`expression`]
+//! retains raw typed deferred structure without evaluation or profile activation.
+//! [`profile`] owns document selectors, not the Cargo package release version.
 //!
 //! Public data structures let producers construct values; construction alone
 //! does not establish validity. The independent reader boundary is responsible
@@ -50,7 +53,9 @@ mod artifacts;
 pub use artifacts::CompilationArtifacts;
 
 pub mod composition;
+pub mod expression;
 pub mod language;
+pub mod profile;
 pub mod project;
 pub mod project_identity;
 pub mod project_interface;
@@ -58,16 +63,10 @@ pub mod project_interface;
 /// Fallible owned copies shared by bounded producers and independent validators.
 mod fallible;
 
-/// Frozen logical IR schema version for the minimal v0 artifact.
-pub const LOGICAL_IR_SCHEMA_VERSION: &str = "0.1.0";
-/// Frozen v0 language-behavior version shared by artifacts and producers.
-pub const LANGUAGE_BEHAVIOR_VERSION: &str = "0.1.0";
-/// Frozen source-map schema version for the minimal v0 artifact.
-pub const SOURCE_MAP_VERSION: &str = "0.1.0";
-/// Frozen provenance schema version for the minimal v0 artifact.
-pub const PROVENANCE_VERSION: &str = "0.1.0";
-/// Frozen derivation schema version for the minimal v0 artifact.
-pub const DERIVATION_SCHEMA_VERSION: &str = "0.1.0";
+pub use profile::{
+    DERIVATION_SCHEMA_VERSION, LANGUAGE_BEHAVIOR_VERSION, LOGICAL_IR_SCHEMA_VERSION,
+    PROVENANCE_VERSION, SOURCE_MAP_VERSION,
+};
 
 /// A failure while constructing validated logical IR values.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

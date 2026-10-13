@@ -747,6 +747,23 @@ fn core_allows_only_the_reviewed_sha256_dependency() {
 }
 
 #[test]
+/// Shared semantics must not admit parser, reader or host-facing dependency cycles.
+fn semantics_policy_rejects_compiler_and_host_dependencies() {
+    let policy = crate::checks::dependencies::direct_dependency_policy();
+    let allowed = policy
+        .get("neutral-semantics")
+        .expect("shared semantics boundary is required");
+    let mut actual = BTreeSet::from([
+        constants::NEUTRAL_CORE.to_owned(),
+        constants::NEUTRAL_IR.to_owned(),
+        constants::NEUTRAL_VOCABULARY.to_owned(),
+    ]);
+    assert!(validate_direct_dependencies("neutral-semantics", &actual, allowed).is_ok());
+    actual.insert(constants::NEUTRAL_COMPILER.to_owned());
+    assert!(validate_direct_dependencies("neutral-semantics", &actual, allowed).is_err());
+}
+
+#[test]
 /// Verifies that a compiler package in the probe closure is rejected.
 fn probe_allowlist_rejects_a_compiler_dependency_in_the_probe_closure() {
     let actual = BTreeSet::from([

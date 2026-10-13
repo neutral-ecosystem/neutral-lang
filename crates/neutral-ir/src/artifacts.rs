@@ -32,7 +32,10 @@ pub struct CompilationArtifacts {
 }
 
 impl CompilationArtifacts {
-    /// Creates already-validated in-process compilation artifacts.
+    /// Groups a document and its companions without checking cross-record consistency.
+    ///
+    /// Intended for producers after semantic validation. An untrusted caller can
+    /// construct inconsistent data, so construction is not independent reader authority.
     #[must_use]
     pub fn new(
         logical_document: LogicalDocument,
@@ -62,21 +65,21 @@ impl CompilationArtifacts {
             .logically_equivalent(&other.logical_document)
     }
 
-    /// Attaches validated field-level provenance to successful artifacts.
+    /// Attaches field-level provenance; does not validate owners, fields or source spans.
     #[must_use]
     pub fn with_field_provenance(mut self, field_provenance: Vec<FieldProvenanceRecord>) -> Self {
         self.field_provenance = field_provenance;
         self
     }
 
-    /// Attaches validated ordinary immutable-value reuse provenance.
+    /// Attaches reuse provenance without resolving or validating dependency edges.
     #[must_use]
     pub fn with_reuse_provenance(mut self, reuse_provenance: Vec<ReuseProvenanceRecord>) -> Self {
         self.reuse_provenance = reuse_provenance;
         self
     }
 
-    /// Attaches validated typed identity-reference provenance.
+    /// Attaches reference provenance without validating target types or source ownership.
     #[must_use]
     pub fn with_reference_provenance(
         mut self,

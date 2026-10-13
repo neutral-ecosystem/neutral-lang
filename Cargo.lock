@@ -247,6 +247,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "neutral-semantics"
+version = "0.8.0"
+dependencies = [
+ "neutral-core",
+ "neutral-ir",
+ "neutral-vocabulary",
+]
+
+[[package]]
 name = "neutral-test-suite"
 version = "0.8.0"
 dependencies = [
