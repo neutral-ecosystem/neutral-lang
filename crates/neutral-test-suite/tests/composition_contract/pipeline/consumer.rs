@@ -246,7 +246,7 @@ fn source_location(
 
 #[test]
 fn integration_consumer_decoded_evidence_requires_exact_public_occurrence() {
-    let case = source_case(include_str!("consumer.neu"));
+    let case = source_case(sources::CONSUMER);
     let project = compile(&case);
     let cancel = CancellationToken::new();
     let decoded = roundtrip(&project, &cancel);
@@ -577,7 +577,7 @@ fn owner(name: &str) -> ModuleSymbolIdentity {
 }
 
 fn project() -> ValidatedCompositionProject {
-    compile(&source_case(include_str!("consumer.neu")))
+    compile(&source_case(sources::CONSUMER))
 }
 
 fn protocol(contract: &T) -> ConsumerProtocol<'_> {
@@ -688,7 +688,7 @@ fn integration_consumer_reports_bind_real_identity_context_and_do_not_accept_alt
         logical
     );
     let other = compile(&source_case(
-        &include_str!("consumer.neu").replace("\"emit\"", "\"other\""),
+        &sources::CONSUMER.replace("\"emit\"", "\"other\""),
     ));
     request.project_identity = ConsumerBoundary::new(
         &other,

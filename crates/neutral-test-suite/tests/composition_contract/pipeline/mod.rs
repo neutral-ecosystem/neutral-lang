@@ -20,17 +20,11 @@ use neutral_ir::{
 };
 use neutral_reader::composition::ValidatedCompositionProject;
 use std::fmt::Write as _;
-#[path = "allocation.rs"]
 mod allocation;
-#[path = "consumer.rs"]
 mod consumer;
-#[path = "graphs.rs"]
 mod graphs;
-#[path = "hardening.rs"]
 mod hardening;
-#[path = "identity.rs"]
 mod identity;
-#[path = "reader_probe.rs"]
 mod reader_probe;
 
 /// Creates fallible successor shared ownership for fixtures; allocation failure fails the test.
@@ -225,7 +219,7 @@ fn conformance_composition_every_registered_case_through_complete_pipeline() {
 /// Source defaults, nested materialization and reuse are ordinary immutable meaning, not execution.
 #[test]
 fn integration_composition_source_defaults_nested_reuse_and_heterogeneous_variants() {
-    let project = compile(&source_case(include_str!("source-defaults.neu")));
+    let project = compile(&source_case(sources::DEFAULTS));
     let ir = project.complete_ir();
     let original = ir
         .declarations
@@ -257,11 +251,10 @@ fn integration_composition_source_defaults_nested_reuse_and_heterogeneous_varian
 /// Identity references may cycle; ordinary value reuse cannot evaluate a cycle.
 #[test]
 fn conformance_composition_reference_cycles_are_not_reuse_cycles() {
-    let project = compile(&source_case(include_str!("reference-cycle.neu")));
+    let project = compile(&source_case(sources::REFERENCE_CYCLE));
     assert_eq!(project.bindings().bindings().len(), 2);
     let captured =
-        capture_composition_project(request(&source_case(include_str!("reuse-cycle.neu"))))
-            .unwrap();
+        capture_composition_project(request(&source_case(sources::REUSE_CYCLE))).unwrap();
     assert_eq!(
         compile_composition_project(&captured, &CancellationToken::new())
             .unwrap_err()

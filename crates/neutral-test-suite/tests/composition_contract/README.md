@@ -2,7 +2,33 @@
 
 # Composition contract oracle
 
-`consumer.rs` and `consumer.neu` exercise the closed typed description/report
+```text
+composition_contract/
+├── mod.rs                  shared inputs and independent oracle comparisons
+├── capture.rs              catalogue/capture boundary tests
+├── reference.py            frozen independent complete-identity oracle
+├── interface_reference.py  independent public projection
+├── fixtures/
+│   ├── requests/           positive, negative, boundary and migration captures
+│   ├── identity/           literal vectors and outcome/digest inventory
+│   └── source/             readable source regression programs
+└── pipeline/
+    ├── mod.rs              shared pipeline helpers and round-trip tests
+    ├── allocation.rs       failure/cancellation sweeps
+    ├── consumer.rs         closed description/report envelopes
+    ├── graphs.rs           module and vocabulary graph families
+    ├── hardening.rs        cache, hostile input and independent bounds
+    ├── reader_probe.rs     public views, source evidence and standalone probe
+    └── identity/           identity comparisons and literal-fact test builders
+```
+
+The Python oracle files deliberately retain their frozen locations and bytes:
+the complete oracle imports the sibling historical identity oracle, and its hash
+and path are pinned by the contract freeze. Test modules keep their original Rust
+names, so existing Nextest/Cargo filters still work. Source fixture paths are
+declared once in `mod.rs::sources`, not repeated in pipeline modules.
+
+`pipeline/consumer.rs` and `fixtures/source/consumer.neu` exercise the closed typed description/report
 boundary over compiled and independently decoded projects: exact nominal payloads,
 feature/code registration, complete identity and external context, explicit decision
 statuses, canonical diagnostics, checked public evidence/private reuse redaction,
@@ -25,18 +51,18 @@ optional origins, old-schema adaptation, replay, permutations and concurrency.
 The production captured-identity transcript is compared with literal bytes/digest
 and exact/one-over framing budgets. Catalogue-only cases get an explicit test
 source declaring their reviewed roots; those are not source-compilation tests.
-`pipeline.rs` additionally runs the actual successor compiler, complete reader
+`pipeline/mod.rs` additionally runs the actual successor compiler, complete reader
 and binary round trip for accepted source families, boundary cases and legacy-leaf
 adaptation. It checks frozen source diagnostic codes, both nominal variant origins,
 nested closed defaults, ordinary reuse versus reference cycles, heterogeneous
 lists, independent bounds, hostile frames, shuffled captures and concurrency.
 The complete production logical transcript is compared byte-for-byte and
 digest-for-digest with the frozen second implementation.
-`reader_probe.rs` checks public field/alternative/reference closure and cyclic
+`pipeline/reader_probe.rs` checks public field/alternative/reference closure and cyclic
 reference worklists, private reuse redaction, precise source-default/reuse spans,
 invalid companion rejection, safe vocabulary owners, selection-invariant complete
 identity, and the real compiler-free probe executable on successor artifacts.
-`hardening.rs` exercises real successor syntax-cache hits and changed units,
+`pipeline/hardening.rs` exercises real successor syntax-cache hits and changed units,
 vocabularies/defaults, host IDs, policies, failed generations and concurrent
 caller isolation. Complete IR/companions and encoded bytes must equal clean
 compilation. It also sweeps every independent composition and wire consumer
@@ -46,7 +72,7 @@ artifact byte before independent validation. These sweeps complement the literal
 catalogue/dependency boundary expectations; they do not prove all allocation
 failure paths; those are exercised separately below.
 
-`allocation.rs` uses the core's non-default, thread-local `allocation-testing`
+`pipeline/allocation.rs` uses the core's non-default, thread-local `allocation-testing`
 feature to reject every observed reservation independently in accepted capture
 families, the adapted leaf embedding graph, source resolution/SCCs, complete
 companions, reader validation, views, logical identity, wire encoding/decoding
@@ -62,14 +88,14 @@ failure and reservation-boundary cancellation must reject publication. Replay
 preserves exact bytes, locks, features and policies; renderer tests additionally
 cover empty views, Unicode and JSON control-character escaping.
 
-`graphs.rs` supplements the immutable literals with transitive vocabulary graph
+`pipeline/graphs.rs` supplements the immutable literals with transitive vocabulary graph
 families and source import chains, diamonds and valid reference-type SCCs. Source
 topology is compared with the existing graph API, then independently decoded and
 inspected; shuffled captures must produce identical wire bytes.
 
-`identity.rs` compares all five frozen /2 baseline partitions, twelve semantic/
+`pipeline/identity/mod.rs` compares all five frozen /2 baseline partitions, twelve semantic/
 evidence variations and eight rejection vectors against production boundaries.
-`identity_facts.rs` constructs raw test models from literal facts without sorting
+`pipeline/identity/facts.rs` constructs raw test models from literal facts without sorting
 or normalizing them; these models are framing inputs, not reader authority.
 `interface_reference.py` independently projects public declarations/contracts
 before using the pinned Python grammar. The original `reference.py`, vectors and

@@ -131,7 +131,7 @@ fn integration_composition_view_bounds_long_reference_closure() {
 /// Source scalar/default/reuse spans retain original bytes; public projections never retain those spans.
 #[test]
 fn integration_composition_attribution_matches_source_subexpressions() {
-    let text = include_str!("source-defaults.neu");
+    let text = sources::DEFAULTS;
     let project = compile(&source_case(text));
     let ir = project.complete_ir();
     for binding in ["original", "copied"] {
@@ -270,7 +270,7 @@ fn integration_composition_probe_preserves_contracts_and_root_invariance() {
 #[test]
 fn system_composition_standalone_probe_decodes_successor_artifacts() {
     let executable = crate::source_pipeline::executable("neutral-probe");
-    let project = compile(&source_case(include_str!("source-defaults.neu")));
+    let project = compile(&source_case(sources::DEFAULTS));
     let bytes = encode_composition_project(&project, &CancellationToken::new()).unwrap();
     let path = std::env::temp_dir().join(format!(
         "neutral-composition-probe-{}.nir",
@@ -307,6 +307,6 @@ fn system_composition_standalone_probe_decodes_successor_artifacts() {
     assert!(!corrupt.status.success());
     assert_eq!(corrupt.stdout, [] as [u8; 0]);
     std::fs::remove_file(&path).unwrap();
-    let manifest = include_str!("../../../neutral-probe/Cargo.toml");
+    let manifest = include_str!("../../../../neutral-probe/Cargo.toml");
     assert!(!manifest.contains("neutral-compiler"));
 }

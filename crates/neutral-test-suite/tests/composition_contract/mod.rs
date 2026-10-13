@@ -21,13 +21,24 @@ mod capture;
 mod pipeline;
 
 /// Runtime-owned immutable vector copy, not a generated measurement report.
-const VECTORS: &str = include_str!("vectors.json");
+const VECTORS: &str = include_str!("fixtures/identity/vectors.json");
+/// Shared source inputs; consumers do not need to know the fixture directory layout.
+mod sources {
+    /// Public records, bindings and a private reuse source for consumer envelopes.
+    pub(super) const CONSUMER: &str = include_str!("fixtures/source/consumer.neu");
+    /// Source defaults and immutable reuse with checked occurrence evidence.
+    pub(super) const DEFAULTS: &str = include_str!("fixtures/source/source-defaults.neu");
+    /// Valid cyclic identity references.
+    pub(super) const REFERENCE_CYCLE: &str = include_str!("fixtures/source/reference-cycle.neu");
+    /// Invalid cyclic immutable value reuse.
+    pub(super) const REUSE_CYCLE: &str = include_str!("fixtures/source/reuse-cycle.neu");
+}
 /// Runtime-owned immutable literal request families shared by oracle and production comparisons.
 const REQUESTS: &[&str] = &[
-    include_str!("positive.json"),
-    include_str!("negative.json"),
-    include_str!("boundary.json"),
-    include_str!("migration.json"),
+    include_str!("fixtures/requests/positive.json"),
+    include_str!("fixtures/requests/negative.json"),
+    include_str!("fixtures/requests/boundary.json"),
+    include_str!("fixtures/requests/migration.json"),
 ];
 
 /// Constructs exact locks from pinned fixture facts, never from generated expected outputs.
@@ -356,7 +367,8 @@ fn security_composition_contract_rejects_noncanonical_resolved_facts() {
 /// Separate literal oracles agree with request outcomes and enumerate all identity vectors.
 #[test]
 fn conformance_composition_contract_oracle_inventory_is_complete() {
-    let oracle: Value = serde_json::from_str(include_str!("oracle.json")).unwrap();
+    let oracle: Value =
+        serde_json::from_str(include_str!("fixtures/identity/oracle.json")).unwrap();
     for (family, raw) in ["positive", "negative", "boundary", "migration"]
         .iter()
         .zip(REQUESTS)

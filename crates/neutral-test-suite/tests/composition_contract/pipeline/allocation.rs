@@ -16,10 +16,7 @@ type CancellableOperation<'a> = (&'a str, &'a dyn Fn(&CancellationToken) -> bool
 /// Replay must expose its owned copies to the same failure policy as capture.
 #[test]
 fn security_composition_replay_observes_allocation_boundaries() {
-    for case in [
-        leaf_case(),
-        source_case(include_str!("source-defaults.neu")),
-    ] {
+    for case in [leaf_case(), source_case(sources::DEFAULTS)] {
         let captured = capture_composition_project(request(&case)).unwrap();
         let count = sweep("replay", |failure| {
             observe(failure, || {
@@ -49,7 +46,7 @@ fn security_composition_replay_observes_allocation_boundaries() {
 /// JSON presentation must not bypass the fallible processing policy.
 #[test]
 fn security_composition_render_observes_allocation_boundaries() {
-    let case = source_case(include_str!("source-defaults.neu"));
+    let case = source_case(sources::DEFAULTS);
     let project = compile(&case);
     let signal = CancellationToken::new();
     let bytes = encode_composition_project(&project, &signal).unwrap();
@@ -108,10 +105,7 @@ fn sweep<T, E: std::fmt::Debug>(
 /// Exercises exact-source identity/index copies, repeated aliases, transitive locks and adapted leaf graphs.
 #[test]
 fn security_composition_capture_allocation_sweep_is_atomic() {
-    let mut cases = vec![
-        source_case(include_str!("source-defaults.neu")),
-        leaf_case(),
-    ];
+    let mut cases = vec![source_case(sources::DEFAULTS), leaf_case()];
     for text in REQUESTS {
         let inputs: Value = serde_json::from_str(text).unwrap();
         for case in inputs["cases"].as_array().unwrap() {
@@ -260,7 +254,7 @@ fn security_composition_capture_retention_bounds_are_independent() {
 /// Real parsing, resolver/default expansion, SCC assembly and complete companions reject every reservation failure.
 #[test]
 fn security_composition_compiler_allocation_sweep_is_atomic() {
-    let mut case = source_case(include_str!("source-defaults.neu"));
+    let mut case = source_case(sources::DEFAULTS);
     case["capture"]["sources"]
         .as_array_mut()
         .unwrap()
@@ -273,10 +267,7 @@ fn security_composition_compiler_allocation_sweep_is_atomic() {
     sweep("compiler", |failure| {
         observe(failure, || compile_composition_project(&captured, &cancel))
     });
-    let mut cases = vec![
-        source_case(include_str!("reference-cycle.neu")),
-        leaf_case(),
-    ];
+    let mut cases = vec![source_case(sources::REFERENCE_CYCLE), leaf_case()];
     cases[1]["capture"]["sources"][0]["source_utf8"] = json!(
         "neu \"1.0\"\nmodule example\nuse Leaf as first\nuse Leaf as second\npublic first::Outer item = { inner: { value: 1 } }\n"
     );
@@ -303,14 +294,14 @@ fn security_composition_compiler_allocation_sweep_is_atomic() {
 /// Independent complete validation, view closure, identities, wire encoding/decoding and probe fail atomically.
 #[test]
 fn security_composition_consumers_allocation_sweep_is_atomic() {
-    let case = source_case(include_str!("source-defaults.neu"));
+    let case = source_case(sources::DEFAULTS);
     sweep_consumers(&case);
 }
 
 /// Reference cycles and vocabulary defaults/constraints exercise additional consumer retention branches.
 #[test]
 fn security_composition_reference_and_vocabulary_consumer_allocation_sweeps() {
-    sweep_consumers(&source_case(include_str!("reference-cycle.neu")));
+    sweep_consumers(&source_case(sources::REFERENCE_CYCLE));
     let fixtures: Value = serde_json::from_str(REQUESTS[0]).unwrap();
     sweep_consumers(&fixtures["cases"][0]);
 }
@@ -409,7 +400,7 @@ fn sweep_consumers(case: &Value) {
 /// Fallible formatting retains the JSON escaping contract without double-escaping or losing Unicode.
 #[test]
 fn integration_composition_render_preserves_json_strings_and_empty_views() {
-    let case = source_case(include_str!("source-defaults.neu"));
+    let case = source_case(sources::DEFAULTS);
     let project = compile(&case);
     let signal = CancellationToken::new();
     let bytes = encode_composition_project(&project, &signal).unwrap();
@@ -441,7 +432,7 @@ fn integration_composition_render_preserves_json_strings_and_empty_views() {
 /// Real token cancellation at every compiler/consumer reservation rejects final publication.
 #[test]
 fn security_composition_pipeline_reservation_cancellation_is_atomic() {
-    let case = source_case(include_str!("source-defaults.neu"));
+    let case = source_case(sources::DEFAULTS);
     let captured = capture_composition_project(request(&case)).unwrap();
     let project = compile(&case);
     let ir = project.complete_ir();

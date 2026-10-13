@@ -389,7 +389,7 @@ Production complete logical /2 matches the frozen independent transcript exactly
 The reader recomputes the separate interface /2 identity. Frozen contracts,
 fixture/oracle inputs and vectors are not rewritten to match production.
 
-Fourteen new tests (thirteen [pipeline tests](../../../crates/neutral-test-suite/tests/composition_contract/pipeline.rs)
+Fourteen new tests (thirteen [pipeline tests](../../../crates/neutral-test-suite/tests/composition_contract/pipeline/mod.rs)
 and one [lexical-profile regression](../../../crates/neutral-encoding/tests/decoder/mod.rs))
 cover accepted literal source families, registered source-negative codes,
 boundary/migration captures, nested defaults, optional final commas, both variant
@@ -440,7 +440,7 @@ captured-byte spans. The actual standalone executable accepts successor artifact
 supports public roots and pretty JSON, and produces no partial success for private
 selection or truncated input. Inspection text is presentation, not JSON IR transport.
 
-Five [consumer regressions](../../../crates/neutral-test-suite/tests/composition_contract/reader_probe.rs)
+Five [consumer regressions](../../../crates/neutral-test-suite/tests/composition_contract/pipeline/reader_probe.rs)
 passed, including a 96-binding cyclic reference closure, precise `42` default/reuse
 spans, hostile attribution, empty/root-invariant selections and the compiler-free
 binary. Full validation at this slice passed 731 Nextest tests, zero skips, three
@@ -456,7 +456,7 @@ catalogue/default, semantic/value, identity and companion construction under cur
 controls. Retention is bounded and generation publication is atomic: cancelled or
 failed runs leave the previous successful generation intact.
 
-Six [cross-package hardening tests](../../../crates/neutral-test-suite/tests/composition_contract/hardening.rs)
+Six [cross-package hardening tests](../../../crates/neutral-test-suite/tests/composition_contract/pipeline/hardening.rs)
 compare complete IR, companions and encoded bytes under real cold/warm hits,
 changed/removed units, host-ID remapping, changed locked vocabulary defaults,
 lowered controls, failed/cancelled generations, tiny retention and concurrent

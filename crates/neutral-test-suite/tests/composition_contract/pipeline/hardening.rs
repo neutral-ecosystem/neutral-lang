@@ -42,7 +42,7 @@ fn compare(
 /// Exact syntax hits rebuild host facts; changed bytes/units and failed generations cannot contaminate results.
 #[test]
 fn integration_composition_real_cache_matches_clean_changes_and_failures() {
-    let text = include_str!("source-defaults.neu");
+    let text = sources::DEFAULTS;
     let mut case = source_case(text);
     case["capture"]["sources"]
         .as_array_mut()
@@ -133,9 +133,7 @@ fn integration_composition_cache_revalidates_catalogues_and_concurrent_requests(
         })
         .is_none()
     );
-    let captured =
-        capture_composition_project(request(&source_case(include_str!("source-defaults.neu"))))
-            .unwrap();
+    let captured = capture_composition_project(request(&source_case(sources::DEFAULTS))).unwrap();
     let mut tiny = CompositionCompilationCache::new(ProjectCacheLimits {
         source_units: 1,
         source_bytes: 1,
@@ -178,7 +176,7 @@ fn integration_composition_cache_never_reuses_stale_vocabulary_defaults() {
 /// Independent CBOR ceilings each reject immediately below their accepted threshold.
 #[test]
 fn security_composition_every_wire_control_has_an_exact_acceptance_boundary() {
-    let case = source_case(include_str!("source-defaults.neu"));
+    let case = source_case(sources::DEFAULTS);
     let project = compile(&case);
     let ir = project.complete_ir();
     let cancel = CancellationToken::new();
@@ -271,7 +269,7 @@ fn security_composition_every_consumer_policy_has_an_exact_acceptance_boundary()
 /// Every byte position is mutated under complete decoding; any accepted result must independently revalidate.
 #[test]
 fn security_composition_mutated_artifacts_never_bypass_independent_validation() {
-    let case = source_case(include_str!("source-defaults.neu"));
+    let case = source_case(sources::DEFAULTS);
     let project = compile(&case);
     let ir = project.complete_ir();
     let cancel = CancellationToken::new();

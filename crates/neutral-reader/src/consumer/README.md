@@ -9,7 +9,7 @@ include vocabulary identity and revision. Feature/code registries are explicit,
 sorted and unique; consumer codes cannot use the reserved `NEU-` namespace.
 
 This example expects the public types and binding in the file-backed
-[consumer.neu](../../../neutral-test-suite/tests/composition_contract/consumer.neu).
+[consumer.neu](../../../neutral-test-suite/tests/composition_contract/fixtures/source/consumer.neu).
 
 ```rust
 use neutral_core::CancellationToken;

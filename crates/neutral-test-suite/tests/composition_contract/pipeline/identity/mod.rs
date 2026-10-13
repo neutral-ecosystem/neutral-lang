@@ -8,7 +8,6 @@ use neutral_ir::project_identity::{
     ArtifactIdentityInput, ArtifactKind, CompositionDerivationContext, IdentityLimits,
     canonical_composition_project, composition_artifact_identity, composition_derivation_identity,
 };
-#[path = "identity_facts.rs"]
 mod facts;
 
 /// Uses the exact literal transcript limits, independently of production counting.
