@@ -2,6 +2,9 @@
 
 //! Exact boundary tests for private frame and logical-schema validation.
 
+#[path = "../coverage_gaps/decode.rs"]
+mod coverage_gaps;
+
 use super::{DecodeErrorClass, DecodeLimits, SchemaBudget, constants, decode_frame, decode_type};
 use crate::decoder::{CborValue, LocatedValue};
 use neutral_core::{CancellationToken, StructuralLimits};

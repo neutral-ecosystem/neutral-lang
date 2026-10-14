@@ -2,6 +2,9 @@
 
 //! Literal successor wire checks and atomic hostile-input recovery.
 
+#[path = "../coverage_gaps/expression_project.rs"]
+mod coverage_gaps;
+
 use super::*;
 use neutral_core::allocation::testing;
 use neutral_ir::{
