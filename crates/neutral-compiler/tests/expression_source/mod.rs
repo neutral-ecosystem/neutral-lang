@@ -243,11 +243,11 @@ fn filtered_product_preflight_cannot_hide_over_limit() {
             ..ExpansionLimits::hard()
         },
     );
-    assert!(
+    assert_eq!(
         compile_expression_project(&exact, &CancellationToken::new())
             .unwrap()
-            .declarations
-            .is_empty()
+            .declarations,
+        [] as [ExpressionDeclaration; 0]
     );
 }
 #[test]
