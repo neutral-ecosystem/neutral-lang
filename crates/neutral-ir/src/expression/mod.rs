@@ -15,10 +15,11 @@ mod inspection;
 pub mod profile;
 pub mod project;
 pub mod templates;
+pub use fallible::try_clone_value_bounded;
 pub use inspection::{
     ExpressionInspection, ExpressionShape, ExpressionShapeError, inspect_expression_retention,
-    inspect_expression_shape, inspect_expression_value_retention,
-    inspect_public_template_retention,
+    inspect_expression_shape, inspect_expression_type_retention,
+    inspect_expression_value_retention, inspect_public_template_retention,
 };
 
 /// A binding body; external input is distinct from typed null and absent definitions.

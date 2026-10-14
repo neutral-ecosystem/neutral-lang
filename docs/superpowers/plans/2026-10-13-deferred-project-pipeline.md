@@ -74,8 +74,8 @@ Update `Cargo.toml`, owning manifests/READMEs, dependency-boundary enforcement a
 
 **Interfaces:** Private decimal operations accept two exact numbers, a shared request budget and cancellation; return an exact normalized number or stable NEU-EXP failure. One shared budget counts intermediate digits/scale/work/storage, not only the final number. Expose operations only through the evaluator API in Task 4.
 
-- [ ] Write independent literals: `1/8 = 0.125`, `1/3 = 0.3333333333333333333333333333333333`, negative division, carry rounding, ties-even vectors, exact terminating results longer than 34 digits, zero canonicalization and division by zero. Use the existing rational oracle results, never host-float expectations.
-- [ ] Observe failures, then implement exact add/subtract/multiply/negate/compare and bounded quotient/remainder rounding. Preserve left-to-right expression semantics and checked intermediate limits.
+- [x] Write independent literals: `1/8 = 0.125`, `1/3 = 0.3333333333333333333333333333333333`, negative division, carry rounding, ties-even vectors, exact terminating results longer than 34 digits, zero canonicalization and division by zero. Use the existing rational oracle results, never host-float expectations.
+- [x] Observe failures, then implement exact add/subtract/multiply/negate/compare and bounded quotient/remainder rounding. Preserve left-to-right expression semantics and checked intermediate limits.
 - [ ] Test typed structural equality, string UTF-8 ordering, homogeneous concatenation and scalar `text` conversion with decoded-byte limits. Test numeric/byte/work controls exactly at and one over, cancellation and reservation failures.
 
 ## Task 4: One explicit pure evaluator
@@ -84,9 +84,13 @@ Update `Cargo.toml`, owning manifests/READMEs, dependency-boundary enforcement a
 
 **Interfaces:** `BindingKey` is an input symbol or exact output target/result-selector key. `BindingState` is typed value, unavailable, or failed; a missing key is absent from the request. `EvaluationRequest` contains a selected owner, exact profiles, explicit binding slice, explicit output-association policy and positive controls. `evaluate(&ValidatedExpressionModel, &EvaluationRequest, &CancellationToken) -> EvaluationResult`, with closed value/required-bindings/unavailable/failure outcomes. No callback or implicit acquisition parameter.
 
-- [ ] Write `missing_guard_demands_only_guard`, `unselected_output_is_not_required`, `malformed_supplied_skipped_binding_fails_preflight`, `failed_and_unavailable_are_not_null`, and `missing_operands_are_sorted_unique`. Include `false && division_by_zero`, true selected division failure, and exact match payload binding.
-- [ ] Observe failures, then validate the complete binding envelope before traversal. Enforce actual contract restrictions and selector availability when values arrive. Traverse demanded operands left-to-right, collect independent missing keys, stop on demanded failures/unavailability, and never expose partial values.
-- [ ] Add static normalization using this same evaluator, not a compiler-specific arithmetic path. Preserve potentially failing expressions beneath unresolved guards; validate every branch before folding.
+- [x] Write `missing_guard_demands_only_guard`, `unselected_output_is_not_required`, `malformed_supplied_skipped_binding_fails_preflight`, `failed_and_unavailable_are_not_null`, and `missing_operands_are_sorted_unique`. Include `false && division_by_zero`, true selected division failure, and exact match payload binding.
+- [x] Observe failures, then validate the complete binding envelope before traversal. Enforce actual contract restrictions and selector availability when values arrive. Traverse demanded operands left-to-right, collect independent missing keys, stop on demanded failures/unavailability, and never expose partial values.
+- [x] Add static normalization using this same evaluator, not a compiler-specific arithmetic path. Preserve potentially failing expressions beneath unresolved guards; validate every branch before folding.
+  Producer folding shares the kernel and returns owned normalized residuals.
+  Unconditional static operands fold; deferred branches stay unevaluated and
+  eliminated match payload frames close without capturing retained local binders.
+  Compiler integration and complete project fact/companion publication remain Task 9.
 - [ ] Run independent literal results, exact bounds, fault/cancellation and repeated binding-generation isolation tests. Do not implement a persistent evaluation cache unless required by an existing caller.
 
 ## Task 5: Complete `/3` identities and companion authority

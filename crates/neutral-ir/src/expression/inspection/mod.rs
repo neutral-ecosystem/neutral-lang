@@ -92,6 +92,21 @@ pub fn inspect_expression_value_retention(
     })
 }
 
+/// Preflights an explicit type envelope before equality, lookup or recursive retention.
+///
+/// # Errors
+/// Rejects independent depth/work/storage bounds or cancellation; does not resolve nominal owners.
+pub fn inspect_expression_type_retention(
+    ty: &T,
+    limits: ExpressionLimits,
+    cancellation: &CancellationToken,
+) -> Result<ExpressionInspection, E> {
+    inspect_retention(limits, cancellation, |state| {
+        state.storage::<T>(1)?;
+        state.ty(ty, 0)
+    })
+}
+
 /// Shares request-local preflight setup without constructing synthetic expression nodes.
 fn inspect_retention(
     limits: ExpressionLimits,

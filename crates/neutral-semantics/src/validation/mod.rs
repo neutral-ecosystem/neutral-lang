@@ -95,19 +95,7 @@ pub fn validate_expression_model(
     }
     owners(&ir, limits.project.import_edges, &mut budget)?;
     let scope = contracts::scope(&ir, &limits, cancel, &mut budget)?;
-    let mut state = State {
-        ir: &ir,
-        scope: &scope,
-        limits,
-        budget,
-        facts: ExpressionResourceFacts::default(),
-        availability: Vec::new(),
-        restrictions: Vec::new(),
-        path: Vec::new(),
-        frames: [None; profile::MAX_DEPTH],
-        frame_count: 0,
-        root: ExpressionRoot::Binding,
-    };
+    let mut state = State::new(&ir, &scope, &limits, budget);
     for d in &ir.declarations {
         state.declaration(d)?;
     }
@@ -127,6 +115,30 @@ pub fn validate_expression_model(
         availability,
         restrictions,
     })
+}
+
+/// Checks externally supplied/calculated values using the same real nominal and restriction rules.
+pub(crate) fn check_materialized_value(
+    model: &ValidatedExpressionModel,
+    value: &neutral_ir::composition::BindingValue,
+    ty: &neutral_ir::project_interface::ProjectPublicType,
+    owner: &ModuleSymbolIdentity,
+    public: bool,
+    controls: ExpressionLimits,
+    cancel: &CancellationToken,
+) -> Result<u64, E> {
+    let mut limits = model.limits;
+    limits.expression = limits.expression.intersect(controls);
+    let budget = Budget {
+        work: controls.work,
+        bytes: controls.retained_bytes,
+        cancel,
+    };
+    let mut state = State::new(&model.ir, &model.scope, &limits, budget);
+    state.ty(ty, public, owner, 0)?;
+    state.value(value, ty, public, owner, false, 0)?;
+    state.budget.step(0)?;
+    Ok(controls.work - state.budget.work)
 }
 
 /// Maps shared contract failures without retaining arbitrary diagnostic text.
@@ -283,6 +295,30 @@ struct State<'a> {
     frame_count: usize,
     /// Actual retained root, separate from its canonical child path.
     root: ExpressionRoot,
+}
+
+impl<'a> State<'a> {
+    /// Starts isolated semantic traversal over already borrowed contracts, without allocating.
+    fn new(
+        ir: &'a ExpressionProjectIr,
+        scope: &'a ValidatedCompositionScope,
+        limits: &SemanticLimits,
+        budget: Budget<'a>,
+    ) -> Self {
+        Self {
+            ir,
+            scope,
+            limits: *limits,
+            budget,
+            facts: ExpressionResourceFacts::default(),
+            availability: Vec::new(),
+            restrictions: Vec::new(),
+            path: Vec::new(),
+            frames: [None; profile::MAX_DEPTH],
+            frame_count: 0,
+            root: ExpressionRoot::Binding,
+        }
+    }
 }
 
 /// Borrowed lexical scope; template defaults expose only the earlier parameter slice.

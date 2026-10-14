@@ -225,14 +225,16 @@ impl<'a> State<'a> {
             }
             if field.restrictions != FieldRestrictions::default() {
                 if let N::Value(v) = &value.node {
-                    neutral_vocabulary::composition::check_composition_field_restrictions_budgeted(
-                        field,
-                        v,
-                        self.limits.composition,
-                        &mut self.budget.work,
-                        self.budget.cancel,
-                    )
-                    .map_err(E::from)?;
+                    self.scope
+                        .check_field_restrictions(
+                            &e.ty,
+                            &field.name,
+                            v,
+                            self.limits.composition,
+                            &mut self.budget.work,
+                            self.budget.cancel,
+                        )
+                        .map_err(E::from)?;
                 } else {
                     self.budget.storage(
                         std::mem::size_of::<RestrictionObligation>() as u64

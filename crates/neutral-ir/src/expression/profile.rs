@@ -10,6 +10,8 @@ pub const EVALUATOR_PROFILE: &str = "neutral.evaluator/1";
 pub const EXPANSION_PROFILE: &str = "neutral.expansion/1";
 /// Fixed decimal rounding semantics; never a host floating-point mode.
 pub const DECIMAL_PROFILE: &str = "neutral.decimal/1";
+/// Significant digits for nonterminating division in the frozen decimal profile.
+pub const DECIMAL_SIGNIFICANT_DIGITS: usize = 34;
 /// Consumer/1's independent typed selector path ceiling.
 pub const MAX_SELECTOR_SEGMENTS: usize = 64;
 /// Frozen aggregate retained-item ceiling shared by expression and expansion controls.

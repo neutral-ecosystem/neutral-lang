@@ -45,6 +45,89 @@ impl std::fmt::Debug for ValidatedCompositionScope {
 }
 
 impl ValidatedCompositionScope {
+    /// Checks one actual immutable field's restrictions without cloning validated contracts.
+    ///
+    /// This is not full value typing, reference validation or public-view authority.
+    /// Callers must check those independently. Work is debited from the shared request.
+    ///
+    /// # Errors
+    /// Rejects missing/non-record contracts, violated restrictions, limits and cancellation.
+    pub fn check_field_restrictions(
+        &self,
+        owner: &T,
+        field: &str,
+        value: &neutral_ir::composition::BindingValue,
+        mut limits: CompositionLimits,
+        remaining_work: &mut u64,
+        cancellation: &CancellationToken,
+    ) -> Result<(), E> {
+        limits.work = limits.work.min(*remaining_work);
+        limits.validate()?;
+        let mut budget = Budget::new(limits, cancellation);
+        let result = self.check_field(owner, field, value, &mut budget);
+        *remaining_work = remaining_work.saturating_sub(budget.work);
+        result
+    }
+
+    /// Resolves only owned validated tables; no look-up map or normalized contract copy is built.
+    fn check_field(
+        &self,
+        owner: &T,
+        field: &str,
+        value: &neutral_ir::composition::BindingValue,
+        budget: &mut Budget<'_>,
+    ) -> Result<(), E> {
+        let definition = match owner {
+            T::Nominal(owner) => {
+                budget.key(
+                    owner.module().language_behavior_version().len()
+                        + owner.module().module_name().len()
+                        + owner.declaration_name().len(),
+                    self.sources.len(),
+                )?;
+                let index = self
+                    .sources
+                    .binary_search_by(|d| d.owner.cmp(owner))
+                    .map_err(|_| E::UnknownType)?;
+                &self.sources[index].definition
+            }
+            T::VocabularyNominal {
+                identity,
+                version,
+                name,
+            } => {
+                let bundles = self.catalogue.bundles();
+                budget.key(identity.len() + version.len(), bundles.len())?;
+                let index = bundles
+                    .binary_search_by(|b| {
+                        (b.identity.identity(), b.identity.version())
+                            .cmp(&(identity.as_str(), version.as_str()))
+                    })
+                    .map_err(|_| E::UnknownType)?;
+                let definitions = &bundles[index].definitions;
+                budget.key(name.len(), definitions.len())?;
+                let index = definitions
+                    .binary_search_by(|d| d.name.cmp(name))
+                    .map_err(|_| E::UnknownType)?;
+                &definitions[index]
+            }
+            _ => return Err(E::UnknownType),
+        };
+        let CompositionBody::Record(fields) = &definition.body else {
+            return Err(E::InvalidValue);
+        };
+        budget.key(field.len(), fields.len())?;
+        let index = fields
+            .binary_search_by(|f| f.name.as_str().cmp(field))
+            .map_err(|_| E::InvalidValue)?;
+        values::check_restrictions(&fields[index].restrictions, value, budget).map_err(|e| {
+            if e == E::InvalidDefault {
+                E::InvalidValue
+            } else {
+                e
+            }
+        })
+    }
     /// Returns the immutable vocabulary catalogue with exact semantic owners and locks.
     #[must_use]
     pub fn catalogue(&self) -> &Arc<ValidatedComposition> {

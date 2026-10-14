@@ -614,7 +614,9 @@ Slice 1 — consumer contract foundation:
   derived restriction/selector obligations and recompute all seven expression facts.
   Shared work/retention budgets, exact/one-over controls and allocation/cancellation
   recovery tests pass. Public template frames/defaults are typed without instantiation.
-  Complete source/IR/wire/reader integration, evaluation, expansion and guarded
+  Explicit bounded evaluation and static/residual normalization are implemented;
+  output envelopes validate actual complete result roots, not detached scalars.
+  Complete source/IR/wire/reader integration, expansion and guarded
   consumer binding/dependency reports remain; model validity
   alone does not satisfy this gate or activate `/3`.
 

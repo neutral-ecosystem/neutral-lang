@@ -22,8 +22,11 @@ use neutral_semantics::{
     ExpressionValidationError as E, SemanticLimits, validate_expression_model,
 };
 use neutral_vocabulary::{VocabularyLimits, composition::CompositionLimits};
+mod evaluation;
+mod evaluation_outputs;
 mod facts;
 mod hardening;
+mod normalization;
 mod template_obligations;
 mod templates;
 

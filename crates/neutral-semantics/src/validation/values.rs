@@ -120,14 +120,16 @@ impl State<'_> {
                         Some(v) => {
                             self.value(v, &field.ty, public, owner, wire, depth + 1)?;
                             if field.restrictions != FieldRestrictions::default() {
-                                neutral_vocabulary::composition::check_composition_field_restrictions_budgeted(
-                                field,
-                                v,
-                                self.limits.composition,
-                                &mut self.budget.work,
-                                self.budget.cancel,
-                            )
-                            .map_err(E::from)?;
+                                self.scope
+                                    .check_field_restrictions(
+                                        ty,
+                                        &field.name,
+                                        v,
+                                        self.limits.composition,
+                                        &mut self.budget.work,
+                                        self.budget.cancel,
+                                    )
+                                    .map_err(E::from)?;
                             }
                         }
                         None if field.presence == FieldPresence::Optional => {

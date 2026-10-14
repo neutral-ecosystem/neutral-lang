@@ -71,6 +71,43 @@ fn restriction_checks_consume_shared_work_instead_of_resetting_it() {
 }
 
 #[test]
+fn validated_field_restriction_checks_do_not_clone_contract_choices() {
+    use neutral_core::allocation::testing::observe;
+    let mut constrained = field("flag", T::Bool);
+    constrained.restrictions.choices = Some(vec![neutral_ir::composition::ClosedValue::Bool(true)]);
+    let model = validate(project(vec![definition("Choice", vec![constrained])])).unwrap();
+    let mut work = controls().composition.work;
+    let owner = T::Nominal(symbol("Choice"));
+    let signal = CancellationToken::new();
+    let (result, allocations) = observe(None, || {
+        model.scope().check_field_restrictions(
+            &owner,
+            "flag",
+            &V::Bool(true),
+            controls().composition,
+            &mut work,
+            &signal,
+        )
+    });
+    assert!(result.is_ok());
+    assert_eq!(allocations, 0);
+    assert!(work < controls().composition.work);
+    assert!(
+        model
+            .scope()
+            .check_field_restrictions(
+                &T::Nominal(symbol("Choice")),
+                "flag",
+                &V::Bool(false),
+                controls().composition,
+                &mut work,
+                &CancellationToken::new()
+            )
+            .is_err()
+    );
+}
+
+#[test]
 fn stale_binding_and_template_facts_cannot_be_accepted() {
     let mut ir = project(vec![binding(
         "result",

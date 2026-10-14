@@ -12,6 +12,20 @@ use neutral_core::{
 };
 mod value;
 
+/// Copies a materialized value after allocation-free shape/numeric/storage preflight.
+///
+/// # Errors
+/// Returns structural, resource/allocation or cancellation failure without partial retention.
+/// This is not nominal typing, restriction checking or public-reader authority.
+pub fn try_clone_value_bounded(
+    value: &crate::composition::BindingValue,
+    limits: ExpressionLimits,
+    cancel: &CancellationToken,
+) -> Result<crate::composition::BindingValue, E> {
+    super::inspect_expression_value_retention(value, limits, cancel)?;
+    self::value::copy(value, cancel)
+}
+
 impl Expression {
     /// Copies every retained branch only after allocation-free independent bound checks.
     ///
