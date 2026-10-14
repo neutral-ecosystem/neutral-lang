@@ -75,6 +75,7 @@ fn residual_counts_and_depth_accept_exact_and_reject_one_over() {
         };
         ir.expression_limits.nodes = 4;
         ir.expression_limits.evaluation_depth = 2;
+        ir.expression_limits.syntax_depth = 2;
         ir
     };
     assert!(validate(make()).is_ok());
@@ -84,4 +85,63 @@ fn residual_counts_and_depth_accept_exact_and_reject_one_over() {
     let mut depth = make();
     depth.expression_limits.evaluation_depth = 1;
     assert_eq!(validate(depth).unwrap_err(), E::Limit);
+    let mut syntax = make();
+    syntax.expression_limits.syntax_depth = 1;
+    assert_eq!(validate(syntax).unwrap_err(), E::Limit);
+}
+
+#[test]
+fn model_counts_obey_each_producer_and_caller_boundary() {
+    for select in 0..3 {
+        let set = |limits: &mut SemanticLimits, count| match select {
+            0 => limits.project.declarations = count,
+            1 => limits.expression.bindings = count,
+            _ => limits.expression.dependency_edges = count,
+        };
+        for count in [1, 2] {
+            for caller_bound in [false, true] {
+                let mut ir = input_project();
+                if select == 2 {
+                    ir.declarations[1].body = Some(ExpressionBody::Expression(Expression {
+                        ty: T::Bool,
+                        node: ExpressionNode::Binary {
+                            operator: BinaryOperator::And,
+                            left: Box::new(Expression {
+                                ty: T::Bool,
+                                node: ExpressionNode::Input(symbol("external")),
+                            }),
+                            right: Box::new(Expression {
+                                ty: T::Bool,
+                                node: ExpressionNode::Input(symbol("external")),
+                            }),
+                        },
+                    }));
+                    ir.expression_resources = ExpressionResourceFacts {
+                        residual_nodes: 3,
+                        residual_depth: 2,
+                        input_declarations: 1,
+                        potential_value_edges: 2,
+                        retained_expression_text_bytes: 66,
+                        ..ExpressionResourceFacts::default()
+                    };
+                }
+                let mut caller = controls();
+                let mut producer = controls();
+                if caller_bound {
+                    set(&mut caller, count);
+                } else {
+                    set(&mut producer, count);
+                }
+                ir.limits = producer.project;
+                ir.expression_limits = producer.expression;
+                let borrowed = Shared::try_new(ir).unwrap();
+                let result = validate_expression_model(borrowed, caller, &CancellationToken::new());
+                if count == 2 {
+                    assert!(result.is_ok(), "control {select}");
+                } else {
+                    assert_eq!(result.unwrap_err(), E::Limit, "control {select}");
+                }
+            }
+        }
+    }
 }

@@ -81,6 +81,28 @@ fn template_parameter_bounds_are_independent_and_exact() {
 }
 
 #[test]
+fn template_definition_count_is_aggregate_not_per_definition() {
+    let mut ir = template_project();
+    let mut other = template_project().public_templates.remove(0);
+    other.identity = symbol("ChooseAgain");
+    ir.public_templates.push(other);
+    ir.expression_resources.residual_nodes = 4;
+    ir.expression_resources.public_templates = 2;
+    ir.expression_resources.retained_expression_text_bytes = 36;
+    ir.expansion_limits.definitions = 1;
+    assert_eq!(validate(ir).unwrap_err(), E::Limit);
+    let mut ir = template_project();
+    let mut other = template_project().public_templates.remove(0);
+    other.identity = symbol("ChooseAgain");
+    ir.public_templates.push(other);
+    ir.expression_resources.residual_nodes = 4;
+    ir.expression_resources.public_templates = 2;
+    ir.expression_resources.retained_expression_text_bytes = 36;
+    ir.expansion_limits.definitions = 2;
+    assert!(validate(ir).is_ok());
+}
+
+#[test]
 fn template_retention_and_work_policies_are_not_ignored() {
     let mut bytes = template_project();
     bytes.expansion_limits.retained_bytes = 1;

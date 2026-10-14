@@ -24,9 +24,11 @@ use neutral_semantics::{
 use neutral_vocabulary::{VocabularyLimits, composition::CompositionLimits};
 mod evaluation;
 mod evaluation_outputs;
+mod evaluation_qualification;
 mod facts;
 mod hardening;
 mod normalization;
+mod qualification;
 mod template_obligations;
 mod templates;
 

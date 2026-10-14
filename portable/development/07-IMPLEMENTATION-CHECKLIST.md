@@ -616,6 +616,12 @@ Slice 1 — consumer contract foundation:
   recovery tests pass. Public template frames/defaults are typed without instantiation.
   Explicit bounded evaluation and static/residual normalization are implemented;
   output envelopes validate actual complete result roots, not detached scalars.
+  Tasks 2–4 component qualification now covers exact revisions/type invariance,
+  canonical nullable/reference wrappers (including input-only signatures),
+  model/evaluator inclusive boundaries, structural equality, UTF-8 output and
+  failure/cancellation recovery across distinct explicit binding generations.
+  Oversized string conversion and list concatenation reject before proportional
+  output retention. These owning tests do not replace the full registered pipeline.
   Five separately typed `/3` identity partitions and independent complete reader
   authority now check interface digests, retained facts, typed reuse, default owners
   and original-byte expression/expansion companions against complete literal vectors.

@@ -86,8 +86,16 @@ fn concatenate(left: &V, right: &V, budget: &mut Budget<'_>) -> Result<V, E> {
                 String::from_utf8(bytes).map_err(|_| E::TypeMismatch)?,
             ))
         }
-        (V::List(left), V::List(right)) => {
-            let length = left.len().checked_add(right.len()).ok_or(E::Limit)?;
+        (V::List(left_items), V::List(right_items)) => {
+            let output = budget
+                .value_output(left)?
+                .checked_add(budget.value_output(right)?)
+                .ok_or(E::Limit)?;
+            budget.output(output)?;
+            let length = left_items
+                .len()
+                .checked_add(right_items.len())
+                .ok_or(E::Limit)?;
             let bytes = length
                 .checked_add(1)
                 .and_then(|n| n.checked_mul(std::mem::size_of::<V>()))
@@ -95,7 +103,7 @@ fn concatenate(left: &V, right: &V, budget: &mut Budget<'_>) -> Result<V, E> {
             budget.step(bytes as u64)?;
             let mut values = Vec::new();
             budget.reserve(&mut values, length)?;
-            for item in left.iter().chain(right) {
+            for item in left_items.iter().chain(right_items) {
                 values.push(budget.copy_value(item)?);
             }
             Ok(V::List(values))
@@ -106,7 +114,10 @@ fn concatenate(left: &V, right: &V, budget: &mut Budget<'_>) -> Result<V, E> {
 /// Converts only scalar text/Boolean/number values to canonical finite decimal text.
 pub(crate) fn text(value: &V, budget: &mut Budget<'_>) -> Result<V, E> {
     match value {
-        V::String(_) => budget.copy_value(value),
+        V::String(text) => {
+            budget.output(text.len() as u64)?;
+            budget.copy_value(value)
+        }
         V::Bool(value) => {
             let text = if *value {
                 language::TRUE

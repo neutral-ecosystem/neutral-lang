@@ -64,9 +64,22 @@ Update `Cargo.toml`, owning manifests/READMEs, dependency-boundary enforcement a
 **Interfaces:** `validate_expression_model(Shared<ExpressionProjectIr>, SemanticLimits, &CancellationToken) -> Result<ValidatedExpressionModel, ExpressionValidationError>`. `SemanticLimits` contains named project/composition/expression/expansion policies. `ValidatedExpressionModel` has private fields and exposes borrowed exact declaration/type authorities, recomputed facts and `obligations(owner)`. `RestrictionObligation` binds an expression owner/node path to the actual nominal field contract; `AvailabilityObligation` retains exact selector presence/index/alternative checks. Neither is an executable predicate or a caller-owned assertion.
 
 - [x] Write `unselected_branch_forged_type_is_rejected`, `bound_scope_depth_slot_and_type_are_checked`, `public_expression_cannot_leak_private_owners`, `match_requires_every_exact_alternative`, and `output_selector_retains_future_obligations`. Assert named NEU-EXP classifications and literal obligation paths/types.
-- [ ] Observe failures before implementing validation. Validate all types/operators/branches, exact nominal revision, contextual null/list/record/variant values, complete public closure and lexical frames. Reject static value cycles, dangling inputs and illegal output selectors; keep producer/result association explicitly consumer-owned.
+- [x] Observe failures before implementing validation. Validate all types/operators/branches, exact nominal revision, contextual null/list/record/variant values, complete public closure and lexical frames. Reject static value cycles, dangling inputs and illegal output selectors; keep producer/result association explicitly consumer-owned.
 - [x] Write/implement independent fact recomputation for all seven frozen facts, including wire-text counts; reject forged producer facts rather than trusting raw shape counts. Public template bodies/defaults are now independently typed and included in literal retained-fact tests.
-- [ ] Run negative/exact-one-over/cancellation/allocation sweeps. Retain previous accepted model and require a subsequent successful request after every failure.
+- [x] Run negative/exact-one-over/cancellation/allocation sweeps. Retain previous accepted model and require a subsequent successful request after every failure.
+
+Qualification, 14-10-2026: `tests/validation/{qualification,facts,templates,template_obligations,hardening}.rs`
+cover exact public vocabulary revisions, nominal/list invariance, dangling targets,
+selector rejection, all-branch/frame typing and recovery.
+Input-only signatures reject non-nominal reference targets and nested nullable
+wrappers before granting model authority; valid list/nullable/nominal-ref combinations
+remain accepted. Model controls are tested
+independently at inclusive boundaries for nodes, syntax/evaluation depth, declarations,
+bindings, edges, modules, numeric growth, type depth and aggregate template definitions/
+parameters. Work/storage threshold tests and observed reservation/cancellation sweeps
+retain accepted authority. Ordinary source reuse cycles remain compiler-owned and
+are exercised by the workspace source tests; model validation grants no source,
+companion, transport or expansion-application authority.
 
 ## Task 3: Bounded deterministic decimal and typed value operations
 
@@ -76,7 +89,14 @@ Update `Cargo.toml`, owning manifests/READMEs, dependency-boundary enforcement a
 
 - [x] Write independent literals: `1/8 = 0.125`, `1/3 = 0.3333333333333333333333333333333333`, negative division, carry rounding, ties-even vectors, exact terminating results longer than 34 digits, zero canonicalization and division by zero. Use the existing rational oracle results, never host-float expectations.
 - [x] Observe failures, then implement exact add/subtract/multiply/negate/compare and bounded quotient/remainder rounding. Preserve left-to-right expression semantics and checked intermediate limits.
-- [ ] Test typed structural equality, string UTF-8 ordering, homogeneous concatenation and scalar `text` conversion with decoded-byte limits. Test numeric/byte/work controls exactly at and one over, cancellation and reservation failures.
+- [x] Test typed structural equality, string UTF-8 ordering, homogeneous concatenation and scalar `text` conversion with decoded-byte limits. Test numeric/byte/work controls exactly at and one over, cancellation and reservation failures.
+
+Qualification, 14-10-2026: owning value tests cover positional lists, nested records,
+omission/null/presence, variant tags/payloads, stable refs and unnormalized UTF-8.
+New literal UTF-8 and scalar-text boundaries exposed missing pre-allocation output
+checks in `text(string)` and list concatenation; shared operations now reject before
+proportional retention. Construction reservation/cancellation sweeps recover on the
+same immutable inputs; existing independent decimal and numeric work/scale tests pass.
 
 ## Task 4: One explicit pure evaluator
 
@@ -91,7 +111,22 @@ Update `Cargo.toml`, owning manifests/READMEs, dependency-boundary enforcement a
   Unconditional static operands fold; deferred branches stay unevaluated and
   eliminated match payload frames close without capturing retained local binders.
   Compiler integration and complete project fact/companion publication remain Task 9.
-- [ ] Run independent literal results, exact bounds, fault/cancellation and repeated binding-generation isolation tests. Do not implement a persistent evaluation cache unless required by an existing caller.
+- [x] Run independent literal results, exact bounds, fault/cancellation and repeated binding-generation isolation tests. Do not implement a persistent evaluation cache unless required by an existing caller.
+
+Qualification, 14-10-2026: `tests/validation/evaluation_qualification.rs` compares
+static folding and explicitly bound evaluation with independent numeric literals,
+including rounded nontermination, carry and long exact terminating division.
+It checks every zero expression control, exact nodes/depth/ports/edges/digits/scale/
+output controls, work/storage boundaries, typed optional vocabulary record equality,
+and observed numeric evaluator allocation/cancellation recovery. Binding generations
+preserve missing/failed/unavailable distinctions and prior results after replacement.
+Diagnostics are one closed failure, not a diagnostic collection; no persistent cache
+or complete source-to-artifact/consumer qualification is claimed here.
+
+Tasks 2–4 final verification, 14-10-2026: 74 focused semantic tests and all 1,034
+workspace tests pass with zero skipped, plus doctests. `cargo xtask ci pr` passes
+all seven quality steps on the final code and tracking inputs. Long campaigns are
+not rerun; earlier receipts are stale after these fixes and do not close Task 11.
 
 ## Task 5: Complete `/3` identities and companion authority
 

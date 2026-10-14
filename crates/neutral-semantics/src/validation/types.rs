@@ -50,6 +50,12 @@ impl<'a> State<'a> {
             return Err(E::Limit);
         }
         match ty {
+            T::Ref(inner)
+                if !matches!(inner.as_ref(), T::Nominal(_) | T::VocabularyNominal { .. }) =>
+            {
+                Err(E::TypeMismatch)
+            }
+            T::Nullable(inner) if matches!(inner.as_ref(), T::Nullable(_)) => Err(E::TypeMismatch),
             T::List(t) | T::Nullable(t) | T::Ref(t) => self.ty(t, public, consumer, depth + 1),
             T::Nominal(_) | T::VocabularyNominal { .. } => {
                 self.nominal(ty, public, consumer)?;
