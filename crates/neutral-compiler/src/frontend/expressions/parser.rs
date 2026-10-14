@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Successor-only lexical boundaries; historical token acceptance is unchanged.
+//!
+//! Tokens borrow the captured source and keep original-byte ranges. String decoding
+//! and owned syntax retention use the request's fallible allocation/work budget.
+//! This module recognizes syntax only: symbol visibility, all-branch typing and
+//! template hygiene belong to resolution, not to lexical acceptance.
 
 use super::{
     Budget, ByteSpan, E, ExactNumber, Expression, ParameterPhase, Root, SourceLocation, State,
@@ -8,6 +13,7 @@ use super::{
     expression_profile, grow, is_protected_name, is_snake_name, is_upper_name, lexer,
     parse_complete_type_fallible, symbol, text,
 };
+use crate::frontend::expression_codes as ec;
 
 /// Original source spelling and span; decoding happens only at the typed literal boundary.
 #[derive(Clone, Copy)]
@@ -78,7 +84,7 @@ pub(super) fn lex<'a>(
     offset: usize,
     state: &mut Budget<'_>,
 ) -> Result<Vec<Lex<'a>>, E> {
-    let source = std::str::from_utf8(bytes).map_err(|_| error("NEU-EXP-002", None))?;
+    let source = std::str::from_utf8(bytes).map_err(|_| error(ec::EXP_SYNTAX, None))?;
     state.charge(bytes.len() as u64)?;
     let mut result = Vec::new();
     let mut i = 0;
@@ -109,7 +115,7 @@ pub(super) fn lex<'a>(
                     i += 1;
                 }
                 if i + 1 >= bytes.len() {
-                    return Err(error("NEU-EXP-002", None));
+                    return Err(error(ec::EXP_SYNTAX, None));
                 }
                 i += 2;
                 continue;
@@ -157,9 +163,9 @@ pub(super) fn lex<'a>(
                 .map_err(|e| {
                     error(
                         if e == neutral_ir::IrError::ExactNumberLimitExceeded {
-                            "NEU-EXP-009"
+                            ec::EXP_LIMIT
                         } else {
-                            "NEU-EXP-002"
+                            ec::EXP_SYNTAX
                         },
                         None,
                     )
@@ -185,12 +191,12 @@ pub(super) fn lex<'a>(
                 } else if b"{}[]():,?=<>!+-*/".contains(&bytes[i]) {
                     i += 1;
                 } else {
-                    return Err(error("NEU-EXP-002", None));
+                    return Err(error(ec::EXP_SYNTAX, None));
                 }
             }
         }
         let span = ByteSpan::new((start + offset) as u64, (i + offset) as u64)
-            .map_err(|_| error("NEU-EXP-009", None))?;
+            .map_err(|_| error(ec::EXP_LIMIT, None))?;
         state.retain::<Lex<'_>>(1)?;
         grow(&mut result, 1)?;
         result.push(Lex {
@@ -217,14 +223,14 @@ fn string_end(
                 i += 2;
             }
             b'"' => return Ok(i + 1),
-            b'\r' | b'\n' => return Err(error("NEU-EXP-002", None)),
+            b'\r' | b'\n' => return Err(error(ec::EXP_SYNTAX, None)),
             b'$' if interpolation && bytes.get(i + 1) == Some(&b'{') => {
                 i = interpolation_end(source, i + 2, state)? + 1;
             }
             _ => i += 1,
         }
     }
-    Err(error("NEU-EXP-002", None))
+    Err(error(ec::EXP_SYNTAX, None))
 }
 /// Finds an interpolation close after balancing nested expression groups and strings.
 pub(super) fn interpolation_end(
@@ -242,7 +248,7 @@ pub(super) fn interpolation_end(
             b'{' => {
                 depth += 1;
                 if depth > state.expression.syntax_depth {
-                    return Err(error("NEU-EXP-009", None));
+                    return Err(error(ec::EXP_LIMIT, None));
                 }
                 i += 1;
             }
@@ -256,7 +262,7 @@ pub(super) fn interpolation_end(
             _ => i += 1,
         }
     }
-    Err(error("NEU-EXP-002", None))
+    Err(error(ec::EXP_SYNTAX, None))
 }
 
 /// Reuses the frozen string decoder; interpolation's sole extra escape is handled before it.
@@ -269,9 +275,9 @@ pub(super) fn string(raw: &str, state: &mut Budget<'_>) -> Result<String, E> {
     .map_err(|_| {
         error(
             if state.cancel.is_cancelled() {
-                "NEU-EXP-010"
+                ec::EXP_CANCELLED
             } else {
-                "NEU-EXP-002"
+                ec::EXP_SYNTAX
             },
             None,
         )
@@ -282,7 +288,7 @@ pub(super) fn string(raw: &str, state: &mut Budget<'_>) -> Result<String, E> {
         ..
     }) = tokens.first()
     else {
-        return Err(error("NEU-EXP-002", None));
+        return Err(error(ec::EXP_SYNTAX, None));
     };
     state.bytes(value.value.len() as u64)?;
     alloc(text(&value.value))
@@ -291,25 +297,25 @@ pub(super) fn string(raw: &str, state: &mut Budget<'_>) -> Result<String, E> {
 /// Converts a source type using the shared historical type parser, with original spans.
 pub(super) fn ty(tokens: &[Lex<'_>], source: &[u8]) -> Result<TypeExpr, E> {
     let Some(first) = tokens.first() else {
-        return Err(error("NEU-EXP-002", None));
+        return Err(error(ec::EXP_SYNTAX, None));
     };
     let end = tokens
         .last()
-        .ok_or_else(|| error("NEU-EXP-002", None))?
+        .ok_or_else(|| error(ec::EXP_SYNTAX, None))?
         .span
         .end();
     let start = first.span.start();
-    let range = usize::try_from(start).map_err(|_| error("NEU-EXP-009", None))?
-        ..usize::try_from(end).map_err(|_| error("NEU-EXP-009", None))?;
+    let range = usize::try_from(start).map_err(|_| error(ec::EXP_LIMIT, None))?
+        ..usize::try_from(end).map_err(|_| error(ec::EXP_LIMIT, None))?;
     let mut tokens = lexer::lex_bounded(&source[range], usize::MAX, None)
-        .map_err(|_| error("NEU-EXP-002", None))?
+        .map_err(|_| error(ec::EXP_SYNTAX, None))?
         .tokens;
     tokens.retain(|t| !matches!(t.kind, TokenKind::EndOfFile | TokenKind::PhysicalLineEnd(_)));
     for token in &mut tokens {
         token.span = ByteSpan::new(token.span.start() + start, token.span.end() + start)
-            .map_err(|_| error("NEU-EXP-009", None))?;
+            .map_err(|_| error(ec::EXP_LIMIT, None))?;
     }
-    alloc(parse_complete_type_fallible(&tokens))?.ok_or_else(|| error("NEU-EXP-002", None))
+    alloc(parse_complete_type_fallible(&tokens))?.ok_or_else(|| error(ec::EXP_SYNTAX, None))
 }
 
 /// Reads exactly one local or import-qualified source name.
@@ -319,18 +325,18 @@ pub(super) fn name<'a>(
 ) -> Result<(Option<&'a str>, &'a str, ByteSpan), E> {
     let first = tokens
         .get(*cursor)
-        .ok_or_else(|| error("NEU-EXP-002", None))?;
+        .ok_or_else(|| error(ec::EXP_SYNTAX, None))?;
     if !identifier(first.spelling) {
-        return Err(error("NEU-EXP-002", None));
+        return Err(error(ec::EXP_SYNTAX, None));
     }
     *cursor += 1;
     if tokens.get(*cursor).is_some_and(|t| t.spelling == "::") {
         *cursor += 1;
         let second = tokens
             .get(*cursor)
-            .ok_or_else(|| error("NEU-EXP-002", None))?;
+            .ok_or_else(|| error(ec::EXP_SYNTAX, None))?;
         if !identifier(second.spelling) {
-            return Err(error("NEU-EXP-002", None));
+            return Err(error(ec::EXP_SYNTAX, None));
         }
         *cursor += 1;
         Ok((Some(first.spelling), second.spelling, second.span))
@@ -348,7 +354,7 @@ pub(super) fn identifier(s: &str) -> bool {
 /// Consumes one required contextual punctuation or keyword.
 pub(super) fn expect(tokens: &[Lex<'_>], cursor: &mut usize, spelling: &str) -> Result<(), E> {
     if tokens.get(*cursor).is_none_or(|t| t.spelling != spelling) {
-        return Err(error("NEU-EXP-002", None));
+        return Err(error(ec::EXP_SYNTAX, None));
     }
     *cursor += 1;
     Ok(())
@@ -378,7 +384,7 @@ pub(super) fn group<'t, 'a>(
         }
         *cursor += 1;
     }
-    Err(error("NEU-EXP-002", None))
+    Err(error(ec::EXP_SYNTAX, None))
 }
 /// Splits top-level comma members without changing source evaluation order.
 pub(super) fn split<'t, 'a>(tokens: &'t [Lex<'a>]) -> Result<Vec<&'t [Lex<'a>]>, E> {
@@ -390,7 +396,7 @@ pub(super) fn split<'t, 'a>(tokens: &'t [Lex<'a>]) -> Result<Vec<&'t [Lex<'a>]>,
             "(" | "[" | "{" => depth += 1,
             ")" | "]" | "}" => {
                 if depth == 0 {
-                    return Err(error("NEU-EXP-002", None));
+                    return Err(error(ec::EXP_SYNTAX, None));
                 }
                 depth -= 1;
             }
@@ -398,7 +404,7 @@ pub(super) fn split<'t, 'a>(tokens: &'t [Lex<'a>]) -> Result<Vec<&'t [Lex<'a>]>,
         }
         if depth == 0 && t.spelling == "," {
             if start == i {
-                return Err(error("NEU-EXP-002", None));
+                return Err(error(ec::EXP_SYNTAX, None));
             }
             grow(&mut result, 1)?;
             result.push(&tokens[start..i]);
@@ -406,7 +412,7 @@ pub(super) fn split<'t, 'a>(tokens: &'t [Lex<'a>]) -> Result<Vec<&'t [Lex<'a>]>,
         }
     }
     if depth != 0 {
-        return Err(error("NEU-EXP-002", None));
+        return Err(error(ec::EXP_SYNTAX, None));
     }
     if start < tokens.len() {
         grow(&mut result, 1)?;
@@ -433,7 +439,7 @@ pub(super) fn parse_source<'a>(
             if depth == 0 && !statement.is_empty() && !continuation {
                 let header = matches!(statement[0].spelling, "neu" | "module" | "use" | "import");
                 if header && headers_done {
-                    return Err(error("NEU-EXP-002", None));
+                    return Err(error(ec::EXP_SYNTAX, None));
                 }
                 headers_done |= !header;
                 declaration(source, &statement, state)?;
@@ -446,22 +452,22 @@ pub(super) fn parse_source<'a>(
             ")" | "]" | "}" => {
                 depth = depth
                     .checked_sub(1)
-                    .ok_or_else(|| error("NEU-EXP-002", None))?;
+                    .ok_or_else(|| error(ec::EXP_SYNTAX, None))?;
             }
             _ => {}
         }
         if depth > state.budget.expression.syntax_depth {
-            return Err(error("NEU-EXP-009", None));
+            return Err(error(ec::EXP_LIMIT, None));
         }
         grow(&mut statement, 1)?;
         statement.push(*token);
     }
     if depth != 0 {
-        return Err(error("NEU-EXP-002", None));
+        return Err(error(ec::EXP_SYNTAX, None));
     }
     if !statement.is_empty() {
         if headers_done && matches!(statement[0].spelling, "neu" | "module" | "use" | "import") {
-            return Err(error("NEU-EXP-002", None));
+            return Err(error(ec::EXP_SYNTAX, None));
         }
         declaration(source, &statement, state)?;
     }
@@ -485,11 +491,11 @@ fn declaration<'a>(
             tokens[0].span.start(),
             tokens
                 .last()
-                .ok_or_else(|| error("NEU-EXP-002", None))?
+                .ok_or_else(|| error(ec::EXP_SYNTAX, None))?
                 .span
                 .end(),
         )
-        .map_err(|_| error("NEU-EXP-009", None))?,
+        .map_err(|_| error(ec::EXP_LIMIT, None))?,
     );
     if matches!(
         tokens.get(start).map(|t| t.spelling),
@@ -497,13 +503,13 @@ fn declaration<'a>(
     ) {
         let mut old = lexer::lex_bounded(
             &source.bytes()[usize::try_from(location.span().start())
-                .map_err(|_| error("NEU-EXP-009", Some(location)))?
+                .map_err(|_| error(ec::EXP_LIMIT, Some(location)))?
                 ..usize::try_from(location.span().end())
-                    .map_err(|_| error("NEU-EXP-009", Some(location)))?],
+                    .map_err(|_| error(ec::EXP_LIMIT, Some(location)))?],
             usize::try_from(state.budget.expression.retained_bytes).unwrap_or(usize::MAX),
             Some(state.budget.cancel),
         )
-        .map_err(|_| error("NEU-EXP-002", Some(location)))?
+        .map_err(|_| error(ec::EXP_SYNTAX, Some(location)))?
         .tokens;
         old.retain(|t| !matches!(t.kind, TokenKind::EndOfFile | TokenKind::PhysicalLineEnd(_)));
         for t in &mut old {
@@ -511,7 +517,7 @@ fn declaration<'a>(
                 t.span.start() + location.span().start(),
                 t.span.end() + location.span().start(),
             )
-            .map_err(|_| error("NEU-EXP-009", Some(location)))?;
+            .map_err(|_| error(ec::EXP_LIMIT, Some(location)))?;
         }
         let root = super::super::syntax::parse_declaration(
             source,
@@ -536,14 +542,14 @@ fn declaration<'a>(
         tokens
             .iter()
             .position(|t| t.spelling == "=")
-            .ok_or_else(|| error("NEU-EXP-002", Some(location)))?
+            .ok_or_else(|| error(ec::EXP_SYNTAX, Some(location)))?
     };
     if end <= begin + 1 {
-        return Err(error("NEU-EXP-002", Some(location)));
+        return Err(error(ec::EXP_SYNTAX, Some(location)));
     }
     let name = tokens[end - 1].spelling;
     if !expression_profile::is_binding_name(name) || is_protected_name(name) {
-        return Err(error("NEU-EXP-002", Some(location)));
+        return Err(error(ec::EXP_SYNTAX, Some(location)));
     }
     let root = Root {
         owner: symbol(source.module_id(), name)?,
@@ -579,10 +585,10 @@ fn template<'a>(
 ) -> Result<(), E> {
     let name = tokens
         .get(start + 1)
-        .ok_or_else(|| error("NEU-TPL-002", Some(location)))?
+        .ok_or_else(|| error(ec::TPL_SYNTAX, Some(location)))?
         .spelling;
     if !is_upper_name(name) || is_protected_name(name) {
-        return Err(error("NEU-TPL-003", Some(location)));
+        return Err(error(ec::TPL_NAME, Some(location)));
     }
     let mut cursor = start + 2;
     let members = group(tokens, &mut cursor, "(", ")")?;
@@ -592,14 +598,14 @@ fn template<'a>(
         let phase = match member.first().map(|t| t.spelling) {
             Some("static") => ParameterPhase::Static,
             Some("deferred") => ParameterPhase::Deferred,
-            _ => return Err(error("NEU-TPL-002", Some(location))),
+            _ => return Err(error(ec::TPL_SYNTAX, Some(location))),
         };
         let end = member
             .iter()
             .position(|t| t.spelling == "=")
             .unwrap_or(member.len());
         if end < 3 {
-            return Err(error("NEU-TPL-002", Some(location)));
+            return Err(error(ec::TPL_SYNTAX, Some(location)));
         }
         let name = member[end - 1].spelling;
         if !is_snake_name(name)
@@ -608,14 +614,14 @@ fn template<'a>(
                 .iter()
                 .any(|p: &ParameterSyntax<'_>| p.name == name)
         {
-            return Err(error("NEU-TPL-003", Some(location)));
+            return Err(error(ec::TPL_NAME, Some(location)));
         }
         if default_seen && end == member.len() {
-            return Err(error("NEU-TPL-003", Some(location)));
+            return Err(error(ec::TPL_NAME, Some(location)));
         }
         default_seen |= end < member.len();
         if parameters.len() as u64 >= state.budget.expansion.parameters {
-            return Err(error("NEU-TPL-008", Some(location)));
+            return Err(error(ec::TPL_LIMIT, Some(location)));
         }
         grow(&mut parameters, 1)?;
         parameters.push(ParameterSyntax {
@@ -633,11 +639,11 @@ fn template<'a>(
                     member[0].span.start(),
                     member
                         .last()
-                        .ok_or_else(|| error("NEU-TPL-002", Some(location)))?
+                        .ok_or_else(|| error(ec::TPL_SYNTAX, Some(location)))?
                         .span
                         .end(),
                 )
-                .map_err(|_| error("NEU-TPL-008", Some(location)))?,
+                .map_err(|_| error(ec::TPL_LIMIT, Some(location)))?,
             ),
         });
     }
@@ -645,13 +651,13 @@ fn template<'a>(
     let open = tokens[cursor..]
         .iter()
         .position(|t| t.spelling == "{")
-        .ok_or_else(|| error("NEU-TPL-002", Some(location)))?
+        .ok_or_else(|| error(ec::TPL_SYNTAX, Some(location)))?
         + cursor;
     let result = ty(&tokens[cursor..open], source.bytes())?;
     cursor = open;
     let body = alloc(copy_slice(group(tokens, &mut cursor, "{", "}")?))?;
     if cursor != tokens.len() {
-        return Err(error("NEU-TPL-002", Some(location)));
+        return Err(error(ec::TPL_SYNTAX, Some(location)));
     }
     let root = Root {
         owner: symbol(source.module_id(), name)?,
@@ -665,7 +671,7 @@ fn template<'a>(
     let owner = alloc(root.owner.try_clone())?;
     state.check_name(&owner)?;
     if state.templates.len() as u64 >= state.budget.expansion.definitions {
-        return Err(error("NEU-TPL-008", Some(location)));
+        return Err(error(ec::TPL_LIMIT, Some(location)));
     }
     alloc(state.templates.insert(
         owner,
@@ -688,10 +694,10 @@ fn matrix<'a>(
 ) -> Result<(), E> {
     let name = tokens
         .get(start + 1)
-        .ok_or_else(|| error("NEU-TPL-002", Some(location)))?
+        .ok_or_else(|| error(ec::TPL_SYNTAX, Some(location)))?
         .spelling;
     if !is_snake_name(name) || is_protected_name(name) {
-        return Err(error("NEU-TPL-003", Some(location)));
+        return Err(error(ec::TPL_NAME, Some(location)));
     }
     let mut cursor = start + 2;
     expect(tokens, &mut cursor, "=")?;
@@ -710,13 +716,13 @@ fn matrix<'a>(
                 .iter()
                 .any(|a: &(&str, Vec<Lex<'_>>)| a.0 == axis[0].spelling)
         {
-            return Err(error("NEU-TPL-007", Some(location)));
+            return Err(error(ec::TPL_AXIS, Some(location)));
         }
         grow(&mut axes, 1)?;
         axes.push((axis[0].spelling, alloc(copy_slice(&axis[2..]))?));
     }
     if axes.is_empty() || axes.len() as u64 > state.budget.expansion.axes {
-        return Err(error("NEU-TPL-007", Some(location)));
+        return Err(error(ec::TPL_AXIS, Some(location)));
     }
     let mut filter = Vec::new();
     if tokens.get(cursor).is_some_and(|t| t.spelling == "where") {
@@ -735,7 +741,7 @@ fn matrix<'a>(
         cursor = tokens.len();
     }
     if cursor != tokens.len() {
-        return Err(error("NEU-TPL-002", Some(location)));
+        return Err(error(ec::TPL_SYNTAX, Some(location)));
     }
     let root = Root {
         owner: symbol(source.module_id(), name)?,

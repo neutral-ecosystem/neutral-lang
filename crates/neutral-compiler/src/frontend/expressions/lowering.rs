@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Complete raw assembly and private static evaluation through the shared semantic kernel.
+//!
+//! Assemble declarations, retained expression trees and original-byte companions
+//! atomically under shared limits. Static evaluation may materialize a value;
+//! deferred evaluation remains explicit consumer work. Recomputed resource and
+//! identity facts describe the complete project, never a selected public view.
 
 use super::{
     Arc, B, CancellationToken, CompositionOrigin, CompositionResourceFacts, E, Edge,
@@ -11,6 +16,7 @@ use super::{
     composition_error, copy_slice, derive_expression_resources, error, expression_profile, grow,
     normalize_binding, text, validate_expression_model,
 };
+use crate::frontend::expression_codes as ec;
 use neutral_ir::composition::{
     ValueOriginKind as K, ValuePathSegment as P, project::CompositionAttribution,
 };
@@ -83,11 +89,11 @@ impl State<'_, '_> {
                                 self.budget.expression,
                                 self.budget.cancel,
                             )
-                            .map_err(|_| error("NEU-EXP-009", Some(root.location)))?,
+                            .map_err(|_| error(ec::EXP_LIMIT, Some(root.location)))?,
                         ),
                         ExpressionBody::Expression(e) => ExpressionBody::Expression(
                             e.try_clone_bounded(self.budget.expression, self.budget.cancel)
-                                .map_err(|_| error("NEU-EXP-009", Some(root.location)))?,
+                                .map_err(|_| error(ec::EXP_LIMIT, Some(root.location)))?,
                         ),
                     }
                 } else if self.bindings.get(&root.owner).is_some_and(|s| s.input) {
@@ -95,7 +101,7 @@ impl State<'_, '_> {
                 } else if temporary {
                     continue;
                 } else {
-                    return Err(error("NEU-EXP-003", Some(root.location)));
+                    return Err(error(ec::EXP_NAME, Some(root.location)));
                 };
                 (
                     S::Binding(alloc(self.resolver.types[&root.owner].try_clone())?),
@@ -107,7 +113,7 @@ impl State<'_, '_> {
                     .definitions
                     .iter()
                     .find(|d| d.owner == root.owner)
-                    .ok_or_else(|| error("NEU-EXP-003", Some(root.location)))?;
+                    .ok_or_else(|| error(ec::EXP_NAME, Some(root.location)))?;
                 (
                     S::Definition(alloc(definition.definition.body.try_clone())?),
                     None,
@@ -246,7 +252,7 @@ impl State<'_, '_> {
                     .source_maps
                     .iter()
                     .find(|m| m.declaration == d.identity)
-                    .ok_or_else(|| error("NEU-EXP-002", None))?
+                    .ok_or_else(|| error(ec::EXP_SYNTAX, None))?
                     .location;
                 signature_edges(&d.identity, &d.signature, location, &mut ir.provenance)?;
                 match &d.body {
@@ -278,7 +284,7 @@ impl State<'_, '_> {
                     .source_maps
                     .iter()
                     .find(|m| m.declaration == template.identity)
-                    .ok_or_else(|| error("NEU-EXP-002", None))?
+                    .ok_or_else(|| error(ec::EXP_SYNTAX, None))?
                     .location;
                 type_edges(
                     &template.identity,
@@ -327,14 +333,14 @@ impl State<'_, '_> {
                 ir.composition_limits,
                 self.budget.cancel,
             )
-            .map_err(|_| error("NEU-EXP-009", None))?;
+            .map_err(|_| error(ec::EXP_LIMIT, None))?;
         ir.resources.declarations = ir.declarations.len() as u64;
         ir.resources.import_edges = ir
             .modules
             .iter()
             .map(|m| m.imports.len() as u64)
             .try_fold(0_u64, u64::checked_add)
-            .ok_or_else(|| error("NEU-EXP-009", None))?;
+            .ok_or_else(|| error(ec::EXP_LIMIT, None))?;
         ir.resources.value_nodes = ir.composition_resources.retained_value_nodes;
         ir.expression_resources =
             derive_expression_resources(&ir, self.semantic_limits(), self.budget.cancel)
@@ -361,7 +367,7 @@ fn copy_template(
                 .as_ref()
                 .map(|e| {
                     e.try_clone_bounded(limits, cancel)
-                        .map_err(|_| error("NEU-EXP-009", None))
+                        .map_err(|_| error(ec::EXP_LIMIT, None))
                 })
                 .transpose()?,
         });
@@ -373,7 +379,7 @@ fn copy_template(
         body: template
             .body
             .try_clone_bounded(limits, cancel)
-            .map_err(|_| error("NEU-EXP-009", None))?,
+            .map_err(|_| error(ec::EXP_LIMIT, None))?,
     })
 }
 /// Collects typed target owners for request-local static dependency resolution.

@@ -25,6 +25,9 @@ use neutral_ir::{
 };
 use neutral_semantics::{SemanticLimits, derive_expression_resources, validate_expression_model};
 
+#[path = "consumer_coverage.rs"]
+mod consumer_coverage;
+
 /// Gives each source a deterministic original digest without using a host path.
 fn source(module: &str) -> ProjectSource {
     ProjectSource {

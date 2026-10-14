@@ -8,6 +8,7 @@ use neutral_core::{
     SourceLocation, StructuralLimits,
 };
 
+pub(crate) mod expression_codes;
 mod format_style;
 mod formatter;
 mod graph_syntax;

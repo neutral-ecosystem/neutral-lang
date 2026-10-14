@@ -8,6 +8,7 @@ use super::{
     Root, SourceLocation, State, T, TemplateParameter, TryClone, V, alloc, composition_error,
     copy_slice, error, grow, parser, symbol, text,
 };
+use crate::frontend::expression_codes as ec;
 
 impl<'a> State<'a, '_> {
     /// Resolves exact definition owners using only the captured module import graph.
@@ -19,7 +20,7 @@ impl<'a> State<'a, '_> {
         let mut cursor = 0;
         let (alias, name, _) = parser::name(tokens, &mut cursor)?;
         if cursor != tokens.len() {
-            return Err(error("NEU-TPL-003", Some(root.location)));
+            return Err(error(ec::TPL_NAME, Some(root.location)));
         }
         let module = root.owner.module().module_name();
         let target = if let Some(alias) = alias {
@@ -29,7 +30,7 @@ impl<'a> State<'a, '_> {
                 .iter()
                 .find(|e| e.from() == module && e.alias() == alias)
                 .map(super::super::graph::Import::target)
-                .ok_or_else(|| error("NEU-TPL-003", Some(root.location)))?
+                .ok_or_else(|| error(ec::TPL_NAME, Some(root.location)))?
         } else {
             module
         };
@@ -37,9 +38,9 @@ impl<'a> State<'a, '_> {
         let template = self
             .templates
             .get(&owner)
-            .ok_or_else(|| error("NEU-TPL-003", Some(root.location)))?;
+            .ok_or_else(|| error(ec::TPL_NAME, Some(root.location)))?;
         if target != module && !template.root.public {
-            return Err(error("NEU-TPL-003", Some(root.location)));
+            return Err(error(ec::TPL_NAME, Some(root.location)));
         }
         Ok(owner)
     }
@@ -50,15 +51,15 @@ impl<'a> State<'a, '_> {
             return Ok(());
         }
         if !alloc(self.active_templates.insert(alloc(owner.try_clone())?))? {
-            return Err(error("NEU-TPL-005", None));
+            return Err(error(ec::TPL_RECURSION, None));
         }
         if self.active_templates.len() as u64 > self.budget.expansion.depth {
-            return Err(error("NEU-TPL-008", None));
+            return Err(error(ec::TPL_LIMIT, None));
         }
         let syntax = self
             .templates
             .get(owner)
-            .ok_or_else(|| error("NEU-TPL-003", None))?;
+            .ok_or_else(|| error(ec::TPL_NAME, None))?;
         let root = alloc(syntax.root.try_clone())?;
         let body_tokens = alloc(copy_slice(&syntax.body))?;
         let mut parameter_syntax = Vec::new();
@@ -77,7 +78,7 @@ impl<'a> State<'a, '_> {
                 &root,
                 root.ty
                     .as_ref()
-                    .ok_or_else(|| error("NEU-TPL-004", Some(root.location)))?,
+                    .ok_or_else(|| error(ec::TPL_TYPE, Some(root.location)))?,
             )
             .map_err(composition_error)?;
         let mut parameters = Vec::new();
@@ -135,7 +136,7 @@ impl<'a> State<'a, '_> {
         let owner = self.template_owner(caller, &tokens[..cursor])?;
         let args = parser::group(tokens, &mut cursor, "(", ")")?;
         if cursor != tokens.len() {
-            return Err(error("NEU-TPL-002", Some(caller.location)));
+            return Err(error(ec::TPL_SYNTAX, Some(caller.location)));
         }
         self.application(caller, &owner, args, expected, frames, depth, None)
     }
@@ -156,18 +157,18 @@ impl<'a> State<'a, '_> {
             .budget
             .applications
             .checked_add(1)
-            .ok_or_else(|| error("NEU-TPL-008", Some(caller.location)))?;
+            .ok_or_else(|| error(ec::TPL_LIMIT, Some(caller.location)))?;
         if self.budget.applications > self.budget.expansion.applications
             || depth > self.budget.expansion.depth
         {
-            return Err(error("NEU-TPL-008", Some(caller.location)));
+            return Err(error(ec::TPL_LIMIT, Some(caller.location)));
         }
         self.budget.expansion(1, 0)?;
         self.template(owner)?;
         let syntax = self
             .templates
             .get(owner)
-            .ok_or_else(|| error("NEU-TPL-003", Some(caller.location)))?;
+            .ok_or_else(|| error(ec::TPL_NAME, Some(caller.location)))?;
         let definition = alloc(syntax.root.try_clone())?;
         let body_tokens = alloc(copy_slice(&syntax.body))?;
         let mut parameters = Vec::new();
@@ -183,7 +184,7 @@ impl<'a> State<'a, '_> {
         }
         let result_type = alloc(self.typed_templates[owner].result_type.try_clone())?;
         if expected.is_some_and(|t| *t != result_type) {
-            return Err(error("NEU-TPL-004", Some(caller.location)));
+            return Err(error(ec::TPL_TYPE, Some(caller.location)));
         }
         let mut arguments = Vec::new();
         for arg in parser::split(args)? {
@@ -194,7 +195,7 @@ impl<'a> State<'a, '_> {
                     .iter()
                     .any(|(name, _): &(&str, &[Lex<'_>])| *name == arg[0].spelling)
             {
-                return Err(error("NEU-TPL-003", Some(caller.location)));
+                return Err(error(ec::TPL_NAME, Some(caller.location)));
             }
             grow(&mut arguments, 1)?;
             arguments.push((arg[0].spelling, &arg[2..]));
@@ -224,11 +225,11 @@ impl<'a> State<'a, '_> {
                                 tokens[0].span.start(),
                                 tokens
                                     .last()
-                                    .ok_or_else(|| error("NEU-TPL-003", Some(caller.location)))?
+                                    .ok_or_else(|| error(ec::TPL_NAME, Some(caller.location)))?
                                     .span
                                     .end(),
                             )
-                            .map_err(|_| error("NEU-TPL-008", Some(caller.location)))?,
+                            .map_err(|_| error(ec::TPL_LIMIT, Some(caller.location)))?,
                         ),
                     )
                 } else if !default_tokens.is_empty() {
@@ -243,19 +244,19 @@ impl<'a> State<'a, '_> {
                         parameter_location,
                     )
                 } else {
-                    return Err(error("NEU-TPL-003", Some(caller.location)));
+                    return Err(error(ec::TPL_NAME, Some(caller.location)));
                 };
             let value = if phase == ParameterPhase::Static {
                 if self.typing_template {
                     if !phase_static(&value, caller_frames, &bound) {
-                        return Err(error("NEU-TPL-004", Some(location)));
+                        return Err(error(ec::TPL_TYPE, Some(location)));
                     }
                     value
                 } else {
                     let root = alloc(
                         self.application_root
                             .as_ref()
-                            .ok_or_else(|| error("NEU-TPL-003", Some(location)))?
+                            .ok_or_else(|| error(ec::TPL_NAME, Some(location)))?
                             .try_clone(),
                     )?;
                     let copy = self.clone_expression(&value)?;
@@ -285,7 +286,7 @@ impl<'a> State<'a, '_> {
                 owner: alloc(
                     self.application_root
                         .as_ref()
-                        .ok_or_else(|| error("NEU-TPL-003", Some(caller.location)))?
+                        .ok_or_else(|| error(ec::TPL_NAME, Some(caller.location)))?
                         .owner
                         .try_clone(),
                 )?,
@@ -302,21 +303,21 @@ impl<'a> State<'a, '_> {
                 self.budget.expression,
                 self.budget.cancel,
             )
-            .map_err(|_| error("NEU-TPL-008", Some(caller.location)))?
+            .map_err(|_| error(ec::TPL_LIMIT, Some(caller.location)))?
             .nodes;
             self.budget.expanded_nodes = self
                 .budget
                 .expanded_nodes
                 .checked_add(count)
-                .ok_or_else(|| error("NEU-TPL-008", Some(caller.location)))?;
+                .ok_or_else(|| error(ec::TPL_LIMIT, Some(caller.location)))?;
             if self.budget.expanded_nodes > self.budget.expansion.expanded_nodes {
-                return Err(error("NEU-TPL-008", Some(caller.location)));
+                return Err(error(ec::TPL_LIMIT, Some(caller.location)));
             }
             self.budget.expansion(
                 count,
                 count
                     .checked_mul(std::mem::size_of::<Expression>() as u64)
-                    .ok_or_else(|| error("NEU-TPL-008", Some(caller.location)))?,
+                    .ok_or_else(|| error(ec::TPL_LIMIT, Some(caller.location)))?,
             )?;
         }
         self.application_root = previous_root;
@@ -337,20 +338,20 @@ impl<'a> State<'a, '_> {
             for (name, tokens) in &matrix.axes {
                 let value = self.expression(&matrix.root, tokens, None, &mut Vec::new(), 1)?;
                 let T::List(inner) = &value.ty else {
-                    return Err(error("NEU-TPL-007", Some(matrix.root.location)));
+                    return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
                 };
                 let inner = alloc(inner.try_clone())?;
                 let Some(V::List(items)) = self.static_value(&matrix.root, &value)? else {
-                    return Err(error("NEU-TPL-007", Some(matrix.root.location)));
+                    return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
                 };
                 if items.len() as u64 > self.budget.expansion.axis_items {
-                    return Err(error("NEU-TPL-008", Some(matrix.root.location)));
+                    return Err(error(ec::TPL_LIMIT, Some(matrix.root.location)));
                 }
                 product = product
                     .checked_mul(items.len() as u64)
-                    .ok_or_else(|| error("NEU-TPL-008", Some(matrix.root.location)))?;
+                    .ok_or_else(|| error(ec::TPL_LIMIT, Some(matrix.root.location)))?;
                 if product > self.budget.expansion.product_tuples {
-                    return Err(error("NEU-TPL-008", Some(matrix.root.location)));
+                    return Err(error(ec::TPL_LIMIT, Some(matrix.root.location)));
                 }
                 grow(&mut axes, 1)?;
                 axes.push((*name, inner, items));
@@ -359,9 +360,9 @@ impl<'a> State<'a, '_> {
                 .budget
                 .tuples
                 .checked_add(product)
-                .ok_or_else(|| error("NEU-TPL-008", Some(matrix.root.location)))?;
+                .ok_or_else(|| error(ec::TPL_LIMIT, Some(matrix.root.location)))?;
             if self.budget.tuples > self.budget.expansion.aggregate_tuples {
-                return Err(error("NEU-TPL-008", Some(matrix.root.location)));
+                return Err(error(ec::TPL_LIMIT, Some(matrix.root.location)));
             }
             let exclusions = self.exclusions(&matrix, &axes)?;
             // Shape validation is independent of retained tuple count, including empty axes.
@@ -412,20 +413,20 @@ impl<'a> State<'a, '_> {
                         neutral_ir::expression::try_clone_value_bounded(
                             values
                                 .get(usize::try_from(*index).map_err(|_| {
-                                    error("NEU-TPL-008", Some(matrix.root.location))
+                                    error(ec::TPL_LIMIT, Some(matrix.root.location))
                                 })?)
-                                .ok_or_else(|| error("NEU-TPL-008", Some(matrix.root.location)))?,
+                                .ok_or_else(|| error(ec::TPL_LIMIT, Some(matrix.root.location)))?,
                             self.budget.expression,
                             self.budget.cancel,
                         )
-                        .map_err(|_| error("NEU-TPL-008", Some(matrix.root.location)))?;
+                        .map_err(|_| error(ec::TPL_LIMIT, Some(matrix.root.location)))?;
                     tuple.push(
                         neutral_ir::expression::try_clone_value_bounded(
                             &value,
                             self.budget.expression,
                             self.budget.cancel,
                         )
-                        .map_err(|_| error("NEU-TPL-008", Some(matrix.root.location)))?,
+                        .map_err(|_| error(ec::TPL_LIMIT, Some(matrix.root.location)))?,
                     );
                     grow(&mut frames[0], 1)?;
                     frames[0].push(Local::Value(
@@ -448,7 +449,9 @@ impl<'a> State<'a, '_> {
                     )?;
                     match self.static_value(&matrix.root, &filter)? {
                         Some(V::Bool(value)) => value,
-                        _ => return Err(error("NEU-TPL-007", Some(matrix.root.location))),
+                        _ => {
+                            return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
+                        }
                     }
                 };
                 if retain && !exclusions.contains(&tuple) {
@@ -456,31 +459,31 @@ impl<'a> State<'a, '_> {
                         .budget
                         .expanded
                         .checked_add(1)
-                        .ok_or_else(|| error("NEU-TPL-008", Some(matrix.root.location)))?;
+                        .ok_or_else(|| error(ec::TPL_LIMIT, Some(matrix.root.location)))?;
                     if self.budget.expanded > self.budget.expansion.expanded_bindings {
-                        return Err(error("NEU-TPL-008", Some(matrix.root.location)));
+                        return Err(error(ec::TPL_LIMIT, Some(matrix.root.location)));
                     }
                     let mut name = alloc(text(matrix.root.owner.declaration_name()))?;
                     let extra = (indices.len() as u64)
                         .checked_mul(22)
-                        .ok_or_else(|| error("NEU-TPL-008", Some(matrix.root.location)))?;
+                        .ok_or_else(|| error(ec::TPL_LIMIT, Some(matrix.root.location)))?;
                     let limit = self.captured.composition_limits().json.string_bytes();
                     if (name.len() as u64)
                         .checked_add(extra)
                         .is_none_or(|n| n > limit)
                     {
-                        return Err(error("NEU-TPL-008", Some(matrix.root.location)));
+                        return Err(error(ec::TPL_LIMIT, Some(matrix.root.location)));
                     }
                     alloc(
                         name.try_retain(
                             usize::try_from(extra)
-                                .map_err(|_| error("NEU-TPL-008", Some(matrix.root.location)))?,
+                                .map_err(|_| error(ec::TPL_LIMIT, Some(matrix.root.location)))?,
                         ),
                     )?;
                     for index in &indices {
                         use std::fmt::Write;
                         write!(name, "__{index}")
-                            .map_err(|_| error("NEU-TPL-008", Some(matrix.root.location)))?;
+                            .map_err(|_| error(ec::TPL_LIMIT, Some(matrix.root.location)))?;
                     }
                     let generated = symbol(matrix.root.owner.module().module_name(), &name)?;
                     self.check_name(&generated)?;
@@ -547,13 +550,13 @@ impl<'a> State<'a, '_> {
         let mut cursor = 0;
         let records = parser::group(&matrix.exclusions, &mut cursor, "[", "]")?;
         if cursor != matrix.exclusions.len() {
-            return Err(error("NEU-TPL-007", Some(matrix.root.location)));
+            return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
         }
         for record in parser::split(records)? {
             let mut cursor = 0;
             let fields = parser::split(parser::group(record, &mut cursor, "{", "}")?)?;
             if cursor != record.len() || fields.len() != axes.len() {
-                return Err(error("NEU-TPL-007", Some(matrix.root.location)));
+                return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
             }
             let mut tuple = Vec::new();
             grow(&mut tuple, axes.len())?;
@@ -563,7 +566,7 @@ impl<'a> State<'a, '_> {
                     .filter(|f| f.first().is_some_and(|t| t.spelling == *name))
                     .collect();
                 if members.len() != 1 || members[0].len() < 3 || members[0][1].spelling != ":" {
-                    return Err(error("NEU-TPL-007", Some(matrix.root.location)));
+                    return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
                 }
                 let expression = self.expression(
                     &matrix.root,
@@ -574,14 +577,14 @@ impl<'a> State<'a, '_> {
                 )?;
                 let value = self
                     .static_value(&matrix.root, &expression)?
-                    .ok_or_else(|| error("NEU-TPL-007", Some(matrix.root.location)))?;
+                    .ok_or_else(|| error(ec::TPL_AXIS, Some(matrix.root.location)))?;
                 if !values.contains(&value) {
-                    return Err(error("NEU-TPL-007", Some(matrix.root.location)));
+                    return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
                 }
                 tuple.push(value);
             }
             if exclusions.contains(&tuple) {
-                return Err(error("NEU-TPL-007", Some(matrix.root.location)));
+                return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
             }
             grow(&mut exclusions, 1)?;
             exclusions.push(tuple);

@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! All-branch typing and stable-name lowering; ordinary reuse is materialized.
+//!
+//! Binding resolution memoizes request-local meaning and detects cycles before
+//! evaluation. Every branch resolves under explicit lexical frames, including
+//! branches that static folding will skip. Stable symbols identify dependencies;
+//! source aliases never become semantic identities or host lookup instructions.
 
 use super::{
     B, Budget, ClosedValue, E, ExactNumber, Expression, ExpressionBody, FieldPresence, Frame, Lex,
@@ -8,6 +13,7 @@ use super::{
     SelectorSegment, State, T, TryClone, UnaryOperator, V, alloc, boxed, composition_error,
     copy_slice, error, expression_profile, grow, is_protected_name, is_snake_name, parser, text,
 };
+use crate::frontend::expression_codes as ec;
 
 impl<'a> State<'a, '_> {
     /// Resolves ordinary reuse once per request and rejects value cycles before evaluation.
@@ -22,30 +28,30 @@ impl<'a> State<'a, '_> {
                         self.budget.expression,
                         self.budget.cancel,
                     )
-                    .map_err(|_| error("NEU-EXP-009", None))?,
+                    .map_err(|_| error(ec::EXP_LIMIT, None))?,
                 ),
                 ExpressionBody::Expression(e) => ExpressionBody::Expression(
                     e.try_clone_bounded(self.budget.expression, self.budget.cancel)
-                        .map_err(|_| error("NEU-EXP-009", None))?,
+                        .map_err(|_| error(ec::EXP_LIMIT, None))?,
                 ),
             });
         }
         if self.active.len() as u64 >= self.budget.expression.syntax_depth
             || !alloc(self.active.insert(alloc(owner.try_clone())?))?
         {
-            return Err(error("NEU-EXP-007", None));
+            return Err(error(ec::EXP_CYCLE, None));
         }
         let root = alloc(
             self.resolver
                 .roots
                 .get(owner)
-                .ok_or_else(|| error("NEU-EXP-003", None))?
+                .ok_or_else(|| error(ec::EXP_NAME, None))?
                 .try_clone(),
         )?;
         let syntax = self
             .bindings
             .get(owner)
-            .ok_or_else(|| error("NEU-EXP-003", Some(root.location)))?;
+            .ok_or_else(|| error(ec::EXP_NAME, Some(root.location)))?;
         let input = syntax.input;
         let tokens = alloc(copy_slice(&syntax.tokens))?;
         let mut axes = Vec::new();
@@ -55,14 +61,14 @@ impl<'a> State<'a, '_> {
                 name,
                 value
                     .try_clone_bounded(self.budget.expression, self.budget.cancel)
-                    .map_err(|_| error("NEU-EXP-009", Some(root.location)))?,
+                    .map_err(|_| error(ec::EXP_LIMIT, Some(root.location)))?,
             ));
         }
         let ty = alloc(
             self.resolver
                 .types
                 .get(owner)
-                .ok_or_else(|| error("NEU-EXP-003", Some(root.location)))?
+                .ok_or_else(|| error(ec::EXP_NAME, Some(root.location)))?
                 .try_clone(),
         )?;
         let mut frames = Vec::new();
@@ -99,7 +105,7 @@ impl<'a> State<'a, '_> {
     ) -> Result<Expression, E> {
         self.budget.node(depth)?;
         if tokens.is_empty() {
-            return Err(error("NEU-EXP-002", Some(root.location)));
+            return Err(error(ec::EXP_SYNTAX, Some(root.location)));
         }
         // The last weakest operator gives left associativity while groups remain opaque.
         let mut nesting = 0_i64;
@@ -126,7 +132,7 @@ impl<'a> State<'a, '_> {
                 _ => {}
             }
             if nesting < 0 {
-                return Err(error("NEU-EXP-002", Some(root.location)));
+                return Err(error(ec::EXP_SYNTAX, Some(root.location)));
             }
             if nesting != 0 {
                 continue;
@@ -173,11 +179,11 @@ impl<'a> State<'a, '_> {
             previous = Some(t.spelling);
         }
         if nesting != 0 || generic != 0 {
-            return Err(error("NEU-EXP-002", Some(root.location)));
+            return Err(error(ec::EXP_SYNTAX, Some(root.location)));
         }
         if let Some((i, precedence, operator)) = selected {
             if matches!(precedence, 3 | 4) && relation_count > 1 {
-                return Err(error("NEU-EXP-002", Some(root.location)));
+                return Err(error(ec::EXP_SYNTAX, Some(root.location)));
             }
             let operand_context = match operator {
                 Op::Add | Op::Subtract | Op::Multiply | Op::Divide => Some(&T::Num),
@@ -204,7 +210,7 @@ impl<'a> State<'a, '_> {
                     T::Bool
                 }
                 Op::Equal | Op::NotEqual if left.ty == right.ty => T::Bool,
-                _ => return Err(error("NEU-EXP-004", Some(root.location))),
+                _ => return Err(error(ec::EXP_TYPE, Some(root.location))),
             };
             return Self::checked(
                 Expression {
@@ -248,7 +254,7 @@ impl<'a> State<'a, '_> {
                 let mut cursor = 0;
                 let inner = parser::group(tokens, &mut cursor, "(", ")")?;
                 if cursor != tokens.len() {
-                    return Err(error("NEU-EXP-002", Some(root.location)));
+                    return Err(error(ec::EXP_SYNTAX, Some(root.location)));
                 }
                 self.expression(root, inner, expected, frames, depth + 1)
             }
@@ -260,11 +266,11 @@ impl<'a> State<'a, '_> {
                 let mut cursor = 1;
                 let inner = parser::group(tokens, &mut cursor, "(", ")")?;
                 if cursor != tokens.len() {
-                    return Err(error("NEU-EXP-002", Some(root.location)));
+                    return Err(error(ec::EXP_SYNTAX, Some(root.location)));
                 }
                 let operand = self.expression(root, inner, None, frames, depth + 1)?;
                 if !matches!(operand.ty, T::Num | T::Bool | T::String) {
-                    return Err(error("NEU-EXP-004", Some(root.location)));
+                    return Err(error(ec::EXP_TYPE, Some(root.location)));
                 }
                 Self::checked(
                     Expression {
@@ -286,7 +292,7 @@ impl<'a> State<'a, '_> {
     /// Requires exact invariant result typing without coercion.
     fn checked(value: Expression, expected: Option<&T>, root: &Root) -> Result<Expression, E> {
         if expected.is_some_and(|t| *t != value.ty) {
-            return Err(error("NEU-EXP-004", Some(root.location)));
+            return Err(error(ec::EXP_TYPE, Some(root.location)));
         }
         Ok(value)
     }
@@ -295,7 +301,7 @@ impl<'a> State<'a, '_> {
         let ty = if expected.is_some_and(|t| matches!(t,T::Nullable(inner) if **inner==ty)) {
             alloc(
                 expected
-                    .ok_or_else(|| error("NEU-EXP-004", Some(root.location)))?
+                    .ok_or_else(|| error(ec::EXP_TYPE, Some(root.location)))?
                     .try_clone(),
             )?
         } else {
@@ -340,7 +346,7 @@ impl<'a> State<'a, '_> {
             if first == "null" {
                 let ty = expected
                     .filter(|t| matches!(t, T::Nullable(_)))
-                    .ok_or_else(|| error("NEU-EXP-004", Some(root.location)))?;
+                    .ok_or_else(|| error(ec::EXP_TYPE, Some(root.location)))?;
                 return Ok(Expression {
                     ty: alloc(ty.try_clone())?,
                     node: N::Value(V::Null),
@@ -355,9 +361,9 @@ impl<'a> State<'a, '_> {
                 .map_err(|e| {
                     error(
                         if e == neutral_ir::IrError::ExactNumberLimitExceeded {
-                            "NEU-EXP-009"
+                            ec::EXP_LIMIT
                         } else {
-                            "NEU-EXP-002"
+                            ec::EXP_SYNTAX
                         },
                         Some(root.location),
                     )
@@ -384,7 +390,7 @@ impl<'a> State<'a, '_> {
                         Local::Value(name, value) if *name == first => {
                             let mut value = value
                                 .try_clone_bounded(self.budget.expression, self.budget.cancel)
-                                .map_err(|_| error("NEU-EXP-009", Some(root.location)))?;
+                                .map_err(|_| error(ec::EXP_LIMIT, Some(root.location)))?;
                             lift(&mut value, lexical_depth, 0)?;
                             return Self::checked(value, expected, root);
                         }
@@ -399,17 +405,17 @@ impl<'a> State<'a, '_> {
         let mut cursor = 0;
         let (alias, name, span) = parser::name(tokens, &mut cursor)?;
         if cursor != tokens.len() {
-            return Err(error("NEU-EXP-002", Some(root.location)));
+            return Err(error(ec::EXP_SYNTAX, Some(root.location)));
         }
         let owner = self
             .resolver
             .name(root, alias, name, span, false)
-            .map_err(|e| error("NEU-EXP-003", e.location))?;
+            .map_err(|e| error(ec::EXP_NAME, e.location))?;
         if self.typing_template
             && self.templates.contains_key(&root.owner)
             && !self.resolver.roots[&owner].public
         {
-            return Err(error("NEU-TPL-003", Some(root.location)));
+            return Err(error(ec::TPL_NAME, Some(root.location)));
         }
         let ty = alloc(self.resolver.types[&owner].try_clone())?;
         let node = match self.binding(&owner)? {
@@ -435,7 +441,7 @@ impl<'a> State<'a, '_> {
         parser::expect(tokens, &mut cursor, "else")?;
         let else_tokens = parser::group(tokens, &mut cursor, "{", "}")?;
         if cursor != tokens.len() {
-            return Err(error("NEU-EXP-002", Some(root.location)));
+            return Err(error(ec::EXP_SYNTAX, Some(root.location)));
         }
         let then_branch = self.expression(root, then_tokens, expected, frames, depth + 1)?;
         let else_branch =
@@ -469,26 +475,26 @@ impl<'a> State<'a, '_> {
             .body(&scrutinee.ty)
             .map_err(composition_error)?
         else {
-            return Err(error("NEU-EXP-004", Some(root.location)));
+            return Err(error(ec::EXP_TYPE, Some(root.location)));
         };
         let mut cursor = open;
         let members = parser::group(tokens, &mut cursor, "{", "}")?;
         if cursor != tokens.len() {
-            return Err(error("NEU-EXP-002", Some(root.location)));
+            return Err(error(ec::EXP_SYNTAX, Some(root.location)));
         }
         let mut arms = Vec::new();
         let mut result = expected.map(|t| alloc(t.try_clone())).transpose()?;
         for member in parser::split(members)? {
             let tag = member
                 .first()
-                .ok_or_else(|| error("NEU-EXP-005", Some(root.location)))?
+                .ok_or_else(|| error(ec::EXP_MATCH, Some(root.location)))?
                 .spelling;
             let alternative = alternatives
                 .iter()
                 .find(|a| a.tag == tag)
-                .ok_or_else(|| error("NEU-EXP-005", Some(root.location)))?;
+                .ok_or_else(|| error(ec::EXP_MATCH, Some(root.location)))?;
             if arms.iter().any(|a: &MatchArm| a.tag == tag) {
-                return Err(error("NEU-EXP-005", Some(root.location)));
+                return Err(error(ec::EXP_MATCH, Some(root.location)));
             }
             let mut i = 1;
             let binder = parser::group(member, &mut i, "(", ")")?;
@@ -496,7 +502,7 @@ impl<'a> State<'a, '_> {
                 || !is_snake_name(binder[0].spelling)
                 || is_protected_name(binder[0].spelling)
             {
-                return Err(error("NEU-EXP-002", Some(root.location)));
+                return Err(error(ec::EXP_SYNTAX, Some(root.location)));
             }
             parser::expect(member, &mut i, "=>")?;
             let mut frame = Vec::new();
@@ -521,11 +527,11 @@ impl<'a> State<'a, '_> {
             });
         }
         if arms.len() != alternatives.len() {
-            return Err(error("NEU-EXP-005", Some(root.location)));
+            return Err(error(ec::EXP_MATCH, Some(root.location)));
         }
         arms.sort_unstable_by(|a, b| a.tag.cmp(&b.tag));
         Ok(Expression {
-            ty: result.ok_or_else(|| error("NEU-EXP-005", Some(root.location)))?,
+            ty: result.ok_or_else(|| error(ec::EXP_MATCH, Some(root.location)))?,
             node: N::Match {
                 scrutinee: alloc(boxed(scrutinee))?,
                 arms,
@@ -544,7 +550,7 @@ impl<'a> State<'a, '_> {
         let mut cursor = 0;
         let items = parser::group(tokens, &mut cursor, "[", "]")?;
         if cursor != tokens.len() {
-            return Err(error("NEU-EXP-002", Some(root.location)));
+            return Err(error(ec::EXP_SYNTAX, Some(root.location)));
         }
         let inner = match expected {
             Some(T::List(t)) => Some(t.as_ref()),
@@ -565,12 +571,12 @@ impl<'a> State<'a, '_> {
             values.push(expression);
         }
         let ty = T::List(alloc(boxed(
-            element.ok_or_else(|| error("NEU-EXP-004", Some(root.location)))?,
+            element.ok_or_else(|| error(ec::EXP_TYPE, Some(root.location)))?,
         ))?);
         let ty = if expected.is_some_and(|t| matches!(t,T::Nullable(inner) if **inner==ty)) {
             alloc(
                 expected
-                    .ok_or_else(|| error("NEU-EXP-004", Some(root.location)))?
+                    .ok_or_else(|| error(ec::EXP_TYPE, Some(root.location)))?
                     .try_clone(),
             )?
         } else {
@@ -594,7 +600,7 @@ impl<'a> State<'a, '_> {
         frames: &mut Vec<Frame<'a>>,
         depth: u64,
     ) -> Result<Expression, E> {
-        let ty = expected.ok_or_else(|| error("NEU-EXP-004", Some(root.location)))?;
+        let ty = expected.ok_or_else(|| error(ec::EXP_TYPE, Some(root.location)))?;
         let nominal = match ty {
             T::Nullable(t) => t.as_ref(),
             t => t,
@@ -603,7 +609,7 @@ impl<'a> State<'a, '_> {
         let mut cursor = 0;
         let contents = parser::group(tokens, &mut cursor, "{", "}")?;
         if cursor != tokens.len() {
-            return Err(error("NEU-EXP-002", Some(root.location)));
+            return Err(error(ec::EXP_SYNTAX, Some(root.location)));
         }
         let members = parser::split(contents)?;
         let mut supplied = Vec::new();
@@ -615,7 +621,7 @@ impl<'a> State<'a, '_> {
                     .iter()
                     .any(|(name, _): &(&str, &[Lex<'_>])| *name == member[0].spelling)
             {
-                return Err(error("NEU-EXP-002", Some(root.location)));
+                return Err(error(ec::EXP_SYNTAX, Some(root.location)));
             }
             grow(&mut supplied, 1)?;
             supplied.push((member[0].spelling, &member[2..]));
@@ -623,26 +629,26 @@ impl<'a> State<'a, '_> {
         let node = match body {
             B::Variant(alternatives) => {
                 if supplied.len() != 2 {
-                    return Err(error("NEU-EXP-004", Some(root.location)));
+                    return Err(error(ec::EXP_TYPE, Some(root.location)));
                 }
                 let tag_tokens = supplied
                     .iter()
                     .find(|(n, _)| *n == "tag")
                     .map(|(_, v)| *v)
-                    .ok_or_else(|| error("NEU-EXP-004", Some(root.location)))?;
+                    .ok_or_else(|| error(ec::EXP_TYPE, Some(root.location)))?;
                 if tag_tokens.len() != 1 {
-                    return Err(error("NEU-EXP-004", Some(root.location)));
+                    return Err(error(ec::EXP_TYPE, Some(root.location)));
                 }
                 let tag = parser::string(tag_tokens[0].spelling, &mut self.budget)?;
                 let payload_tokens = supplied
                     .iter()
                     .find(|(n, _)| *n == "payload")
                     .map(|(_, v)| *v)
-                    .ok_or_else(|| error("NEU-EXP-004", Some(root.location)))?;
+                    .ok_or_else(|| error(ec::EXP_TYPE, Some(root.location)))?;
                 let payload_type = &alternatives
                     .iter()
                     .find(|a| a.tag == tag)
-                    .ok_or_else(|| error("NEU-EXP-004", Some(root.location)))?
+                    .ok_or_else(|| error(ec::EXP_TYPE, Some(root.location)))?
                     .ty;
                 let payload =
                     self.expression(root, payload_tokens, Some(payload_type), frames, depth + 1)?;
@@ -656,7 +662,7 @@ impl<'a> State<'a, '_> {
                     .iter()
                     .any(|(n, _)| !fields.iter().any(|f| f.name == *n))
                 {
-                    return Err(error("NEU-EXP-004", Some(root.location)));
+                    return Err(error(ec::EXP_TYPE, Some(root.location)));
                 }
                 let mut values = Vec::new();
                 grow(&mut values, fields.len())?;
@@ -668,7 +674,7 @@ impl<'a> State<'a, '_> {
                     } else {
                         match field.presence {
                             FieldPresence::Required => {
-                                return Err(error("NEU-EXP-004", Some(root.location)));
+                                return Err(error(ec::EXP_TYPE, Some(root.location)));
                             }
                             FieldPresence::Optional => None,
                             FieldPresence::Defaulted => Some(Expression {
@@ -677,7 +683,7 @@ impl<'a> State<'a, '_> {
                                     field
                                         .default
                                         .as_ref()
-                                        .ok_or_else(|| error("NEU-EXP-004", Some(root.location)))?,
+                                        .ok_or_else(|| error(ec::EXP_TYPE, Some(root.location)))?,
                                 )?),
                             }),
                         }
@@ -702,22 +708,22 @@ impl<'a> State<'a, '_> {
         let mut cursor = 1;
         let args = parser::group(tokens, &mut cursor, "(", ")")?;
         if cursor != tokens.len() {
-            return Err(error("NEU-EXP-002", Some(root.location)));
+            return Err(error(ec::EXP_SYNTAX, Some(root.location)));
         }
         let mut i = 0;
         let (alias, name, span) = parser::name(args, &mut i)?;
         if i != args.len() {
-            return Err(error("NEU-EXP-002", Some(root.location)));
+            return Err(error(ec::EXP_SYNTAX, Some(root.location)));
         }
         let owner = self
             .resolver
             .name(root, alias, name, span, false)
-            .map_err(|e| error("NEU-EXP-003", e.location))?;
+            .map_err(|e| error(ec::EXP_NAME, e.location))?;
         if self.typing_template
             && self.templates.contains_key(&root.owner)
             && !self.resolver.roots[&owner].public
         {
-            return Err(error("NEU-TPL-003", Some(root.location)));
+            return Err(error(ec::TPL_NAME, Some(root.location)));
         }
         let ty = T::Ref(alloc(boxed(alloc(
             self.resolver.types[&owner].try_clone(),
@@ -739,16 +745,16 @@ impl<'a> State<'a, '_> {
             .sources()
             .iter()
             .find(|s| s.digest() == root.location.source())
-            .ok_or_else(|| error("NEU-EXP-003", Some(root.location)))?;
+            .ok_or_else(|| error(ec::EXP_NAME, Some(root.location)))?;
         let syntax = parser::ty(type_tokens, source.bytes())?;
         let ty = self.resolver.ty(root, &syntax).map_err(composition_error)?;
         let args = parser::split(parser::group(tokens, &mut cursor, "(", ")")?)?;
         if cursor != tokens.len() || args.len() != 3 {
-            return Err(error("NEU-EXP-002", Some(root.location)));
+            return Err(error(ec::EXP_SYNTAX, Some(root.location)));
         }
         let target_expr = self.reference(root, args[0], None)?;
         let N::Value(V::Reference(target)) = target_expr.node else {
-            return Err(error("NEU-EXP-004", Some(root.location)));
+            return Err(error(ec::EXP_TYPE, Some(root.location)));
         };
         if !self.resolver.roots[&target].public
             || !matches!(
@@ -756,7 +762,7 @@ impl<'a> State<'a, '_> {
                 T::Nominal(_) | T::VocabularyNominal { .. }
             )
         {
-            return Err(error("NEU-EXP-003", Some(root.location)));
+            return Err(error(ec::EXP_NAME, Some(root.location)));
         }
         let result_syntax = parser::ty(args[1], source.bytes())?;
         let result_type = self
@@ -764,30 +770,30 @@ impl<'a> State<'a, '_> {
             .ty(root, &result_syntax)
             .map_err(composition_error)?;
         if !matches!(result_type, T::Nominal(_) | T::VocabularyNominal { .. }) {
-            return Err(error("NEU-EXP-004", Some(root.location)));
+            return Err(error(ec::EXP_TYPE, Some(root.location)));
         }
         let mut selector = Vec::new();
         let mut i = 0;
         let segments = parser::group(args[2], &mut i, "[", "]")?;
         if i != args[2].len() {
-            return Err(error("NEU-EXP-002", Some(root.location)));
+            return Err(error(ec::EXP_SYNTAX, Some(root.location)));
         }
         for segment in parser::split(segments)? {
             let mut i = 0;
             let fields = parser::group(segment, &mut i, "{", "}")?;
             if i != segment.len() {
-                return Err(error("NEU-EXP-002", Some(root.location)));
+                return Err(error(ec::EXP_SYNTAX, Some(root.location)));
             }
             let fields = parser::split(fields)?;
             if fields.len() != 2 {
-                return Err(error("NEU-EXP-002", Some(root.location)));
+                return Err(error(ec::EXP_SYNTAX, Some(root.location)));
             }
             let mut kind = None;
             let mut name = None;
             let mut index = None;
             for field in fields {
                 if field.len() != 3 || field[1].spelling != ":" {
-                    return Err(error("NEU-EXP-002", Some(root.location)));
+                    return Err(error(ec::EXP_SYNTAX, Some(root.location)));
                 }
                 match field[0].spelling {
                     "kind" if kind.is_none() => {
@@ -801,26 +807,30 @@ impl<'a> State<'a, '_> {
                             field[2]
                                 .spelling
                                 .parse::<u32>()
-                                .map_err(|_| error("NEU-EXP-008", Some(root.location)))?,
+                                .map_err(|_| error(ec::EXP_RESTRICTION, Some(root.location)))?,
                         );
                     }
-                    _ => return Err(error("NEU-EXP-002", Some(root.location))),
+                    _ => {
+                        return Err(error(ec::EXP_SYNTAX, Some(root.location)));
+                    }
                 }
             }
             let segment = match kind.as_deref() {
                 Some("field") if index.is_none() => SelectorSegment::Field(
-                    name.ok_or_else(|| error("NEU-EXP-008", Some(root.location)))?,
+                    name.ok_or_else(|| error(ec::EXP_RESTRICTION, Some(root.location)))?,
                 ),
                 Some("alternative") if index.is_none() => SelectorSegment::Alternative(
-                    name.ok_or_else(|| error("NEU-EXP-008", Some(root.location)))?,
+                    name.ok_or_else(|| error(ec::EXP_RESTRICTION, Some(root.location)))?,
                 ),
                 Some("index") if name.is_none() => SelectorSegment::Index(
-                    index.ok_or_else(|| error("NEU-EXP-008", Some(root.location)))?,
+                    index.ok_or_else(|| error(ec::EXP_RESTRICTION, Some(root.location)))?,
                 ),
-                _ => return Err(error("NEU-EXP-008", Some(root.location))),
+                _ => {
+                    return Err(error(ec::EXP_RESTRICTION, Some(root.location)));
+                }
             };
             if selector.len() >= expression_profile::MAX_SELECTOR_SEGMENTS {
-                return Err(error("NEU-EXP-009", Some(root.location)));
+                return Err(error(ec::EXP_LIMIT, Some(root.location)));
             }
             grow(&mut selector, 1)?;
             selector.push(segment);
@@ -848,7 +858,7 @@ impl<'a> State<'a, '_> {
         depth: u64,
     ) -> Result<Expression, E> {
         if tokens.len() != 1 {
-            return Err(error("NEU-EXP-002", Some(root.location)));
+            return Err(error(ec::EXP_SYNTAX, Some(root.location)));
         }
         let raw = tokens[0].spelling;
         let bytes = raw.as_bytes();
@@ -876,9 +886,9 @@ impl<'a> State<'a, '_> {
                 let inner = parser::lex(
                     &bytes[i + 2..end],
                     usize::try_from(tokens[0].span.start())
-                        .map_err(|_| error("NEU-EXP-009", Some(root.location)))?
+                        .map_err(|_| error(ec::EXP_LIMIT, Some(root.location)))?
                         .checked_add(i + 2)
-                        .ok_or_else(|| error("NEU-EXP-009", Some(root.location)))?,
+                        .ok_or_else(|| error(ec::EXP_LIMIT, Some(root.location)))?,
                     &mut self.budget,
                 )?;
                 let expression =
@@ -937,7 +947,7 @@ fn lift(expression: &mut Expression, amount: u64, cutoff: u64) -> Result<(), E> 
         N::Bound { depth, .. } if *depth >= cutoff => {
             *depth = depth
                 .checked_add(amount)
-                .ok_or_else(|| error("NEU-EXP-009", None))?;
+                .ok_or_else(|| error(ec::EXP_LIMIT, None))?;
         }
         N::Unary { operand, .. } | N::Text(operand) => lift(operand, amount, cutoff)?,
         N::Binary { left, right, .. } => {
@@ -987,7 +997,7 @@ fn first_group(tokens: &[Lex<'_>], start: usize) -> Result<usize, E> {
             _ => {}
         }
     }
-    Err(error("NEU-EXP-002", None))
+    Err(error(ec::EXP_SYNTAX, None))
 }
 /// Preserves ordinary string escapes plus the frozen escaped interpolation opener.
 fn interpolation_text(raw: &str, budget: &mut Budget<'_>) -> Result<String, E> {
@@ -1006,7 +1016,7 @@ fn interpolation_text(raw: &str, budget: &mut Budget<'_>) -> Result<String, E> {
             let c = raw[i..]
                 .chars()
                 .next()
-                .ok_or_else(|| error("NEU-EXP-002", None))?;
+                .ok_or_else(|| error(ec::EXP_SYNTAX, None))?;
             literal.push(c);
             i += c.len_utf8();
         }

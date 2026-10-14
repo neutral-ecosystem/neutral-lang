@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Exact nominal public binding discovery; templates are contracts, never runtime entries.
+//!
+//! Enumeration, unique selection and explicit roots have distinct cardinality
+//! rules. A request must match the complete semantic tuple and a public nominal
+//! contract; matching scalar payloads cannot substitute for matching types.
+//! Selection borrows bindings and carries the remaining budget into projection,
+//! preventing a second phase from resetting request limits.
 
 use super::{
     ExpressionReadError, ExpressionView, ExpressionViewLimits, ValidatedExpressionProject,

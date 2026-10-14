@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Explicit successor source semantics, sharing resolved nominal contracts and pure evaluation.
+//!
+//! Parsing retains captured byte spans; resolution checks names and types in every
+//! branch. Lowering folds only static paths through the shared pure evaluator and
+//! preserves deferred trees rather than executing operations. Expansion shares the
+//! same request budget, so nested templates cannot reset work or retention limits.
+//! Successful raw assembly still requires independent reader validation; none of
+//! these private phases activates a profile or acquires external inputs.
 
 use super::{
     Arc, B, BTreeMap, BTreeSet, ByteSpan, CancellationToken, ClosedValue, CompositionOrigin,
@@ -12,6 +19,7 @@ use super::{
     parse_complete_type_fallible, text, validate_composition_scope,
 };
 use crate::CapturedExpressionProject;
+use crate::frontend::expression_codes as ec;
 use neutral_ir::expression::{
     BinaryOperator as Op, Expression, ExpressionBody, ExpressionNode as N, MatchArm,
     SelectorSegment, UnaryOperator,
@@ -60,17 +68,17 @@ fn error(code: &'static str, location: Option<SourceLocation>) -> E {
 fn composition_error(e: super::E) -> E {
     error(
         match e.code {
-            codes::CANCELLED => "NEU-EXP-010",
-            codes::LIMIT => "NEU-EXP-009",
-            codes::PRIVATE_EXPOSURE => "NEU-EXP-003",
-            _ => "NEU-EXP-002",
+            codes::CANCELLED => ec::EXP_CANCELLED,
+            codes::LIMIT => ec::EXP_LIMIT,
+            codes::PRIVATE_EXPOSURE => ec::EXP_NAME,
+            _ => ec::EXP_SYNTAX,
         },
         e.location,
     )
 }
 /// Maps every fallible allocation checkpoint to safe request failure.
 fn alloc<T>(value: Result<T, neutral_core::allocation::AllocationError>) -> Result<T, E> {
-    value.map_err(|_| error("NEU-EXP-009", None))
+    value.map_err(|_| error(ec::EXP_LIMIT, None))
 }
 /// Reserves vector storage before insertion.
 fn grow<T>(values: &mut Vec<T>, count: usize) -> Result<(), E> {
@@ -115,14 +123,14 @@ impl Budget<'_> {
     /// Charges before traversal and checks cancellation.
     fn charge(&mut self, count: u64) -> Result<(), E> {
         if self.cancel.is_cancelled() {
-            return Err(error("NEU-EXP-010", None));
+            return Err(error(ec::EXP_CANCELLED, None));
         }
         self.work = self
             .work
             .checked_add(count)
-            .ok_or_else(|| error("NEU-EXP-009", None))?;
+            .ok_or_else(|| error(ec::EXP_LIMIT, None))?;
         if self.work > self.expression.work {
-            return Err(error("NEU-EXP-009", None));
+            return Err(error(ec::EXP_LIMIT, None));
         }
         Ok(())
     }
@@ -131,14 +139,14 @@ impl Budget<'_> {
         self.charge(
             count
                 .checked_add(1)
-                .ok_or_else(|| error("NEU-EXP-009", None))?,
+                .ok_or_else(|| error(ec::EXP_LIMIT, None))?,
         )?;
         self.bytes = self
             .bytes
             .checked_add(count)
-            .ok_or_else(|| error("NEU-EXP-009", None))?;
+            .ok_or_else(|| error(ec::EXP_LIMIT, None))?;
         if self.bytes > self.expression.retained_bytes {
-            return Err(error("NEU-EXP-009", None));
+            return Err(error(ec::EXP_LIMIT, None));
         }
         Ok(())
     }
@@ -147,7 +155,7 @@ impl Budget<'_> {
         self.bytes(
             (std::mem::size_of::<T>() as u64)
                 .checked_mul(count as u64)
-                .ok_or_else(|| error("NEU-EXP-009", None))?,
+                .ok_or_else(|| error(ec::EXP_LIMIT, None))?,
         )
     }
     /// Checks complete source tree occurrences before recursive descent.
@@ -156,9 +164,9 @@ impl Budget<'_> {
         self.nodes = self
             .nodes
             .checked_add(1)
-            .ok_or_else(|| error("NEU-EXP-009", None))?;
+            .ok_or_else(|| error(ec::EXP_LIMIT, None))?;
         if self.nodes > self.expression.nodes || depth > self.expression.syntax_depth {
-            return Err(error("NEU-EXP-009", None));
+            return Err(error(ec::EXP_LIMIT, None));
         }
         self.retain::<Expression>(1)
     }
@@ -168,15 +176,15 @@ impl Budget<'_> {
         self.expansion_work = self
             .expansion_work
             .checked_add(work)
-            .ok_or_else(|| error("NEU-TPL-008", None))?;
+            .ok_or_else(|| error(ec::TPL_LIMIT, None))?;
         self.expansion_bytes = self
             .expansion_bytes
             .checked_add(bytes)
-            .ok_or_else(|| error("NEU-TPL-008", None))?;
+            .ok_or_else(|| error(ec::TPL_LIMIT, None))?;
         if self.expansion_work > self.expansion.work
             || self.expansion_bytes > self.expansion.retained_bytes
         {
-            return Err(error("NEU-TPL-008", None));
+            return Err(error(ec::TPL_LIMIT, None));
         }
         Ok(())
     }
@@ -282,7 +290,7 @@ pub fn compile_expression_project(
             .map_err(|e| error(e.code(), None))?;
     for (root, argument) in std::mem::take(&mut state.pending_static) {
         if state.static_value(&root, &argument)?.is_none() {
-            return Err(error("NEU-TPL-004", Some(root.location)));
+            return Err(error(ec::TPL_TYPE, Some(root.location)));
         }
     }
     let mut normalized = BTreeMap::new();
@@ -314,9 +322,9 @@ pub fn compile_expression_project(
         .map_err(|_| {
             error(
                 if cancel.is_cancelled() {
-                    "NEU-EXP-010"
+                    ec::EXP_CANCELLED
                 } else {
-                    "NEU-EXP-009"
+                    ec::EXP_LIMIT
                 },
                 None,
             )
@@ -393,7 +401,7 @@ impl State<'_, '_> {
             || self.templates.contains_key(owner)
             || self.matrices.iter().any(|m| m.root.owner == *owner)
         {
-            return Err(error("NEU-TPL-006", None));
+            return Err(error(ec::TPL_COLLISION, None));
         }
         Ok(())
     }
@@ -408,7 +416,7 @@ impl State<'_, '_> {
                 .declarations
                 .min(self.budget.expression.bindings)
         {
-            return Err(error("NEU-EXP-009", Some(root.location)));
+            return Err(error(ec::EXP_LIMIT, Some(root.location)));
         }
         alloc(
             self.resolver
@@ -446,8 +454,8 @@ impl State<'_, '_> {
         .map_err(|e| {
             error(
                 match e {
-                    neutral_ir::expression::ExpressionShapeError::Cancelled => "NEU-EXP-010",
-                    _ => "NEU-EXP-009",
+                    neutral_ir::expression::ExpressionShapeError::Cancelled => ec::EXP_CANCELLED,
+                    _ => ec::EXP_LIMIT,
                 },
                 None,
             )
@@ -455,7 +463,7 @@ impl State<'_, '_> {
         self.budget.charge(cost.work)?;
         self.budget.bytes(cost.retained_bytes)?;
         e.try_clone_bounded(self.budget.expression, self.budget.cancel)
-            .map_err(|_| error("NEU-EXP-009", None))
+            .map_err(|_| error(ec::EXP_LIMIT, None))
     }
     /// Copies a body sum without fabricated input values or lossy tree conversion.
     fn copy_body(&mut self, body: &ExpressionBody) -> Result<ExpressionBody, E> {
@@ -467,7 +475,7 @@ impl State<'_, '_> {
                     self.budget.expression,
                     self.budget.cancel,
                 )
-                .map_err(|_| error("NEU-EXP-009", None))?,
+                .map_err(|_| error(ec::EXP_LIMIT, None))?,
             ),
             ExpressionBody::Expression(e) => ExpressionBody::Expression(self.clone_expression(e)?),
         })

@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Independent complete expression artifacts, distinct from model typing and effectful execution.
+//!
+//! [`ValidatedExpressionProject::from_ir`] checks semantics, resource facts,
+//! original-byte companions and the public interface digest before publishing
+//! authority. Entry selection and public views operate only on that authority.
+//! Views retain the interpretation closure but redact private source identities;
+//! guarded dependencies describe possible demand without selecting branches,
+//! acquiring bindings or scheduling operations.
 
 mod companions;
 mod dependencies;

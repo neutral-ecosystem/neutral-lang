@@ -7,6 +7,7 @@ use super::{
     CapturedProjectSource, CapturedProjectVocabulary, CompositionCaptureFailure,
     ProjectCaptureError, ProjectCaptureLimits, ProjectCaptureResourceFacts,
 };
+use crate::frontend::expression_codes as ec;
 use neutral_core::{CancellationToken, allocation::Shared};
 use neutral_ir::expression::{
     profile::{self, ExpressionLimits, SemanticProfiles},
@@ -133,9 +134,9 @@ impl ExpressionCaptureFailure {
     #[must_use]
     pub fn code(&self) -> &'static str {
         match self {
-            Self::Unsupported => "NEU-EXP-001",
+            Self::Unsupported => ec::EXP_UNSUPPORTED,
             Self::Capture(e) => e.code(),
-            Self::Limit => "NEU-EXP-009",
+            Self::Limit => ec::EXP_LIMIT,
         }
     }
 }
