@@ -123,6 +123,7 @@ version = "0.8.0"
 dependencies = [
  "neutral-core",
  "neutral-ir",
+ "neutral-semantics",
  "neutral-vocabulary",
 ]
 
@@ -177,6 +178,16 @@ dependencies = [
 
 [[package]]
 name = "neutral-reader"
+version = "0.8.0"
+dependencies = [
+ "neutral-core",
+ "neutral-ir",
+ "neutral-semantics",
+ "neutral-vocabulary",
+]
+
+[[package]]
+name = "neutral-semantics"
 version = "0.8.0"
 dependencies = [
  "neutral-core",
