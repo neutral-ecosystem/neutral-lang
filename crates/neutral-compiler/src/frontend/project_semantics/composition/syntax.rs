@@ -152,7 +152,7 @@ pub(super) fn parse(
 }
 
 /// Adds contextual variant syntax without reserving `variant` as a binding identifier.
-fn parse_declaration(
+pub(super) fn parse_declaration(
     source: &crate::CapturedProjectSource,
     tokens: &[Token],
     limits: neutral_vocabulary::composition::CompositionLimits,

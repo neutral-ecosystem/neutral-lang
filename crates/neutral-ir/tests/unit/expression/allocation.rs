@@ -174,7 +174,7 @@ fn copy_preflight_rejects_before_any_reservation() {
     let (failed, count) = observe(None, || {
         tree.try_clone_bounded(
             ExpressionLimits {
-                output_bytes: 1,
+                retained_bytes: 1,
                 ..ExpressionLimits::hard()
             },
             &cancel,
@@ -182,4 +182,20 @@ fn copy_preflight_rejects_before_any_reservation() {
     });
     assert_eq!(failed.unwrap_err(), ExpressionShapeError::Limit);
     assert_eq!(count, 0);
+}
+
+#[test]
+fn raw_copy_uses_retention_not_evaluated_output_limit() {
+    let tree = all_nodes();
+    assert_eq!(
+        tree.try_clone_bounded(
+            ExpressionLimits {
+                output_bytes: 1,
+                ..ExpressionLimits::hard()
+            },
+            &CancellationToken::new(),
+        )
+        .unwrap(),
+        tree,
+    );
 }

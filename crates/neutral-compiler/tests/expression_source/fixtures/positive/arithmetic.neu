@@ -1,0 +1,15 @@
+neu "1.0"
+module example::expressions
+
+num priority = 2 + 3 * 4
+num grouped = (2 + 3) * 4
+num exact = 1 / 8
+num third = 1 / 3
+num signed = -1 / 6
+num chained = (1 / 3) * 3
+bool compare = priority >= 10 && grouped != priority
+num difference = grouped - priority
+bool inverted = !false
+bool equal = 0.10 + 0.20 == 0.3
+bool less_equal = priority <= grouped
+bool greater = grouped > priority

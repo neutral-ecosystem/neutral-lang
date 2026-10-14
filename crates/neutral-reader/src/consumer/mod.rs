@@ -18,6 +18,7 @@ use neutral_ir::{
 
 mod compatibility;
 mod entries;
+pub mod expression;
 mod selectors;
 mod validation;
 pub use compatibility::*;

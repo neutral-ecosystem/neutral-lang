@@ -119,10 +119,7 @@ fn parts(
 ) -> Result<ExactNumber, E> {
     if coefficient.len() as u64 > budget.limits.coefficient_digits
         || scale.unsigned_abs() > budget.limits.absolute_scale
-        || (std::mem::size_of::<ExactNumber>() as u64)
-            .checked_add(coefficient.len() as u64)
-            .ok_or(E::Limit)?
-            > budget.limits.output_bytes
+        || coefficient.len() as u64 > budget.limits.output_bytes
     {
         return Err(E::Limit);
     }

@@ -198,7 +198,7 @@ fn evaluator_output_and_depth_limits_are_independent_of_input_retention() {
         ty: &T::Bool,
         state: BindingState::Value(&V::Bool(true)),
     }];
-    let output = std::mem::size_of::<V>() as u64;
+    let output = 1;
     for (bytes, depth, passes) in [
         (output, 2, true),
         (output - 1, 2, false),

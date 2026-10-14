@@ -196,11 +196,7 @@ impl<'m> State<'m, '_> {
             };
             length = length.checked_add(value.len()).ok_or(E::Limit)?;
         }
-        self.budget.output(
-            (std::mem::size_of::<V>() as u64)
-                .checked_add(length as u64)
-                .ok_or(E::Limit)?,
-        )?;
+        self.budget.output(length as u64)?;
         let mut bytes = Vec::new();
         self.budget.reserve(&mut bytes, length)?;
         for value in values {

@@ -616,9 +616,13 @@ Slice 1 — consumer contract foundation:
   recovery tests pass. Public template frames/defaults are typed without instantiation.
   Explicit bounded evaluation and static/residual normalization are implemented;
   output envelopes validate actual complete result roots, not detached scalars.
-  Complete source/IR/wire/reader integration, expansion and guarded
-  consumer binding/dependency reports remain; model validity
-  alone does not satisfy this gate or activate `/3`.
+  Five separately typed `/3` identity partitions and independent complete reader
+  authority now check interface digests, retained facts, typed reuse, default owners
+  and original-byte expression/expansion companions against complete literal vectors.
+  Remaining: qualification of complete source/IR/wire/reader integration, expansion,
+  guarded consumer binding/dependency reports and actual cache execution. Work stops
+  at the implementation plan's Task 5; later-task code is not completion evidence.
+  This gate remains open and `/3` is not activated.
 
 Slice 2 — pure semantics and identity:
 

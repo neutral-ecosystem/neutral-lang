@@ -14,7 +14,7 @@ use neutral_core::{ByteSpan, SemanticDigest, SourceLocation};
 mod inspection;
 pub use inspection::{
     CompositionBodyInspection, CompositionShapeError, inspect_composition_bodies,
-    inspect_composition_ir,
+    inspect_composition_ir, inspect_expression_project_resources,
 };
 
 /// Independent composition policy in frozen wire/derivation order, excluding JSON parser controls.

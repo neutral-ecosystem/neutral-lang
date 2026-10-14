@@ -38,10 +38,11 @@ mod project_vocabulary;
 mod semantics;
 
 pub use frontend::{
-    CompositionCompilationCache, CompositionCompileFailure, ProjectCacheLimits, ProjectCacheStats,
-    ProjectCompilationCache, ProjectCompileFailure, ProjectDependency, ProjectDependencyKind,
-    ProjectSemanticDiagnostic, ProjectSemanticFailure, ProjectSemanticModel, ProjectSymbol,
-    ProjectSymbolKind, analyze_project_semantics, compile_composition_project, compile_project,
+    CompositionCompilationCache, CompositionCompileFailure, ExpressionCompileFailure,
+    ProjectCacheLimits, ProjectCacheStats, ProjectCompilationCache, ProjectCompileFailure,
+    ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic, ProjectSemanticFailure,
+    ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind, analyze_project_semantics,
+    compile_composition_project, compile_expression_project, compile_project,
     composition_diagnostics, project_lowering_diagnostics, project_semantics_diagnostics,
 };
 
@@ -52,11 +53,13 @@ pub use module_graph::{
 };
 pub use project_capture::{
     CAPTURE_REQUEST_VERSION, CapturedCompositionProject, CapturedCompositionProjectRequest,
-    CapturedProject, CapturedProjectRequest, CapturedProjectRequestBuilder, CapturedProjectSource,
+    CapturedExpressionProject, CapturedExpressionProjectRequest, CapturedProject,
+    CapturedProjectRequest, CapturedProjectRequestBuilder, CapturedProjectSource,
     CapturedProjectVocabulary, CapturedSourceInput, CapturedVocabularyInput,
-    CompositionCaptureFailure, ProjectCaptureControls, ProjectCaptureError,
-    ProjectCaptureLimitValues, ProjectCaptureLimits, ProjectCaptureResourceFacts, ProjectHostError,
-    capture_composition_project, capture_project,
+    CompositionCaptureFailure, ExpressionCaptureFailure, ProjectCaptureControls,
+    ProjectCaptureError, ProjectCaptureLimitValues, ProjectCaptureLimits,
+    ProjectCaptureResourceFacts, ProjectHostError, capture_composition_project,
+    capture_expression_project, capture_project,
 };
 pub use project_vocabulary::{
     ProjectVocabularySet, ProjectVocabularyValidationError, validate_project_vocabularies,

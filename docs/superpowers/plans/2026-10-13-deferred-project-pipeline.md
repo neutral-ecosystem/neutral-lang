@@ -99,9 +99,19 @@ Update `Cargo.toml`, owning manifests/READMEs, dependency-boundary enforcement a
 
 **Interfaces:** Distinct typed captured/logical/interface/derivation/artifact `/3` identities, using frozen domains and frame order. `ValidatedExpressionProject::from_ir(Shared<ExpressionProjectIr>, SemanticLimits, &CancellationToken) -> Result<Self, ExpressionReadError>` checks complete model, companions, resources and independently recomputed interface digest before publication. `model()` borrows validated semantics; no downcast to a `/2` authority.
 
-- [ ] Compare all five partitions against complete frozen minimal/residual/template vectors, not just node fragments. Reject stale digests/facts, bad attribution owners/paths/ranges and incomplete contract closure.
-- [ ] Prove roots and external binding values do not change complete logical identity; source evidence affects only its governed partitions. Check semantic profile, restriction/default and operand-order variations with independent literals.
-- [ ] Preserve safe public original-byte attribution; expanded source maps use original application/definition/argument/axis links, never fabricated generated source bytes. Run malformed companion/fault/cancellation tests and historical vector regressions.
+- [x] Compare all five partitions against complete frozen minimal/residual/template vectors, not just node fragments. Reject stale digests/facts, bad attribution owners/paths/ranges and incomplete contract closure.
+- [x] Prove roots and external binding values do not change complete logical identity; source evidence affects only its governed partitions. Check semantic profile, restriction/default and operand-order variations with independent literals.
+- [x] Preserve safe public original-byte attribution; expanded source maps use original application/definition/argument/axis links, never fabricated generated source bytes. Run malformed companion/fault/cancellation tests and historical vector regressions.
+
+Checkpoint, 14-10-2026: `cargo xtask test all` passes 1,013 tests with zero skipped
+and doctests; `cargo xtask ci pr` passes all seven quality steps. Owning tests
+compare complete five-part literal vectors, independently inspect restriction/default
+frames, reject cross-nominal reuse and forged default ownership, and sweep reader
+allocation/cancellation failures followed by successful recovery. The reader checks
+retained expansion lineage consistency; omitted private-template bytes cannot prove
+historical instantiation and are not invented. Work stops here at the user's request.
+Later-task code already present is not qualification or activation evidence; Tasks
+6–11 and the complete deferred-retention gate remain open. No long campaigns run.
 
 ## Task 6: Distinct complete expression transport
 

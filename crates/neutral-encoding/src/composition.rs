@@ -105,7 +105,7 @@ pub fn decode_composition_project(
         return Err(failure(C::EncodedSizeLimit));
     }
     let parsed = parse_section(payload, profile::MAGIC.len(), wire, cancel)?;
-    let ir = read_ir(&parsed)?;
+    let ir = read_ir(&parsed, cancel)?;
     if bytes.len() as u64 > ir.limits.artifact_bytes {
         return Err(failure(C::EncodedSizeLimit));
     }
@@ -126,7 +126,7 @@ pub fn decode_composition_project(
 }
 
 /// Shares the value grammar while keeping non-null default references unconstructible.
-trait Reference: Sized {
+pub(crate) trait Reference: Sized {
     /// Borrows a stable target symbol, never its value.
     fn symbol(&self) -> &ModuleSymbolIdentity;
     /// Reads a target only where this value category permits references.
@@ -154,7 +154,11 @@ impl Reference for ClosedReference {
 }
 
 /// Writes normalized complete value meaning, preserving omission inside record fields only.
-fn write_value<R: Reference>(w: &mut CborWriter, v: &V<R>, depth: usize) -> Result<(), E> {
+pub(crate) fn write_value<R: Reference>(
+    w: &mut CborWriter,
+    v: &V<R>,
+    depth: usize,
+) -> Result<(), E> {
     if depth > PROJECT_MAX_DEPTH {
         return Err(E::EncodedSizeLimit);
     }
@@ -218,7 +222,7 @@ fn write_value<R: Reference>(w: &mut CborWriter, v: &V<R>, depth: usize) -> Resu
 }
 
 /// Reads a bounded value tuple, rejecting wrong arity and illegal absence states.
-fn read_value<R: Reference>(v: &LocatedValue, depth: usize) -> Result<V<R>, D> {
+pub(crate) fn read_value<R: Reference>(v: &LocatedValue, depth: usize) -> Result<V<R>, D> {
     if depth > PROJECT_MAX_DEPTH {
         return Err(failure(C::EncodedSizeLimit));
     }
@@ -226,16 +230,29 @@ fn read_value<R: Reference>(v: &LocatedValue, depth: usize) -> Result<V<R>, D> {
     let tag = text(a.first().ok_or_else(|| schema(v))?)?;
     Ok(match (tag, a.len()) {
         ("null", 1) => V::Null,
-        ("num", 4) => V::Number(
-            ExactNumber::from_normalized_parts(
-                boolean(&a[1])?,
-                text(&a[2])?,
-                signed(&a[3])?,
-                crate::constants::MAXIMUM_EXACT_NUMBER_DIGITS as u64,
-                crate::constants::MAXIMUM_TEXT_BYTES as u64,
+        ("num", 4) => {
+            let coefficient = text(&a[2])?;
+            let scale = signed(&a[3])?;
+            let digits = crate::constants::MAXIMUM_EXACT_NUMBER_DIGITS as u64;
+            let scale_limit = crate::constants::MAXIMUM_TEXT_BYTES as u64;
+            // Historical oversized numeric tuples stay schema errors; allocation failure is a limit.
+            if coefficient.len() as u64 > digits || scale.unsigned_abs() > scale_limit {
+                return Err(schema(v));
+            }
+            V::Number(
+                ExactNumber::from_normalized_parts(
+                    boolean(&a[1])?,
+                    coefficient,
+                    scale,
+                    digits,
+                    scale_limit,
+                )
+                .map_err(|error| match error {
+                    neutral_ir::IrError::ExactNumberLimitExceeded => failure(C::EncodedSizeLimit),
+                    neutral_ir::IrError::InvalidExactNumber => schema(v),
+                })?,
             )
-            .map_err(|_| schema(v))?,
-        ),
+        }
         ("bool", 2) => V::Bool(boolean(&a[1])?),
         ("string", 2) => V::String(owned_text(&a[1])?),
         ("url", 2) => V::Url(owned_text(&a[1])?),
@@ -264,7 +281,7 @@ fn read_value<R: Reference>(v: &LocatedValue, depth: usize) -> Result<V<R>, D> {
 }
 
 /// Writes an explicit nullable transport slot, not a semantic null value.
-fn write_option<T>(
+pub(crate) fn write_option<T>(
     w: &mut CborWriter,
     v: Option<&T>,
     item: impl FnOnce(&mut CborWriter, &T) -> Result<(), E>,
@@ -275,7 +292,7 @@ fn write_option<T>(
     }
 }
 /// Reads an explicit nullable transport slot without coercion.
-fn read_option<T>(
+pub(crate) fn read_option<T>(
     v: &LocatedValue,
     item: impl FnOnce(&LocatedValue) -> Result<T, D>,
 ) -> Result<Option<T>, D> {
@@ -326,7 +343,7 @@ fn read_restrictions(v: &LocatedValue) -> Result<FieldRestrictions, D> {
     })
 }
 /// Writes complete nominal bodies, including dormant defaults and all alternative types.
-fn write_body(w: &mut CborWriter, b: &B) -> Result<(), E> {
+pub(crate) fn write_body(w: &mut CborWriter, b: &B) -> Result<(), E> {
     w.array(2)?;
     match b {
         B::Record(fields) => {
@@ -362,7 +379,7 @@ fn write_body(w: &mut CborWriter, b: &B) -> Result<(), E> {
     }
 }
 /// Reads one exact record/variant signature with no fallback to the old body grammar.
-fn read_body(v: &LocatedValue) -> Result<B, D> {
+pub(crate) fn read_body(v: &LocatedValue) -> Result<B, D> {
     let a = tuple::<2>(v)?;
     match text(&a[0])? {
         "record" => Ok(B::Record(read_list(&a[1], |v| {
@@ -445,7 +462,15 @@ fn write_ir(w: &mut CborWriter, ir: &Ir) -> Result<(), E> {
         Ok(())
     })?;
     w.bytes(&ir.interface_digest.as_bytes())?;
-    write_companions(w, ir)?;
+    write_companions(
+        w,
+        &ir.sources,
+        &ir.source_maps,
+        &ir.provenance,
+        ir.limits,
+        ir.resources,
+        &ir.vocabulary_sources,
+    )?;
     write_list(w, &ir.vocabularies, |w, b| {
         w.array(3)?;
         w.text(b.identity.identity())?;
@@ -462,20 +487,28 @@ fn write_ir(w: &mut CborWriter, ir: &Ir) -> Result<(), E> {
 }
 
 /// Writes the unchanged base project companions in their frozen six-slot order.
-fn write_companions(w: &mut CborWriter, ir: &Ir) -> Result<(), E> {
-    write_list(w, &ir.sources, |w, s| {
+pub(crate) fn write_companions(
+    w: &mut CborWriter,
+    sources: &[ProjectSource],
+    source_maps: &[ProjectSourceMap],
+    provenance: &[ProjectProvenance],
+    limits: ProjectLimits,
+    resources: ProjectResourceFacts,
+    vocabulary_sources: &[ProjectVocabularySource],
+) -> Result<(), E> {
+    write_list(w, sources, |w, s| {
         w.array(4)?;
         w.text(&s.module)?;
         w.text(&s.source_id)?;
         w.bytes(&s.digest.as_bytes())?;
         w.unsigned(s.byte_len)
     })?;
-    write_list(w, &ir.source_maps, |w, m| {
+    write_list(w, source_maps, |w, m| {
         w.array(2)?;
         write_symbol(w, &m.declaration)?;
         write_location(w, m.location)
     })?;
-    write_list(w, &ir.provenance, |w, p| {
+    write_list(w, provenance, |w, p| {
         w.array(4)?;
         write_symbol(w, &p.from)?;
         write_symbol(w, &p.to)?;
@@ -485,15 +518,15 @@ fn write_companions(w: &mut CborWriter, ir: &Ir) -> Result<(), E> {
     write_numbers(
         w,
         &[
-            ir.limits.modules,
-            ir.limits.declarations,
-            ir.limits.import_edges,
-            ir.limits.nodes,
-            ir.limits.text_bytes,
-            ir.limits.artifact_bytes,
+            limits.modules,
+            limits.declarations,
+            limits.import_edges,
+            limits.nodes,
+            limits.text_bytes,
+            limits.artifact_bytes,
         ],
     )?;
-    let r = ir.resources;
+    let r = resources;
     write_numbers(
         w,
         &[
@@ -506,7 +539,7 @@ fn write_companions(w: &mut CborWriter, ir: &Ir) -> Result<(), E> {
             r.value_nodes,
         ],
     )?;
-    write_list(w, &ir.vocabulary_sources, |w, s| {
+    write_list(w, vocabulary_sources, |w, s| {
         w.array(4)?;
         w.text(&s.identity)?;
         w.text(&s.version)?;
@@ -516,8 +549,101 @@ fn write_companions(w: &mut CborWriter, ir: &Ir) -> Result<(), E> {
     Ok(())
 }
 
+/// Owned raw base companions, never a fabricated historical project authority.
+pub(crate) struct BaseCompanions {
+    /// Original source accounting.
+    pub sources: Vec<ProjectSource>,
+    /// Declaration and public-template original occurrences.
+    pub maps: Vec<ProjectSourceMap>,
+    /// Historical structural edge evidence.
+    pub provenance: Vec<ProjectProvenance>,
+    /// Declared project controls.
+    pub limits: ProjectLimits,
+    /// Claimed base resource facts.
+    pub resources: ProjectResourceFacts,
+    /// Original vocabulary accounting.
+    pub vocabularies: Vec<ProjectVocabularySource>,
+}
+
+/// Reads all historical source companions without opening any retained location.
+pub(crate) fn read_companions(
+    p: &[LocatedValue],
+    cancel: &CancellationToken,
+) -> Result<BaseCompanions, D> {
+    if cancel.is_cancelled() {
+        return Err(failure(C::Cancelled));
+    }
+    let limits = tuple::<6>(&p[9])?;
+    let resources = tuple::<7>(&p[10])?;
+    Ok(BaseCompanions {
+        sources: read_list(&p[6], |v| {
+            if cancel.is_cancelled() {
+                return Err(failure(C::Cancelled));
+            }
+            let a = tuple::<4>(v)?;
+            Ok(ProjectSource {
+                module: owned_text(&a[0])?,
+                source_id: owned_text(&a[1])?,
+                digest: SourceContentDigest::from_raw_bytes(digest(&a[2])?),
+                byte_len: unsigned(&a[3])?,
+            })
+        })?,
+        maps: read_list(&p[7], |v| {
+            if cancel.is_cancelled() {
+                return Err(failure(C::Cancelled));
+            }
+            let a = tuple::<2>(v)?;
+            Ok(ProjectSourceMap {
+                declaration: read_symbol(&a[0])?,
+                location: read_location(&a[1])?,
+            })
+        })?,
+        provenance: read_list(&p[8], |v| {
+            if cancel.is_cancelled() {
+                return Err(failure(C::Cancelled));
+            }
+            let a = tuple::<4>(v)?;
+            Ok(ProjectProvenance {
+                from: read_symbol(&a[0])?,
+                to: read_symbol(&a[1])?,
+                kind: read_edge(unsigned(&a[2])?)?,
+                location: read_location(&a[3])?,
+            })
+        })?,
+        limits: ProjectLimits {
+            modules: unsigned(&limits[0])?,
+            declarations: unsigned(&limits[1])?,
+            import_edges: unsigned(&limits[2])?,
+            nodes: unsigned(&limits[3])?,
+            text_bytes: unsigned(&limits[4])?,
+            artifact_bytes: unsigned(&limits[5])?,
+        },
+        resources: ProjectResourceFacts {
+            source_units: unsigned(&resources[0])?,
+            source_bytes: unsigned(&resources[1])?,
+            vocabulary_units: unsigned(&resources[2])?,
+            vocabulary_bytes: unsigned(&resources[3])?,
+            declarations: unsigned(&resources[4])?,
+            import_edges: unsigned(&resources[5])?,
+            value_nodes: unsigned(&resources[6])?,
+        },
+        vocabularies: read_list(&p[11], |v| {
+            if cancel.is_cancelled() {
+                return Err(failure(C::Cancelled));
+            }
+            let a = tuple::<4>(v)?;
+            Ok(ProjectVocabularySource {
+                identity: owned_text(&a[0])?,
+                version: owned_text(&a[1])?,
+                digest: VocabularyContentDigest::from_raw_bytes(digest(&a[2])?),
+                byte_len: unsigned(&a[3])?,
+            })
+        })?,
+    })
+}
+
 /// Writes an origin separately from materialized meaning and logical identity.
-fn write_origin(w: &mut CborWriter, o: &CompositionOrigin) -> Result<(), E> {
+pub(crate) fn write_origin(w: &mut CborWriter, o: &CompositionOrigin) -> Result<(), E> {
     w.array(4)?;
     write_symbol(w, &o.binding)?;
     write_list(w, &o.path, |w, p| match p {
@@ -569,7 +695,7 @@ fn write_origin(w: &mut CborWriter, o: &CompositionOrigin) -> Result<(), E> {
 }
 
 /// Reads exact origin paths and explicit evidence availability; reader checks ownership.
-fn read_origin(v: &LocatedValue) -> Result<CompositionOrigin, D> {
+pub(crate) fn read_origin(v: &LocatedValue) -> Result<CompositionOrigin, D> {
     let a = tuple::<4>(v)?;
     Ok(CompositionOrigin {
         binding: read_symbol(&a[0])?,
@@ -614,8 +740,8 @@ fn read_origin(v: &LocatedValue) -> Result<CompositionOrigin, D> {
 }
 
 /// Joins all exact catalogue owners, public names, definitions and dependency records without sorting untrusted input.
-fn read_vocabularies(
-    p: &[LocatedValue; 16],
+pub(crate) fn read_vocabularies(
+    p: &[LocatedValue],
     vocabulary_sources: &[ProjectVocabularySource],
 ) -> Result<Vec<CompositionBundle>, D> {
     // Wire definitions are already ordered by exact owner/name. Group once in
@@ -717,7 +843,7 @@ fn read_vocabularies(
 }
 
 /// Reads an exact unsigned control/fact tuple without trusting advertised semantics.
-fn read_numbers<const N: usize>(value: &LocatedValue) -> Result<[u64; N], D> {
+pub(crate) fn read_numbers<const N: usize>(value: &LocatedValue) -> Result<[u64; N], D> {
     let mut numbers = [0; N];
     for (out, item) in numbers.iter_mut().zip(tuple::<N>(value)?) {
         *out = unsigned(item)?;
@@ -726,7 +852,7 @@ fn read_numbers<const N: usize>(value: &LocatedValue) -> Result<[u64; N], D> {
 }
 
 /// Restores complete resolved producer facts without publishing any validation authority.
-fn read_ir(v: &LocatedValue) -> Result<Ir, D> {
+fn read_ir(v: &LocatedValue, cancel: &CancellationToken) -> Result<Ir, D> {
     let p = tuple::<16>(v)?;
     if text(&p[0])? != profile::PROJECT_IR_SCHEMA {
         return Err(failure(C::UnsupportedVersion));
@@ -752,60 +878,8 @@ fn read_ir(v: &LocatedValue) -> Result<Ir, D> {
             value: read_option(&a[3], |v| read_value(v, 0))?,
         })
     })?;
-    let sources = read_list(&p[6], |v| {
-        let a = tuple::<4>(v)?;
-        Ok(ProjectSource {
-            module: owned_text(&a[0])?,
-            source_id: owned_text(&a[1])?,
-            digest: SourceContentDigest::from_raw_bytes(digest(&a[2])?),
-            byte_len: unsigned(&a[3])?,
-        })
-    })?;
-    let source_maps = read_list(&p[7], |v| {
-        let a = tuple::<2>(v)?;
-        Ok(ProjectSourceMap {
-            declaration: read_symbol(&a[0])?,
-            location: read_location(&a[1])?,
-        })
-    })?;
-    let provenance = read_list(&p[8], |v| {
-        let a = tuple::<4>(v)?;
-        Ok(ProjectProvenance {
-            from: read_symbol(&a[0])?,
-            to: read_symbol(&a[1])?,
-            kind: read_edge(unsigned(&a[2])?)?,
-            location: read_location(&a[3])?,
-        })
-    })?;
-    let limit_tuple = tuple::<6>(&p[9])?;
-    let limits = ProjectLimits {
-        modules: unsigned(&limit_tuple[0])?,
-        declarations: unsigned(&limit_tuple[1])?,
-        import_edges: unsigned(&limit_tuple[2])?,
-        nodes: unsigned(&limit_tuple[3])?,
-        text_bytes: unsigned(&limit_tuple[4])?,
-        artifact_bytes: unsigned(&limit_tuple[5])?,
-    };
-    let resource_tuple = tuple::<7>(&p[10])?;
-    let resources = ProjectResourceFacts {
-        source_units: unsigned(&resource_tuple[0])?,
-        source_bytes: unsigned(&resource_tuple[1])?,
-        vocabulary_units: unsigned(&resource_tuple[2])?,
-        vocabulary_bytes: unsigned(&resource_tuple[3])?,
-        declarations: unsigned(&resource_tuple[4])?,
-        import_edges: unsigned(&resource_tuple[5])?,
-        value_nodes: unsigned(&resource_tuple[6])?,
-    };
-    let vocabulary_sources = read_list(&p[11], |v| {
-        let a = tuple::<4>(v)?;
-        Ok(ProjectVocabularySource {
-            identity: owned_text(&a[0])?,
-            version: owned_text(&a[1])?,
-            digest: VocabularyContentDigest::from_raw_bytes(digest(&a[2])?),
-            byte_len: unsigned(&a[3])?,
-        })
-    })?;
-    let vocabularies = read_vocabularies(p, &vocabulary_sources)?;
+    let companions = read_companions(p, cancel)?;
+    let vocabularies = read_vocabularies(p, &companions.vocabularies)?;
     Ok(Ir {
         schema: neutral_core::allocation::text(profile::PROJECT_IR_SCHEMA)
             .map_err(|_| failure(C::EncodedSizeLimit))?,
@@ -813,12 +887,12 @@ fn read_ir(v: &LocatedValue) -> Result<Ir, D> {
         declarations,
         vocabularies,
         interface_digest: SemanticDigest::from_raw_bytes(digest(&p[5])?),
-        sources,
-        source_maps,
-        provenance,
-        limits,
-        resources,
-        vocabulary_sources,
+        sources: companions.sources,
+        source_maps: companions.maps,
+        provenance: companions.provenance,
+        limits: companions.limits,
+        resources: companions.resources,
+        vocabulary_sources: companions.vocabularies,
         origins: read_list(&p[13], read_origin)?,
         composition_limits: CompositionPolicy::from_values(read_numbers(&p[14])?),
         composition_resources: CompositionResourceFacts::from_values(read_numbers(&p[15])?),

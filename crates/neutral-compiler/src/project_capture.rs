@@ -13,9 +13,14 @@ use neutral_core::{
 use neutral_vocabulary::VocabularyLock;
 
 mod composition;
+mod expression;
 pub use composition::{
     CapturedCompositionProject, CapturedCompositionProjectRequest, CompositionCaptureFailure,
     capture_composition_project,
+};
+pub use expression::{
+    CapturedExpressionProject, CapturedExpressionProjectRequest, ExpressionCaptureFailure,
+    capture_expression_project,
 };
 
 /// Exact version accepted by the captured-project request boundary.

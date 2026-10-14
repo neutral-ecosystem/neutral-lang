@@ -1,0 +1,8 @@
+neu "1.0"
+module example::expressions
+
+public template Identity(static num value) -> num {
+    value
+}
+
+public num result = instantiate Identity(value: 1)

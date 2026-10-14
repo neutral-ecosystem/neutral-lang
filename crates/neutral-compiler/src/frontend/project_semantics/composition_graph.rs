@@ -46,9 +46,26 @@ pub(super) fn build(
     captured: &CapturedCompositionProject,
     cancel: &CancellationToken,
 ) -> Result<Graph, E> {
+    build_selected(captured, cancel, false)
+}
+
+/// Shares topology algorithms without passing successor expression bodies to the historical lexer.
+pub(super) fn build_expression(
+    captured: &CapturedCompositionProject,
+    cancel: &CancellationToken,
+) -> Result<Graph, E> {
+    build_selected(captured, cancel, true)
+}
+
+/// Selects only lexical header extent; import/alias/SCC validation stays shared and unchanged.
+fn build_selected(
+    captured: &CapturedCompositionProject,
+    cancel: &CancellationToken,
+    expression: bool,
+) -> Result<Graph, E> {
     let limits = captured.limits().values();
     let mut work = captured.composition_limits().work;
-    let syntax = scan(captured, &mut work, cancel)?;
+    let syntax = scan(captured, &mut work, cancel, expression)?;
     let (mut edges, positions) = imports(captured, &syntax, &mut work, cancel)?;
     scc(
         captured.sources().len(),
@@ -70,6 +87,7 @@ fn scan(
     captured: &CapturedCompositionProject,
     work: &mut u64,
     cancel: &CancellationToken,
+    expression: bool,
 ) -> Result<Vec<crate::frontend::GraphSourceSyntax>, E> {
     let limits = captured.limits().values();
     let mut result = Vec::new();
@@ -78,8 +96,14 @@ fn scan(
     let mut edge_count = 0_u64;
     for source in captured.sources() {
         charge(work, source.bytes().len() as u64 + 1, cancel)?;
+        let bytes = source.bytes();
+        let bytes = if expression {
+            &bytes[..header_end(bytes)]
+        } else {
+            bytes
+        };
         let syntax = scan_graph_source_bounded(
-            source.bytes(),
+            bytes,
             source.module_id(),
             limits.imports_per_module,
             usize::try_from(captured.composition_limits().json.string_bytes())
@@ -129,6 +153,57 @@ fn scan(
         return Err(error);
     }
     Ok(result)
+}
+
+/// Locates the original header prefix, skipping exact trivia without rewriting captured bytes.
+fn header_end(bytes: &[u8]) -> usize {
+    let mut i = 0;
+    loop {
+        while i < bytes.len() {
+            if bytes[i].is_ascii_whitespace() {
+                i += 1;
+            } else if bytes[i..].starts_with(b"//") {
+                while i < bytes.len() && bytes[i] != b'\n' {
+                    i += 1;
+                }
+            } else if bytes[i..].starts_with(b"/*") {
+                i += 2;
+                while i < bytes.len() && !bytes[i..].starts_with(b"*/") {
+                    i += 1;
+                }
+                i = (i + 2).min(bytes.len());
+            } else {
+                break;
+            }
+        }
+        let start = i;
+        while i < bytes.len() && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_') {
+            i += 1;
+        }
+        if !matches!(&bytes[start..i], b"neu" | b"module" | b"use" | b"import") {
+            return start;
+        }
+        while i < bytes.len() && !matches!(bytes[i], b'\n' | b'\r') {
+            if bytes[i] == b'"' {
+                i += 1;
+                while i < bytes.len() && bytes[i] != b'"' {
+                    if bytes[i] == b'\\' {
+                        i += 1;
+                    }
+                    i += 1;
+                }
+                i = (i + 1).min(bytes.len());
+            } else if bytes[i..].starts_with(b"/*") {
+                i += 2;
+                while i < bytes.len() && !bytes[i..].starts_with(b"*/") {
+                    i += 1;
+                }
+                i = (i + 2).min(bytes.len());
+            } else {
+                i += 1;
+            }
+        }
+    }
 }
 
 /// Unpublished logical imports plus numeric edges for the bounded SCC traversal.

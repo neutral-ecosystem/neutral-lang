@@ -20,6 +20,9 @@ use std::sync::Arc;
 
 pub mod composition;
 pub mod consumer;
+pub mod expression;
+pub use expression::{ExpressionReadError, ValidatedExpressionProject};
+pub use neutral_semantics::SemanticLimits;
 mod project;
 mod project_identity;
 mod project_interface;

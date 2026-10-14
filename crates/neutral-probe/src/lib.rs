@@ -17,6 +17,8 @@ use neutral_reader::{
 
 /// Compiler-independent successor project inspection and redacted contract views.
 pub mod composition;
+/// Reader-only complete expression inspection and safe public entry views.
+pub mod expression;
 /// Shared field schema and JSON rendering for validated artifact inspection.
 pub mod inspection_schema;
 /// Reader-only inspection of complete encoded projects and redacted public views.

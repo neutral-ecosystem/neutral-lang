@@ -18,10 +18,11 @@ mod project_semantics;
 
 pub use project_semantics::diagnostics as project_semantics_diagnostics;
 pub use project_semantics::{
-    CompositionCompilationCache, CompositionCompileFailure, ProjectCacheLimits, ProjectCacheStats,
-    ProjectCompilationCache, ProjectCompileFailure, ProjectDependency, ProjectDependencyKind,
-    ProjectSemanticDiagnostic, ProjectSemanticFailure, ProjectSemanticModel, ProjectSymbol,
-    ProjectSymbolKind, analyze_project_semantics, compile_composition_project, compile_project,
+    CompositionCompilationCache, CompositionCompileFailure, ExpressionCompileFailure,
+    ProjectCacheLimits, ProjectCacheStats, ProjectCompilationCache, ProjectCompileFailure,
+    ProjectDependency, ProjectDependencyKind, ProjectSemanticDiagnostic, ProjectSemanticFailure,
+    ProjectSemanticModel, ProjectSymbol, ProjectSymbolKind, analyze_project_semantics,
+    compile_composition_project, compile_expression_project, compile_project,
     composition_diagnostics, project_lowering_diagnostics,
 };
 

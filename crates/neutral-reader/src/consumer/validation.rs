@@ -369,6 +369,15 @@ pub(super) fn public_type(
     budget: &mut Budget<'_>,
 ) -> Result<(), ConsumerError> {
     let scope = project.bindings().scope();
+    public_scope_type(scope, ty, budget)
+}
+
+/// Shares exact public nominal-contract checks without conflating artifact profiles.
+pub(super) fn public_scope_type(
+    scope: &neutral_vocabulary::composition::ValidatedCompositionScope,
+    ty: &ProjectPublicType,
+    budget: &mut Budget<'_>,
+) -> Result<(), ConsumerError> {
     match ty {
         ProjectPublicType::Nominal(owner) => {
             budget.symbol(owner)?;

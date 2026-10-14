@@ -43,6 +43,54 @@ pub fn validate_expression_model(
     caller: SemanticLimits,
     cancel: &CancellationToken,
 ) -> Result<ValidatedExpressionModel, E> {
+    let checked = inspect_model(&ir, &caller, cancel)?;
+    if checked.facts != ir.expression_resources {
+        return Err(E::Resources);
+    }
+    Ok(ValidatedExpressionModel {
+        ir,
+        scope: checked.scope,
+        limits: checked.limits,
+        facts: checked.facts,
+        availability: checked.availability,
+        restrictions: checked.restrictions,
+    })
+}
+
+/// Recomputes producer facts through the same independent all-branch checks.
+///
+/// This returns counts only, not complete model/artifact authority. Callers must
+/// retain these facts and subsequently validate the finished immutable project.
+/// # Errors
+/// Returns semantic, independent resource/allocation or cancellation failure.
+pub fn derive_expression_resources(
+    ir: &ExpressionProjectIr,
+    caller: SemanticLimits,
+    cancel: &CancellationToken,
+) -> Result<ExpressionResourceFacts, E> {
+    inspect_model(ir, &caller, cancel).map(|checked| checked.facts)
+}
+
+/// Checked semantic components, unpublished until raw claimed facts also match.
+struct CheckedModel {
+    /// Independent immutable nominal contract scope.
+    scope: Shared<ValidatedCompositionScope>,
+    /// Intersected caller/producer policies.
+    limits: SemanticLimits,
+    /// Recomputed retained counts.
+    facts: ExpressionResourceFacts,
+    /// Derived future presence/index/tag checks.
+    availability: Vec<AvailabilityObligation>,
+    /// Derived nominal field restrictions.
+    restrictions: Vec<RestrictionObligation>,
+}
+
+/// Shares producer fact derivation with complete semantic-model validation.
+fn inspect_model(
+    ir: &ExpressionProjectIr,
+    caller: &SemanticLimits,
+    cancel: &CancellationToken,
+) -> Result<CheckedModel, E> {
     if cancel.is_cancelled() {
         return Err(E::Cancelled);
     }
@@ -81,10 +129,7 @@ pub fn validate_expression_model(
     }
     let mut budget = Budget {
         work: limits.expression.work.min(limits.composition.work),
-        bytes: limits
-            .expression
-            .retained_bytes
-            .min(limits.expression.output_bytes),
+        bytes: limits.expression.retained_bytes,
         cancel,
     };
     budget.step(1)?;
@@ -93,22 +138,18 @@ pub fn validate_expression_model(
     {
         return Err(E::Limit);
     }
-    owners(&ir, limits.project.import_edges, &mut budget)?;
-    let scope = contracts::scope(&ir, &limits, cancel, &mut budget)?;
-    let mut state = State::new(&ir, &scope, &limits, budget);
+    owners(ir, limits.project.import_edges, &mut budget)?;
+    let scope = contracts::scope(ir, &limits, cancel, &mut budget)?;
+    let mut state = State::new(ir, &scope, &limits, budget);
     for d in &ir.declarations {
         state.declaration(d)?;
     }
     state.templates()?;
-    if state.facts != ir.expression_resources {
-        return Err(E::Resources);
-    }
     state.budget.step(1)?;
     let facts = state.facts;
     let availability = state.availability;
     let restrictions = state.restrictions;
-    Ok(ValidatedExpressionModel {
-        ir,
+    Ok(CheckedModel {
         scope,
         limits,
         facts,
@@ -218,7 +259,7 @@ fn owners(ir: &ExpressionProjectIr, import_limit: u64, budget: &mut Budget<'_>) 
             return Err(E::Malformed);
         }
         if matches!(d.signature, S::Binding(_))
-            && (!is_snake_name(d.identity.declaration_name())
+            && (!profile::is_binding_name(d.identity.declaration_name())
                 || is_protected_name(d.identity.declaration_name()))
         {
             return Err(E::Malformed);

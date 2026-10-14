@@ -198,18 +198,14 @@ fn normalized_scale_output_and_work_controls_accept_exactly_the_boundary() {
     }
     let left = number("1");
     let right = number("2");
-    let required_output = std::mem::size_of::<ExactNumber>() as u64 + 1;
-    for bytes in [required_output - 1, required_output] {
+    let required_output = 1;
+    for bytes in [0, required_output] {
         let limits = ExpressionLimits {
             output_bytes: bytes,
             ..ExpressionLimits::hard()
         };
-        let result = decimal::binary(
-            O::Add,
-            &left,
-            &right,
-            &mut Budget::new(limits, &cancel).unwrap(),
-        );
+        let result = Budget::new(limits, &cancel)
+            .and_then(|mut budget| decimal::binary(O::Add, &left, &right, &mut budget));
         assert_eq!(
             result,
             if bytes == required_output {

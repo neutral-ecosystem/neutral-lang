@@ -109,6 +109,50 @@ impl<'a> Budget<'a> {
         }
         Ok(())
     }
+
+    /// Counts actual result payload, never charging Rust enum/box layout as decoded output.
+    pub(crate) fn value_output(
+        &mut self,
+        value: &neutral_ir::composition::BindingValue,
+    ) -> Result<u64, OperationError> {
+        use neutral_ir::composition::BindingValue as V;
+        self.step(1)?;
+        let size = match value {
+            V::Number(n) => n.coefficient().len() as u64,
+            V::String(s) | V::Url(s) | V::Path(s) => s.len() as u64,
+            V::Bool(_) | V::Null => 1,
+            V::Reference(owner) => {
+                (owner.module().language_behavior_version().len()
+                    + owner.module().module_name().len()
+                    + owner.declaration_name().len()) as u64
+            }
+            V::List(items) => {
+                let mut total = 0_u64;
+                for item in items {
+                    total = total
+                        .checked_add(self.value_output(item)?)
+                        .ok_or(OperationError::Limit)?;
+                }
+                total
+            }
+            V::Record(fields) => {
+                let mut total = 0_u64;
+                for (_, value) in fields {
+                    if let Some(value) = value {
+                        total = total
+                            .checked_add(self.value_output(value)?)
+                            .ok_or(OperationError::Limit)?;
+                    }
+                }
+                total
+            }
+            V::Variant { tag, payload } => (tag.len() as u64)
+                .checked_add(self.value_output(payload)?)
+                .ok_or(OperationError::Limit)?,
+        };
+        self.output(size)?;
+        Ok(size)
+    }
     /// Reuses IR's cancellable whole-value copy rather than an allocating recursive clone.
     pub(crate) fn copy_value(
         &mut self,

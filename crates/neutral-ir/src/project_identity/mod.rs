@@ -5,6 +5,7 @@
 mod captured;
 mod composition;
 mod derived;
+mod expression;
 mod framing;
 mod logical;
 pub use composition::{canonical_composition_project, composition_interface};
@@ -17,6 +18,10 @@ pub use derived::{
     ArtifactIdentityInput, ArtifactKind, CompositionDerivationContext, DerivationContext,
     artifact_identity, composition_artifact_identity, composition_derivation_identity,
     derivation_identity,
+};
+pub use expression::{
+    ExpressionDerivationContext, canonical_expression_project, captured_expression_closure,
+    expression_artifact_identity, expression_derivation_identity, expression_interface,
 };
 pub use logical::canonical_logical_project;
 use neutral_core::{CancellationToken, SemanticDigest};
@@ -137,6 +142,26 @@ identity!(
 identity!(
     CompositionArtifactIdentity,
     "Successor derivation plus artifact kind, format and public selection; distinct from /1."
+);
+identity!(
+    ExpressionCapturedClosureIdentity,
+    "Exact expression-profile capture identity, distinct from historical captures."
+);
+identity!(
+    ExpressionLogicalIdentity,
+    "Complete expression-profile meaning, including residual trees and public templates."
+);
+identity!(
+    ExpressionInterfaceIdentity,
+    "Expression public interpretive projection, distinct from complete logical identity."
+);
+identity!(
+    ExpressionDerivationIdentity,
+    "Expression logical and captured identities plus explicit processing policy."
+);
+identity!(
+    ExpressionArtifactIdentity,
+    "Expression derivation plus selected representation and public roots."
 );
 identity!(
     LogicalProjectIdentity,

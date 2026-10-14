@@ -336,17 +336,32 @@ pub fn capture_composition_project(
 /// Validates ordered phases with private deterministic cancellation handoffs for tests.
 fn capture_with_checkpoints(
     request: CapturedCompositionProjectRequest,
+    checkpoint: impl FnMut(ProjectCaptureCheckpoint),
+) -> Result<CapturedCompositionProject, CompositionCaptureFailure> {
+    capture_selected(
+        request,
+        profile::CAPTURE_REQUEST_VERSION,
+        profile::REQUIRED_FEATURES,
+        checkpoint,
+    )
+}
+
+/// Shared integrity/header/catalogue phases, after an exact boundary-specific selection.
+pub(super) fn capture_selected(
+    request: CapturedCompositionProjectRequest,
+    version: &str,
+    features: &[&str],
     mut checkpoint: impl FnMut(ProjectCaptureCheckpoint),
 ) -> Result<CapturedCompositionProject, CompositionCaptureFailure> {
     let envelope = request.envelope;
     // Unsupported selection wins over zero controls or an already-cancelled
     // request. Never normalize features, infer them from source or retry /1.
-    if envelope.request_version != profile::CAPTURE_REQUEST_VERSION
+    if envelope.request_version != version
         || !request
             .required_features
             .iter()
             .map(String::as_str)
-            .eq(profile::REQUIRED_FEATURES.iter().copied())
+            .eq(features.iter().copied())
     {
         return Err(ProjectCaptureError::InvalidRequest.into());
     }
@@ -359,7 +374,7 @@ fn capture_with_checkpoints(
     let cancellation = &envelope.controls.cancellation;
     checkpoint(ProjectCaptureCheckpoint::Start);
     capture_cancelled(Some(cancellation))?;
-    validate_envelope_version(&envelope, profile::CAPTURE_REQUEST_VERSION)?;
+    validate_envelope_version(&envelope, version)?;
     // Intersect successor aggregate ceilings before reserving per-bundle storage
     // or hashing/parsing oversized inputs; generous capture policy is not a bypass.
     validate_catalogue_capture_bounds(&envelope, request.composition_limits)?;

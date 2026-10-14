@@ -8,6 +8,7 @@ use super::{
     profile::{ExpressionLimits, SemanticProfiles},
     templates::{ExpansionLimits, PublicTemplate},
 };
+pub use crate::composition::project::inspect_expression_project_resources;
 use crate::{
     ModuleSymbolIdentity,
     composition::{

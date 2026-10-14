@@ -98,7 +98,7 @@ pub fn derivation_identity(
 }
 
 /// Frames the immutable /1 body shared by both explicitly selected identity profiles.
-fn derivation_body(
+pub(super) fn derivation_body(
     writer: &mut Writer<'_>,
     logical: &[u8; 32],
     captured: &[u8; 32],
@@ -224,7 +224,7 @@ pub fn composition_artifact_identity(
 }
 
 /// Shares frozen artifact framing and fallible normalized-root retention between explicit profiles.
-fn artifact_body(
+pub(super) fn artifact_body(
     writer: &mut Writer<'_>,
     derivation: &[u8; 32],
     input: &ArtifactIdentityInput<'_>,

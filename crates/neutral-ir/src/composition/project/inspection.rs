@@ -310,6 +310,66 @@ pub fn inspect_composition_ir(
     policy: CompositionPolicy,
     cancellation: &CancellationToken,
 ) -> Result<CompositionResourceFacts, CompositionShapeError> {
+    inspect_retained(
+        Sections {
+            modules: &ir.modules,
+            declarations: ir.declarations.len(),
+            map_limit: limits.declarations,
+            vocabularies: &ir.vocabularies,
+            source_maps: &ir.source_maps,
+            provenance: &ir.provenance,
+            origins: &ir.origins,
+            sources: &ir.sources,
+            vocabulary_sources: &ir.vocabulary_sources,
+        },
+        ir.declarations
+            .iter()
+            .map(|d| (&d.identity, &d.signature, d.value.as_ref())),
+        limits,
+        policy,
+        cancellation,
+        &[],
+    )
+}
+
+/// Borrowed historical companion roles, shared without a fabricated project envelope.
+#[derive(Clone, Copy)]
+struct Sections<'a> {
+    /// Complete module graph.
+    modules: &'a [crate::project::ProjectModule],
+    /// Complete ordinary declaration count.
+    declarations: usize,
+    /// Independent owner-map limit, preserving historical declaration-only controls.
+    map_limit: u64,
+    /// Complete nominal vocabulary contracts.
+    vocabularies: &'a [crate::composition::CompositionBundle],
+    /// Original declaration source mappings.
+    source_maps: &'a [crate::project::ProjectSourceMap],
+    /// Structural dependency evidence.
+    provenance: &'a [crate::project::ProjectProvenance],
+    /// Materialized value origin evidence.
+    origins: &'a [super::CompositionOrigin],
+    /// Original captured source accounting.
+    sources: &'a [crate::project::ProjectSource],
+    /// Original captured vocabulary accounting.
+    vocabulary_sources: &'a [crate::project::ProjectVocabularySource],
+}
+
+/// Shares raw collection/type/value accounting across independently selected project profiles.
+fn inspect_retained<'a>(
+    ir: Sections<'a>,
+    declarations: impl IntoIterator<
+        Item = (
+            &'a ModuleSymbolIdentity,
+            &'a CompositionSignature,
+            Option<&'a crate::composition::BindingValue>,
+        ),
+    >,
+    limits: ProjectLimits,
+    policy: CompositionPolicy,
+    cancellation: &CancellationToken,
+    expressions: &[&crate::expression::Expression],
+) -> Result<CompositionResourceFacts, CompositionShapeError> {
     let mut inspector = Inspector {
         limits,
         policy,
@@ -319,15 +379,15 @@ pub fn inspect_composition_ir(
         facts: CompositionResourceFacts::from_values([0; 7]),
     };
     inspector.count(ir.modules.len(), limits.modules)?;
-    inspector.count(ir.declarations.len(), limits.declarations)?;
+    inspector.count(ir.declarations, limits.declarations)?;
     inspector.count(ir.vocabularies.len(), policy.bundles)?;
-    inspector.count(ir.source_maps.len(), limits.declarations)?;
+    inspector.count(ir.source_maps.len(), ir.map_limit)?;
     inspector.count(ir.provenance.len(), limits.nodes)?;
     inspector.count(ir.origins.len(), limits.nodes)?;
     inspector.count(ir.sources.len(), limits.modules)?;
     inspector.count(ir.vocabulary_sources.len(), policy.bundles)?;
     let mut imports = 0_u64;
-    for module in &ir.modules {
+    for module in ir.modules {
         inspector.text(module.identity.module_name())?;
         inspector.count(module.imports.len(), limits.import_edges)?;
         imports = imports
@@ -340,17 +400,17 @@ pub fn inspect_composition_ir(
             inspector.text(target)?;
         }
     }
-    for declaration in &ir.declarations {
-        inspector.symbol(&declaration.identity)?;
-        match &declaration.signature {
+    for (identity, signature, value) in declarations {
+        inspector.symbol(identity)?;
+        match signature {
             CompositionSignature::Binding(ty) => inspector.ty(ty)?,
             CompositionSignature::Definition(body) => inspector.body(body)?,
         }
-        if let Some(value) = &declaration.value {
+        if let Some(value) = value {
             inspector.value(value, |target| Some(target))?;
         }
     }
-    for bundle in &ir.vocabularies {
+    for bundle in ir.vocabularies {
         inspector.text(bundle.identity.identity())?;
         inspector.text(bundle.identity.version())?;
         inspector.text(bundle.identity.schema_version())?;
@@ -376,32 +436,35 @@ pub fn inspect_composition_ir(
             inspector.body(&definition.body)?;
         }
     }
-    inspect_companions(ir, &mut inspector)?;
+    for expression in expressions {
+        inspector.expression(expression)?;
+    }
+    inspect_companions(&ir, &mut inspector)?;
     inspector.facts.bundles = ir.vocabularies.len() as u64;
     Ok(inspector.facts)
 }
 
 /// Checks retained companion collection/path text before independent provenance validation.
 fn inspect_companions(
-    ir: &CompositionProjectIr,
+    ir: &Sections<'_>,
     inspector: &mut Inspector<'_>,
 ) -> Result<(), CompositionShapeError> {
-    for source in &ir.sources {
+    for source in ir.sources {
         inspector.text(&source.module)?;
         inspector.text(&source.source_id)?;
     }
-    for source in &ir.vocabulary_sources {
+    for source in ir.vocabulary_sources {
         inspector.text(&source.identity)?;
         inspector.text(&source.version)?;
     }
-    for mapping in &ir.source_maps {
+    for mapping in ir.source_maps {
         inspector.symbol(&mapping.declaration)?;
     }
-    for provenance in &ir.provenance {
+    for provenance in ir.provenance {
         inspector.symbol(&provenance.from)?;
         inspector.symbol(&provenance.to)?;
     }
-    for origin in &ir.origins {
+    for origin in ir.origins {
         inspector.symbol(&origin.binding)?;
         inspector.count(
             origin.path.len(),
@@ -427,4 +490,181 @@ fn inspect_companions(
         }
     }
     Ok(())
+}
+
+impl Inspector<'_> {
+    /// Counts retained typed-tree leaves without interpreting input as a fabricated value.
+    fn expression(
+        &mut self,
+        root: &crate::expression::Expression,
+    ) -> Result<(), CompositionShapeError> {
+        use crate::expression::ExpressionNode as N;
+        let mut stack = Vec::new();
+        stack
+            .try_retain(1)
+            .map_err(|_| CompositionShapeError::Limit)?;
+        stack.push((root, 1_u64));
+        while let Some((expression, depth)) = stack.pop() {
+            self.step(1)?;
+            if depth > crate::expression::profile::MAX_DEPTH as u64 {
+                return Err(CompositionShapeError::Limit);
+            }
+            self.ty(&expression.ty)?;
+            let mut child = |e| {
+                stack
+                    .try_retain(1)
+                    .map_err(|_| CompositionShapeError::Limit)?;
+                stack.push((e, depth + 1));
+                Ok::<_, CompositionShapeError>(())
+            };
+            match &expression.node {
+                N::Value(value) => self.value(value, |target| Some(target))?,
+                N::Input(owner) => self.symbol(owner)?,
+                N::Output {
+                    target,
+                    result_type,
+                    selector,
+                } => {
+                    self.symbol(target)?;
+                    self.ty(result_type)?;
+                    for segment in selector {
+                        if let crate::expression::SelectorSegment::Field(name)
+                        | crate::expression::SelectorSegment::Alternative(name) = segment
+                        {
+                            self.text(name)?;
+                        }
+                    }
+                }
+                N::Unary { operand, .. } | N::Text(operand) => child(operand.as_ref())?,
+                N::Binary { left, right, .. } => {
+                    child(left.as_ref())?;
+                    child(right.as_ref())?;
+                }
+                N::If {
+                    guard,
+                    then_branch,
+                    else_branch,
+                } => {
+                    child(guard.as_ref())?;
+                    child(then_branch.as_ref())?;
+                    child(else_branch.as_ref())?;
+                }
+                N::Match { scrutinee, arms } => {
+                    child(scrutinee.as_ref())?;
+                    for arm in arms {
+                        self.text(&arm.tag)?;
+                        self.ty(&arm.payload_type)?;
+                        child(&arm.body)?;
+                    }
+                }
+                N::List(items) | N::Interpolate(items) => {
+                    for item in items {
+                        child(item)?;
+                    }
+                }
+                N::Record(fields) => {
+                    for (name, value) in fields {
+                        self.text(name)?;
+                        if let Some(value) = value {
+                            child(value)?;
+                        }
+                    }
+                }
+                N::Variant { tag, payload } => {
+                    self.text(tag)?;
+                    child(payload.as_ref())?;
+                }
+                N::Bound { .. } => {}
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Recomputes shared retained composition facts for raw expression data, not reader authority.
+/// # Errors
+/// Rejects independent resource/allocation controls or cancellation atomically.
+pub fn inspect_expression_project_resources(
+    ir: &crate::expression::project::ExpressionProjectIr,
+    limits: ProjectLimits,
+    policy: CompositionPolicy,
+    cancellation: &CancellationToken,
+) -> Result<CompositionResourceFacts, CompositionShapeError> {
+    use crate::expression::ExpressionBody;
+    if ir.declarations.len() as u64 > limits.declarations
+        || ir.public_templates.len() as u64
+            > ir.expansion_limits
+                .definitions
+                .min(crate::expression::profile::MAX_ITEMS)
+    {
+        return Err(CompositionShapeError::Limit);
+    }
+    let mut trees = Vec::new();
+    for d in &ir.declarations {
+        if cancellation.is_cancelled() {
+            return Err(CompositionShapeError::Cancelled);
+        }
+        if let Some(ExpressionBody::Expression(e)) = &d.body {
+            trees
+                .try_retain(1)
+                .map_err(|_| CompositionShapeError::Limit)?;
+            trees.push(e);
+        }
+    }
+    for template in &ir.public_templates {
+        if cancellation.is_cancelled() {
+            return Err(CompositionShapeError::Cancelled);
+        }
+        if template.parameters.len() as u64
+            > crate::expression::templates::ExpansionLimits::hard().parameters
+        {
+            return Err(CompositionShapeError::Limit);
+        }
+        trees
+            .try_retain(1)
+            .map_err(|_| CompositionShapeError::Limit)?;
+        trees.push(&template.body);
+        for parameter in &template.parameters {
+            if let Some(e) = &parameter.default {
+                trees
+                    .try_retain(1)
+                    .map_err(|_| CompositionShapeError::Limit)?;
+                trees.push(e);
+            }
+        }
+    }
+    inspect_retained(
+        Sections {
+            modules: &ir.modules,
+            declarations: ir.declarations.len(),
+            map_limit: limits
+                .declarations
+                .checked_add(
+                    ir.expansion_limits
+                        .definitions
+                        .min(crate::expression::profile::MAX_ITEMS),
+                )
+                .ok_or(CompositionShapeError::Limit)?,
+            vocabularies: &ir.vocabularies,
+            source_maps: &ir.source_maps,
+            provenance: &ir.provenance,
+            origins: &ir.origins,
+            sources: &ir.sources,
+            vocabulary_sources: &ir.vocabulary_sources,
+        },
+        ir.declarations.iter().map(|d| {
+            (
+                &d.identity,
+                &d.signature,
+                match &d.body {
+                    Some(ExpressionBody::Value(value)) => Some(value),
+                    _ => None,
+                },
+            )
+        }),
+        limits,
+        policy,
+        cancellation,
+        &trees,
+    )
 }

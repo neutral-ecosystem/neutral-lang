@@ -12,6 +12,7 @@ owner = "compiler-pipeline"
 [dependencies]
 neutral-core = { path = "../neutral-core" }
 neutral-ir = { path = "../neutral-ir" }
+neutral-semantics = { path = "../neutral-semantics" }
 neutral-vocabulary = { path = "../neutral-vocabulary" }
 
 [lints]

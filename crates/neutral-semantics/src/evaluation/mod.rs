@@ -129,6 +129,22 @@ pub fn evaluate<'m>(
     }
 }
 
+/// Checks a complete explicit binding generation without evaluating its selected path.
+/// # Errors
+/// Rejects unsupported tuples, malformed/private bindings and independent resource/cancellation failure.
+pub fn validate_evaluation_bindings(
+    model: &ValidatedExpressionModel,
+    request: &EvaluationRequest<'_>,
+    cancellation: &CancellationToken,
+) -> Result<(), EvaluationError> {
+    prepare(model, request, cancellation, Mode::Consumer)
+        .map(|_| ())
+        .map_err(|flow| match flow {
+            Flow::Failure(error) => error,
+            Flow::Unavailable(_) => EvaluationError::InvalidBinding,
+        })
+}
+
 /// Producer folding can inspect private bindings but cannot accept consumer envelopes.
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum Mode {
@@ -204,7 +220,7 @@ fn run<'m>(
         )
         .map_err(crate::budget::shape_error)?;
         state.budget.step(cost.work)?;
-        state.budget.output(cost.retained_bytes)?;
+        state.budget.value_output(&value)?;
         return Ok(EvaluationResult::Value { ty, value });
     }
     let key_work = state.ports.iter().map(|p| p.cost).max().unwrap_or(1);

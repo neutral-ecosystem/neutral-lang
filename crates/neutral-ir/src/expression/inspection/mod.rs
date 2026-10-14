@@ -124,7 +124,7 @@ fn inspect_retention(
         limits,
         cancellation,
         work: limits.work,
-        bytes: limits.retained_bytes.min(limits.output_bytes),
+        bytes: limits.retained_bytes,
         edges: limits.dependency_edges,
         shape: ExpressionShape {
             nodes: 0,
@@ -135,7 +135,7 @@ fn inspect_retention(
     inspect(&mut state)?;
     Ok(ExpressionInspection {
         shape: state.shape,
-        retained_bytes: limits.retained_bytes.min(limits.output_bytes) - state.bytes,
+        retained_bytes: limits.retained_bytes - state.bytes,
         work: limits.work - state.work,
     })
 }

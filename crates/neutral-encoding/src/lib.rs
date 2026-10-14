@@ -15,6 +15,8 @@ pub mod constants;
 mod decode;
 mod decoder;
 pub mod diagnostics;
+/// Complete explicit expression transport, distinct from historical codecs.
+pub mod expression;
 /// Complete project transport and independent bounded decoding.
 pub mod project;
 
@@ -24,6 +26,7 @@ pub use encoder::encode;
 use std::ops::Range;
 
 pub use decode::decode;
+pub use expression::{decode_expression_project, encode_expression_project};
 
 /// Complete bounded result class for hostile external artifact decoding.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

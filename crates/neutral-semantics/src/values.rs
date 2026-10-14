@@ -77,11 +77,7 @@ fn concatenate(left: &V, right: &V, budget: &mut Budget<'_>) -> Result<V, E> {
     match (left, right) {
         (V::String(left), V::String(right)) => {
             let length = left.len().checked_add(right.len()).ok_or(E::Limit)?;
-            budget.output(
-                (std::mem::size_of::<V>() as u64)
-                    .checked_add(length as u64)
-                    .ok_or(E::Limit)?,
-            )?;
+            budget.output(length as u64)?;
             let mut bytes = Vec::new();
             budget.reserve(&mut bytes, length)?;
             bytes.extend_from_slice(left.as_bytes());
@@ -96,7 +92,7 @@ fn concatenate(left: &V, right: &V, budget: &mut Budget<'_>) -> Result<V, E> {
                 .checked_add(1)
                 .and_then(|n| n.checked_mul(std::mem::size_of::<V>()))
                 .ok_or(E::Limit)?;
-            budget.output(bytes as u64)?;
+            budget.step(bytes as u64)?;
             let mut values = Vec::new();
             budget.reserve(&mut values, length)?;
             for item in left.iter().chain(right) {
@@ -118,7 +114,7 @@ pub(crate) fn text(value: &V, budget: &mut Budget<'_>) -> Result<V, E> {
                 language::FALSE
             };
             let mut bytes = Vec::new();
-            budget.output((std::mem::size_of::<V>() + text.len()) as u64)?;
+            budget.output(text.len() as u64)?;
             budget.reserve(&mut bytes, text.len())?;
             bytes.extend_from_slice(text.as_bytes());
             Ok(V::String(
@@ -149,11 +145,7 @@ pub(crate) fn text(value: &V, budget: &mut Budget<'_>) -> Result<V, E> {
                 .map_err(|_| E::Limit)?
                 .checked_add(usize::from(value.is_negative()))
                 .ok_or(E::Limit)?;
-            budget.output(
-                (std::mem::size_of::<V>() as u64)
-                    .checked_add(length as u64)
-                    .ok_or(E::Limit)?,
-            )?;
+            budget.output(length as u64)?;
             let mut bytes = budget.zeros(length)?;
             bytes.fill(b'0');
             let start = usize::from(value.is_negative());

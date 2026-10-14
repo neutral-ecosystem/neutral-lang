@@ -112,7 +112,7 @@ pub fn captured_composition_closure(
 }
 
 /// Frames unchanged exact capture fields once for both explicitly selected identity profiles.
-fn capture_body(
+pub(super) fn capture_body(
     writer: &mut Writer<'_>,
     input: &CapturedIdentityInput<'_>,
 ) -> Result<(), IdentityError> {

@@ -48,7 +48,8 @@ mod composition;
 pub use cache::{ProjectCacheLimits, ProjectCacheStats, ProjectCompilationCache};
 pub use composition::codes as composition_diagnostics;
 pub use composition::{
-    CompositionCompilationCache, CompositionCompileFailure, compile_composition_project,
+    CompositionCompilationCache, CompositionCompileFailure, ExpressionCompileFailure,
+    compile_composition_project, compile_expression_project,
 };
 
 #[cfg(test)]

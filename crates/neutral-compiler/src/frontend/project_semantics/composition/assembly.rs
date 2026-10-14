@@ -226,16 +226,16 @@ fn declarations(
     })
 }
 /// Exact captured accounting and complete logical module topology.
-struct CapturedCompanions {
+pub(super) struct CapturedCompanions {
     /// All modules, including disconnected and private-only units.
-    modules: Vec<ProjectModule>,
+    pub(super) modules: Vec<ProjectModule>,
     /// Logical source identities and byte lengths.
-    sources: Vec<ProjectSource>,
+    pub(super) sources: Vec<ProjectSource>,
     /// Exact locked vocabulary capture evidence.
-    vocabulary_sources: Vec<ProjectVocabularySource>,
+    pub(super) vocabulary_sources: Vec<ProjectVocabularySource>,
 }
 /// Derives checked captured companions without acquiring any input.
-fn captured_companions(resolver: &Resolver<'_>) -> Result<CapturedCompanions, E> {
+pub(super) fn captured_companions(resolver: &Resolver<'_>) -> Result<CapturedCompanions, E> {
     let captured = resolver.captured;
     let mut modules = Vec::new();
     let mut sources = Vec::new();

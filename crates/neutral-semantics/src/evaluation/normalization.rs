@@ -88,7 +88,9 @@ pub fn normalize_binding(
         }
         .map_err(crate::budget::shape_error)?;
         state.budget.step(cost.work)?;
-        state.budget.output(cost.retained_bytes)?;
+        if let NormalizedBinding::Value(value) = &result {
+            state.budget.value_output(value)?;
+        }
         Ok(result)
     })();
     result.map_err(|flow| match flow {

@@ -23,6 +23,22 @@ pub const MAX_WORK: u64 = 100_000_000;
 /// Frozen owned model/output byte ceiling, excluding allocator metadata.
 pub const MAX_MODEL_BYTES: u64 = 67_108_864;
 
+/// Recognizes successor bindings, including canonical original-axis matrix suffixes.
+/// Historical profiles keep their unchanged lower-snake spelling rule.
+#[must_use]
+pub fn is_binding_name(value: &str) -> bool {
+    let Some((base, axes)) = value.split_once("__") else {
+        return crate::language::is_snake_name(value);
+    };
+    crate::language::is_snake_name(base)
+        && axes.split("__").all(|axis| {
+            !axis.is_empty()
+                && (axis == "0" || !axis.starts_with('0'))
+                && axis.bytes().all(|b| b.is_ascii_digit())
+                && axis.parse::<u64>().is_ok()
+        })
+}
+
 /// Exact expression capture envelope, never inferred from source spelling.
 pub const CAPTURE_REQUEST_VERSION: &str = "neutral.capture/v3";
 /// Complete expression artifact schema.

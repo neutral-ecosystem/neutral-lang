@@ -123,21 +123,23 @@ fn inspection_exact_and_one_over_controls() {
         node: ExpressionNode::Value(V::String("abc".into())),
     };
     let bytes = std::mem::size_of::<Expression>() as u64 + 3;
-    for field in [0, 1] {
-        let mut limits = ExpressionLimits::hard();
-        if field == 0 {
-            limits.retained_bytes = bytes;
-        } else {
-            limits.output_bytes = bytes;
-        }
-        assert!(inspect(&tree, limits).is_ok());
-        if field == 0 {
-            limits.retained_bytes -= 1;
-        } else {
-            limits.output_bytes -= 1;
-        }
-        assert_eq!(inspect(&tree, limits), Err(ExpressionShapeError::Limit));
-    }
+    let mut limits = ExpressionLimits {
+        retained_bytes: bytes,
+        ..ExpressionLimits::hard()
+    };
+    assert!(inspect(&tree, limits).is_ok());
+    limits.retained_bytes -= 1;
+    assert_eq!(inspect(&tree, limits), Err(ExpressionShapeError::Limit));
+    assert!(
+        inspect(
+            &tree,
+            ExpressionLimits {
+                output_bytes: 1,
+                ..ExpressionLimits::hard()
+            }
+        )
+        .is_ok()
+    );
     assert_eq!(
         inspect(
             &tree,

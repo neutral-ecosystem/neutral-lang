@@ -13,6 +13,9 @@ mod assembly;
 use assembly::assemble;
 mod resolver;
 use resolver::type_edges;
+#[path = "../expressions/mod.rs"]
+mod expressions;
+pub use expressions::{ExpressionCompileFailure, compile_expression_project};
 
 use super::{
     Token, TokenKind, TypeExpr, is_requirement_or_import, lexer, parse_complete_type_fallible,
@@ -49,7 +52,7 @@ use neutral_vocabulary::composition::{
 };
 
 /// Safe successor compilation failure; no variant publishes partial logical output.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CompositionCompileFailure {
     /// Frozen source diagnostic classification.
     pub code: &'static str,

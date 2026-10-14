@@ -92,11 +92,11 @@ fn build<I>(
             )?;
             w.leaf("schema", ir.schema.as_bytes())?;
             w.leaf("profile", V1_SOURCE_PROFILE.as_bytes())?;
-            modules(w, ir)?;
+            modules(w, &ir.modules)?;
             declarations(w, ir, public)?;
-            vocabulary_types(w, ir, public)?;
-            catalogues(w, ir)?;
-            dependencies(w, ir)?;
+            vocabulary_types(w, &ir.vocabularies, public)?;
+            catalogues(w, &ir.vocabularies)?;
+            dependencies(w, &ir.vocabularies)?;
             // Borrow canonical declarations rather than allocating a visibility index.
             let visible = |owner: &crate::ModuleSymbolIdentity| {
                 ir.declarations
@@ -144,9 +144,12 @@ fn build<I>(
 }
 
 /// Frames the canonical modules section under the selected projection.
-fn modules(w: &mut Writer<'_>, ir: &CompositionProjectIr) -> Result<(), E> {
+pub(super) fn modules(
+    w: &mut Writer<'_>,
+    modules: &[crate::project::ProjectModule],
+) -> Result<(), E> {
     w.frame("modules", |w| {
-        for m in &ir.modules {
+        for m in modules {
             if m.identity.language_behavior_version() != V1_SOURCE_PROFILE
                 || m.identity.module_name().is_empty()
             {
@@ -192,9 +195,13 @@ fn declarations(w: &mut Writer<'_>, ir: &CompositionProjectIr, public: bool) -> 
 }
 
 /// Frames the canonical vocabulary types section under the selected projection.
-fn vocabulary_types(w: &mut Writer<'_>, ir: &CompositionProjectIr, public: bool) -> Result<(), E> {
+pub(super) fn vocabulary_types(
+    w: &mut Writer<'_>,
+    vocabularies: &[crate::composition::CompositionBundle],
+    public: bool,
+) -> Result<(), E> {
     w.frame("vocabulary-types", |w| {
-        for bundle in &ir.vocabularies {
+        for bundle in vocabularies {
             for d in bundle.definitions.iter().filter(|d| !public || d.public) {
                 w.frame("definition", |w| {
                     w.leaf("identity", bundle.identity.identity().as_bytes())?;
@@ -210,9 +217,12 @@ fn vocabulary_types(w: &mut Writer<'_>, ir: &CompositionProjectIr, public: bool)
 }
 
 /// Frames the canonical catalogues section under the selected projection.
-fn catalogues(w: &mut Writer<'_>, ir: &CompositionProjectIr) -> Result<(), E> {
+pub(super) fn catalogues(
+    w: &mut Writer<'_>,
+    vocabularies: &[crate::composition::CompositionBundle],
+) -> Result<(), E> {
     w.frame("vocabulary-catalogues", |w| {
-        for b in &ir.vocabularies {
+        for b in vocabularies {
             w.frame("vocabulary", |w| {
                 w.leaf("identity", b.identity.identity().as_bytes())?;
                 w.leaf("version", b.identity.version().as_bytes())?;
@@ -236,9 +246,12 @@ fn catalogues(w: &mut Writer<'_>, ir: &CompositionProjectIr) -> Result<(), E> {
 }
 
 /// Frames the canonical dependencies section under the selected projection.
-fn dependencies(w: &mut Writer<'_>, ir: &CompositionProjectIr) -> Result<(), E> {
+pub(super) fn dependencies(
+    w: &mut Writer<'_>,
+    vocabularies: &[crate::composition::CompositionBundle],
+) -> Result<(), E> {
     w.frame("vocabulary-dependencies", |w| {
-        for b in &ir.vocabularies {
+        for b in vocabularies {
             w.frame("vocabulary", |w| {
                 w.leaf("identity", b.identity.identity().as_bytes())?;
                 w.leaf("version", b.identity.version().as_bytes())?;
@@ -258,7 +271,7 @@ fn dependencies(w: &mut Writer<'_>, ir: &CompositionProjectIr) -> Result<(), E> 
 }
 
 /// Frames one source/vocabulary body with complete unused contract facts.
-fn body(w: &mut Writer<'_>, b: &B) -> Result<(), E> {
+pub(super) fn body(w: &mut Writer<'_>, b: &B) -> Result<(), E> {
     match b {
         B::Record(fields) => {
             ordered(fields.iter().map(|f| &f.name))?;
@@ -353,7 +366,11 @@ fn restrictions(w: &mut Writer<'_>, r: &FieldRestrictions) -> Result<(), E> {
 }
 
 /// Checks successor wrapper invariants before using the unchanged frozen type framing grammar.
-fn type_transcript(w: &mut Writer<'_>, ty: &ProjectPublicType, depth: usize) -> Result<(), E> {
+pub(super) fn type_transcript(
+    w: &mut Writer<'_>,
+    ty: &ProjectPublicType,
+    depth: usize,
+) -> Result<(), E> {
     let mut inner = ty;
     let mut current_depth = depth;
     loop {
@@ -397,7 +414,7 @@ fn number(w: &mut Writer<'_>, n: &crate::ExactNumber) -> Result<(), E> {
 }
 
 /// Lets closed values share framing without permitting non-null default references.
-trait Reference {
+pub(super) trait Reference {
     /// Frames an identity edge without traversing its target.
     fn write(&self, w: &mut Writer<'_>) -> Result<(), E>;
 }
@@ -415,7 +432,7 @@ impl Reference for std::convert::Infallible {
 }
 
 /// Frames materialized values; optional absence is only emitted by a record field.
-fn value<R: Reference>(w: &mut Writer<'_>, v: &V<R>, depth: usize) -> Result<(), E> {
+pub(super) fn value<R: Reference>(w: &mut Writer<'_>, v: &V<R>, depth: usize) -> Result<(), E> {
     if depth > PROJECT_MAX_DEPTH {
         return Err(E::Limit);
     }
