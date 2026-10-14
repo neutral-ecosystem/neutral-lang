@@ -15,6 +15,9 @@ use crate::expression::{
 use neutral_ir::expression::{BinaryOperator, profile};
 use neutral_semantics::BindingKey;
 
+#[path = "boundary_coverage.rs"]
+mod boundary_coverage;
+
 /// Recomputes fixture companions and crosses the real complete-reader boundary.
 fn authority(ir: ExpressionProjectIr) -> ValidatedExpressionProject {
     ValidatedExpressionProject::from_ir(complete(ir), limits(), &CancellationToken::new()).unwrap()
@@ -145,6 +148,11 @@ fn empty_view_is_empty_and_private_roots_never_escape() {
 
 /// Builds two real external Boolean ports and one retained short-circuit expression.
 fn guarded_project(operator: BinaryOperator) -> ValidatedExpressionProject {
+    authority(guarded_fixture(operator))
+}
+
+/// Retains a complete Boolean fixture before crossing the reader authority boundary.
+fn guarded_fixture(operator: BinaryOperator) -> ExpressionProjectIr {
     let mut ir = empty();
     for (name, start) in [("enabled", 10), ("other", 30)] {
         ir.declarations.push(ExpressionDeclaration {
@@ -181,7 +189,7 @@ fn guarded_project(operator: BinaryOperator) -> ValidatedExpressionProject {
         declaration: symbol("m", "result"),
         location: loc("m", 50, 70),
     });
-    authority(ir)
+    ir
 }
 
 #[test]

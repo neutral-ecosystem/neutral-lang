@@ -625,6 +625,11 @@ Slice 1 — consumer contract foundation:
   Five separately typed `/3` identity partitions and independent complete reader
   authority now check interface digests, retained facts, typed reuse, default owners
   and original-byte expression/expansion companions against complete literal vectors.
+  Additional component tests exercise frontend constructors/bounds, selector obligations,
+  explicit consumer reports, public projections and reader-only encoded entry probing.
+  Nullable list/record/variant constructors preserve their exact declared context;
+  selectors still cannot implicitly unwrap nullable values. These tests are partial
+  qualification, not activation or completion of the remaining pipeline gates.
   Remaining: qualification of complete source/IR/wire/reader integration, expansion,
   guarded consumer binding/dependency reports and actual cache execution. Work stops
   at the implementation plan's Task 5; later-task code is not completion evidence.

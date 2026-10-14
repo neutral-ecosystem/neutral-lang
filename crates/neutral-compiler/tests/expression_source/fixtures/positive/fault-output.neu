@@ -1,0 +1,20 @@
+neu "1.0"
+module example::expressions
+
+public record Item { num count = 2 }
+public variant Choice { Item ready, string failed }
+public record Job { string name = "build" }
+public record Result { List<Choice> choices }
+public Job job = {}
+public Choice choice = { tag: "ready", payload: {} }
+public input bool enabled
+public num result = if enabled {
+    output<num>(ref(job), Result, [
+        { kind: "field", name: "choices" },
+        { kind: "index", index: 0 },
+        { kind: "alternative", name: "ready" },
+        { kind: "field", name: "count" }
+    ])
+} else {
+    match choice { ready(value) => 1, failed(message) => 2 }
+}

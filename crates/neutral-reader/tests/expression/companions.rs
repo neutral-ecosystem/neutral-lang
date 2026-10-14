@@ -28,6 +28,12 @@ use neutral_semantics::{SemanticLimits, derive_expression_resources, validate_ex
 #[path = "consumer_coverage.rs"]
 mod consumer_coverage;
 
+#[path = "composition_consumer_coverage.rs"]
+mod composition_consumer_coverage;
+
+#[path = "public_projection_coverage.rs"]
+mod public_projection_coverage;
+
 /// Gives each source a deterministic original digest without using a host path.
 fn source(module: &str) -> ProjectSource {
     ProjectSource {
@@ -159,8 +165,8 @@ fn prepare(mut ir: ExpressionProjectIr) -> ExpressionProjectIr {
     ir.resources = ProjectResourceFacts {
         source_units: ir.sources.len() as u64,
         source_bytes: ir.sources.iter().map(|s| s.byte_len).sum(),
-        vocabulary_units: 0,
-        vocabulary_bytes: 0,
+        vocabulary_units: ir.vocabulary_sources.len() as u64,
+        vocabulary_bytes: ir.vocabulary_sources.iter().map(|s| s.byte_len).sum(),
         declarations: ir.declarations.len() as u64,
         import_edges: ir.modules.iter().map(|m| m.imports.len() as u64).sum(),
         value_nodes: ir.composition_resources.retained_value_nodes,

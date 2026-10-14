@@ -113,6 +113,7 @@ impl<'a> State<'a, '_> {
         let mut previous = None;
         let mut relation_count = 0;
         let mut generic = 0_u64;
+        let mut primary_head = false;
         for (i, t) in tokens.iter().enumerate() {
             if generic > 0 {
                 match t.spelling {
@@ -126,7 +127,14 @@ impl<'a> State<'a, '_> {
                 generic = 1;
                 continue;
             }
+            if nesting == 0 && matches!(t.spelling, "if" | "match") {
+                primary_head = true;
+            }
             match t.spelling {
+                "{" if nesting == 0 => {
+                    primary_head = false;
+                    nesting += 1;
+                }
                 "(" | "[" | "{" => nesting += 1,
                 ")" | "]" | "}" => nesting -= 1,
                 _ => {}
@@ -134,7 +142,8 @@ impl<'a> State<'a, '_> {
             if nesting < 0 {
                 return Err(error(ec::EXP_SYNTAX, Some(root.location)));
             }
-            if nesting != 0 {
+            // Guard/scrutinee operators belong to their primary, not its surrounding expression.
+            if nesting != 0 || primary_head {
                 continue;
             }
             let Some((precedence, operator)) = binary(t.spelling) else {

@@ -11,6 +11,11 @@ use crate::{
 use neutral_core::{StructuralLimits, profile::LanguageProfile};
 use neutral_vocabulary::{VocabularyLimits, composition::CompositionLimits};
 
+/// Source-level regression cases for complete expression and expansion boundaries.
+mod boundaries;
+/// Request-local allocation and cancellation checks across complete source lowering.
+mod fault_sweeps;
+
 fn capture(
     bytes: &str,
     expression: ExpressionLimits,

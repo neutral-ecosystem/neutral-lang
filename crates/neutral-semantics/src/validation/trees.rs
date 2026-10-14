@@ -101,6 +101,10 @@ impl<'a> State<'a> {
                 let expected = match (&e.node, &e.ty) {
                     (N::Interpolate(_), T::String) => &T::String,
                     (N::List(_), T::List(t)) => t.as_ref(),
+                    (N::List(_), T::Nullable(t)) => match t.as_ref() {
+                        T::List(inner) => inner.as_ref(),
+                        _ => return Err(E::TypeMismatch),
+                    },
                     _ => return Err(E::TypeMismatch),
                 };
                 for (index, item) in items.iter().enumerate() {
@@ -114,7 +118,11 @@ impl<'a> State<'a> {
             N::Record(values) => self.record(e, values, public, owner, depth),
             N::Variant { tag, payload } => {
                 self.wire_text(tag)?;
-                let B::Variant(alternatives) = self.nominal(&e.ty, public, owner)? else {
+                let nominal = match &e.ty {
+                    T::Nullable(inner) => inner.as_ref(),
+                    ty => ty,
+                };
+                let B::Variant(alternatives) = self.nominal(nominal, public, owner)? else {
                     return Err(E::TypeMismatch);
                 };
                 self.budget.step(alternatives.len() as u64 + 1)?;
@@ -201,7 +209,11 @@ impl<'a> State<'a> {
         owner: &ModuleSymbolIdentity,
         depth: u64,
     ) -> Result<(), E> {
-        let B::Record(fields) = self.nominal(&e.ty, public, owner)? else {
+        let nominal = match &e.ty {
+            T::Nullable(inner) => inner.as_ref(),
+            ty => ty,
+        };
+        let B::Record(fields) = self.nominal(nominal, public, owner)? else {
             return Err(E::TypeMismatch);
         };
         if fields.len() != values.len() {
@@ -227,7 +239,7 @@ impl<'a> State<'a> {
                 if let N::Value(v) = &value.node {
                     self.scope
                         .check_field_restrictions(
-                            &e.ty,
+                            nominal,
                             &field.name,
                             v,
                             self.limits.composition,
@@ -249,7 +261,7 @@ impl<'a> State<'a> {
                         .map_err(|_| E::Limit)?;
                     self.restrictions.push(RestrictionObligation {
                         site,
-                        contract: e.ty.try_clone().map_err(|_| E::Limit)?,
+                        contract: nominal.try_clone().map_err(|_| E::Limit)?,
                         field: text(&field.name).map_err(|_| E::Limit)?,
                     });
                 }
