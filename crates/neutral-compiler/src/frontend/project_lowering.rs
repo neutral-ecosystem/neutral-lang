@@ -26,6 +26,10 @@ use neutral_ir::{
 };
 use neutral_vocabulary::ProjectVocabularyType;
 
+#[cfg(test)]
+#[path = "../../tests/project_semantics/lowering.rs"]
+mod tests;
+
 /// Stable complete-project lowering failure categories.
 pub mod codes {
     /// A contextual value, default, or reference has an incompatible type.
@@ -95,8 +99,9 @@ pub(super) fn compile_project_with_parser(
         .map_err(ProjectCompileFailure::Semantics)?;
     let model = resolved.model;
     let roots = resolved.roots;
-    let vocabularies =
-        validate_project_vocabularies(captured).map_err(|_| fail(codes::INVALID_VALUE, None))?;
+    let Ok(vocabularies) = validate_project_vocabularies(captured) else {
+        return Err(fail(codes::INVALID_VALUE, None));
+    };
     let mut modules = BTreeMap::new();
     for source in captured.sources() {
         modules.insert(
@@ -143,10 +148,14 @@ pub(super) fn compile_project_with_parser(
     // reused value must be materialized before a dependent reuse reads it.
     for identity in model.value_order() {
         let root = &roots[&key(identity)];
+        let Some(declared_type) = &root.declared_type else {
+            return Err(fail(
+                codes::INVALID_VALUE,
+                Some(root.symbol.source_location()),
+            ));
+        };
         let ty = public_type(
-            root.declared_type
-                .as_ref()
-                .ok_or_else(|| fail(codes::INVALID_VALUE, Some(root.symbol.source_location())))?,
+            declared_type,
             identity.module().module_name(),
             &modules,
             &vocabularies,
@@ -276,7 +285,7 @@ fn assemble_project(
     vocabularies: &ProjectVocabularySet,
     limits: ProjectLimits,
 ) -> Result<Arc<ProjectIr>, ProjectCompileFailure> {
-    let value_nodes = declarations
+    let Some(value_nodes) = declarations
         .iter()
         .flat_map(|decl| {
             decl.value
@@ -284,7 +293,9 @@ fn assemble_project(
                 .chain(decl.defaults.iter().map(|(_, value)| value))
         })
         .try_fold(0_u64, |sum, value| sum.checked_add(nodes(value)))
-        .ok_or_else(|| fail(codes::LIMIT, None))?;
+    else {
+        return Err(fail(codes::LIMIT, None));
+    };
     let project_modules = lower_modules(graph);
     let import_edges = project_modules
         .iter()
@@ -339,9 +350,10 @@ fn assemble_project(
             })
             .collect(),
     };
-    ir.public_interface = ir
-        .recompute_public_interface()
-        .map_err(|_| fail(codes::LIMIT, None))?;
+    let Ok(public_interface) = ir.recompute_public_interface() else {
+        return Err(fail(codes::LIMIT, None));
+    };
+    ir.public_interface = public_interface;
     if !ir.within_schema_limits(limits) {
         return Err(fail(codes::LIMIT, None));
     }
@@ -664,9 +676,9 @@ impl Lowering<'_> {
                 name,
             } => {
                 let vocabulary = &self.vocabularies.vocabularies()[identity];
-                let record = vocabulary
-                    .public_type(name)
-                    .ok_or_else(|| fail(codes::INVALID_VALUE, None))?;
+                let Some(record) = vocabulary.public_type(name) else {
+                    return Err(fail(codes::INVALID_VALUE, None));
+                };
                 self.charge(record.fields().len() as u64)?;
                 (
                     record
@@ -719,12 +731,13 @@ impl Lowering<'_> {
                     .ok_or_else(|| fail(codes::INVALID_VALUE, None))?;
                 let cost = value_cost(&default.1);
                 self.charge(cost)?;
-                self.defaults[owner]
+                let Some(default) = self.defaults[owner]
                     .iter()
                     .find(|(field, _)| field == &name)
-                    .ok_or_else(|| fail(codes::INVALID_VALUE, None))?
-                    .1
-                    .clone()
+                else {
+                    return Err(fail(codes::INVALID_VALUE, None));
+                };
+                default.1.clone()
             } else {
                 return Err(fail(codes::INVALID_VALUE, None));
             };

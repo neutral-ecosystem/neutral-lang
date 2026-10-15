@@ -332,3 +332,7 @@ pub(super) fn split(tokens: &[Token]) -> Result<Vec<&[Token]>, E> {
     }
     Ok(result)
 }
+
+#[cfg(test)]
+#[path = "../../../../tests/project_cache/composition_syntax.rs"]
+mod tests;

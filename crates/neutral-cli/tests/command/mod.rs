@@ -2,7 +2,7 @@
 
 //! Tests the stable command parser without host effects.
 
-use super::{CommandKind, ParseOutcome, parse};
+use super::{CommandKind, LimitValues, ParseOutcome, parse};
 use crate::constants;
 
 /// Positive numeric value used for every explicit test limit.
@@ -103,6 +103,34 @@ fn unit_cli_parses_complete_compile_policy() {
     assert_eq!(options.limits.list_items(), 7);
     assert_eq!(options.limits.traversal_nodes(), 7);
     assert_eq!(options.vocabulary.features, ["neutral.feature/records@1"]);
+}
+
+#[test]
+/// Verifies diagnostic limits accept the exact unsigned 32-bit ceiling.
+fn unit_cli_accepts_maximum_diagnostic_limit() {
+    let ParseOutcome::Execute(options) = parse([
+        constants::VALIDATE.to_owned(),
+        "source.neu".to_owned(),
+        constants::MAX_DIAGNOSTICS.to_owned(),
+        u32::MAX.to_string(),
+    ])
+    .expect("the maximum diagnostic count should parse") else {
+        panic!("validate command should execute");
+    };
+    assert_eq!(options.limits.diagnostics(), u32::MAX);
+}
+
+#[test]
+/// Verifies the internal checked limit builder rejects a zero-valued bound.
+fn unit_cli_limit_builder_rejects_zero_values() {
+    let limits = LimitValues {
+        source_bytes: 0,
+        ..LimitValues::default()
+    };
+    assert_eq!(
+        limits.build().unwrap_err(),
+        "every limit must be greater than zero"
+    );
 }
 
 #[test]
@@ -253,6 +281,12 @@ fn unit_cli_rejects_malformed_argument_combinations() {
             "source.neu".to_owned(),
             constants::MAX_DIAGNOSTICS.to_owned(),
             "0".to_owned(),
+        ],
+        vec![
+            constants::VALIDATE.to_owned(),
+            "source.neu".to_owned(),
+            constants::MAX_DIAGNOSTICS.to_owned(),
+            (u64::from(u32::MAX) + 1).to_string(),
         ],
         vec![
             constants::VALIDATE.to_owned(),

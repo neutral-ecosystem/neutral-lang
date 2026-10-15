@@ -3,12 +3,19 @@
 use super::*;
 use crate::{
     CAPTURE_REQUEST_VERSION, CapturedProjectRequest, CapturedSourceInput, ProjectCaptureControls,
-    ProjectCaptureLimitValues, ProjectCaptureLimits, capture_project, compile_project,
+    ProjectCaptureLimitValues, ProjectCaptureLimits, ProjectCompileFailure, capture_project,
+    compile_project,
 };
 use neutral_core::profile::LanguageProfile;
+use neutral_ir::{ExactNumber, project::ProjectValue};
 
 /// Captures a tiny effect-free project with explicitly generous fixture controls.
 fn captured(module: &str, value: &str) -> CapturedProject {
+    captured_body(module, &format!("public string value = \"{value}\""), 4096)
+}
+
+/// Captures a project body under the requested project output ceiling.
+fn captured_body(module: &str, body: &str, output_bytes: u64) -> CapturedProject {
     let limits = ProjectCaptureLimits::new(ProjectCaptureLimitValues {
         total_source_bytes: 4096,
         source_bytes_per_unit: 1024,
@@ -23,10 +30,10 @@ fn captured(module: &str, value: &str) -> CapturedProject {
         scc_units: 8,
         declarations: 64,
         diagnostics: 16,
-        output_bytes: 4096,
+        output_bytes,
     });
     let source = format!(
-        "neu \"{}\"\nmodule {module}\npublic string value = \"{value}\"\n",
+        "neu \"{}\"\nmodule {module}\n{body}\n",
         LanguageProfile::V1_0.source_version()
     );
     capture_project(CapturedProjectRequest::new(
@@ -85,6 +92,91 @@ fn clean_compilation_parses_each_unit_once() {
         .unwrap();
     assert_eq!(parses, capture.sources().len());
     assert_eq!(actual, compile_project(&capture, &token).unwrap());
+}
+
+#[test]
+/// Lowers defaults, explicit and reused records, lists, and typed references into complete IR.
+fn project_lowering_materializes_contextual_values_and_defaults() {
+    let capture = captured_body(
+        "example",
+        r#"public record Item {
+  num amount = 3,
+  bool active = true,
+  string label = "default",
+}
+public Item supplied = { amount: 4, active: false, label: "chosen", }
+public Item omitted = {}
+public Item reused = supplied
+public List<num> numbers = [1, 2]
+public string? optional = null
+public Ref<Item> reference = ref(supplied)"#,
+        4096,
+    );
+    let ir = compile_project(&capture, &CancellationToken::new()).expect("project should lower");
+    let declaration = |name: &str| {
+        ir.declarations
+            .iter()
+            .find(|declaration| declaration.identity.declaration_name() == name)
+            .expect("declaration should exist")
+    };
+    let number = |value| ExactNumber::from_source(value, 16, 16).unwrap();
+
+    assert_eq!(
+        declaration("Item").defaults,
+        [
+            ("active".to_owned(), ProjectValue::Bool(true)),
+            ("amount".to_owned(), ProjectValue::Number(number("3"))),
+            (
+                "label".to_owned(),
+                ProjectValue::String("default".to_owned())
+            ),
+        ]
+    );
+    let supplied = ProjectValue::Record(vec![
+        ("active".to_owned(), ProjectValue::Bool(false)),
+        ("amount".to_owned(), ProjectValue::Number(number("4"))),
+        (
+            "label".to_owned(),
+            ProjectValue::String("chosen".to_owned()),
+        ),
+    ]);
+    let omitted = ProjectValue::Record(vec![
+        ("active".to_owned(), ProjectValue::Bool(true)),
+        ("amount".to_owned(), ProjectValue::Number(number("3"))),
+        (
+            "label".to_owned(),
+            ProjectValue::String("default".to_owned()),
+        ),
+    ]);
+    assert_eq!(declaration("supplied").value, Some(supplied.clone()));
+    assert_eq!(declaration("omitted").value, Some(omitted));
+    assert_eq!(declaration("reused").value, Some(supplied));
+    assert_eq!(
+        declaration("numbers").value,
+        Some(ProjectValue::List(vec![
+            ProjectValue::Number(number("1")),
+            ProjectValue::Number(number("2")),
+        ]))
+    );
+    assert_eq!(declaration("optional").value, Some(ProjectValue::Null));
+    assert!(matches!(
+        declaration("reference").value,
+        Some(ProjectValue::Reference(ref identity))
+            if identity.declaration_name() == "supplied"
+    ));
+}
+
+#[test]
+/// A valid value still fails closed when project lowering exhausts its output work budget.
+fn project_lowering_obeys_output_work_limit() {
+    let capture = captured_body("example", "public num value = 42", 1);
+    assert!(matches!(
+        compile_project(&capture, &CancellationToken::new()),
+        Err(ProjectCompileFailure::Lowering {
+            code: crate::project_lowering_diagnostics::LIMIT,
+            ..
+        })
+    ));
 }
 
 /// Simulated digest collisions cannot reuse syntax whose exact original bytes differ.

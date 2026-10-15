@@ -124,6 +124,37 @@ fn accepts_an_exact_vocabulary_cover_and_freezes_bytes() {
 }
 
 #[test]
+fn vocabulary_replay_retains_exact_inputs_and_limits_with_fresh_cancellation() {
+    let controls = ProjectCaptureControls::new(limits(), CancellationToken::new());
+    assert_eq!(controls.limits(), limits());
+    let bytes = b"neu \"1.0\"\nmodule project::replay\nuse ExampleDomain as domain\n";
+    let original = request(
+        vec![
+            CapturedSourceInput::new("source:replay", "project::replay", bytes.to_vec())
+                .requiring_digest(SourceContentDigest::from_bytes(bytes)),
+        ],
+        vec![vocabulary("ExampleDomain", "1.0.0")],
+    );
+    let captured = capture_project(original.clone()).expect("exact inputs must capture");
+    let cancellation = CancellationToken::new();
+    let replay = captured.replay_request(cancellation.clone());
+    assert_eq!(replay.sources, original.sources);
+    assert_eq!(replay.vocabularies, original.vocabularies);
+    assert_eq!(replay.controls.limits(), original.controls.limits());
+    assert_eq!(
+        capture_project(replay.clone()).expect("exact inputs must replay"),
+        captured
+    );
+    cancellation.cancel();
+    assert_eq!(capture_project(replay), Err(ProjectCaptureError::Cancelled));
+    assert_eq!(
+        capture_project(captured.replay_request(CancellationToken::new()))
+            .expect("a fresh token must allow replay"),
+        captured
+    );
+}
+
+#[test]
 /// The same canonical lock covers requirements in several modules with local aliases.
 fn one_lock_covers_repeated_aliased_requirements_across_modules() {
     let captured = capture_project(request(

@@ -2,6 +2,7 @@
 
 //! Fault injection at private parser token boundaries.
 
+use super::super::FrontendErrorKind;
 use super::*;
 use crate::{
     CapturedExpressionProjectRequest, CapturedProjectRequest, CapturedSourceInput,
@@ -116,6 +117,62 @@ fn truncated_headers_and_declarations_fail_boundedly() {
     ]);
     assert!(parser(&binding).parse_binding().is_err());
     assert!(parser(&binding).parse_record_field().is_err());
+}
+
+#[test]
+/// Parser boundaries reject missing EOF and non-name tokens in header and field positions.
+fn invalid_header_and_field_name_tokens_fail_with_stable_kinds() {
+    let no_eof = tokens(vec![
+        TokenKind::Neu,
+        TokenKind::StringLiteral(super::super::DecodedString {
+            value: "0.1".to_owned(),
+            had_escape: false,
+        }),
+        TokenKind::LineEnd,
+        TokenKind::Module,
+        TokenKind::Identifier("example".to_owned()),
+        TokenKind::LineEnd,
+    ]);
+    assert!(parser(&no_eof).parse_unit().is_err());
+
+    for (tokens, parse, expected) in [
+        (
+            tokens(vec![TokenKind::Use, TokenKind::LineEnd]),
+            0,
+            FrontendErrorKind::Other,
+        ),
+        (
+            tokens(vec![TokenKind::Module, TokenKind::LineEnd]),
+            1,
+            FrontendErrorKind::Other,
+        ),
+        (
+            tokens(vec![TokenKind::Record, TokenKind::LineEnd]),
+            2,
+            FrontendErrorKind::Other,
+        ),
+        (
+            tokens(vec![TokenKind::Num, TokenKind::Number("1".to_owned())]),
+            3,
+            FrontendErrorKind::MalformedBoundary,
+        ),
+        (
+            tokens(vec![TokenKind::Number("1".to_owned()), TokenKind::Colon]),
+            4,
+            FrontendErrorKind::MalformedBoundary,
+        ),
+    ] {
+        let error = match parse {
+            0 => parser(&tokens).parse_vocabulary_use().unwrap_err(),
+            1 => parser(&tokens).parse_module().unwrap_err(),
+            2 => parser(&tokens).parse_record().unwrap_err(),
+            3 => parser(&tokens).parse_record_field().unwrap_err(),
+            _ => parser(&tokens)
+                .parse_record_value(span(0, 0), 0)
+                .unwrap_err(),
+        };
+        assert_eq!(error.kind, expected);
+    }
 }
 
 #[test]

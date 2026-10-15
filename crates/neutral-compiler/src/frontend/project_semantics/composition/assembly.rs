@@ -282,11 +282,13 @@ pub(super) fn captured_companions(resolver: &Resolver<'_>) -> Result<CapturedCom
         if resolver.cancel.is_cancelled() {
             return Err(fail(codes::CANCELLED, None));
         }
-        let source = captured
+        let Some(source) = captured
             .vocabularies()
             .iter()
             .find(|v| v.lock().identity() == b.identity.identity())
-            .ok_or_else(|| fail(codes::INCOMPATIBLE_VALUE, None))?;
+        else {
+            return Err(fail(codes::INCOMPATIBLE_VALUE, None));
+        };
         vocabulary_sources.push(ProjectVocabularySource {
             identity: retain(text(b.identity.identity()))?,
             version: retain(text(b.identity.version()))?,
@@ -300,3 +302,7 @@ pub(super) fn captured_companions(resolver: &Resolver<'_>) -> Result<CapturedCom
         vocabulary_sources,
     })
 }
+
+#[cfg(test)]
+#[path = "../../../../tests/project_cache/assembly.rs"]
+mod tests;

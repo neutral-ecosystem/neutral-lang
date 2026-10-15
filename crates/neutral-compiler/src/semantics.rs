@@ -257,13 +257,13 @@ pub(super) fn lower(
         left.element_id()
             .cmp(&right.element_id())
             .then_with(|| left.value_path().cmp(right.value_path()))
-            .then_with(|| left.source_element_id().cmp(&right.source_element_id()))
+            .then(left.source_element_id().cmp(&right.source_element_id()))
     });
     reference_provenance.sort_by(|left, right| {
         left.element_id()
             .cmp(&right.element_id())
             .then_with(|| left.value_path().cmp(right.value_path()))
-            .then_with(|| left.target_element_id().cmp(&right.target_element_id()))
+            .then(left.target_element_id().cmp(&right.target_element_id()))
     });
     let mut logical_document =
         LogicalDocument::with_record_types(module_identity, record_definitions, declarations);
@@ -537,8 +537,12 @@ fn lower_record_definitions(
                 }
             })
             .collect::<Result<Vec<_>, SemanticError>>()?;
-        let fingerprint = DeclarationFingerprint::for_record(&fields)
-            .map_err(|_| SemanticError::semantic(diagnostics::TYPE_MISMATCH, record.body_span))?;
+        let Ok(fingerprint) = DeclarationFingerprint::for_record(&fields) else {
+            return Err(SemanticError::semantic(
+                diagnostics::TYPE_MISMATCH,
+                record.body_span,
+            ));
+        };
         let element_id = element_ids[name];
         definitions.push(RecordTypeDefinition::new(
             element_id,
@@ -630,8 +634,12 @@ fn lower_bindings(
             .remove(name)
             .expect("dependency ordering must lower every collected binding");
         decoded_string_bytes = decoded_string_bytes.saturating_add(decoded_bytes);
-        let fingerprint = DeclarationFingerprint::for_binding(&resolved_type, &value)
-            .map_err(|_| SemanticError::semantic(diagnostics::TYPE_MISMATCH, binding.value_span))?;
+        let Ok(fingerprint) = DeclarationFingerprint::for_binding(&resolved_type, &value) else {
+            return Err(SemanticError::semantic(
+                diagnostics::TYPE_MISMATCH,
+                binding.value_span,
+            ));
+        };
         let element_id = element_ids[name];
         declarations.push(Declaration::new(
             element_id,

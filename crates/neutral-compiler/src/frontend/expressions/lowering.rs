@@ -108,12 +108,14 @@ impl State<'_, '_> {
                     Some(body),
                 )
             } else {
-                let definition = self
+                let Some(definition) = self
                     .resolver
                     .definitions
                     .iter()
                     .find(|d| d.owner == root.owner)
-                    .ok_or_else(|| error(ec::EXP_NAME, Some(root.location)))?;
+                else {
+                    return Err(error(ec::EXP_NAME, Some(root.location)));
+                };
                 (
                     S::Definition(alloc(definition.definition.body.try_clone())?),
                     None,
@@ -248,12 +250,11 @@ impl State<'_, '_> {
             });
             ir.expansion_attributions.dedup_by(|a, b| a == b);
             for d in &ir.declarations {
-                let location = ir
-                    .source_maps
-                    .iter()
-                    .find(|m| m.declaration == d.identity)
-                    .ok_or_else(|| error(ec::EXP_SYNTAX, None))?
-                    .location;
+                let Some(source_map) = ir.source_maps.iter().find(|m| m.declaration == d.identity)
+                else {
+                    return Err(error(ec::EXP_SYNTAX, None));
+                };
+                let location = source_map.location;
                 signature_edges(&d.identity, &d.signature, location, &mut ir.provenance)?;
                 match &d.body {
                     Some(ExpressionBody::Expression(e)) => {
@@ -280,12 +281,14 @@ impl State<'_, '_> {
                 }
             }
             for template in &ir.public_templates {
-                let location = ir
+                let Some(source_map) = ir
                     .source_maps
                     .iter()
                     .find(|m| m.declaration == template.identity)
-                    .ok_or_else(|| error(ec::EXP_SYNTAX, None))?
-                    .location;
+                else {
+                    return Err(error(ec::EXP_SYNTAX, None));
+                };
+                let location = source_map.location;
                 type_edges(
                     &template.identity,
                     &template.result_type,
@@ -335,12 +338,15 @@ impl State<'_, '_> {
             )
             .map_err(|_| error(ec::EXP_LIMIT, None))?;
         ir.resources.declarations = ir.declarations.len() as u64;
-        ir.resources.import_edges = ir
+        let Some(import_edges) = ir
             .modules
             .iter()
             .map(|m| m.imports.len() as u64)
             .try_fold(0_u64, u64::checked_add)
-            .ok_or_else(|| error(ec::EXP_LIMIT, None))?;
+        else {
+            return Err(error(ec::EXP_LIMIT, None));
+        };
+        ir.resources.import_edges = import_edges;
         ir.resources.value_nodes = ir.composition_resources.retained_value_nodes;
         ir.expression_resources =
             derive_expression_resources(&ir, self.semantic_limits(), self.budget.cancel)

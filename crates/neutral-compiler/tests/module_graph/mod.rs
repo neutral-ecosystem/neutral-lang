@@ -145,6 +145,44 @@ fn valid_cycle_and_shuffled_input_are_deterministic() {
 }
 
 #[test]
+/// Module and import spans select the original source bytes bound to their locations.
+fn graph_spans_preserve_source_accounting() {
+    let project = captured(
+        &[
+            ("spans::main", "import spans::shared as shared\n"),
+            ("spans::shared", ""),
+        ],
+        limits(2),
+    );
+    let graph = build_module_graph(&project, &CancellationToken::new())
+        .expect("source-accounted graph must build");
+    let source = &project.sources()[0];
+    let module = &graph.modules()[0];
+    let edge = &graph.edges()[0];
+    assert_eq!(module.source_id(), source.source_id());
+    assert_eq!(edge.source_id(), source.source_id());
+    for (span, location, expected) in [
+        (
+            module.header_span(),
+            module.source_location(),
+            "module spans::main",
+        ),
+        (
+            edge.span(),
+            edge.source_location(),
+            "import spans::shared as shared",
+        ),
+    ] {
+        assert_eq!(location, SourceLocation::new(source.digest(), span));
+        assert_eq!(
+            &source.bytes()
+                [usize::try_from(span.start()).unwrap()..usize::try_from(span.end()).unwrap()],
+            expected.as_bytes()
+        );
+    }
+}
+
+#[test]
 /// A semantic value cycle is still a valid import graph.
 fn semantic_cycle_does_not_invalidate_import_graph() {
     let project = captured(

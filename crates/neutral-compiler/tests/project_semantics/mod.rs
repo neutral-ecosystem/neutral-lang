@@ -16,6 +16,24 @@ use neutral_ir::composition::{ValueOriginKind, ValuePathSegment, project::Compos
 use neutral_vocabulary::{VocabularyLimits, VocabularyLock, composition::CompositionLimits};
 use std::fmt::Write;
 
+/// Lexer failures retain the owning module, captured digest, and original byte span.
+#[test]
+fn root_parser_preserves_lexer_failure_location() {
+    let bytes = b"num answer = \0";
+    let digest = SourceContentDigest::from_bytes(bytes);
+    let Err(failure) = parse_roots("api", digest, bytes) else {
+        panic!("malformed source produced declaration roots");
+    };
+    assert_eq!(failure.diagnostics().len(), 1);
+    let diagnostic = &failure.diagnostics()[0];
+    assert_eq!(diagnostic.code(), diagnostics::INACCESSIBLE_NAME);
+    assert_eq!(diagnostic.module_id(), "api");
+    assert_eq!(
+        diagnostic.source_location(),
+        SourceLocation::new(digest, ByteSpan::new(13, 14).unwrap())
+    );
+}
+
 /// Malformed declarations and contextual shapes fail at the semantic grammar boundary.
 #[test]
 fn malformed_declaration_and_value_matrix_is_rejected() {
@@ -169,6 +187,44 @@ fn semantic_kind_and_composite_type_mismatches_are_rejected() {
     }
 }
 
+/// Exact-number scale bounds apply during lowering even to compact source spellings.
+#[test]
+fn project_lowering_enforces_numeric_scale_bounds_at_original_source() {
+    for spelling in ["1e4096", "1e-4096"] {
+        let (captured, _) = project(&[("api", &format!("public num value = {spelling}"))]);
+        let ir = crate::compile_project(&captured, &CancellationToken::new())
+            .expect("exact scale boundary must compile");
+        let Some(neutral_ir::project::ProjectValue::Number(number)) = &ir.declarations[0].value
+        else {
+            panic!("numeric declaration must retain its exact value");
+        };
+        assert_eq!(number.coefficient(), "1");
+        assert_eq!(
+            number.scale(),
+            if spelling == "1e4096" { 4096 } else { -4096 }
+        );
+    }
+    for spelling in ["1e4097", "1e-4097", "1e9223372036854775808"] {
+        let (captured, _) = project(&[("api", &format!("public num value = {spelling}"))]);
+        let crate::ProjectCompileFailure::Lowering {
+            code,
+            location: Some(location),
+        } = crate::compile_project(&captured, &CancellationToken::new())
+            .expect_err("over-limit exact number must not publish project IR")
+        else {
+            panic!("numeric bound must fail during contextual lowering");
+        };
+        assert_eq!(code, crate::project_lowering_diagnostics::INVALID_VALUE);
+        let source = &captured.sources()[0];
+        assert_eq!(location.source(), source.digest());
+        assert_eq!(
+            &source.bytes()[usize::try_from(location.span().start()).unwrap()
+                ..usize::try_from(location.span().end()).unwrap()],
+            spelling.as_bytes()
+        );
+    }
+}
+
 /// Public semantic accessors retain exact root categories and reference occurrence spans.
 #[test]
 fn semantic_public_facts_cover_record_and_binding_origins() {
@@ -202,7 +258,7 @@ fn semantic_public_facts_cover_record_and_binding_origins() {
 }
 
 /// Captures and graph-validates a small exact source closure.
-fn project(sources: &[(&str, &str)]) -> (CapturedProject, ModuleGraph) {
+pub(super) fn project(sources: &[(&str, &str)]) -> (CapturedProject, ModuleGraph) {
     let limits = ProjectCaptureLimitValues {
         total_source_bytes: 16_384,
         source_bytes_per_unit: 4096,
@@ -541,6 +597,27 @@ fn alias_spelling_does_not_change_nominal_type() {
 }
 
 #[test]
+/// Reused imported types retain their identity through different module aliases.
+fn reused_imported_nominal_type_has_stable_identity() {
+    let (captured, graph) = project(&[
+        (
+            "types::alpha",
+            "public record Shape {\n string label,\n}\npublic Shape item = { label: \"same\", }\n",
+        ),
+        (
+            "types::beta",
+            "import types::alpha as original\npublic original::Shape item = original::item\n",
+        ),
+        (
+            "types::gamma",
+            "import types::alpha as shape\nimport types::beta as reused\nshape::Shape item = reused::item\n",
+        ),
+    ]);
+    analyze_project_semantics(&captured, &graph, &CancellationToken::new())
+        .expect("reused imported type has the same nominal identity");
+}
+
+#[test]
 /// A public value cannot indirectly expose a private identity reference.
 fn private_reference_reachable_through_reuse_is_rejected() {
     assert_eq!(
@@ -616,4 +693,147 @@ fn import_alias_renaming_preserves_dependency_identity() {
     assert_eq!(left.from(), right.from());
     assert_eq!(left.to(), right.to());
     assert_eq!(left.kind(), right.kind());
+}
+
+/// A digest-matched malformed vocabulary fails before source declaration analysis.
+#[test]
+fn invalid_vocabulary_preserves_semantic_failure_location() {
+    let (fixture, _) = project(&[("api", "")]);
+    let bytes = b"{}".to_vec();
+    let lock = VocabularyLock::new(
+        "ExampleDomain",
+        "1.0.0",
+        neutral_vocabulary::PROJECT_VOCABULARY_ENCODING_VERSION,
+        neutral_vocabulary::PROJECT_VOCABULARY_SCHEMA_VERSION,
+        VocabularyContentDigest::from_bytes(&bytes),
+        Vec::new(),
+    )
+    .unwrap();
+    let captured = capture_project(CapturedProjectRequest::new(
+        CAPTURE_REQUEST_VERSION,
+        LanguageProfile::V1_0,
+        vec![CapturedSourceInput::new(
+            "source:api",
+            "api",
+            b"neu \"1.0\"\nmodule api\nuse ExampleDomain as domain\n".to_vec(),
+        )],
+        vec![CapturedVocabularyInput::new(bytes, lock)],
+        ProjectCaptureControls::new(fixture.limits(), CancellationToken::new()),
+    ))
+    .expect("capture checks exact vocabulary integrity before schema validation");
+    let graph = build_module_graph(&captured, &CancellationToken::new()).unwrap();
+    let failure = analyze_project_semantics(&captured, &graph, &CancellationToken::new())
+        .expect_err("invalid exact vocabulary must fail closed");
+    assert_eq!(failure.diagnostics().len(), 1);
+    let diagnostic = &failure.diagnostics()[0];
+    assert_eq!(diagnostic.code(), diagnostics::INVALID_VOCABULARY);
+    assert_eq!(diagnostic.module_id(), "api");
+    assert_eq!(
+        diagnostic.source_location(),
+        SourceLocation::new(captured.sources()[0].digest(), zero_span())
+    );
+}
+
+/// Nullable wrappers count toward the public interface depth bound.
+#[test]
+fn public_interface_depth_overflow_preserves_semantic_failure_location() {
+    let body = format!(
+        "public record Item {{ {}num?{} values, }}",
+        "List<".repeat(MAX_PROJECT_INTERFACE_TYPE_DEPTH),
+        ">".repeat(MAX_PROJECT_INTERFACE_TYPE_DEPTH),
+    );
+    let (captured, graph) = project(&[("api", &body)]);
+    let failure = analyze_project_semantics(&captured, &graph, &CancellationToken::new())
+        .expect_err("public interface cannot publish an over-depth nullable type");
+    assert_eq!(failure.diagnostics().len(), 1);
+    let diagnostic = &failure.diagnostics()[0];
+    assert_eq!(diagnostic.code(), diagnostics::LIMIT_EXCEEDED);
+    assert_eq!(diagnostic.module_id(), "api");
+    assert_eq!(
+        diagnostic.source_location(),
+        SourceLocation::new(captured.sources()[0].digest(), zero_span())
+    );
+}
+
+/// Attribution follows the original bytes through reuse, containers and local defaults.
+#[test]
+fn composition_attribution_preserves_nested_source_spans() {
+    let policy = composition_project_with_default();
+    let source = b"neu \"1.0\"\nmodule example\nrecord Item { num count = 17 }\nvariant Choice { List<Item> ready, string failed }\nChoice? original = { tag: \"ready\", payload: [{ count: 23 }, {}] }\nChoice? copied = original\n";
+    let captured = capture_composition_project(CapturedCompositionProjectRequest::new(
+        CapturedProjectRequest::new(
+            neutral_ir::composition::profile::CAPTURE_REQUEST_VERSION,
+            LanguageProfile::V1_0,
+            vec![CapturedSourceInput::new(
+                "source:example",
+                "example",
+                source.to_vec(),
+            )],
+            Vec::new(),
+            ProjectCaptureControls::new(policy.limits(), CancellationToken::new()),
+        ),
+        neutral_ir::composition::profile::REQUIRED_FEATURES
+            .iter()
+            .map(|feature| (*feature).to_owned())
+            .collect(),
+        policy.composition_limits(),
+    ))
+    .unwrap();
+    let ir = compile_composition_project(&captured, &CancellationToken::new()).unwrap();
+    for (path, kind, expected) in [
+        (
+            vec![ValuePathSegment::Payload],
+            ValueOriginKind::Supplied,
+            "[{ count: 23 }, {}]",
+        ),
+        (
+            vec![
+                ValuePathSegment::Payload,
+                ValuePathSegment::Element(0),
+                ValuePathSegment::Field("count".to_owned()),
+            ],
+            ValueOriginKind::Supplied,
+            "23",
+        ),
+        (
+            vec![
+                ValuePathSegment::Payload,
+                ValuePathSegment::Element(1),
+                ValuePathSegment::Field("count".to_owned()),
+            ],
+            ValueOriginKind::Defaulted,
+            "17",
+        ),
+    ] {
+        let origin = ir
+            .origins
+            .iter()
+            .find(|origin| {
+                origin.binding.declaration_name() == "original"
+                    && origin.path == path
+                    && origin.kind == kind
+            })
+            .expect("nested value retains its origin");
+        let Some(CompositionAttribution::Source(location)) = origin.attribution else {
+            panic!("source value must have a source attribution");
+        };
+        let span = location.span();
+        assert_eq!(
+            &source[span.start() as usize..span.end() as usize],
+            expected.as_bytes()
+        );
+    }
+    let copied = ir
+        .origins
+        .iter()
+        .find(|origin| origin.binding.declaration_name() == "copied" && origin.path.is_empty())
+        .expect("copied value retains its origin");
+    let Some(CompositionAttribution::Source(location)) = copied.attribution else {
+        panic!("copied source value must have source attribution");
+    };
+    let span = location.span();
+    assert_eq!(
+        &source[span.start() as usize..span.end() as usize],
+        b"{ tag: \"ready\", payload: [{ count: 23 }, {}] }"
+    );
 }

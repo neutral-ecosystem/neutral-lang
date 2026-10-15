@@ -4,6 +4,38 @@
 
 use super::*;
 
+/// Diagnostic accounting preserves the first failure and rejects both limit and counter overflow.
+#[test]
+fn security_successor_graph_diagnostic_count_boundaries_are_exact() {
+    let mut first = None;
+    let mut count = 0;
+    record_error(&mut first, &mut count, 2, fail(codes::INVALID_SOURCE, None)).unwrap();
+    record_error(&mut first, &mut count, 2, fail(codes::LIMIT, None)).unwrap();
+    assert_eq!(count, 2);
+    assert_eq!(first.as_ref().unwrap().code, codes::INVALID_SOURCE);
+    assert_eq!(
+        record_error(&mut first, &mut count, 2, fail(codes::INVALID_SOURCE, None))
+            .unwrap_err()
+            .code,
+        codes::LIMIT
+    );
+    assert_eq!(count, 3);
+    count = u64::MAX;
+    assert_eq!(
+        record_error(
+            &mut first,
+            &mut count,
+            u64::MAX,
+            fail(codes::INVALID_SOURCE, None),
+        )
+        .unwrap_err()
+        .code,
+        codes::LIMIT
+    );
+    assert_eq!(count, u64::MAX);
+    assert_eq!(first.unwrap().code, codes::INVALID_SOURCE);
+}
+
 /// A valid source cycle accepts its exact SCC size, but one-over never publishes topology.
 #[test]
 fn security_successor_graph_scc_size_boundary_is_exact() {

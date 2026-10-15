@@ -399,6 +399,10 @@ fn analyze_project_semantics_with_parser(
     cancellation: &CancellationToken,
     parse: &mut impl FnMut(&crate::CapturedProjectSource) -> Result<Vec<Root>, ProjectSemanticFailure>,
 ) -> Result<ResolvedProject, ProjectSemanticFailure> {
+    let (first_module_id, first_digest) = match captured.sources().first() {
+        Some(source) => (source.module_id(), source.digest()),
+        None => ("", SourceContentDigest::from_bytes(&[])),
+    };
     if graph.modules().len() != captured.sources().len()
         || graph
             .modules()
@@ -409,38 +413,26 @@ fn analyze_project_semantics_with_parser(
                     || module.source_location().source() != source.digest()
             })
     {
-        let source = captured.sources().first();
         return Err(single(diagnostic(
             diagnostics::GRAPH_MISMATCH,
-            source.map_or("", |source| source.module_id()),
-            source.map_or_else(
-                || SourceContentDigest::from_bytes(&[]),
-                crate::CapturedProjectSource::digest,
-            ),
+            first_module_id,
+            first_digest,
             zero_span(),
         )));
     }
     if cancellation.is_cancelled() {
-        let source = captured.sources().first();
         return Err(single(diagnostic(
             diagnostics::CANCELLED,
-            source.map_or("", |source| source.module_id()),
-            source.map_or_else(
-                || SourceContentDigest::from_bytes(&[]),
-                crate::CapturedProjectSource::digest,
-            ),
+            first_module_id,
+            first_digest,
             zero_span(),
         )));
     }
     let vocabularies = validate_project_vocabularies(captured).map_err(|_| {
-        let source = captured.sources().first();
         single(diagnostic(
             diagnostics::INVALID_VOCABULARY,
-            source.map_or("", |source| source.module_id()),
-            source.map_or_else(
-                || SourceContentDigest::from_bytes(&[]),
-                crate::CapturedProjectSource::digest,
-            ),
+            first_module_id,
+            first_digest,
             zero_span(),
         ))
     })?;
@@ -573,14 +565,10 @@ fn analyze_project_semantics_with_parser(
     let value_order = dependency_first_values(&roots, &edges);
     let public_interface = build_public_interface(&roots, &modules, &vocabularies, &edges)
         .map_err(|_| {
-            let source = captured.sources().first();
             single(diagnostic(
                 diagnostics::LIMIT_EXCEEDED,
-                source.map_or("", |source| source.module_id()),
-                source.map_or_else(
-                    || SourceContentDigest::from_bytes(&[]),
-                    crate::CapturedProjectSource::digest,
-                ),
+                first_module_id,
+                first_digest,
                 zero_span(),
             ))
         })?;

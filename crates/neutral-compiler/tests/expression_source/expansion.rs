@@ -564,3 +564,58 @@ fn matrix_exclusions_reject_deferred_tuple_members() {
         [] as [neutral_ir::expression::project::ExpressionDeclaration; 0]
     );
 }
+
+/// Ordered defaults and conditional static arguments retain their original argument locations.
+#[test]
+fn nested_conditional_defaults_preserve_values_and_argument_spans() {
+    let body = "template Inner(static num value) -> num { value }\npublic template Outer(static bool enabled, static num base = 3, static num result = instantiate Inner(value: if enabled { base } else { 0 })) -> num { result }\nnum answer = instantiate Outer(enabled: true, base: 4 + 1)";
+    let ir = compile(body).expect("static conditionals and preceding defaults should resolve");
+    assert_eq!(value(&ir, "answer"), &number("5"));
+    let attribution = ir
+        .expansion_attributions
+        .iter()
+        .find(|attribution| attribution.arguments.len() == 3)
+        .unwrap();
+    let source = format!("neu \"1.0\"\nmodule example::expressions\n{body}\n");
+    for (location, spelling) in attribution.arguments.iter().zip(["true", "4 + 1"]) {
+        assert_eq!(
+            &source[location.span().start() as usize..location.span().end() as usize],
+            spelling
+        );
+    }
+    assert_eq!(
+        compile("template Inner(static num value) -> num { value }\ntemplate Outer(static bool enabled, deferred num value) -> num { instantiate Inner(value: if enabled { value } else { 0 }) }")
+            .unwrap_err()
+            .code,
+        "NEU-TPL-004"
+    );
+}
+
+/// Full matrix products and template nesting obey limits before producing partial results.
+#[test]
+fn matrix_product_and_template_depth_limits_reject_at_the_boundary() {
+    for (body, expansion) in [
+        (
+            "template Item(static num value) -> num { value }\nexpand items = Item(value: left + right) for (left in [1, 2], right in [3, 4]) where false",
+            ExpansionLimits {
+                product_tuples: 3,
+                ..ExpansionLimits::hard()
+            },
+        ),
+        (
+            "template Inner() -> num { 1 }\ntemplate Outer() -> num { instantiate Inner() }\nnum answer = instantiate Outer()",
+            ExpansionLimits {
+                depth: 1,
+                ..ExpansionLimits::hard()
+            },
+        ),
+    ] {
+        assert_eq!(
+            bounded(body, ExpressionLimits::hard(), expansion)
+                .unwrap_err()
+                .code,
+            "NEU-TPL-008",
+            "{body}"
+        );
+    }
+}

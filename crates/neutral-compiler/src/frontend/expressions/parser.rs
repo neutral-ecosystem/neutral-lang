@@ -196,7 +196,7 @@ pub(super) fn lex<'a>(
             }
         }
         let span = ByteSpan::new((start + offset) as u64, (i + offset) as u64)
-            .map_err(|_| error(ec::EXP_LIMIT, None))?;
+            .or(Err(error(ec::EXP_LIMIT, None)))?;
         state.retain::<Lex<'_>>(1)?;
         grow(&mut result, 1)?;
         result.push(Lex {
@@ -299,21 +299,17 @@ pub(super) fn ty(tokens: &[Lex<'_>], source: &[u8]) -> Result<TypeExpr, E> {
     let Some(first) = tokens.first() else {
         return Err(error(ec::EXP_SYNTAX, None));
     };
-    let end = tokens
-        .last()
-        .ok_or_else(|| error(ec::EXP_SYNTAX, None))?
-        .span
-        .end();
+    let end = tokens.last().ok_or(error(ec::EXP_SYNTAX, None))?.span.end();
     let start = first.span.start();
-    let range = usize::try_from(start).map_err(|_| error(ec::EXP_LIMIT, None))?
-        ..usize::try_from(end).map_err(|_| error(ec::EXP_LIMIT, None))?;
+    let range = usize::try_from(start).or(Err(error(ec::EXP_LIMIT, None)))?
+        ..usize::try_from(end).or(Err(error(ec::EXP_LIMIT, None)))?;
     let mut tokens = lexer::lex_bounded(&source[range], usize::MAX, None)
         .map_err(|_| error(ec::EXP_SYNTAX, None))?
         .tokens;
     tokens.retain(|t| !matches!(t.kind, TokenKind::EndOfFile | TokenKind::PhysicalLineEnd(_)));
     for token in &mut tokens {
         token.span = ByteSpan::new(token.span.start() + start, token.span.end() + start)
-            .map_err(|_| error(ec::EXP_LIMIT, None))?;
+            .or(Err(error(ec::EXP_LIMIT, None)))?;
     }
     alloc(parse_complete_type_fallible(&tokens))?.ok_or_else(|| error(ec::EXP_SYNTAX, None))
 }
@@ -489,13 +485,9 @@ fn declaration<'a>(
         source.digest(),
         ByteSpan::new(
             tokens[0].span.start(),
-            tokens
-                .last()
-                .ok_or_else(|| error(ec::EXP_SYNTAX, None))?
-                .span
-                .end(),
+            tokens.last().ok_or(error(ec::EXP_SYNTAX, None))?.span.end(),
         )
-        .map_err(|_| error(ec::EXP_LIMIT, None))?,
+        .or(Err(error(ec::EXP_LIMIT, None)))?,
     );
     if matches!(
         tokens.get(start).map(|t| t.spelling),
@@ -503,9 +495,9 @@ fn declaration<'a>(
     ) {
         let mut old = lexer::lex_bounded(
             &source.bytes()[usize::try_from(location.span().start())
-                .map_err(|_| error(ec::EXP_LIMIT, Some(location)))?
+                .or(Err(error(ec::EXP_LIMIT, Some(location))))?
                 ..usize::try_from(location.span().end())
-                    .map_err(|_| error(ec::EXP_LIMIT, Some(location)))?],
+                    .or(Err(error(ec::EXP_LIMIT, Some(location))))?],
             usize::try_from(state.budget.expression.retained_bytes).unwrap_or(usize::MAX),
             Some(state.budget.cancel),
         )
@@ -517,7 +509,7 @@ fn declaration<'a>(
                 t.span.start() + location.span().start(),
                 t.span.end() + location.span().start(),
             )
-            .map_err(|_| error(ec::EXP_LIMIT, Some(location)))?;
+            .or(Err(error(ec::EXP_LIMIT, Some(location))))?;
         }
         let root = super::super::syntax::parse_declaration(
             source,
@@ -639,11 +631,11 @@ fn template<'a>(
                     member[0].span.start(),
                     member
                         .last()
-                        .ok_or_else(|| error(ec::TPL_SYNTAX, Some(location)))?
+                        .ok_or(error(ec::TPL_SYNTAX, Some(location)))?
                         .span
                         .end(),
                 )
-                .map_err(|_| error(ec::TPL_LIMIT, Some(location)))?,
+                .or(Err(error(ec::TPL_LIMIT, Some(location))))?,
             ),
         });
     }
@@ -768,3 +760,7 @@ fn matrix<'a>(
 fn name_fn(tokens: &[Lex<'_>], cursor: &mut usize) -> Result<(), E> {
     name(tokens, cursor).map(|_| ())
 }
+
+#[cfg(test)]
+#[path = "../../../tests/expression_source/parser.rs"]
+mod tests;

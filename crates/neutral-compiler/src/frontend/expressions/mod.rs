@@ -125,10 +125,10 @@ impl Budget<'_> {
         if self.cancel.is_cancelled() {
             return Err(error(ec::EXP_CANCELLED, None));
         }
-        self.work = self
-            .work
-            .checked_add(count)
-            .ok_or_else(|| error(ec::EXP_LIMIT, None))?;
+        let Some(work) = self.work.checked_add(count) else {
+            return Err(error(ec::EXP_LIMIT, None));
+        };
+        self.work = work;
         if self.work > self.expression.work {
             return Err(error(ec::EXP_LIMIT, None));
         }
@@ -136,15 +136,14 @@ impl Budget<'_> {
     }
     /// Charges retained storage independently from decoded result output bytes.
     fn bytes(&mut self, count: u64) -> Result<(), E> {
-        self.charge(
-            count
-                .checked_add(1)
-                .ok_or_else(|| error(ec::EXP_LIMIT, None))?,
-        )?;
-        self.bytes = self
-            .bytes
-            .checked_add(count)
-            .ok_or_else(|| error(ec::EXP_LIMIT, None))?;
+        let Some(work) = count.checked_add(1) else {
+            return Err(error(ec::EXP_LIMIT, None));
+        };
+        self.charge(work)?;
+        let Some(bytes) = self.bytes.checked_add(count) else {
+            return Err(error(ec::EXP_LIMIT, None));
+        };
+        self.bytes = bytes;
         if self.bytes > self.expression.retained_bytes {
             return Err(error(ec::EXP_LIMIT, None));
         }
@@ -152,19 +151,18 @@ impl Budget<'_> {
     }
     /// Checks model byte multiplication before reserving typed storage.
     fn retain<T>(&mut self, count: usize) -> Result<(), E> {
-        self.bytes(
-            (std::mem::size_of::<T>() as u64)
-                .checked_mul(count as u64)
-                .ok_or_else(|| error(ec::EXP_LIMIT, None))?,
-        )
+        let Some(bytes) = (std::mem::size_of::<T>() as u64).checked_mul(count as u64) else {
+            return Err(error(ec::EXP_LIMIT, None));
+        };
+        self.bytes(bytes)
     }
     /// Checks complete source tree occurrences before recursive descent.
     fn node(&mut self, depth: u64) -> Result<(), E> {
         self.charge(1)?;
-        self.nodes = self
-            .nodes
-            .checked_add(1)
-            .ok_or_else(|| error(ec::EXP_LIMIT, None))?;
+        let Some(nodes) = self.nodes.checked_add(1) else {
+            return Err(error(ec::EXP_LIMIT, None));
+        };
+        self.nodes = nodes;
         if self.nodes > self.expression.nodes || depth > self.expression.syntax_depth {
             return Err(error(ec::EXP_LIMIT, None));
         }
@@ -173,14 +171,14 @@ impl Budget<'_> {
     /// Charges finite expansion work and retention without borrowing expression counters.
     fn expansion(&mut self, work: u64, bytes: u64) -> Result<(), E> {
         self.charge(work)?;
-        self.expansion_work = self
-            .expansion_work
-            .checked_add(work)
-            .ok_or_else(|| error(ec::TPL_LIMIT, None))?;
-        self.expansion_bytes = self
-            .expansion_bytes
-            .checked_add(bytes)
-            .ok_or_else(|| error(ec::TPL_LIMIT, None))?;
+        let Some(expansion_work) = self.expansion_work.checked_add(work) else {
+            return Err(error(ec::TPL_LIMIT, None));
+        };
+        self.expansion_work = expansion_work;
+        let Some(expansion_bytes) = self.expansion_bytes.checked_add(bytes) else {
+            return Err(error(ec::TPL_LIMIT, None));
+        };
+        self.expansion_bytes = expansion_bytes;
         if self.expansion_work > self.expansion.work
             || self.expansion_bytes > self.expansion.retained_bytes
         {

@@ -307,14 +307,9 @@ impl<'a> State<'a, '_> {
     }
     /// Gives literals their exact contextual nullable type when explicitly expected.
     fn literal(ty: T, value: V, expected: Option<&T>, root: &Root) -> Result<Expression, E> {
-        let ty = if expected.is_some_and(|t| matches!(t,T::Nullable(inner) if **inner==ty)) {
-            alloc(
-                expected
-                    .ok_or_else(|| error(ec::EXP_TYPE, Some(root.location)))?
-                    .try_clone(),
-            )?
-        } else {
-            ty
+        let ty = match expected {
+            Some(context @ T::Nullable(inner)) if **inner == ty => alloc(context.try_clone())?,
+            _ => ty,
         };
         Self::checked(
             Expression {
@@ -494,10 +489,10 @@ impl<'a> State<'a, '_> {
         let mut arms = Vec::new();
         let mut result = expected.map(|t| alloc(t.try_clone())).transpose()?;
         for member in parser::split(members)? {
-            let tag = member
-                .first()
-                .ok_or_else(|| error(ec::EXP_MATCH, Some(root.location)))?
-                .spelling;
+            let Some(first) = member.first() else {
+                return Err(error(ec::EXP_MATCH, Some(root.location)));
+            };
+            let tag = first.spelling;
             let alternative = alternatives
                 .iter()
                 .find(|a| a.tag == tag)
@@ -539,8 +534,11 @@ impl<'a> State<'a, '_> {
             return Err(error(ec::EXP_MATCH, Some(root.location)));
         }
         arms.sort_unstable_by(|a, b| a.tag.cmp(&b.tag));
+        let Some(ty) = result else {
+            return Err(error(ec::EXP_MATCH, Some(root.location)));
+        };
         Ok(Expression {
-            ty: result.ok_or_else(|| error(ec::EXP_MATCH, Some(root.location)))?,
+            ty,
             node: N::Match {
                 scrutinee: alloc(boxed(scrutinee))?,
                 arms,
@@ -582,14 +580,9 @@ impl<'a> State<'a, '_> {
         let ty = T::List(alloc(boxed(
             element.ok_or_else(|| error(ec::EXP_TYPE, Some(root.location)))?,
         ))?);
-        let ty = if expected.is_some_and(|t| matches!(t,T::Nullable(inner) if **inner==ty)) {
-            alloc(
-                expected
-                    .ok_or_else(|| error(ec::EXP_TYPE, Some(root.location)))?
-                    .try_clone(),
-            )?
-        } else {
-            ty
+        let ty = match expected {
+            Some(context @ T::Nullable(inner)) if **inner == ty => alloc(context.try_clone())?,
+            _ => ty,
         };
         Self::checked(
             Expression {
@@ -686,15 +679,15 @@ impl<'a> State<'a, '_> {
                                 return Err(error(ec::EXP_TYPE, Some(root.location)));
                             }
                             FieldPresence::Optional => None,
-                            FieldPresence::Defaulted => Some(Expression {
-                                ty: alloc(field.ty.try_clone())?,
-                                node: N::Value(closed_binding(
-                                    field
-                                        .default
-                                        .as_ref()
-                                        .ok_or_else(|| error(ec::EXP_TYPE, Some(root.location)))?,
-                                )?),
-                            }),
+                            FieldPresence::Defaulted => {
+                                let Some(default) = field.default.as_ref() else {
+                                    return Err(error(ec::EXP_TYPE, Some(root.location)));
+                                };
+                                Some(Expression {
+                                    ty: alloc(field.ty.try_clone())?,
+                                    node: N::Value(closed_binding(default)?),
+                                })
+                            }
                         }
                     };
                     values.push((field.name, value));
@@ -749,12 +742,14 @@ impl<'a> State<'a, '_> {
     ) -> Result<Expression, E> {
         let mut cursor = 1;
         let type_tokens = parser::group(tokens, &mut cursor, "<", ">")?;
-        let source = self
+        let Some(source) = self
             .captured
             .sources()
             .iter()
             .find(|s| s.digest() == root.location.source())
-            .ok_or_else(|| error(ec::EXP_NAME, Some(root.location)))?;
+        else {
+            return Err(error(ec::EXP_NAME, Some(root.location)));
+        };
         let syntax = parser::ty(type_tokens, source.bytes())?;
         let ty = self.resolver.ty(root, &syntax).map_err(composition_error)?;
         let args = parser::split(parser::group(tokens, &mut cursor, "(", ")")?)?;
@@ -824,16 +819,10 @@ impl<'a> State<'a, '_> {
                     }
                 }
             }
-            let segment = match kind.as_deref() {
-                Some("field") if index.is_none() => SelectorSegment::Field(
-                    name.ok_or_else(|| error(ec::EXP_RESTRICTION, Some(root.location)))?,
-                ),
-                Some("alternative") if index.is_none() => SelectorSegment::Alternative(
-                    name.ok_or_else(|| error(ec::EXP_RESTRICTION, Some(root.location)))?,
-                ),
-                Some("index") if name.is_none() => SelectorSegment::Index(
-                    index.ok_or_else(|| error(ec::EXP_RESTRICTION, Some(root.location)))?,
-                ),
+            let segment = match (kind.as_deref(), name, index) {
+                (Some("field"), Some(name), None) => SelectorSegment::Field(name),
+                (Some("alternative"), Some(name), None) => SelectorSegment::Alternative(name),
+                (Some("index"), None, Some(index)) => SelectorSegment::Index(index),
                 _ => {
                     return Err(error(ec::EXP_RESTRICTION, Some(root.location)));
                 }
@@ -892,14 +881,13 @@ impl<'a> State<'a, '_> {
                     });
                 }
                 let end = parser::interpolation_end(raw, i + 2, &mut self.budget)?;
-                let inner = parser::lex(
-                    &bytes[i + 2..end],
-                    usize::try_from(tokens[0].span.start())
-                        .map_err(|_| error(ec::EXP_LIMIT, Some(root.location)))?
-                        .checked_add(i + 2)
-                        .ok_or_else(|| error(ec::EXP_LIMIT, Some(root.location)))?,
-                    &mut self.budget,
-                )?;
+                let Ok(offset) = usize::try_from(tokens[0].span.start()) else {
+                    return Err(error(ec::EXP_LIMIT, Some(root.location)));
+                };
+                let Some(offset) = offset.checked_add(i + 2) else {
+                    return Err(error(ec::EXP_LIMIT, Some(root.location)));
+                };
+                let inner = parser::lex(&bytes[i + 2..end], offset, &mut self.budget)?;
                 let expression =
                     self.expression(root, &inner, Some(&T::String), frames, depth + 1)?;
                 grow(&mut items, 1)?;
@@ -1022,10 +1010,9 @@ fn interpolation_text(raw: &str, budget: &mut Budget<'_>) -> Result<String, E> {
             literal.push_str("${");
             i += 3;
         } else {
-            let c = raw[i..]
-                .chars()
-                .next()
-                .ok_or_else(|| error(ec::EXP_SYNTAX, None))?;
+            let Some(c) = raw[i..].chars().next() else {
+                return Err(error(ec::EXP_SYNTAX, None));
+            };
             literal.push(c);
             i += c.len_utf8();
         }
@@ -1068,3 +1055,7 @@ pub(super) fn closed_binding(value: &ClosedValue) -> Result<V, E> {
         ClosedValue::Reference(never) => match *never {},
     })
 }
+
+#[cfg(test)]
+#[path = "../../../tests/expression_source/resolution.rs"]
+mod tests;

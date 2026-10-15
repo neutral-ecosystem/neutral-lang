@@ -107,12 +107,71 @@ fn lexer_retains_nonsemantic_trivia_without_parser_tokens() {
 #[test]
 /// Verifies a multiline block comment still exposes raw physical newlines.
 fn lexer_retains_physical_newlines_inside_block_comments() {
-    let source = lexer::lex(b"/* first\r\nsecond */")
+    let source = lexer::lex(b"/* first\nsecond\rthird\r\nfourth */")
         .expect("terminated multiline block comment should lex");
-    assert!(source.tokens.iter().any(|token| matches!(
-        token.kind,
-        TokenKind::PhysicalLineEnd(PhysicalLineEnd::CarriageReturnLineFeed)
-    )));
+    let line_ends = source
+        .tokens
+        .iter()
+        .filter_map(|token| match token.kind {
+            TokenKind::PhysicalLineEnd(kind) => Some(kind),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        line_ends,
+        [
+            PhysicalLineEnd::LineFeed,
+            PhysicalLineEnd::CarriageReturn,
+            PhysicalLineEnd::CarriageReturnLineFeed,
+        ]
+    );
+}
+
+#[test]
+/// Lexer reservation failures inside comments and token retention remain bounded errors.
+fn security_lexer_comment_retention_fails_closed_at_each_reservation() {
+    use neutral_core::allocation::testing::observe;
+
+    let (baseline, checkpoints) = observe(None, || lexer::lex_bounded(b"/*\n*/", 64, None));
+    assert!(baseline.is_ok());
+    for index in 0..checkpoints {
+        let (result, observed) = observe(Some(index), || lexer::lex_bounded(b"/*\n*/", 64, None));
+        let error = result.expect_err("injected lexer reservation failure should reject input");
+        assert_eq!(error.kind, FrontendErrorKind::RecordLimitExceeded);
+        assert_eq!(observed, index + 1);
+    }
+}
+
+#[test]
+/// Invalid Unicode scalar escapes are rejected after their exact hexadecimal parse.
+fn lexer_rejects_non_scalar_unicode_escape() {
+    let error = lexer::lex(br#""\u{D800}""#).expect_err("surrogate is not a Unicode scalar");
+    assert_eq!(error.kind, FrontendErrorKind::InvalidStringLiteral);
+}
+
+#[test]
+/// Unicode escape scanning accepts scalar endpoints and rejects non-ASCII hex lookalikes.
+fn lexer_checks_unicode_escape_digit_and_scalar_boundaries() {
+    for (source, expected) in [
+        (br#""\u{0}""#.as_slice(), '\0'),
+        (br#""\u{10FFFF}""#, '\u{10FFFF}'),
+    ] {
+        let lexed = lexer::lex(source).expect("Unicode scalar endpoint should lex");
+        let TokenKind::StringLiteral(value) = &lexed.tokens[0].kind else {
+            panic!("escape should produce one string literal");
+        };
+        assert_eq!(value.value, expected.to_string());
+        assert!(value.had_escape);
+    }
+    for source in [
+        r#""\u{Ｆ}""#,
+        r#""\u{1é}""#,
+        r#""\u{110000}""#,
+        r#""\u{0000000}""#,
+    ] {
+        let error = lexer::lex(source.as_bytes()).expect_err("invalid escape should fail");
+        assert_eq!(error.kind, FrontendErrorKind::InvalidStringLiteral);
+    }
 }
 
 #[test]
@@ -153,6 +212,29 @@ fn layout_tracks_open_and_close_delimiter_depth() {
                 .count(),
             1
         );
+    }
+}
+
+#[test]
+/// Layout rejects unmatched closers and raw token streams that omit their EOF sentinel.
+fn layout_rejects_unmatched_closers_and_missing_eof() {
+    let error = layout::normalize(lexer::lex(b"}").expect("closer should lex"))
+        .expect_err("unmatched closer should fail");
+    assert_eq!(error.kind, FrontendErrorKind::MalformedBoundary);
+
+    for tokens in [
+        vec![super::Token {
+            kind: TokenKind::Num,
+            span: super::span(0, 3),
+        }],
+        Vec::new(),
+    ] {
+        let error = layout::normalize(super::LexedSource {
+            tokens,
+            trivia: Vec::new(),
+        })
+        .expect_err("normalized input must end with an EOF token");
+        assert_eq!(error.kind, FrontendErrorKind::Other);
     }
 }
 

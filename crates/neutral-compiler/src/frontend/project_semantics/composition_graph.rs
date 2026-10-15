@@ -126,7 +126,7 @@ fn scan(
             Ok(syntax) => {
                 edge_count = edge_count
                     .checked_add(syntax.imports.len() as u64)
-                    .ok_or_else(|| fail(codes::LIMIT, None))?;
+                    .ok_or(fail(codes::LIMIT, None))?;
                 if edge_count > limits.import_edges {
                     record_error(
                         &mut first,
@@ -263,7 +263,7 @@ fn imports(
                 target: retain(text(&import.target))?,
                 alias: retain(text(&import.alias))?,
             });
-            positions.push((from, to.map_err(|_| fail(codes::INVALID_SOURCE, location))?));
+            positions.push((from, to.or(Err(fail(codes::INVALID_SOURCE, location)))?));
         }
     }
     if let Some(error) = first {

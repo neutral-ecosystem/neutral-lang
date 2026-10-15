@@ -21,12 +21,16 @@ impl Resolver<'_> {
     /// Retains bounded syntax for mutable semantic traversal without infallible deep copies.
     pub(super) fn retained_roots(&mut self) -> Result<Vec<Root>, E> {
         let work = self.roots.values().try_fold(0_u64, |sum, root| {
-            sum.checked_add(root.tokens.len() as u64)
+            let Some(work) = sum
+                .checked_add(root.tokens.len() as u64)
                 .and_then(|sum| {
                     sum.checked_add(root.location.span().end() - root.location.span().start())
                 })
                 .and_then(|sum| sum.checked_add(symbol_work(&root.owner) + 1))
-                .ok_or_else(|| fail(codes::LIMIT, Some(root.location)))
+            else {
+                return Err(fail(codes::LIMIT, Some(root.location)));
+            };
+            Ok(work)
         })?;
         self.step(work, None)?;
         let mut roots = Vec::new();
@@ -110,7 +114,7 @@ impl Resolver<'_> {
                     else {
                         return Err(fail(codes::INVALID_SOURCE, Some(root.location)));
                     };
-                    let ty = self
+                    let Some(ty) = self
                         .definitions
                         .iter()
                         .find(|d| d.owner == root.owner)
@@ -118,7 +122,9 @@ impl Resolver<'_> {
                             B::Record(fs) => fs.iter().find(|f| f.name == *name).map(|f| &f.ty),
                             B::Variant(_) => None,
                         })
-                        .ok_or_else(|| fail(codes::INVALID_SOURCE, Some(root.location)))?;
+                    else {
+                        return Err(fail(codes::INVALID_SOURCE, Some(root.location)));
+                    };
                     let ty = retain(ty.try_clone())?;
                     let value = self.value(root, &ty, &member[eq + 1..], true, 0)?;
                     reserve(&mut defaults, 1)?;
@@ -131,18 +137,15 @@ impl Resolver<'_> {
             }
         }
         for (owner, name, value) in defaults {
-            let d = self
-                .definitions
-                .iter_mut()
-                .find(|d| d.owner == owner)
-                .ok_or_else(|| fail(codes::INVALID_SOURCE, None))?;
+            let Some(d) = self.definitions.iter_mut().find(|d| d.owner == owner) else {
+                return Err(fail(codes::INVALID_SOURCE, None));
+            };
             let B::Record(fields) = &mut d.definition.body else {
                 return Err(fail(codes::INVALID_SOURCE, None));
             };
-            let f = fields
-                .iter_mut()
-                .find(|f| f.name == name)
-                .ok_or_else(|| fail(codes::INVALID_SOURCE, None))?;
+            let Some(f) = fields.iter_mut().find(|f| f.name == name) else {
+                return Err(fail(codes::INVALID_SOURCE, None));
+            };
             f.presence = FieldPresence::Defaulted;
             f.default = Some(value);
         }
@@ -283,10 +286,10 @@ impl Resolver<'_> {
         if work > remaining {
             return Err(fail(codes::LIMIT, None));
         }
-        self.work = self
-            .work
-            .checked_add(work)
-            .ok_or_else(|| fail(codes::LIMIT, None))?;
+        let Some(work) = self.work.checked_add(work) else {
+            return Err(fail(codes::LIMIT, None));
+        };
+        self.work = work;
         let copied = retain(body.try_clone())?;
         self.step(1, None)?;
         Ok(copied)
@@ -657,9 +660,10 @@ fn value_clone_work<R>(
                     .map_err(|_| fail(codes::LIMIT, None))?;
                 let mut bytes = 0_u64;
                 for (name, value) in fields {
-                    bytes = bytes
-                        .checked_add(name.len() as u64 + 1)
-                        .ok_or_else(|| fail(codes::LIMIT, None))?;
+                    let Some(next) = bytes.checked_add(name.len() as u64 + 1) else {
+                        return Err(fail(codes::LIMIT, None));
+                    };
+                    bytes = next;
                     if let Some(value) = value {
                         stack.push(value);
                     }
@@ -673,10 +677,10 @@ fn value_clone_work<R>(
             }
             CompositionValue::Null | CompositionValue::Bool(_) => 0,
         };
-        work = work
-            .checked_add(extra)
-            .and_then(|n| n.checked_add(1))
-            .ok_or_else(|| fail(codes::LIMIT, None))?;
+        let Some(next) = work.checked_add(extra).and_then(|n| n.checked_add(1)) else {
+            return Err(fail(codes::LIMIT, None));
+        };
+        work = next;
         if work > profile::MAX_ITEMS {
             return Err(fail(codes::LIMIT, None));
         }
@@ -710,35 +714,43 @@ fn body_clone_work(body: &B, cancel: &CancellationToken) -> Result<u64, E> {
     match body {
         B::Record(fields) => {
             for field in fields {
-                work = work
-                    .checked_add(field.name.len() as u64 + type_clone_work(&field.ty) + 1)
-                    .ok_or_else(|| fail(codes::LIMIT, None))?;
+                let Some(next) =
+                    work.checked_add(field.name.len() as u64 + type_clone_work(&field.ty) + 1)
+                else {
+                    return Err(fail(codes::LIMIT, None));
+                };
+                work = next;
                 for value in field
                     .default
                     .iter()
                     .chain(field.restrictions.choices.iter().flatten())
                 {
-                    work = work
-                        .checked_add(value_clone_work(value, cancel, |never| match *never {})?)
-                        .ok_or_else(|| fail(codes::LIMIT, None))?;
+                    let Some(next) =
+                        work.checked_add(value_clone_work(value, cancel, |never| match *never {})?)
+                    else {
+                        return Err(fail(codes::LIMIT, None));
+                    };
+                    work = next;
                 }
                 for bound in [&field.restrictions.minimum, &field.restrictions.maximum]
                     .into_iter()
                     .flatten()
                 {
-                    work = work
-                        .checked_add(bound.coefficient().len() as u64)
-                        .ok_or_else(|| fail(codes::LIMIT, None))?;
+                    let Some(next) = work.checked_add(bound.coefficient().len() as u64) else {
+                        return Err(fail(codes::LIMIT, None));
+                    };
+                    work = next;
                 }
             }
         }
         B::Variant(alternatives) => {
             for alternative in alternatives {
-                work = work
-                    .checked_add(
-                        alternative.tag.len() as u64 + type_clone_work(&alternative.ty) + 1,
-                    )
-                    .ok_or_else(|| fail(codes::LIMIT, None))?;
+                let Some(next) = work.checked_add(
+                    alternative.tag.len() as u64 + type_clone_work(&alternative.ty) + 1,
+                ) else {
+                    return Err(fail(codes::LIMIT, None));
+                };
+                work = next;
             }
         }
     }
@@ -807,3 +819,7 @@ pub(super) fn type_edges(
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "../../../../tests/project_cache/composition_resolver.rs"]
+mod tests;

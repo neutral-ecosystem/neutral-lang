@@ -35,8 +35,9 @@ fn location(root: &Root, tokens: &[Token]) -> Result<Option<A>, E> {
     let (Some(first), Some(last)) = (tokens.first(), tokens.last()) else {
         return Ok(None);
     };
-    let span = ByteSpan::new(first.span.start(), last.span.end())
-        .map_err(|_| fail(codes::INVALID_SOURCE, Some(root.location)))?;
+    let Ok(span) = ByteSpan::new(first.span.start(), last.span.end()) else {
+        return Err(fail(codes::INVALID_SOURCE, Some(root.location)));
+    };
     Ok(Some(A::Source(SourceLocation::new(
         root.location.source(),
         span,
@@ -50,10 +51,10 @@ fn member<'a>(tokens: &'a [Token], name: &str) -> Result<Option<&'a [Token]>, E>
     }
     for part in split(&tokens[1..tokens.len() - 1])? {
         if matches!(part.first().map(|t| &t.kind), Some(TokenKind::Identifier(n)) if n == name) {
-            return part
-                .get(2..)
-                .map(Some)
-                .ok_or_else(|| fail(codes::INVALID_SOURCE, None));
+            let Some(value) = part.get(2..) else {
+                return Err(fail(codes::INVALID_SOURCE, None));
+            };
+            return Ok(Some(value));
         }
     }
     Ok(None)
@@ -94,22 +95,22 @@ fn trace(
             let T::List(inner) = ty else {
                 return Err(fail(codes::INCOMPATIBLE_VALUE, Some(root.location)));
             };
-            let interior = tokens
-                .get(1..tokens.len().saturating_sub(1))
-                .ok_or_else(|| fail(codes::INVALID_SOURCE, Some(root.location)))?;
+            let Some(interior) = tokens.get(1..tokens.len().saturating_sub(1)) else {
+                return Err(fail(codes::INVALID_SOURCE, Some(root.location)));
+            };
             let items = split(interior)?;
-            let item = usize::try_from(*index)
-                .ok()
-                .and_then(|i| items.get(i))
-                .ok_or_else(|| fail(codes::INCOMPATIBLE_VALUE, Some(root.location)))?;
+            let Some(item) = usize::try_from(*index).ok().and_then(|i| items.get(i)) else {
+                return Err(fail(codes::INCOMPATIBLE_VALUE, Some(root.location)));
+            };
             trace(resolver, root, inner, item, rest, depth + 1)
         }
         P::Payload => {
             let B::Variant(alternatives) = resolver.body(ty)? else {
                 return Err(fail(codes::INCOMPATIBLE_VALUE, Some(root.location)));
             };
-            let tag = member(tokens, profile::TAG)?
-                .ok_or_else(|| fail(codes::INVALID_SOURCE, Some(root.location)))?;
+            let Some(tag) = member(tokens, profile::TAG)? else {
+                return Err(fail(codes::INVALID_SOURCE, Some(root.location)));
+            };
             let Some(Token {
                 kind: TokenKind::StringLiteral(tag),
                 ..
@@ -117,12 +118,12 @@ fn trace(
             else {
                 return Err(fail(codes::INVALID_SOURCE, Some(root.location)));
             };
-            let selected = alternatives
-                .iter()
-                .find(|a| a.tag == tag.value)
-                .ok_or_else(|| fail(codes::UNKNOWN_TAG, Some(root.location)))?;
-            let payload = member(tokens, profile::PAYLOAD)?
-                .ok_or_else(|| fail(codes::INVALID_SOURCE, Some(root.location)))?;
+            let Some(selected) = alternatives.iter().find(|a| a.tag == tag.value) else {
+                return Err(fail(codes::UNKNOWN_TAG, Some(root.location)));
+            };
+            let Some(payload) = member(tokens, profile::PAYLOAD)? else {
+                return Err(fail(codes::INVALID_SOURCE, Some(root.location)));
+            };
             trace(resolver, root, &selected.ty, payload, rest, depth + 1)
         }
         P::Field(name) => field(resolver, root, ty, tokens, name, rest, depth),
@@ -142,10 +143,9 @@ fn field(
     let B::Record(fields) = resolver.body(ty)? else {
         return Err(fail(codes::INCOMPATIBLE_VALUE, Some(root.location)));
     };
-    let field = fields
-        .iter()
-        .find(|f| f.name == name)
-        .ok_or_else(|| fail(codes::INCOMPATIBLE_VALUE, Some(root.location)))?;
+    let Some(field) = fields.iter().find(|f| f.name == name) else {
+        return Err(fail(codes::INCOMPATIBLE_VALUE, Some(root.location)));
+    };
     if let Some(value) = member(tokens, name)? {
         return trace(resolver, root, &field.ty, value, rest, depth + 1);
     }

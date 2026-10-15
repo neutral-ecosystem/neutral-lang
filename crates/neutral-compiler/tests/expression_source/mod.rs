@@ -344,3 +344,70 @@ fn bounded(
         &CancellationToken::new(),
     )
 }
+
+/// Copying a materialized body preserves allocation errors and leaves the body reusable.
+#[test]
+fn copied_materialized_body_rejects_allocation_failure_without_consuming_value() {
+    use neutral_core::allocation::testing::observe;
+
+    let captured = capture(
+        "neu \"1.0\"\nmodule example::expressions\n",
+        ExpressionLimits::hard(),
+        ExpansionLimits::hard(),
+    );
+    let cancel = CancellationToken::new();
+    let mut state = initial_state(&captured, &cancel).unwrap();
+    let body = ExpressionBody::Value(V::String("retained".into()));
+    let (failed, checkpoints) = observe(Some(0), || state.copy_body(&body));
+    assert!(checkpoints > 0);
+    assert_eq!(failed.unwrap_err(), error(ec::EXP_LIMIT, None));
+    assert_eq!(state.copy_body(&body).unwrap(), body);
+}
+
+/// Checked arithmetic keeps overflow failures lazy and preserves counter update order.
+#[test]
+fn budget_overflow_preserves_error_codes_and_preceding_charges() {
+    let captured = capture(
+        "neu \"1.0\"\nmodule example::expressions\n",
+        ExpressionLimits::hard(),
+        ExpansionLimits::hard(),
+    );
+    let cancel = CancellationToken::new();
+    let mut state = initial_state(&captured, &cancel).unwrap();
+    let budget = &mut state.budget;
+    budget.work = u64::MAX;
+    assert_eq!(budget.charge(1).unwrap_err(), error(ec::EXP_LIMIT, None));
+    assert_eq!(budget.work, u64::MAX);
+    budget.work = 0;
+    assert_eq!(
+        budget.bytes(u64::MAX).unwrap_err(),
+        error(ec::EXP_LIMIT, None)
+    );
+    assert_eq!(budget.work, 0);
+    budget.bytes = u64::MAX;
+    assert_eq!(budget.bytes(1).unwrap_err(), error(ec::EXP_LIMIT, None));
+    assert_eq!(budget.work, 2);
+    assert_eq!(budget.bytes, u64::MAX);
+    budget.nodes = u64::MAX;
+    assert_eq!(budget.node(1).unwrap_err(), error(ec::EXP_LIMIT, None));
+    assert_eq!(budget.work, 3);
+    budget.expansion_work = u64::MAX;
+    assert_eq!(
+        budget.expansion(1, 0).unwrap_err(),
+        error(ec::TPL_LIMIT, None)
+    );
+    assert_eq!(budget.work, 4);
+    budget.expansion_work = 0;
+    budget.expansion_bytes = u64::MAX;
+    assert_eq!(
+        budget.expansion(1, 1).unwrap_err(),
+        error(ec::TPL_LIMIT, None)
+    );
+    assert_eq!(budget.work, 5);
+    assert_eq!(budget.expansion_work, 1);
+    assert_eq!(budget.expansion_bytes, u64::MAX);
+    assert_eq!(
+        budget.retain::<u64>(usize::MAX).unwrap_err(),
+        error(ec::EXP_LIMIT, None)
+    );
+}

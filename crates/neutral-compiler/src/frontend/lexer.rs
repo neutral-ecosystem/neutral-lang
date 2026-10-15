@@ -383,7 +383,7 @@ fn decode_unicode_escape(
         )));
     }
     let digits = std::str::from_utf8(&source[digits_start..end])
-        .map_err(|_| FrontendError::invalid_string_literal(span(start, end)))?;
+        .expect("Unicode escape digits were restricted to ASCII hexadecimal bytes");
     let scalar = u32::from_str_radix(digits, 16)
         .ok()
         .and_then(char::from_u32)
@@ -406,8 +406,7 @@ fn ascii_text(bytes: &[u8], start: usize) -> Result<String, FrontendError> {
     if !bytes.is_ascii() {
         return Err(FrontendError::other(span(start, start + bytes.len())));
     }
-    let text = std::str::from_utf8(bytes)
-        .map_err(|_| FrontendError::other(span(start, start + bytes.len())))?;
+    let text = std::str::from_utf8(bytes).expect("token bytes were checked to contain only ASCII");
     neutral_core::allocation::text(text)
         .map_err(|_| FrontendError::record_limit_exceeded(span(start, start + bytes.len())))
 }

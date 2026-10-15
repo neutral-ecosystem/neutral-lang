@@ -6,9 +6,10 @@ use super::*;
 use crate::{
     CAPTURE_REQUEST_VERSION, CapturedProjectRequest, CapturedSourceInput, CapturedVocabularyInput,
     ProjectCaptureControls, ProjectCaptureLimitValues, ProjectCaptureLimits,
-    analyze_project_semantics, build_module_graph, capture_project,
+    analyze_project_semantics, build_module_graph, capture_project, compile_project,
 };
 use neutral_core::{CancellationToken, VocabularyContentDigest, profile::LanguageProfile};
+use neutral_ir::project::ProjectValue;
 use neutral_ir::project_interface::{
     ProjectLocationValue, ProjectPublicSignature, ProjectPublicType,
 };
@@ -172,6 +173,64 @@ fn public_vocabulary_type_uses_canonical_identity() {
             version: "1.0.0".to_owned(),
             name: "Visible".to_owned(),
         }),
+    );
+}
+
+#[test]
+/// Complete project lowering preserves every supported locked vocabulary field type.
+fn project_lowering_materializes_locked_vocabulary_records() {
+    let types = r#"{"name":"Child","public":true,"fields":[]},{"name":"Payload","public":true,"fields":[{"name":"active","type":"bool"},{"name":"amount","type":"num"},{"name":"child","type":"Child"},{"name":"directory","type":"path"},{"name":"label","type":"string"},{"name":"location","type":"url"}]}"#;
+    let capture = captured(
+        "neu \"1.0\"\nmodule api\nuse Fixture as fixture\npublic fixture::Payload item = { active: true, amount: 2, child: {}, directory: \"opaque/path\", label: \"text\", location: \"not a URL\", }\n",
+        vec![vocabulary("Fixture", types)],
+    );
+    let ir = compile_project(&capture, &CancellationToken::new())
+        .expect("locked vocabulary value should lower");
+    let child = ProjectPublicType::VocabularyNominal {
+        identity: "Fixture".to_owned(),
+        version: "1.0.0".to_owned(),
+        name: "Child".to_owned(),
+    };
+    let payload = ir
+        .vocabulary_records
+        .iter()
+        .find(|record| record.name == "Payload")
+        .expect("payload schema should be retained");
+    assert_eq!(
+        payload.fields,
+        [
+            ("active".to_owned(), ProjectPublicType::Bool),
+            ("amount".to_owned(), ProjectPublicType::Num),
+            ("child".to_owned(), child.clone()),
+            ("directory".to_owned(), ProjectPublicType::Path),
+            ("label".to_owned(), ProjectPublicType::String),
+            ("location".to_owned(), ProjectPublicType::Url),
+        ]
+    );
+    let declaration = ir
+        .declarations
+        .iter()
+        .find(|declaration| declaration.identity.declaration_name() == "item")
+        .expect("item declaration should exist");
+    assert_eq!(
+        declaration.value,
+        Some(ProjectValue::Record(vec![
+            ("active".to_owned(), ProjectValue::Bool(true)),
+            (
+                "amount".to_owned(),
+                ProjectValue::Number(neutral_ir::ExactNumber::from_source("2", 16, 16).unwrap(),)
+            ),
+            ("child".to_owned(), ProjectValue::Record(Vec::new())),
+            (
+                "directory".to_owned(),
+                ProjectValue::Path("opaque/path".to_owned()),
+            ),
+            ("label".to_owned(), ProjectValue::String("text".to_owned()),),
+            (
+                "location".to_owned(),
+                ProjectValue::Url("not a URL".to_owned()),
+            ),
+        ]))
     );
 }
 

@@ -5,6 +5,150 @@
 use super::{CliFailure, ExitClass, atomic_write, create_temporary, read_bounded, required_option};
 use std::{fs, io::Cursor, path::PathBuf};
 
+#[test]
+/// Executes side-effect-free commands and validates all three host command adapters.
+fn host_executes_profiles_validate_compile_and_format() {
+    use crate::constants;
+
+    super::execute([constants::HELP.to_owned()]).expect("help should succeed");
+    super::execute([constants::VERSION.to_owned()]).expect("version should succeed");
+    super::execute([constants::PROFILES.to_owned()]).expect("profiles should succeed");
+    assert_eq!(
+        super::execute(["unknown".to_owned()]).unwrap_err().class(),
+        ExitClass::Usage
+    );
+
+    let directory = temporary_path("commands");
+    let _ = fs::remove_dir_all(&directory);
+    fs::create_dir_all(&directory).expect("command directory should exist");
+    let source = directory.join("source.neu");
+    let compiled = directory.join("compiled.neuir");
+    let formatted = directory.join("formatted.neu");
+    fs::write(&source, b"neu \"0.1\"\nmodule minimal\nnum answer = 42\n")
+        .expect("source should be written");
+    let run = |command: &str, output: Option<&PathBuf>| {
+        let mut arguments = vec![command.to_owned(), source.to_string_lossy().into_owned()];
+        if let Some(output) = output {
+            arguments.extend([
+                constants::OUTPUT.to_owned(),
+                output.to_string_lossy().into_owned(),
+            ]);
+        }
+        super::execute(arguments).expect("valid host command should succeed");
+    };
+    run(constants::VALIDATE, None);
+    run(constants::COMPILE, Some(&compiled));
+    run(constants::FORMAT, Some(&formatted));
+    assert!(fs::metadata(&compiled).unwrap().len() > 0);
+    assert_eq!(
+        fs::read(&formatted).expect("formatted output should exist"),
+        b"neu \"0.1\"\nmodule minimal\n\nnum answer = 42\n"
+    );
+    fs::remove_dir_all(directory).expect("command directory should be removable");
+}
+
+#[test]
+/// Captures a project with an optional key and explicitly locked vocabulary input.
+fn host_project_capture_accepts_optional_project_facts() {
+    use crate::{command::ParseOutcome, constants};
+    use neutral_core::VocabularyContentDigest;
+    use neutral_vocabulary::{
+        PROJECT_VOCABULARY_ENCODING_VERSION, PROJECT_VOCABULARY_SCHEMA_VERSION,
+    };
+
+    let directory = temporary_path("project-capture");
+    let _ = fs::remove_dir_all(&directory);
+    fs::create_dir_all(&directory).expect("capture directory should exist");
+    let source = directory.join("source.neu");
+    let bundle = directory.join("bundle.json");
+    let bytes = format!(
+        "{{\"format\":\"neutral-vocabulary-bundle\",\"encoding_version\":\"{PROJECT_VOCABULARY_ENCODING_VERSION}\",\"schema_version\":\"{PROJECT_VOCABULARY_SCHEMA_VERSION}\",\"identity\":\"Fixture\",\"version\":\"1.0.0\",\"required_features\":[],\"types\":[]}}"
+    );
+    fs::write(
+        &source,
+        b"neu \"1.0\"\nmodule example\nuse Fixture as fixture\n",
+    )
+    .expect("source should be written");
+    fs::write(&bundle, &bytes).expect("vocabulary bundle should be written");
+    let arguments = [
+        constants::CAPTURE_PROJECT.to_owned(),
+        source.to_string_lossy().into_owned(),
+        constants::SOURCE_ID.to_owned(),
+        "source:test".to_owned(),
+        constants::MODULE_ID.to_owned(),
+        "example".to_owned(),
+        constants::PROJECT_KEY.to_owned(),
+        "project:test".to_owned(),
+        constants::VOCABULARY_BUNDLE.to_owned(),
+        bundle.to_string_lossy().into_owned(),
+        constants::VOCABULARY_IDENTITY.to_owned(),
+        "Fixture".to_owned(),
+        constants::VOCABULARY_VERSION.to_owned(),
+        "1.0.0".to_owned(),
+        constants::VOCABULARY_ENCODING.to_owned(),
+        PROJECT_VOCABULARY_ENCODING_VERSION.to_owned(),
+        constants::VOCABULARY_SCHEMA.to_owned(),
+        PROJECT_VOCABULARY_SCHEMA_VERSION.to_owned(),
+        constants::VOCABULARY_DIGEST.to_owned(),
+        VocabularyContentDigest::from_bytes(bytes.as_bytes()).to_string(),
+    ];
+    let ParseOutcome::Execute(options) =
+        crate::command::parse(arguments).expect("capture options should parse")
+    else {
+        panic!("capture command should execute");
+    };
+    super::capture_project_command(&options).expect("complete project should capture");
+    fs::remove_dir_all(directory).expect("capture directory should be removable");
+}
+
+#[test]
+/// Maps diagnostic and diagnostic-free compilation failures to safe CLI messages.
+fn host_compilation_failures_keep_safe_classification() {
+    let failure = match super::compile(super::CompilationRequest::new(
+        b"invalid source".to_vec(),
+        neutral_core::StructuralLimits::new(1024, 8).unwrap(),
+        neutral_core::CancellationToken::new(),
+    ))
+    .expect("source capture should succeed")
+    {
+        super::CompilationResult::Failure(failure) => failure,
+        super::CompilationResult::Success(_) => panic!("invalid source should fail"),
+    };
+    let mapped = super::compilation_failure(&failure);
+    assert_eq!(mapped.class(), ExitClass::Validation);
+    assert!(!mapped.messages().is_empty());
+    assert_eq!(
+        super::successful_document(super::CompilationResult::Failure(failure.clone())).unwrap_err(),
+        mapped
+    );
+    assert_eq!(
+        super::ensure_success(super::CompilationResult::Failure(failure.clone())).unwrap_err(),
+        mapped
+    );
+    assert_eq!(
+        super::format_failure(super::FormatError::Compilation(failure)),
+        mapped
+    );
+
+    let cancellation = neutral_core::CancellationToken::new();
+    let captured = neutral_compiler::capture(super::CompilationRequest::new(
+        b"neu \"0.1\"\nmodule minimal\nnum answer = 42\n".to_vec(),
+        neutral_core::StructuralLimits::new(1024, 8).unwrap(),
+        cancellation.clone(),
+    ))
+    .expect("source should capture before cancellation");
+    cancellation.cancel();
+    let super::CompilationResult::Failure(cancelled) =
+        neutral_compiler::compile_captured(&captured)
+    else {
+        panic!("cancelled compilation should fail");
+    };
+    assert_eq!(
+        super::compilation_failure(&cancelled).messages(),
+        ["cancelled"]
+    );
+}
+
 /// Every host failure adapter preserves its stable class without leaking host details.
 #[test]
 fn capture_failure_classes_and_safe_messages_are_complete() {
