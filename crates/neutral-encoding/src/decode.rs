@@ -163,8 +163,8 @@ pub fn decode(
             .with_reference_provenance(provenance.references);
     neutral_reader::validate_document_companions(&artifacts).map_err(map_reader_error)?;
     let mut capability_budget = TraversalBudget::new();
-    let actual = derive_capabilities(&artifacts, &mut capability_budget)
-        .map_err(|_| error(DecodeErrorClass::EncodedSizeLimit))?;
+    let actual =
+        derive_capabilities(&artifacts, &mut capability_budget).map_err(map_capability_error)?;
     if actual != frame.capabilities {
         return Err(error(DecodeErrorClass::UnsupportedCapability));
     }
@@ -1276,6 +1276,11 @@ fn effective_limits(host: DecodeLimits, captured: StructuralLimits) -> DecodeLim
         .with_container_items(saturating_usize(captured.traversal_nodes()))
         .with_text_bytes(saturating_usize(captured.string_bytes()))
         .with_traversal_nodes(saturating_usize(captured.traversal_nodes()))
+}
+
+/// Preserves the bounded failure class for capability inspection.
+fn map_capability_error(_: crate::EncodingError) -> DecodeError {
+    error(DecodeErrorClass::EncodedSizeLimit)
 }
 
 /// Maps trusted-model validation failures into frozen external result classes.

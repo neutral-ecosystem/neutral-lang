@@ -413,3 +413,29 @@ fn compile_failures_report_selected_schema_and_safe_debug_fields() {
     assert_eq!(failure.schema(), "neutral.project-result/2");
     assert!(failure.location.is_some());
 }
+
+/// Declaration syntax errors retain their phase-specific classification before resolution.
+#[test]
+fn malformed_bindings_templates_and_expansions_reject_at_their_grammar_boundary() {
+    for (body, code) in [
+        ("= 1", "NEU-EXP-002"),
+        ("num Upper = 1", "NEU-EXP-002"),
+        ("template Item(static) -> num { 1 }", "NEU-TPL-002"),
+        (
+            "template Item(static num value) num { value }",
+            "NEU-EXP-002",
+        ),
+        ("template Item() -> num { 1 } trailing", "NEU-TPL-002"),
+        ("expand Upper = Item() for (item in [1])", "NEU-TPL-003"),
+        ("expand items Item() for (item in [1])", "NEU-EXP-002"),
+        ("expand items = 7() for (item in [1])", "NEU-EXP-002"),
+        ("expand items = Item() (item in [1])", "NEU-EXP-002"),
+        ("expand items = Item() for item", "NEU-EXP-002"),
+        (
+            "expand items = Item() for (item in [1]) trailing",
+            "NEU-TPL-002",
+        ),
+    ] {
+        assert_eq!(compile(body).unwrap_err().code, code, "{body}");
+    }
+}

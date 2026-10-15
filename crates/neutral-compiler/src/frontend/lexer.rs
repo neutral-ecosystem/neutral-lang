@@ -124,11 +124,9 @@ pub(super) fn lex_bounded(
         }
     }
 
-    policy.check(source.len())?;
-    tokens
-        .try_retain(1)
-        .map_err(|_| FrontendError::record_limit_exceeded(span(source.len(), source.len())))?;
+    policy.reserve(&mut tokens, 1, source.len())?;
     tokens.push(token(TokenKind::EndOfFile, source.len(), source.len()));
+    policy.check(source.len())?;
     Ok(LexedSource { tokens, trivia })
 }
 
@@ -468,3 +466,7 @@ fn token(kind: TokenKind, start: usize, end: usize) -> Token {
         span: span(start, end),
     }
 }
+
+#[cfg(test)]
+#[path = "../../tests/frontend/lexer.rs"]
+mod tests;

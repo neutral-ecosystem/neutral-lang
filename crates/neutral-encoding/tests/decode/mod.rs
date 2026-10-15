@@ -8,6 +8,19 @@ use neutral_core::{CancellationToken, StructuralLimits, VocabularyContentDigest}
 use neutral_ir::ResolvedType;
 use std::path::Path;
 
+#[test]
+fn capability_inspection_failures_keep_the_bounded_decoder_error() {
+    for failure in [
+        crate::EncodingError::EncodedSizeLimit,
+        crate::EncodingError::Cancelled,
+        crate::EncodingError::InternalDefect,
+    ] {
+        let error = super::map_capability_error(failure);
+        assert_eq!(error.class(), DecodeErrorClass::EncodedSizeLimit);
+        assert_eq!(error.offset(), None);
+    }
+}
+
 /// Independent reader rejections retain distinct schema, source-map, and provenance classes.
 #[test]
 fn reader_failures_map_to_stable_decoder_classes() {

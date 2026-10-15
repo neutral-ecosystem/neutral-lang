@@ -40,3 +40,7 @@ pub(super) fn select<'v>(
     }
     Ok(value)
 }
+
+#[cfg(test)]
+#[path = "../../tests/unit/evaluation_selectors.rs"]
+mod tests;

@@ -250,3 +250,107 @@ fn expression_binding_declaration_requires_assignment_delimiter() {
     }
     assert!(compile_expression_source("input num item").is_ok());
 }
+
+/// Every incomplete token prefix of a valid grammar production must reject without publishing syntax.
+fn assert_truncated_production(
+    source: &[u8],
+    parse: impl Fn(&mut Parser<'_>) -> Result<(), FrontendError>,
+) {
+    let mut lexed = super::super::lexer::lex(source).unwrap();
+    for token in &mut lexed.tokens {
+        if matches!(token.kind, TokenKind::PhysicalLineEnd(_)) {
+            token.kind = TokenKind::LineEnd;
+        }
+    }
+    let mut complete = parser(&lexed.tokens);
+    parse(&mut complete).expect("positive grammar control");
+    for end in 0..complete.index {
+        let failure =
+            parse(&mut parser(&lexed.tokens[..end])).expect_err("truncated production must fail");
+        assert!(
+            matches!(
+                failure.kind,
+                FrontendErrorKind::Other
+                    | FrontendErrorKind::MalformedBoundary
+                    | FrontendErrorKind::MissingModuleHeader
+            ),
+            "prefix {end}: {failure:?}"
+        );
+        assert!(failure.span.end() <= source.len() as u64, "prefix {end}");
+    }
+}
+
+/// Header, record, type and reference operands are all required at their own parser boundary.
+#[test]
+fn grammar_productions_reject_every_truncated_token_prefix() {
+    assert_truncated_production(
+        b"neu \"0.1\"\n\nmodule example\n\nuse Fixture\n\nnum value = 1\n",
+        |p| p.parse_unit().map(|_| ()),
+    );
+    assert_truncated_production(b"module example\n", |p| p.parse_module().map(|_| ()));
+    assert_truncated_production(b"use Fixture\n", |p| p.parse_vocabulary_use().map(|_| ()));
+    assert_truncated_production(b"record Item { num value = 1, }\n", |p| {
+        p.parse_record().map(|_| ())
+    });
+    assert_truncated_production(b"num value = 1,\n", |p| p.parse_record_field().map(|_| ()));
+    for source in [b"List<num>\n".as_slice(), b"Ref<Item>\n"] {
+        assert_truncated_production(source, |p| p.parse_type().map(|_| ()));
+    }
+    assert_truncated_production(b"(target)\n", |p| p.parse_reference_value().map(|_| ()));
+    assert_truncated_production(b"{ first: 1, second: [2, 3,], }\n", |p| {
+        p.parse_value(0).map(|_| ())
+    });
+}
+
+/// Wrong token categories do not masquerade as headers, field delimiters or literal values.
+#[test]
+fn grammar_entrypoints_classify_wrong_operand_tokens() {
+    let invalid = tokens(vec![TokenKind::Comma]);
+    assert_eq!(
+        parser(&invalid).parse_module().unwrap_err().kind,
+        FrontendErrorKind::Other
+    );
+    assert_eq!(
+        parser(&invalid).parse_vocabulary_use().unwrap_err().kind,
+        FrontendErrorKind::Other
+    );
+    assert_eq!(
+        parser(&invalid).parse_record().unwrap_err().kind,
+        FrontendErrorKind::Other
+    );
+    assert_eq!(
+        parser(&invalid).parse_value(0).unwrap_err().kind,
+        FrontendErrorKind::Other
+    );
+    let header = tokens(vec![TokenKind::Neu, TokenKind::Num]);
+    assert_eq!(
+        parser(&header).parse_unit().unwrap_err().kind,
+        FrontendErrorKind::Other
+    );
+}
+
+/// Contextual name positions preserve keyword spelling for the later protected-name check.
+#[test]
+fn keyword_name_tokens_preserve_their_exact_spelling() {
+    for (kind, expected) in [
+        (TokenKind::Neu, "neu"),
+        (TokenKind::Module, "module"),
+        (TokenKind::Use, "use"),
+        (TokenKind::Record, "record"),
+        (TokenKind::List, "List"),
+        (TokenKind::Num, "num"),
+        (TokenKind::StringType, "string"),
+        (TokenKind::BoolType, "bool"),
+        (TokenKind::True, "true"),
+        (TokenKind::False, "false"),
+        (TokenKind::Null, "null"),
+        (TokenKind::RefType, "Ref"),
+        (TokenKind::RefValue, "ref"),
+    ] {
+        let token = Token {
+            kind,
+            span: span(0, expected.len()),
+        };
+        assert_eq!(identifier_spelling(&token).as_deref(), Some(expected));
+    }
+}

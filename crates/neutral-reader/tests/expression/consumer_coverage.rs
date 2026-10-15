@@ -449,3 +449,6 @@ fn template_dependencies_inspect_the_body_without_evaluating_it() {
         E::Semantic
     );
 }
+
+#[path = "dependency_regions.rs"]
+mod dependency_regions;

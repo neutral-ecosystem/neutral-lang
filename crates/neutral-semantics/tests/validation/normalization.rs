@@ -459,3 +459,6 @@ fn eliminated_outer_match_substitution_preserves_retained_inner_match_frames() {
         .retained_expression_text_bytes = 90;
     assert!(validate(normalized).is_ok());
 }
+
+#[path = "normalization_regions.rs"]
+mod regions;
