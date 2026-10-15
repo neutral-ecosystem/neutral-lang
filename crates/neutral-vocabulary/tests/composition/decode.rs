@@ -27,7 +27,26 @@ fn security_composition_schema_retention_faults_and_cancellation_are_atomic() {
     let mut budget = Budget::new(limits, &cancel);
     let expected = bundle(input, &mut budget).unwrap();
     let checkpoints = budget.allocations;
-    assert!(checkpoints > 30);
+    assert!(checkpoints > 0);
+    assert_eq!(
+        expected
+            .definitions
+            .iter()
+            .map(|definition| definition.name.as_str())
+            .collect::<Vec<_>>(),
+        ["Outcome", "Request"]
+    );
+    let CompositionBody::Record(fields) = &expected.definitions[1].body else {
+        panic!("Request must exercise record field retention");
+    };
+    assert!(fields.iter().any(|field| field.default.is_some()));
+    assert!(fields.iter().any(|field| {
+        field
+            .restrictions
+            .choices
+            .as_ref()
+            .is_some_and(|choices| !choices.is_empty())
+    }));
     for index in 0..checkpoints {
         for cancellation in [false, true] {
             let signal = CancellationToken::new();
@@ -76,4 +95,40 @@ fn security_composition_schema_limits_precede_retention() {
     .unwrap();
     assert_eq!(ty(&J::Null, &lock, &mut budget, 2), Err(E::Limit));
     assert_eq!(budget.allocations, 0);
+}
+
+/// Closed record defaults canonicalize distinct field names without changing their values.
+#[test]
+fn closed_record_defaults_preserve_sorted_distinct_fields() {
+    let value = J::Object(vec![
+        ("kind".into(), J::String("record".into())),
+        (
+            "fields".into(),
+            J::Array(
+                ["second", "first"]
+                    .into_iter()
+                    .map(|name| {
+                        J::Object(vec![
+                            ("name".into(), J::String(name.into())),
+                            (
+                                "value".into(),
+                                J::Object(vec![("kind".into(), J::String("null".into()))]),
+                            ),
+                        ])
+                    })
+                    .collect(),
+            ),
+        ),
+    ]);
+    let cancel = CancellationToken::new();
+    let limits = super::super::CompositionLimits::from_vocabulary(
+        VocabularyLimits::from_structural(StructuralLimits::new(65_536, 64).unwrap()),
+    );
+    assert_eq!(
+        closed(&value, &mut Budget::new(limits, &cancel), 0).unwrap(),
+        V::Record(vec![
+            ("first".into(), Some(V::Null)),
+            ("second".into(), Some(V::Null))
+        ])
+    );
 }

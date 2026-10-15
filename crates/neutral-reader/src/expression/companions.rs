@@ -138,6 +138,7 @@ pub(super) fn location(
     Ok(())
 }
 /// Requires attribution to belong to the claimed owner's original declaration, not any source.
+/// Validated expansion arguments are contained by their application or definition spans.
 pub(super) fn owned_location(
     ir: &ExpressionProjectIr,
     owner: &ModuleSymbolIdentity,
@@ -150,12 +151,11 @@ pub(super) fn owned_location(
         return Ok(());
     }
     budget.step(ir.expansion_attributions.len() as u64 + 1)?;
-    if ir.expansion_attributions.iter().any(|a| {
-        a.owner == *owner
-            && (contains(a.application, loc)
-                || contains(a.definition, loc)
-                || a.arguments.iter().any(|arg| contains(*arg, loc)))
-    }) {
+    if ir
+        .expansion_attributions
+        .iter()
+        .any(|a| a.owner == *owner && (contains(a.application, loc) || contains(a.definition, loc)))
+    {
         Ok(())
     } else {
         Err(E::Companion)

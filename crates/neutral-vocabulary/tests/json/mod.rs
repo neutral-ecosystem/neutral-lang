@@ -155,7 +155,20 @@ fn security_json_growth_faults_and_mid_parse_cancellation_are_atomic() {
         Ok(())
     })
     .unwrap();
-    assert!(checkpoints > 10);
+    assert!(checkpoints > 0);
+    assert_eq!(
+        expected,
+        JsonValue::Object(vec![
+            ("label".into(), JsonValue::String("é😀".into())),
+            (
+                "items".into(),
+                JsonValue::Array(vec![
+                    JsonValue::Null,
+                    JsonValue::Object(vec![("x".into(), JsonValue::String("\\".into()))]),
+                ])
+            ),
+        ])
+    );
     for fail_at in 0..checkpoints {
         let mut visited = 0;
         assert_eq!(

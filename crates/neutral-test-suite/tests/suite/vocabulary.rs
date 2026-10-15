@@ -294,3 +294,29 @@ fn security_reader_rejects_missing_vocabulary_contract() {
         ReaderError::InvalidDerivation,
     );
 }
+
+/// Vocabulary record paths retain exact cyclic identity targets through decoding.
+#[test]
+fn vocabulary_reference_paths_survive_independent_reader_roundtrip() {
+    let source = b"neu \"0.1\"\nmodule vocabulary_edges\nuse Fixture\nFixture::Node first = { next: ref(second), }\nFixture::Node second = { next: ref(first), }\n";
+    let artifacts = match compile_with_vocabulary(source, VOCABULARY_BUNDLE) {
+        CompilationResult::Success(artifacts) => artifacts,
+        CompilationResult::Failure(failure) => {
+            panic!("typed vocabulary references: {:?}", failure.diagnostics())
+        }
+    };
+    let reader = ValidatedDocument::from_compiler_output(artifacts).unwrap();
+    assert_eq!(reader.artifacts().reference_provenance().len(), 2);
+    let encoded = encode(
+        &reader,
+        &ProducerInfo::new("reference-test", TEST_PRODUCER_VERSION),
+    )
+    .unwrap();
+    let decoded = decode(
+        encoded.as_bytes(),
+        DecodeLimits::hard(),
+        &CancellationToken::new(),
+    )
+    .unwrap();
+    assert_eq!(decoded.declarations(), reader.declarations());
+}

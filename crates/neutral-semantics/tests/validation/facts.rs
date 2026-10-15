@@ -145,3 +145,28 @@ fn model_counts_obey_each_producer_and_caller_boundary() {
         }
     }
 }
+
+/// Multiple imports must be canonical even when every referenced module exists.
+#[test]
+fn module_imports_reject_duplicate_and_reversed_targets() {
+    for (targets, accepted) in [
+        (vec!["left".into(), "right".into()], true),
+        (vec!["right".into(), "left".into()], false),
+        (vec!["left".into(), "left".into()], false),
+    ] {
+        let mut ir = project(vec![]);
+        for name in ["left", "right"] {
+            ir.modules.push(ProjectModule {
+                identity: LogicalModuleIdentity::new("1.0", name),
+                imports: vec![],
+            });
+        }
+        ir.modules[0].imports = targets;
+        let result = validate(ir);
+        if accepted {
+            result.unwrap();
+        } else {
+            assert_eq!(result.unwrap_err(), E::Malformed);
+        }
+    }
+}

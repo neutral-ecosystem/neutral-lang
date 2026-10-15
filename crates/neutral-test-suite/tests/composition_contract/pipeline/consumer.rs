@@ -856,3 +856,56 @@ fn integration_consumer_bounds_cancellation_and_allocation_fail_atomically() {
         1
     );
 }
+
+/// Public diagnostics cannot attach a private binding's captured coordinates.
+#[test]
+fn consumer_report_rejects_private_location_subjects() {
+    let project = project();
+    let contract = T::Nominal(owner("Receipt"));
+    let subject = owner("description");
+    let private = owner("private_description");
+    let cancel = CancellationToken::new();
+    let boundary = ConsumerBoundary::new(
+        &project,
+        protocol(&contract),
+        ConsumerLimits::default(),
+        &cancel,
+    )
+    .unwrap();
+    let location = project
+        .complete_ir()
+        .source_maps
+        .iter()
+        .find(|map| map.declaration == private)
+        .unwrap()
+        .location;
+    let diagnostics = [ConsumerDiagnostic {
+        code: ConsumerDiagnosticCode::Consumer("EXAMPLE-UNSUPPORTED"),
+        subject: &subject,
+        path: &[],
+        primary: ConsumerLocation::Available {
+            subject: &private,
+            path: &[],
+            location,
+        },
+        related: &[],
+    }];
+    report_error(
+        &boundary,
+        rejected_report(&contract, boundary.project_identity(), &diagnostics),
+        &cancel,
+        ConsumerError::InvalidAttribution,
+    );
+    let related = [diagnostics[0].primary];
+    let diagnostics = [ConsumerDiagnostic {
+        primary: ConsumerLocation::Unavailable(LocationUnavailable::NotRetained),
+        related: &related,
+        ..diagnostics[0]
+    }];
+    report_error(
+        &boundary,
+        rejected_report(&contract, boundary.project_identity(), &diagnostics),
+        &cancel,
+        ConsumerError::InvalidAttribution,
+    );
+}

@@ -135,3 +135,92 @@ fn security_project_reader_bounds_export_types_before_cloning() {
         ProjectReadError::Limit
     );
 }
+
+/// All identity failures retain the same public result envelope.
+#[test]
+fn project_identity_failures_expose_the_shared_schema() {
+    use neutral_reader::ProjectIdentityReadError as E;
+    for error in [
+        E::CaptureMismatch,
+        E::View(ProjectReadError::Cancelled),
+        E::Identity(neutral_ir::project_identity::IdentityError::Cancelled),
+    ] {
+        assert_eq!(error.schema(), neutral_reader::PROJECT_RESULT_SCHEMA);
+    }
+}
+
+/// Repeated or reversed imports fail even when all targets are known distinct modules.
+#[test]
+fn project_modules_require_strict_import_order() {
+    let mut ir = artifact();
+    for name in ["left", "right"] {
+        ir.modules.push(ProjectModule {
+            identity: LogicalModuleIdentity::new(V1_SOURCE_PROFILE, name),
+            imports: vec![],
+        });
+        let mut source = ir.sources[0].clone();
+        source.module = name.into();
+        source.source_id = format!("unit:{name}");
+        ir.sources.push(source);
+    }
+    ir.limits.modules = 3;
+    ir.limits.import_edges = 2;
+    ir.resources.source_units = 3;
+    ir.resources.source_bytes = ir.sources.iter().map(|source| source.byte_len).sum();
+    ir.resources.import_edges = 2;
+    ir.modules[0].imports = vec!["left".into(), "right".into()];
+    assert!(
+        ValidatedProject::from_ir(Arc::new(ir.clone()), ir.limits, &CancellationToken::new())
+            .is_ok()
+    );
+    for imports in [
+        vec!["right".into(), "left".into()],
+        vec!["left".into(), "left".into()],
+    ] {
+        ir.modules[0].imports = imports;
+        assert_eq!(
+            ValidatedProject::from_ir(Arc::new(ir.clone()), ir.limits, &CancellationToken::new())
+                .unwrap_err(),
+            ProjectReadError::Module
+        );
+    }
+}
+
+/// Complete vocabulary schemas preserve all canonical field names and reject duplicate order.
+#[test]
+fn project_vocabulary_fields_require_strict_order() {
+    use neutral_ir::project_interface::{ProjectPublicType as T, ProjectPublicVocabulary};
+    let mut ir = artifact();
+    ir.public_interface = ProjectInterface::with_vocabularies(
+        vec![ProjectPublicVocabulary::new(
+            "Fixture",
+            "1.0.0",
+            vec!["Record".into()],
+        )],
+        vec![],
+        vec![],
+    )
+    .unwrap();
+    ir.vocabulary_records.push(ProjectVocabularyRecord {
+        identity: "Fixture".into(),
+        version: "1.0.0".into(),
+        name: "Record".into(),
+        public: true,
+        fields: vec![("first".into(), T::Num), ("second".into(), T::Bool)],
+    });
+    ir.vocabulary_sources.push(ProjectVocabularySource {
+        identity: "Fixture".into(),
+        version: "1.0.0".into(),
+        digest: neutral_core::VocabularyContentDigest::from_bytes(b"fixture"),
+        byte_len: 7,
+    });
+    ir.resources.vocabulary_units = 1;
+    ir.resources.vocabulary_bytes = 7;
+    ValidatedProject::from_ir(Arc::new(ir.clone()), ir.limits, &CancellationToken::new()).unwrap();
+    ir.vocabulary_records[0].fields.reverse();
+    assert_eq!(
+        ValidatedProject::from_ir(Arc::new(ir), artifact().limits, &CancellationToken::new())
+            .unwrap_err(),
+        ProjectReadError::Declaration
+    );
+}

@@ -299,3 +299,18 @@ fn vocabulary_lock_contract_is_complete() {
         .is_err()
     );
 }
+
+/// Multiple feature entries are normalized, but repeated entries cannot satisfy a lock.
+#[test]
+fn vocabulary_rejects_duplicate_required_features() {
+    let feature = "neutral.feature/records@1";
+    let text = std::str::from_utf8(EMPTY_BUNDLE).unwrap().replace(
+        "\"required_features\":[]",
+        &format!("\"required_features\":[\"{feature}\",\"{feature}\"]"),
+    );
+    let lock = lock_with_features(text.as_bytes(), vec![feature.into()]);
+    assert_eq!(
+        validate_captured_bundle(text.as_bytes(), &lock, limits()),
+        Err(VocabularyError::DuplicateFeature)
+    );
+}

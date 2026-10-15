@@ -453,3 +453,7 @@ fn contains_reuse(
     }
     Ok(false)
 }
+
+#[cfg(test)]
+#[path = "../../../tests/expression/provenance.rs"]
+mod tests;

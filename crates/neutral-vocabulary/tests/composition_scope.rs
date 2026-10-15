@@ -940,3 +940,35 @@ fn composition_scope_duplicate_fields_and_unknown_default_tags() {
         Err(E::InvalidDefault)
     );
 }
+
+/// Actual vocabulary fields use the same independently bounded restriction checks as source fields.
+#[test]
+fn vocabulary_field_restrictions_reject_over_limit_values_and_unknown_owners() {
+    let cancel = CancellationToken::new();
+    let scope = validate_composition_scope(vocabulary(), vec![], limits(), &cancel).unwrap();
+    let run = |ty: &T, field: &str, count| {
+        scope.check_field_restrictions(
+            ty,
+            field,
+            &neutral_ir::composition::BindingValue::List(
+                vec![neutral_ir::composition::BindingValue::Bool(true); count],
+            ),
+            limits(),
+            &mut limits().work,
+            &cancel,
+        )
+    };
+    assert_eq!(run(&vocabulary_type("Item"), "values", 2), Ok(()));
+    assert_eq!(
+        run(&vocabulary_type("Item"), "values", 3),
+        Err(E::InvalidValue)
+    );
+    assert_eq!(
+        run(&vocabulary_type("Missing"), "values", 1),
+        Err(E::UnknownType)
+    );
+    assert_eq!(
+        run(&vocabulary_type("Item"), "absent", 1),
+        Err(E::InvalidValue)
+    );
+}

@@ -3,12 +3,12 @@
 //! Regression checks for measured rather than manually asserted release gates.
 
 use super::*;
+use neutral_test_support::TestDirectory;
 
 /// Creates an isolated report directory and checksum-bound coverage fixture.
-fn fixture(label: &str) -> (PathBuf, Receipt, QualitySettings) {
-    let directory =
-        std::env::temp_dir().join(format!("neutral-evidence-{label}-{}", std::process::id()));
-    fs::create_dir_all(&directory).expect("fixture directory");
+fn fixture() -> (TestDirectory, Receipt, QualitySettings) {
+    let fixture = TestDirectory::new().expect("fixture directory");
+    let directory = fixture.path();
     let mut reports = BTreeMap::new();
     for (name, body) in [
         ("tool.stdout", ""),
@@ -47,7 +47,7 @@ fn fixture(label: &str) -> (PathBuf, Receipt, QualitySettings) {
         reports,
     };
     (
-        directory,
+        fixture,
         receipt,
         QualitySettings::load(&workspace_root().unwrap()).unwrap(),
     )
@@ -65,31 +65,24 @@ fn write_receipt(directory: &Path, receipt: &Receipt) {
 /// Accepts actual passing metrics and rejects stale provenance and altered bytes.
 #[test]
 fn rejects_stale_and_modified_evidence() {
-    let (directory, mut receipt, settings) = fixture("provenance");
-    write_receipt(&directory, &receipt);
+    let (fixture, mut receipt, settings) = fixture();
+    let directory = fixture.path();
+    write_receipt(directory, &receipt);
     assert!(
         verify(
-            &directory,
+            directory,
             QualityGate::Coverage,
             &receipt.inputs_sha256,
             &settings
         )
         .is_ok()
     );
-    assert!(
-        verify(
-            &directory,
-            QualityGate::Coverage,
-            &"c".repeat(64),
-            &settings
-        )
-        .is_err()
-    );
+    assert!(verify(directory, QualityGate::Coverage, &"c".repeat(64), &settings).is_err());
     receipt.policy_sha256 = "d".repeat(64);
-    write_receipt(&directory, &receipt);
+    write_receipt(directory, &receipt);
     assert!(
         verify(
-            &directory,
+            directory,
             QualityGate::Coverage,
             &receipt.inputs_sha256,
             &settings
@@ -97,33 +90,33 @@ fn rejects_stale_and_modified_evidence() {
         .is_err()
     );
     fs::write(directory.join("coverage.json"), "{}").unwrap();
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
-    fs::remove_dir_all(directory).unwrap();
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
 }
 
 /// Rejects a native acceptance report not protected by a checksum.
 #[test]
 fn rejects_unhashed_native_metrics_and_low_coverage() {
-    let (directory, mut receipt, settings) = fixture("metrics");
+    let (fixture, mut receipt, settings) = fixture();
+    let directory = fixture.path();
     receipt.reports.remove("coverage.json");
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
     fs::write(directory.join("coverage.json"), r#"{"data":[{"totals":{"lines":{"percent":0},"functions":{"percent":0},"regions":{"percent":0}}}]}"#).unwrap();
     receipt.reports.insert(
         "coverage.json".to_owned(),
         sha256_file(&directory.join("coverage.json")).unwrap(),
     );
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
     receipt
         .reports
         .insert("../outside".to_owned(), "a".repeat(64));
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
-    fs::remove_dir_all(directory).unwrap();
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
 }
 
 /// Rejects mutation survivors, narrowed selections, and empty or timed-out campaigns.
 #[test]
 fn validates_real_mutation_counts() {
-    let (directory, mut receipt, settings) = fixture("mutants");
+    let (fixture, mut receipt, settings) = fixture();
+    let directory = fixture.path();
     receipt.gate = QualityGate::Mutation;
     receipt.invocations[0].arguments = settings
         .policy
@@ -157,12 +150,12 @@ fn validates_real_mutation_counts() {
             sha256_file(&directory.join("outcomes.json")).unwrap(),
         );
         assert_eq!(
-            validate_reports(&receipt, &directory, &settings).is_ok(),
+            validate_reports(&receipt, directory, &settings).is_ok(),
             accepted
         );
     }
     replace_report(
-        &directory,
+        directory,
         &mut receipt,
         "outcomes.json",
         r#"{"caught":38,"missed":0,"timeout":0,"success":0}"#,
@@ -172,51 +165,49 @@ fn validates_real_mutation_counts() {
         receipt.invocations[0].arguments.clone_from(&complete);
         receipt.invocations[0].arguments.push(flag.to_owned());
         assert!(
-            validate_reports(&receipt, &directory, &settings).is_err(),
+            validate_reports(&receipt, directory, &settings).is_err(),
             "{flag}"
         );
     }
     receipt.invocations[0].arguments.clone_from(&complete);
     receipt.invocations[0].arguments.drain(..2);
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
     receipt.invocations[0].arguments.clone_from(&complete);
     receipt.invocations[0]
         .arguments
         .push("--re=one_function".to_owned());
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
     receipt.invocations[0].arguments.clone_from(&complete);
     receipt.invocations[0]
         .arguments
         .retain(|argument| argument != "--cargo-arg=--workspace");
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
     receipt.invocations[0].arguments.clone_from(&complete);
     receipt.invocations[0]
         .arguments
         .retain(|argument| argument != "--no-config");
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
     receipt.invocations[0].arguments.clear();
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
-    fs::remove_dir_all(directory).unwrap();
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
 }
 
 /// Ensures newly added source files participate in freshness before a commit.
 #[test]
 fn input_fingerprint_includes_untracked_source() {
-    let directory =
-        std::env::temp_dir().join(format!("neutral-input-proof-{}", std::process::id()));
-    fs::create_dir_all(&directory).unwrap();
+    let fixture = TestDirectory::new().unwrap();
+    let directory = fixture.path();
     assert!(
         Command::new(constants::GIT_COMMAND)
             .args(["init", "--quiet"])
-            .current_dir(&directory)
+            .current_dir(directory)
             .status()
             .unwrap()
             .success()
     );
-    let before = input_digest(&directory).unwrap();
+    let before = input_digest(directory).unwrap();
     fs::write(directory.join("new.rs"), "// new source\n").unwrap();
-    let after = input_digest(&directory).unwrap();
-    let snapshot = input_snapshot(&directory).unwrap();
+    let after = input_digest(directory).unwrap();
+    let snapshot = input_snapshot(directory).unwrap();
     assert_eq!(
         snapshot,
         BTreeMap::from([(
@@ -226,28 +217,26 @@ fn input_fingerprint_includes_untracked_source() {
     );
     assert_ne!(before, after);
     fs::write(directory.join("README.md"), "documentation only\n").unwrap();
-    assert_eq!(after, input_digest(&directory).unwrap());
-    assert_eq!(snapshot, input_snapshot(&directory).unwrap());
-    fs::remove_dir_all(directory).unwrap();
+    assert_eq!(after, input_digest(directory).unwrap());
+    assert_eq!(snapshot, input_snapshot(directory).unwrap());
 }
 
 /// Executable inputs invalidate receipts regardless of extension or directory.
 #[test]
 fn input_fingerprint_tracks_oracles_scripts_templates_and_deletions() {
-    let directory =
-        crate::unique_generated_directory(&std::env::temp_dir().join("neutral-inputs-all"))
-            .unwrap();
+    let fixture = TestDirectory::new().unwrap();
+    let directory = fixture.path();
     fs::create_dir_all(directory.join("docs")).unwrap();
     assert!(
         Command::new(constants::GIT_COMMAND)
             .args(["init", "--quiet"])
-            .current_dir(&directory)
+            .current_dir(directory)
             .status()
             .unwrap()
             .success()
     );
     fs::write(directory.join(".gitignore"), "reports/\n").unwrap();
-    let mut previous = input_digest(&directory).unwrap();
+    let mut previous = input_digest(directory).unwrap();
     for name in [
         "oracle.py",
         "release.sh",
@@ -259,110 +248,107 @@ fn input_fingerprint_tracks_oracles_scripts_templates_and_deletions() {
     ] {
         let path = directory.join(name);
         fs::write(&path, "first").unwrap();
-        let added = input_digest(&directory).unwrap();
+        let added = input_digest(directory).unwrap();
         assert_ne!(previous, added, "addition: {name}");
         fs::write(&path, "second").unwrap();
-        let changed = input_digest(&directory).unwrap();
+        let changed = input_digest(directory).unwrap();
         assert_ne!(added, changed, "edit: {name}");
         fs::remove_file(path).unwrap();
         assert_eq!(
             previous,
-            input_digest(&directory).unwrap(),
+            input_digest(directory).unwrap(),
             "deletion: {name}"
         );
-        previous = input_digest(&directory).unwrap();
+        previous = input_digest(directory).unwrap();
     }
     fs::write(directory.join("oracle.py"), "oracle").unwrap();
     assert!(
         Command::new(constants::GIT_COMMAND)
             .args(["add", "oracle.py"])
-            .current_dir(&directory)
+            .current_dir(directory)
             .status()
             .unwrap()
             .success()
     );
-    let tracked = input_digest(&directory).unwrap();
+    let tracked = input_digest(directory).unwrap();
     fs::rename(directory.join("oracle.py"), directory.join("renamed.py")).unwrap();
-    assert_ne!(tracked, input_digest(&directory).unwrap());
+    assert_ne!(tracked, input_digest(directory).unwrap());
     fs::create_dir_all(directory.join("reports")).unwrap();
     fs::write(directory.join("reports/local.json"), "local paths").unwrap();
     fs::create_dir_all(directory.join("quality/evidence/v1.2.3")).unwrap();
-    let before_approval = input_digest(&directory).unwrap();
+    let before_approval = input_digest(directory).unwrap();
     fs::write(
         directory.join("quality/evidence/v1.2.3/record.toml"),
         "approval",
     )
     .unwrap();
-    assert_eq!(before_approval, input_digest(&directory).unwrap());
-    fs::remove_dir_all(directory).unwrap();
+    assert_eq!(before_approval, input_digest(directory).unwrap());
 }
 
 /// Any repository file change invalidates coverage; ignored reports do not.
 #[test]
 fn coverage_fingerprint_tracks_all_files() {
-    let directory =
-        crate::unique_generated_directory(&std::env::temp_dir().join("neutral-coverage-inputs"))
-            .unwrap();
+    let fixture = TestDirectory::new().unwrap();
+    let directory = fixture.path();
     assert!(
         Command::new(constants::GIT_COMMAND)
             .args(["init", "--quiet"])
-            .current_dir(&directory)
+            .current_dir(directory)
             .status()
             .unwrap()
             .success()
     );
     fs::write(directory.join(".gitignore"), "reports/\n").unwrap();
     fs::create_dir_all(directory.join("docs")).unwrap();
-    let original = coverage_input_digest(&directory).unwrap();
-    assert_eq!(original, coverage_input_digest(&directory).unwrap());
+    let original = coverage_input_digest(directory).unwrap();
+    assert_eq!(original, coverage_input_digest(directory).unwrap());
     for name in ["source.rs", "README.md", "docs/guide.md", "Cargo.lock"] {
         let file = directory.join(name);
         fs::write(&file, "first").unwrap();
-        let added = coverage_input_digest(&directory).unwrap();
+        let added = coverage_input_digest(directory).unwrap();
         assert_ne!(original, added, "addition: {name}");
         fs::write(&file, "other").unwrap();
         assert_ne!(
             added,
-            coverage_input_digest(&directory).unwrap(),
+            coverage_input_digest(directory).unwrap(),
             "same-size edit: {name}"
         );
-        let edited = coverage_input_digest(&directory).unwrap();
+        let edited = coverage_input_digest(directory).unwrap();
         fs::rename(&file, directory.join("renamed")).unwrap();
         assert_ne!(
             edited,
-            coverage_input_digest(&directory).unwrap(),
+            coverage_input_digest(directory).unwrap(),
             "rename: {name}"
         );
         fs::remove_file(directory.join("renamed")).unwrap();
         assert_eq!(
             original,
-            coverage_input_digest(&directory).unwrap(),
+            coverage_input_digest(directory).unwrap(),
             "deletion: {name}"
         );
     }
     fs::create_dir_all(directory.join("reports")).unwrap();
     fs::write(directory.join("reports/coverage.json"), "generated").unwrap();
-    assert_eq!(original, coverage_input_digest(&directory).unwrap());
-    fs::remove_dir_all(directory).unwrap();
+    assert_eq!(original, coverage_input_digest(directory).unwrap());
 }
 
 /// A missing receipt or unsupported schema never proves gate acceptance.
 #[test]
 fn rejects_missing_and_unknown_receipts() {
-    let (directory, mut receipt, settings) = fixture("schema");
-    assert!(read_receipt(&directory).is_err());
+    let (fixture, mut receipt, settings) = fixture();
+    let directory = fixture.path();
+    assert!(read_receipt(directory).is_err());
     receipt.schema_version += 1;
-    write_receipt(&directory, &receipt);
+    write_receipt(directory, &receipt);
     assert!(
         verify(
-            &directory,
+            directory,
             QualityGate::Coverage,
             &receipt.inputs_sha256,
             &settings
         )
         .is_err()
     );
-    fs::remove_dir_all(directory).unwrap();
 }
 
 /// Replaces one synthetic report and updates its checksum for validator tests.
@@ -376,15 +362,16 @@ fn replace_report(directory: &Path, receipt: &mut Receipt, name: &str, contents:
 /// Compilation wall time alone cannot stand in for a full fuzzer campaign.
 #[test]
 fn fuzz_requires_every_target_and_actual_fuzzer_duration() {
-    let (directory, mut receipt, settings) = fixture("fuzz-duration");
+    let (fixture, mut receipt, settings) = fixture();
+    let directory = fixture.path();
     receipt.gate = QualityGate::Fuzz;
     receipt.invocations.clear();
     let budget = settings.policy.fuzz.minimum_seconds_per_target;
     let elapsed = u128::from(budget) * 1_000;
     for target in &settings.policy.fuzz.targets {
-        replace_report(&directory, &mut receipt, &format!("{target}.stdout"), "");
+        replace_report(directory, &mut receipt, &format!("{target}.stdout"), "");
         replace_report(
-            &directory,
+            directory,
             &mut receipt,
             &format!("{target}.stderr"),
             &format!("Done 100 runs in {budget} second(s)\n"),
@@ -397,24 +384,24 @@ fn fuzz_requires_every_target_and_actual_fuzzer_duration() {
             report: target.clone(),
         });
     }
-    assert!(validate_reports(&receipt, &directory, &settings).is_ok());
+    assert!(validate_reports(&receipt, directory, &settings).is_ok());
     let target = receipt.invocations[0].report.clone();
     replace_report(
-        &directory,
+        directory,
         &mut receipt,
         &format!("{target}.stderr"),
         "Done 1 runs in 1 second(s)\n",
     );
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
     receipt.invocations.pop();
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
-    fs::remove_dir_all(directory).unwrap();
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
 }
 
 /// Performance labels without heap and successful allocation reports are insufficient.
 #[test]
 fn performance_requires_real_profiler_and_matching_profile() {
-    let (directory, mut receipt, settings) = fixture("profilers");
+    let (fixture, mut receipt, settings) = fixture();
+    let directory = fixture.path();
     receipt.gate = QualityGate::PerformanceRelease;
     receipt.invocations[0].report = "benchmark".to_owned();
     receipt.invocations[0].arguments.push("release".to_owned());
@@ -430,13 +417,13 @@ fn performance_requires_real_profiler_and_matching_profile() {
     let output = phases
         .map(|phase| format!("PASS  performance name={phase} iterations=250 elapsed-ns=100\n"))
         .join("");
-    replace_report(&directory, &mut receipt, "benchmark.stdout", &output);
-    replace_report(&directory, &mut receipt, "benchmark.stderr", "");
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
-    replace_report(&directory, &mut receipt, "massif.out", "mem_heap_B=100\n");
-    replace_report(&directory, &mut receipt, "memcheck.stdout", "");
+    replace_report(directory, &mut receipt, "benchmark.stdout", &output);
+    replace_report(directory, &mut receipt, "benchmark.stderr", "");
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
+    replace_report(directory, &mut receipt, "massif.out", "mem_heap_B=100\n");
+    replace_report(directory, &mut receipt, "memcheck.stdout", "");
     replace_report(
-        &directory,
+        directory,
         &mut receipt,
         "memcheck.stderr",
         "==1== ERROR SUMMARY: 0 errors from 0 contexts\n",
@@ -449,7 +436,7 @@ fn performance_requires_real_profiler_and_matching_profile() {
         report: "memcheck".to_owned(),
     });
     assert!(
-        validate_reports(&receipt, &directory, &settings).is_err(),
+        validate_reports(&receipt, directory, &settings).is_err(),
         "old-only benchmark must not qualify the composition pipeline"
     );
     let mut expanded = String::new();
@@ -461,29 +448,29 @@ fn performance_requires_real_profiler_and_matching_profile() {
         )
         .unwrap();
     }
-    replace_report(&directory, &mut receipt, "benchmark.stdout", &expanded);
-    assert!(validate_reports(&receipt, &directory, &settings).is_ok());
-    check_performance_boundaries(&directory, &mut receipt, &settings, &expanded);
+    replace_report(directory, &mut receipt, "benchmark.stdout", &expanded);
+    assert!(validate_reports(&receipt, directory, &settings).is_ok());
+    check_performance_boundaries(directory, &mut receipt, &settings, &expanded);
     receipt.gate = QualityGate::PerformanceSoak;
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
     receipt.gate = QualityGate::PerformanceRelease;
     replace_report(
-        &directory,
+        directory,
         &mut receipt,
         "memcheck.stderr",
         "==1== ERROR SUMMARY: 1 errors\n",
     );
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
-    fs::remove_dir_all(directory).unwrap();
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
 }
 
 /// Fresh zero-vulnerability output must cover every configured dependency lock.
 #[test]
 fn advisories_require_all_locks_and_fresh_zero_findings() {
-    let (directory, mut receipt, settings) = fixture("advisories");
+    let (fixture, mut receipt, settings) = fixture();
+    let directory = fixture.path();
     receipt.gate = QualityGate::Advisories;
     receipt.invocations.clear();
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
     let policy = read_workspace_text(
         &workspace_root().unwrap(),
         constants::DEPENDENCY_SOURCES_FILE,
@@ -494,12 +481,12 @@ fn advisories_require_all_locks_and_fresh_zero_findings() {
     for (index, lock) in locks.into_iter().enumerate() {
         let report = format!("lock-{index}");
         replace_report(
-            &directory,
+            directory,
             &mut receipt,
             &format!("{report}.stdout"),
             r#"{"vulnerabilities":{"found":false,"count":0}}"#,
         );
-        replace_report(&directory, &mut receipt, &format!("{report}.stderr"), "");
+        replace_report(directory, &mut receipt, &format!("{report}.stderr"), "");
         receipt.invocations.push(Invocation {
             program: "fixture".to_owned(),
             tool_version: "fixture 1".to_owned(),
@@ -508,27 +495,27 @@ fn advisories_require_all_locks_and_fresh_zero_findings() {
             report,
         });
     }
-    assert!(validate_reports(&receipt, &directory, &settings).is_ok());
+    assert!(validate_reports(&receipt, directory, &settings).is_ok());
     receipt.finished_at_unix_ms = unix_time_millis().unwrap() + 60_000;
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
     receipt.finished_at_unix_ms = unix_time_millis().unwrap();
     replace_report(
-        &directory,
+        directory,
         &mut receipt,
         "lock-0.stdout",
         r#"{"vulnerabilities":{"found":true,"count":1}}"#,
     );
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
-    fs::remove_dir_all(directory).unwrap();
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
 }
 
 /// Failed commands keep diagnostic output without producing passing evidence.
 #[test]
 fn failed_tool_never_writes_a_receipt() {
-    let (directory, receipt, settings) = fixture("failed-command");
+    let (fixture, receipt, settings) = fixture();
+    let directory = fixture.path();
     let mut measurement = Measurement {
         _store: MeasurementStore::begin(&directory.join("ownership")).unwrap(),
-        directory: directory.clone(),
+        directory: directory.to_path_buf(),
         receipt,
         settings,
     };
@@ -544,29 +531,29 @@ fn failed_tool_never_writes_a_receipt() {
     assert!(directory.join("failure.stderr").is_file());
     assert!(!directory.join("receipt.json").exists());
     assert!(measurement.finish().is_err());
-    fs::remove_dir_all(directory).unwrap();
 }
 
 /// Validation consumes the supplied command snapshot, not another on-disk threshold lookup.
 #[test]
 fn validates_against_supplied_policy_snapshot() {
-    let (directory, mut receipt, mut settings) = fixture("snapshot");
+    let (fixture, mut receipt, mut settings) = fixture();
+    let directory = fixture.path();
     replace_report(
-        &directory,
+        directory,
         &mut receipt,
         "coverage.json",
         r#"{"data":[{"totals":{"lines":{"percent":87},"functions":{"percent":100},"regions":{"percent":100}}}]}"#,
     );
-    assert!(validate_reports(&receipt, &directory, &settings).is_ok());
+    assert!(validate_reports(&receipt, directory, &settings).is_ok());
     settings.policy.coverage.minimum_line_percent = 90.0;
-    assert!(validate_reports(&receipt, &directory, &settings).is_err());
-    fs::remove_dir_all(directory).unwrap();
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
 }
 
 /// Unknown gate names fail at receipt decoding rather than falling through string dispatch.
 #[test]
 fn unknown_receipt_gate_is_rejected() {
-    let (directory, receipt, _) = fixture("unknown-gate");
+    let (fixture, receipt, _) = fixture();
+    let directory = fixture.path();
     let mut json = serde_json::to_value(&receipt).unwrap();
     json["gate"] = serde_json::json!("unknown");
     fs::write(
@@ -574,8 +561,7 @@ fn unknown_receipt_gate_is_rejected() {
         serde_json::to_vec(&json).unwrap(),
     )
     .unwrap();
-    assert!(read_receipt(&directory).is_err());
-    fs::remove_dir_all(directory).unwrap();
+    assert!(read_receipt(directory).is_err());
 }
 
 /// A second measurement cannot invalidate a live measurement's output.
@@ -595,7 +581,8 @@ fn competing_measurements_do_not_share_writable_reports() {
 /// Completed runs resolve through a safe pointer, while failed reruns cannot reuse retained success.
 #[test]
 fn measurement_pointer_requires_complete_latest_run() {
-    let (directory, receipt, settings) = fixture("pointer");
+    let (fixture, receipt, settings) = fixture();
+    let directory = fixture.path();
     let root = directory.join("store");
     let run = root.join("run-1-0");
     fs::create_dir_all(&run).unwrap();
@@ -644,7 +631,6 @@ fn measurement_pointer_requires_complete_latest_run() {
         )
         .is_err()
     );
-    fs::remove_dir_all(directory).unwrap();
 }
 
 /// Checks malformed reports, inclusive thresholds and exact one-over rejection.

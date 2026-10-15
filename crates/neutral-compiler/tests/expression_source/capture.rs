@@ -627,7 +627,22 @@ fn expression_capture_faults_preserve_atomic_rejection_and_recovery() {
             "cancellation checkpoint {index} must be reached"
         );
         assert!(token.is_cancelled(), "cancellation checkpoint {index}");
-        assert!(cancelled.is_err(), "cancelled checkpoint {index} published");
+        let failure = expression_capture_failure(cancelled);
+        assert!(
+            matches!(
+                failure,
+                ExpressionCaptureFailure::Capture(
+                    CompositionCaptureFailure::Capture(ProjectCaptureError::Cancelled)
+                        | CompositionCaptureFailure::Catalogue(
+                            neutral_vocabulary::composition::CompositionError::Cancelled
+                                | neutral_vocabulary::composition::CompositionError::Vocabulary(
+                                    neutral_vocabulary::VocabularyError::Cancelled
+                                )
+                        )
+                )
+            ),
+            "cancellation checkpoint {index}: {failure:?}"
+        );
     }
     let recovery = capture_expression_project(capture_expression_with_controls(
         expression_profile::CAPTURE_REQUEST_VERSION,
@@ -645,7 +660,11 @@ fn expression_capture_faults_preserve_atomic_rejection_and_recovery() {
     );
     assert_eq!(recovery.required_features(), baseline.required_features());
     assert_eq!(recovery.semantic_profiles(), baseline.semantic_profiles());
+}
 
+/// A source digest mismatch keeps its integrity classification instead of becoming a generic failure.
+#[test]
+fn expression_capture_rejects_source_integrity_mismatch() {
     let bad_digest = CapturedSourceInput::new(
         "source:main",
         "project::main",

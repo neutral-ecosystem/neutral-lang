@@ -17,6 +17,7 @@ neutral-reader = { path = "../neutral-reader" }
 neutral-vocabulary = { path = "../neutral-vocabulary" }
 
 [dev-dependencies]
+neutral-test-support = { path = "../neutral-test-support" }
 neutral-ir = { path = "../neutral-ir" }
 
 [lints]

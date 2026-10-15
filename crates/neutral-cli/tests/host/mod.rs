@@ -6,6 +6,7 @@ use super::{
     CliFailure, ExitClass, atomic_write, create_temporary, read_bounded, required_option,
     stdout_write_failure, write_selected_output,
 };
+use neutral_test_support::TestDirectory;
 use std::{fs, io::Cursor, path::PathBuf};
 
 #[test]
@@ -21,9 +22,8 @@ fn host_executes_profiles_validate_compile_and_format() {
         ExitClass::Usage
     );
 
-    let directory = temporary_path("commands");
-    let _ = fs::remove_dir_all(&directory);
-    fs::create_dir_all(&directory).expect("command directory should exist");
+    let fixture = TestDirectory::new().unwrap();
+    let directory = fixture.path();
     let source = directory.join("source.neu");
     let compiled = directory.join("compiled.neuir");
     let formatted = directory.join("formatted.neu");
@@ -47,7 +47,6 @@ fn host_executes_profiles_validate_compile_and_format() {
         fs::read(&formatted).expect("formatted output should exist"),
         b"neu \"0.1\"\nmodule minimal\n\nnum answer = 42\n"
     );
-    fs::remove_dir_all(directory).expect("command directory should be removable");
 }
 
 #[test]
@@ -91,8 +90,8 @@ fn host_command_failures_keep_stable_classification() {
         ExitClass::Usage
     );
 
-    let directory = temporary_path("command-failures");
-    fs::create_dir_all(&directory).expect("command failure directory should exist");
+    let fixture = TestDirectory::new().unwrap();
+    let directory = fixture.path();
     let source = directory.join("invalid.neu");
     fs::write(&source, b"invalid source").expect("invalid source should be written");
     for (command, output) in [
@@ -112,7 +111,6 @@ fn host_command_failures_keep_stable_classification() {
             ExitClass::Validation
         );
     }
-    fs::remove_dir_all(directory).expect("command failure directory should be removable");
 }
 
 #[test]
@@ -121,7 +119,8 @@ fn host_cancelled_commands_keep_stable_classification() {
     use crate::constants;
 
     for command in [constants::VALIDATE, constants::COMPILE] {
-        let source = temporary_path("cancelled-source");
+        let fixture = TestDirectory::new().unwrap();
+        let source = fixture.path().join("cancelled-source");
         fs::write(&source, b"neu \"0.1\"\nmodule minimal\n")
             .expect("valid source should be written");
         let mut arguments = vec![command.to_owned(), source.to_string_lossy().into_owned()];
@@ -129,7 +128,9 @@ fn host_cancelled_commands_keep_stable_classification() {
         if command == constants::COMPILE {
             arguments.extend([
                 constants::OUTPUT.to_owned(),
-                temporary_path("cancelled-output")
+                fixture
+                    .path()
+                    .join("cancelled-output")
                     .to_string_lossy()
                     .into_owned(),
             ]);
@@ -138,7 +139,6 @@ fn host_cancelled_commands_keep_stable_classification() {
             super::execute(arguments).unwrap_err().class(),
             ExitClass::Cancelled
         );
-        fs::remove_file(source).expect("cancelled source should be removable");
     }
 }
 
@@ -147,8 +147,8 @@ fn host_cancelled_commands_keep_stable_classification() {
 fn host_maps_artifact_encoding_limit() {
     use crate::constants;
 
-    let directory = temporary_path("encoding-limit");
-    fs::create_dir_all(&directory).expect("encoding directory should exist");
+    let fixture = TestDirectory::new().unwrap();
+    let directory = fixture.path();
     let source = directory.join("large.neu");
     let output = directory.join("large.neuir");
     let text_limit = neutral_encoding::constants::MAXIMUM_TEXT_BYTES;
@@ -171,7 +171,6 @@ fn host_maps_artifact_encoding_limit() {
     .unwrap_err();
     assert_eq!(failure.class(), ExitClass::Validation);
     assert_eq!(failure.messages(), ["artifact-encoding-limit"]);
-    fs::remove_dir_all(directory).expect("encoding directory should be removable");
 }
 
 #[test]
@@ -183,9 +182,8 @@ fn host_project_capture_accepts_optional_project_facts() {
         PROJECT_VOCABULARY_ENCODING_VERSION, PROJECT_VOCABULARY_SCHEMA_VERSION,
     };
 
-    let directory = temporary_path("project-capture");
-    let _ = fs::remove_dir_all(&directory);
-    fs::create_dir_all(&directory).expect("capture directory should exist");
+    let fixture = TestDirectory::new().unwrap();
+    let directory = fixture.path();
     let source = directory.join("source.neu");
     let bundle = directory.join("bundle.json");
     let bytes = format!(
@@ -225,7 +223,6 @@ fn host_project_capture_accepts_optional_project_facts() {
         panic!("capture command should execute");
     };
     super::capture_project_command(&options).expect("complete project should capture");
-    fs::remove_dir_all(directory).expect("capture directory should be removable");
 }
 
 #[test]
@@ -375,8 +372,8 @@ fn capture_failure_classes_and_safe_messages_are_complete() {
 /// Failed output creation or publication cannot replace a directory or leak temporary files.
 #[test]
 fn atomic_output_failures_cleanup_uncommitted_files() {
-    let directory = temporary_path("failed-publication");
-    fs::create_dir_all(&directory).unwrap();
+    let fixture = TestDirectory::new().unwrap();
+    let directory = fixture.path();
     let destination = directory.join("existing-directory");
     fs::create_dir(&destination).unwrap();
     assert_eq!(
@@ -385,7 +382,7 @@ fn atomic_output_failures_cleanup_uncommitted_files() {
             .messages(),
         ["output-commit-failed"]
     );
-    assert_eq!(fs::read_dir(&directory).unwrap().count(), 1);
+    assert_eq!(fs::read_dir(directory).unwrap().count(), 1);
     let missing = directory.join("missing").join("artifact.nir");
     assert_eq!(
         atomic_write(&missing, b"new", false)
@@ -394,7 +391,6 @@ fn atomic_output_failures_cleanup_uncommitted_files() {
         ["output-create-failed"]
     );
     assert!(destination.is_dir());
-    fs::remove_dir_all(directory).unwrap();
 
     assert_eq!(
         atomic_write(std::path::Path::new(""), b"new", true)
@@ -413,7 +409,8 @@ fn atomic_output_failures_cleanup_uncommitted_files() {
 /// Captured project vocabulary options retain exact lock facts and reject malformed digests.
 #[test]
 fn project_vocabulary_lock_acquisition_is_explicit() {
-    let path = temporary_path("vocabulary.json");
+    let fixture = TestDirectory::new().unwrap();
+    let path = fixture.path().join("vocabulary.json");
     let bytes = b"captured bytes";
     fs::write(&path, bytes).unwrap();
     let mut options = super::VocabularyOptions {
@@ -461,12 +458,6 @@ fn project_vocabulary_lock_acquisition_is_explicit() {
             .messages(),
         ["invalid-vocabulary-lock"]
     );
-    fs::remove_file(path).unwrap();
-}
-
-/// Returns a process-unique temporary path inside the system temporary directory.
-fn temporary_path(name: &str) -> PathBuf {
-    std::env::temp_dir().join(format!("neutral-cli-host-{}-{name}", std::process::id()))
 }
 
 #[test]
@@ -477,8 +468,9 @@ fn host_input_helpers_enforce_declared_bounds() {
     assert_eq!(limited.class(), ExitClass::Validation);
     let missing = required_option(None).expect_err("a missing validated option must fail");
     assert_eq!(missing.class(), ExitClass::Internal);
+    let fixture = TestDirectory::new().unwrap();
     let missing_input =
-        super::read_selected_input(&temporary_path("missing-input").to_string_lossy(), 16)
+        super::read_selected_input(&fixture.path().join("missing-input").to_string_lossy(), 16)
             .expect_err("a missing selected file must fail");
     assert_eq!(missing_input.class(), ExitClass::Input);
 }
@@ -530,9 +522,9 @@ fn host_writes_selected_standard_output() {
 #[test]
 /// Verifies temporary creation and atomic publication retain no abandoned file.
 fn host_temporary_and_atomic_output_paths_are_safe() {
-    let directory = temporary_path("directory");
-    fs::create_dir_all(&directory).expect("temporary directory should exist");
-    let (temporary, file) = create_temporary(&directory).expect("temporary file should open");
+    let fixture = TestDirectory::new().unwrap();
+    let directory = fixture.path();
+    let (temporary, file) = create_temporary(directory).expect("temporary file should open");
     drop(file);
     assert!(temporary.exists());
     fs::remove_file(&temporary).expect("temporary file should be removable");
@@ -547,7 +539,6 @@ fn host_temporary_and_atomic_output_paths_are_safe() {
         fs::read(&output).expect("output should remain readable"),
         b"second"
     );
-    fs::remove_dir_all(&directory).expect("temporary directory should be removable");
 }
 
 #[test]

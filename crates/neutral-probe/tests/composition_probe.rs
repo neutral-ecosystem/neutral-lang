@@ -141,3 +141,24 @@ fn system_probe_routes_composition_artifacts() {
         neutral_probe::composition::render_composition_summary_json(&summary, &cancel).unwrap()
     );
 }
+
+/// Composition routing must reject corrupt bytes without publishing a partial summary.
+#[test]
+fn system_probe_rejects_corrupt_composition_artifacts() {
+    let bytes = encode_composition_project(&empty_project(), &CancellationToken::new()).unwrap();
+    let directory = neutral_test_support::TestDirectory::new().unwrap();
+    let path = directory.path().join("corrupt.nir");
+    std::fs::write(&path, &bytes[..bytes.len() - 1]).unwrap();
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_neutral-probe"))
+        .arg("--json")
+        .arg(path)
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert_eq!(output.stdout, []);
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains(DecodeErrorClass::MalformedCbor.code())
+    );
+}

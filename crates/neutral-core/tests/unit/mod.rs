@@ -265,8 +265,15 @@ fn typed_digests_round_trip_validated_raw_bytes() {
     assert_eq!(source.as_bytes(), source_bytes);
 
     let section = EncodedSectionDigest::from_bytes(b"section");
-    assert_eq!(section, EncodedSectionDigest::from_bytes(b"section"));
-    assert_ne!(section.as_bytes(), [0_u8; 32]);
+    assert_eq!(
+        section.as_bytes(),
+        [
+            0x3f, 0xb4, 0x56, 0x23, 0xcb, 0x30, 0x75, 0xa8, 0xaf, 0x9a, 0x2f, 0x81, 0xef, 0x3b,
+            0xea, 0xa4, 0x03, 0x85, 0x41, 0xcd, 0x71, 0xf0, 0x8e, 0x4b, 0xf6, 0xc7, 0x9c, 0x08,
+            0x8f, 0x7a, 0x40, 0x26
+        ]
+    );
+    assert_ne!(section, EncodedSectionDigest::from_bytes(b"section\n"));
 
     let vocabulary_bytes = [2_u8; 32];
     let vocabulary = VocabularyContentDigest::from_raw_bytes(vocabulary_bytes);

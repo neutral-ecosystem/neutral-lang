@@ -66,6 +66,7 @@ fn security_consumer_root_reuse_preserves_safe_use_site_and_redacts_private_orig
                 &cancel,
             )
             .unwrap();
+        assert_eq!(format!("{origin:?}"), "PublicValueAttribution { .. }");
         let PublicOriginLocation::Available(location) = origin.occurrence() else {
             panic!("root reuse use site was retained");
         };
@@ -270,6 +271,7 @@ fn integration_consumer_selectors_resolve_values_and_retain_type_obligations() {
         expected_type: &T::String,
     };
     let selected = boundary.select(&request, &cancel).unwrap();
+    assert_eq!(format!("{selected:?}"), "SelectedMember { .. }");
     assert_eq!(selected.identity().schema, MEMBER_SELECTOR_SCHEMA);
     assert_eq!(selected.identity().path, path);
     assert!(matches!(selected.identity().root, SelectorRoot::Value(root) if root == &subject));

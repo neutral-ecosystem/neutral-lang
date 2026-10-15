@@ -3,6 +3,7 @@
 //! Resolved Cargo graph and workspace discovery regressions.
 
 use super::*;
+use neutral_test_support::TestDirectory;
 
 /// Dependency aliases never change the package names enforced by boundary policy.
 #[test]
@@ -36,8 +37,8 @@ fn automation_cargo_discovery_uses_resolved_package_ids() {
 /// Cargo expands globs, applies excludes, and selects configured target directories.
 #[test]
 fn automation_cargo_discovery_respects_workspace_configuration() {
-    let root = std::env::temp_dir().join(format!("neutral-cargo-discovery-{}", std::process::id()));
-    std::fs::create_dir(&root).expect("new tree");
+    let fixture = TestDirectory::new().expect("new tree");
+    let root = fixture.path();
     std::fs::create_dir_all(root.join("packages/member/src")).expect("member tree");
     std::fs::create_dir_all(root.join("packages/excluded/src")).expect("excluded tree");
     std::fs::create_dir_all(root.join(".cargo")).expect("Cargo configuration");
@@ -69,19 +70,57 @@ fn automation_cargo_discovery_respects_workspace_configuration() {
     )
     .expect("output configuration");
     let root = root.canonicalize().expect("canonical root");
+    for override_target in [None, Some(root.join("environment-output"))] {
+        let mut child = std::process::Command::new(std::env::current_exe().unwrap());
+        child
+            .args([
+                "--exact",
+                "config::cargo_discovery::tests::cargo_discovery_configuration_child",
+                "--nocapture",
+            ])
+            .env("NEUTRAL_TEST_CARGO_DISCOVERY_ROOT", &root)
+            .env_remove("CARGO_TARGET_DIR")
+            .env_remove("CARGO_BUILD_TARGET_DIR");
+        let expected = override_target
+            .as_ref()
+            .map_or_else(|| root.join("custom-output"), Clone::clone);
+        if let Some(target) = override_target {
+            child.env("CARGO_TARGET_DIR", target);
+        }
+        let output = child
+            .env("NEUTRAL_TEST_CARGO_DISCOVERY_TARGET", expected)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains("1 passed"),
+            "the discovery child must run its assertion"
+        );
+    }
+}
+
+/// Runs the actual discovery helper with environment changes confined to this child process.
+#[test]
+fn cargo_discovery_configuration_child() {
+    let Some(root) = std::env::var_os("NEUTRAL_TEST_CARGO_DISCOVERY_ROOT") else {
+        return;
+    };
+    let root = PathBuf::from(root);
+    let expected = PathBuf::from(
+        std::env::var_os("NEUTRAL_TEST_CARGO_DISCOVERY_TARGET").expect("expected target"),
+    );
     let metadata = metadata(&root, false).expect("globbed workspace");
     assert_eq!(metadata.workspace_packages().len(), 1);
     assert_eq!(
         manifests(&root).expect("member manifest"),
         [root.join("packages/member/Cargo.toml")]
     );
-    if std::env::var_os("CARGO_TARGET_DIR").is_none() {
-        assert_eq!(
-            metadata.target_directory.as_std_path(),
-            root.join("custom-output")
-        );
-    }
-    std::fs::remove_dir_all(root).expect("remove owned tree");
+    assert_eq!(metadata.target_directory.as_std_path(), expected);
 }
 
 /// Benchmark discovery rejects unrelated and missing executable build records.

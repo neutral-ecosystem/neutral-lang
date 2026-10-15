@@ -189,6 +189,7 @@ dependencies = [
  "neutral-encoding",
  "neutral-ir",
  "neutral-reader",
+ "neutral-test-support",
  "neutral-vocabulary",
 ]
 

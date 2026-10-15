@@ -424,3 +424,28 @@ fn public_view_allocation_failures_preserve_the_complete_project() {
         );
     }
 }
+
+/// Public template dependency inspection resolves the template owner and preserves its root kind.
+#[test]
+fn template_dependencies_inspect_the_body_without_evaluating_it() {
+    let project = authority(expanded());
+    let template = symbol("m", "Identity");
+    let dependencies = project
+        .dependencies(
+            &template,
+            ExpressionInspectionLimits::default(),
+            &CancellationToken::new(),
+        )
+        .unwrap();
+    assert_eq!(dependencies.edges(), []);
+    assert_eq!(
+        project
+            .dependencies(
+                &symbol("m", "Absent"),
+                ExpressionInspectionLimits::default(),
+                &CancellationToken::new()
+            )
+            .unwrap_err(),
+        E::Semantic
+    );
+}

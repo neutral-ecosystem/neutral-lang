@@ -77,7 +77,7 @@ fn one() -> V {
     V::Number(ExactNumber::from_normalized_parts(false, "1", 0, 4096, 4096).unwrap())
 }
 /// Starts a complete source-only successor project with recomputable facts initially unset.
-fn empty() -> ExpressionProjectIr {
+pub(super) fn empty() -> ExpressionProjectIr {
     let limits = limits();
     ExpressionProjectIr {
         schema: neutral_ir::expression::profile::PROJECT_IR_SCHEMA.into(),
@@ -582,4 +582,48 @@ fn cross_unit_input_leaves_need_imports_without_becoming_structural_reuse() {
         });
         assert_eq!(check(ir), if connected { Ok(()) } else { Err(E::Semantic) });
     }
+}
+
+/// Related public evidence must be strictly ordered and expansion lineage cannot be repeated.
+#[test]
+fn companion_locations_reject_duplicate_and_reversed_evidence() {
+    let mut ir = expanded();
+    ir.expression_attributions[0].related_public_locations =
+        vec![loc("m", 11, 12), loc("m", 61, 62)];
+    assert_eq!(check(ir), Ok(()));
+    let mut ir = expanded();
+    ir.expression_attributions[0].related_public_locations =
+        vec![loc("m", 61, 62), loc("m", 11, 12)];
+    assert_eq!(check(ir), Err(E::Companion));
+    let mut ir = expanded();
+    ir.expansion_attributions
+        .push(expanded().expansion_attributions.remove(0));
+    assert_eq!(check(ir), Err(E::Companion));
+}
+
+/// Expression attribution paths distinguish present record children from omitted fields.
+#[test]
+fn expression_record_attributions_require_present_children() {
+    let leaf = Expression {
+        ty: T::Num,
+        node: ExpressionNode::Value(one()),
+    };
+    let tree = Expression {
+        ty: T::Num,
+        node: ExpressionNode::Record(vec![
+            ("absent".into(), None),
+            ("present".into(), Some(leaf)),
+        ]),
+    };
+    let cancel = CancellationToken::new();
+    let mut budget = Budget {
+        work: 100,
+        cancel: &cancel,
+    };
+    assert_eq!(
+        node(&tree, &[1], &mut budget).unwrap().node,
+        ExpressionNode::Value(one())
+    );
+    assert_eq!(node(&tree, &[0], &mut budget), Err(E::Companion));
+    assert_eq!(node(&tree, &[2], &mut budget), Err(E::Companion));
 }

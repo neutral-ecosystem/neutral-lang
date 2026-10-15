@@ -244,26 +244,38 @@ fn integration_composition_probe_preserves_contracts_and_root_invariance() {
             encode_composition_project(&project, &CancellationToken::new()).unwrap(),
             bytes
         );
-        let mut hostile = (**ir).clone();
-        if let Some(origin) = hostile
-            .origins
-            .iter_mut()
-            .find(|o| matches!(o.attribution, Some(A::Vocabulary { .. })))
-        {
-            if let Some(A::Vocabulary { field_name, .. }) = &mut origin.attribution {
-                *field_name = "unknown".to_owned();
-            }
-            assert!(
-                ValidatedCompositionProject::from_ir(
-                    shared(hostile),
-                    ir.limits,
-                    limits_for(case),
-                    &CancellationToken::new()
-                )
-                .is_err()
-            );
-        }
     }
+}
+
+/// A captured vocabulary default must retain a real field owner, and forged owners fail validation.
+#[test]
+fn integration_composition_reader_rejects_forged_vocabulary_attribution() {
+    let fixture: Value = serde_json::from_str(REQUESTS[0]).unwrap();
+    let case = fixture["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|case| case["id"] == "both-origins-heterogeneous-list-default-absence-reference")
+        .expect("the vocabulary default fixture must remain present");
+    let project = compile(case);
+    let ir = project.complete_ir();
+    let mut hostile = (**ir).clone();
+    let origin = hostile
+        .origins
+        .iter_mut()
+        .find(|origin| matches!(origin.attribution, Some(A::Vocabulary { .. })))
+        .expect("the fixture must retain vocabulary default attribution");
+    let Some(A::Vocabulary { field_name, .. }) = &mut origin.attribution else {
+        unreachable!("the selected attribution is a vocabulary field");
+    };
+    *field_name = "unknown".to_owned();
+    ValidatedCompositionProject::from_ir(
+        shared(hostile),
+        ir.limits,
+        limits_for(case),
+        &CancellationToken::new(),
+    )
+    .expect_err("a nonexistent vocabulary field must reject the complete project");
 }
 
 /// A real standalone reader-only binary inspects successor bytes without compiler linkage or fallback.
