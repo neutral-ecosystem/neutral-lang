@@ -559,5 +559,8 @@ fn matrix_exclusions_reject_deferred_tuple_members() {
         "template Item(static num value) -> num { value }\nexpand items = Item(value: axis) for (axis in [1]) exclude [{ axis: 1 }]",
     )
     .expect("static exclusions should filter tuples");
-    assert!(ir.declarations.is_empty());
+    assert_eq!(
+        ir.declarations,
+        [] as [neutral_ir::expression::project::ExpressionDeclaration; 0]
+    );
 }

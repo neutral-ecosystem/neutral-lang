@@ -166,7 +166,7 @@ fn nullable_variant_retains_tag_payload_and_outer_type() {
             }
         );
     }
-    assert!(model.restriction_obligations().is_empty());
+    assert_eq!(model.restriction_obligations(), []);
 }
 
 /// Catches bypassing immediate field restrictions while admitting nullable static records.
@@ -178,7 +178,7 @@ fn nullable_static_record_checks_restrictions_without_future_obligations() {
     );
     let model = validate(constructor_project(false, leaf(true), false)).unwrap();
     assert_eq!(model.facts().values(), [2, 2, 1, 0, 0, 0, 54]);
-    assert!(model.restriction_obligations().is_empty());
+    assert_eq!(model.restriction_obligations(), []);
     assert_eq!(
         run(&model, &[]),
         R::Value {

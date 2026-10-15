@@ -446,10 +446,114 @@ fn missing_outputs_from_one_target_order_by_exact_public_result_contract() {
     );
 }
 
+/// Builds output leaves with shared contracts, duplicate selectors and numeric/payload ordering.
+fn selector_order_project() -> ExpressionProjectIr {
+    let result_type = source_contract("Result");
+    let state_type = source_contract("State");
+    let selectors = [
+        (
+            "choice",
+            vec![SelectorSegment::Field("choice".into())],
+            state_type.clone(),
+        ),
+        (
+            "choice_ready",
+            vec![
+                SelectorSegment::Field("choice".into()),
+                SelectorSegment::Alternative("ready".into()),
+            ],
+            T::Bool,
+        ),
+        (
+            "choice_waiting",
+            vec![
+                SelectorSegment::Field("choice".into()),
+                SelectorSegment::Alternative("waiting".into()),
+            ],
+            T::Bool,
+        ),
+        (
+            "item_ten",
+            vec![
+                SelectorSegment::Field("items".into()),
+                SelectorSegment::Index(10),
+            ],
+            T::Bool,
+        ),
+        (
+            "item_two",
+            vec![
+                SelectorSegment::Field("items".into()),
+                SelectorSegment::Index(2),
+            ],
+            T::Bool,
+        ),
+        (
+            "items",
+            vec![SelectorSegment::Field("items".into())],
+            T::List(Box::new(T::Bool)),
+        ),
+        ("name", vec![SelectorSegment::Field("name".into())], T::Bool),
+        (
+            "name_copy",
+            vec![SelectorSegment::Field("name".into())],
+            T::Bool,
+        ),
+    ];
+    project(vec![
+        definition(
+            "Answer",
+            selectors
+                .iter()
+                .map(|(name, _, ty)| required_field(name, ty.clone()))
+                .collect(),
+        ),
+        operation_definition(),
+        definition(
+            "Result",
+            vec![
+                required_field("choice", state_type.clone()),
+                required_field("items", T::List(Box::new(T::Bool))),
+                required_field("name", T::Bool),
+            ],
+        ),
+        D {
+            identity: symbol("State"),
+            public: true,
+            signature: S::Definition(CompositionBody::Variant(
+                ["ready", "waiting"]
+                    .into_iter()
+                    .map(|tag| neutral_ir::composition::CompositionAlternative {
+                        tag: tag.into(),
+                        ty: T::Bool,
+                    })
+                    .collect(),
+            )),
+            body: None,
+        },
+        operation_binding(),
+        binding(
+            "result",
+            source_contract("Answer"),
+            ExpressionBody::Expression(Expression {
+                ty: source_contract("Answer"),
+                node: ExpressionNode::Record(
+                    selectors
+                        .into_iter()
+                        .map(|(name, selector, ty)| {
+                            (name.into(), Some(output(result_type.clone(), selector, ty)))
+                        })
+                        .collect(),
+                ),
+            }),
+        ),
+    ])
+}
+
+/// Missing outputs deduplicate identical selectors while preserving prefix, payload and index order.
 #[test]
 fn missing_outputs_with_one_contract_order_by_selector_payload_and_prefix() {
     let result_type = source_contract("Result");
-    let state_type = source_contract("State");
     let choice_path = [SelectorSegment::Field("choice".into())];
     let choice_ready = [
         SelectorSegment::Field("choice".into()),
@@ -469,132 +573,7 @@ fn missing_outputs_with_one_contract_order_by_selector_payload_and_prefix() {
         SelectorSegment::Index(10),
     ];
     let name_path = [SelectorSegment::Field("name".into())];
-    let ir = project(vec![
-        definition(
-            "Answer",
-            vec![
-                required_field("choice", state_type.clone()),
-                required_field("choice_ready", T::Bool),
-                required_field("choice_waiting", T::Bool),
-                required_field("item_ten", T::Bool),
-                required_field("item_two", T::Bool),
-                required_field("items", T::List(Box::new(T::Bool))),
-                required_field("name", T::Bool),
-                required_field("name_copy", T::Bool),
-            ],
-        ),
-        operation_definition(),
-        definition(
-            "Result",
-            vec![
-                required_field("choice", state_type.clone()),
-                required_field("items", T::List(Box::new(T::Bool))),
-                required_field("name", T::Bool),
-            ],
-        ),
-        D {
-            identity: symbol("State"),
-            public: true,
-            signature: S::Definition(CompositionBody::Variant(vec![
-                neutral_ir::composition::CompositionAlternative {
-                    tag: "ready".into(),
-                    ty: T::Bool,
-                },
-                neutral_ir::composition::CompositionAlternative {
-                    tag: "waiting".into(),
-                    ty: T::Bool,
-                },
-            ])),
-            body: None,
-        },
-        operation_binding(),
-        binding(
-            "result",
-            source_contract("Answer"),
-            ExpressionBody::Expression(Expression {
-                ty: source_contract("Answer"),
-                node: ExpressionNode::Record(vec![
-                    (
-                        "choice".into(),
-                        Some(output(
-                            result_type.clone(),
-                            vec![SelectorSegment::Field("choice".into())],
-                            state_type.clone(),
-                        )),
-                    ),
-                    (
-                        "choice_ready".into(),
-                        Some(output(
-                            result_type.clone(),
-                            vec![
-                                SelectorSegment::Field("choice".into()),
-                                SelectorSegment::Alternative("ready".into()),
-                            ],
-                            T::Bool,
-                        )),
-                    ),
-                    (
-                        "choice_waiting".into(),
-                        Some(output(
-                            result_type.clone(),
-                            vec![
-                                SelectorSegment::Field("choice".into()),
-                                SelectorSegment::Alternative("waiting".into()),
-                            ],
-                            T::Bool,
-                        )),
-                    ),
-                    (
-                        "item_ten".into(),
-                        Some(output(
-                            result_type.clone(),
-                            vec![
-                                SelectorSegment::Field("items".into()),
-                                SelectorSegment::Index(10),
-                            ],
-                            T::Bool,
-                        )),
-                    ),
-                    (
-                        "item_two".into(),
-                        Some(output(
-                            result_type.clone(),
-                            vec![
-                                SelectorSegment::Field("items".into()),
-                                SelectorSegment::Index(2),
-                            ],
-                            T::Bool,
-                        )),
-                    ),
-                    (
-                        "items".into(),
-                        Some(output(
-                            result_type.clone(),
-                            vec![SelectorSegment::Field("items".into())],
-                            T::List(Box::new(T::Bool)),
-                        )),
-                    ),
-                    (
-                        "name".into(),
-                        Some(output(
-                            result_type.clone(),
-                            vec![SelectorSegment::Field("name".into())],
-                            T::Bool,
-                        )),
-                    ),
-                    (
-                        "name_copy".into(),
-                        Some(output(
-                            result_type.clone(),
-                            vec![SelectorSegment::Field("name".into())],
-                            T::Bool,
-                        )),
-                    ),
-                ]),
-            }),
-        ),
-    ]);
-    let model = output_model(ir);
+    let model = output_model(selector_order_project());
     let target = symbol("operation");
     let associations = [OutputAssociation {
         target: &target,

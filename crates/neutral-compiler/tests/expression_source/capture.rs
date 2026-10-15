@@ -55,8 +55,7 @@ fn capture_expression_with_controls(
         CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(
             StructuralLimits::new(1_048_576, 64).unwrap(),
         )),
-        expression,
-        expansion,
+        (expression, expansion),
         cancellation,
     )
 }
@@ -93,8 +92,7 @@ fn captured_expression_companions_preserve_exact_inputs() {
         expression_profile::CAPTURE_REQUEST_VERSION,
         profiles,
         composition,
-        expression,
-        expansion,
+        (expression, expansion),
         CancellationToken::new(),
     ))
     .expect("valid /3 request should capture");
@@ -155,7 +153,7 @@ fn expression_capture_failure_codes_preserve_wrapped_classification() {
         ProjectCaptureError::Cancelled,
         ProjectCaptureError::LimitExceeded,
     ] {
-        let failure = ExpressionCaptureFailure::from(error.clone());
+        let failure = ExpressionCaptureFailure::from(error);
         assert_eq!(failure.code(), error.code());
         assert!(matches!(
             failure,
@@ -168,11 +166,7 @@ fn expression_capture_failure_codes_preserve_wrapped_classification() {
 /// Captured `/3` identity is byte-exact, capture-order invariant and changed by source bytes.
 #[test]
 fn captured_expression_identity_matches_exact_byte_oracle() {
-    use neutral_core::profile::V1_SOURCE_PROFILE;
-    use neutral_ir::project_identity::{
-        CapturedIdentityInput, CapturedIdentitySource, CapturedIdentityVocabulary, IdentityLimits,
-        captured_expression_closure,
-    };
+    use neutral_ir::project_identity::IdentityLimits;
 
     let sources = [
         CapturedSourceInput::new(
@@ -199,8 +193,7 @@ fn captured_expression_identity_matches_exact_byte_oracle() {
             CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(
                 StructuralLimits::new(1_048_576, 64).unwrap(),
             )),
-            ExpressionLimits::hard(),
-            ExpansionLimits::hard(),
+            (ExpressionLimits::hard(), ExpansionLimits::hard()),
             CancellationToken::new(),
         ))
         .unwrap()
@@ -238,7 +231,20 @@ fn captured_expression_identity_matches_exact_byte_oracle() {
             .identity_transcript(identity_limits, &CancellationToken::new())
             .unwrap()
     );
-    let sources: Vec<_> = first
+    assert_captured_expression_identity_oracle(&first, identity_limits);
+}
+
+/// Reconstructs the captured transcript from public source and vocabulary facts independently.
+fn assert_captured_expression_identity_oracle(
+    captured: &CapturedExpressionProject,
+    identity_limits: neutral_ir::project_identity::IdentityLimits,
+) {
+    use neutral_core::profile::V1_SOURCE_PROFILE;
+    use neutral_ir::project_identity::{
+        CapturedIdentityInput, CapturedIdentitySource, CapturedIdentityVocabulary,
+        captured_expression_closure,
+    };
+    let sources: Vec<_> = captured
         .sources()
         .iter()
         .map(|source| CapturedIdentitySource {
@@ -248,7 +254,7 @@ fn captured_expression_identity_matches_exact_byte_oracle() {
             byte_len: source.bytes().len() as u64,
         })
         .collect();
-    let vocabularies: Vec<_> = first
+    let vocabularies: Vec<_> = captured
         .vocabularies()
         .iter()
         .map(|vocabulary| {
@@ -270,12 +276,17 @@ fn captured_expression_identity_matches_exact_byte_oracle() {
             sources: &sources,
             vocabularies: &vocabularies,
         },
-        first.semantic_profiles(),
+        captured.semantic_profiles(),
         identity_limits,
         &CancellationToken::new(),
     )
     .unwrap();
-    assert_eq!(transcript, oracle);
+    assert_eq!(
+        captured
+            .identity_transcript(identity_limits, &CancellationToken::new())
+            .unwrap(),
+        oracle
+    );
 }
 
 /// Identity transcript exact byte/node bounds, allocation failures and cancellation recover.
@@ -487,6 +498,14 @@ fn expression_capture_rejects_zero_semantic_controls() {
             ExpressionCaptureFailure::Limit
         );
     }
+}
+
+/// Each independent finite expansion control rejects zero without changing expression policy.
+#[test]
+fn expression_capture_rejects_zero_expansion_controls() {
+    let source = b"neu \"1.0\"\nmodule project::main\nuse ExampleDomain as domain\n";
+    let expression = ExpressionLimits::hard();
+    let expansion = ExpansionLimits::hard();
     for expansion in [
         ExpansionLimits {
             definitions: 0,
@@ -578,24 +597,23 @@ fn expression_capture_faults_preserve_atomic_rejection_and_recovery() {
     for index in 0..checkpoints {
         let request = make_request(CancellationToken::new());
         let (failure, observed) = observe(Some(index), || capture_expression_project(request));
-        let failure = match failure {
-            Err(failure) => failure,
-            _ => panic!("allocation fault {index} did not reject the complete capture"),
+        let Err(failure) = failure else {
+            panic!("allocation fault {index} did not reject the complete capture");
         };
         assert!(observed > index, "allocation fault {index} must be reached");
         assert!(
             matches!(
                 failure,
                 ExpressionCaptureFailure::Limit
-                    | ExpressionCaptureFailure::Capture(CompositionCaptureFailure::Capture(
-                        ProjectCaptureError::LimitExceeded
-                    ))
-                    | ExpressionCaptureFailure::Capture(CompositionCaptureFailure::Catalogue(
-                        neutral_vocabulary::composition::CompositionError::Allocation
-                            | neutral_vocabulary::composition::CompositionError::Vocabulary(
-                                neutral_vocabulary::VocabularyError::JsonLimitExceeded
+                    | ExpressionCaptureFailure::Capture(
+                        CompositionCaptureFailure::Capture(ProjectCaptureError::LimitExceeded)
+                            | CompositionCaptureFailure::Catalogue(
+                                neutral_vocabulary::composition::CompositionError::Allocation
+                                    | neutral_vocabulary::composition::CompositionError::Vocabulary(
+                                        neutral_vocabulary::VocabularyError::JsonLimitExceeded
+                                    )
                             )
-                    ))
+                    )
             ),
             "allocation fault {index}: {failure:?}"
         );
@@ -642,8 +660,7 @@ fn expression_capture_faults_preserve_atomic_rejection_and_recovery() {
         CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(
             StructuralLimits::new(1_048_576, 64).unwrap(),
         )),
-        ExpressionLimits::hard(),
-        ExpansionLimits::hard(),
+        (ExpressionLimits::hard(), ExpansionLimits::hard()),
         CancellationToken::new(),
     ))
     .err()

@@ -79,7 +79,10 @@ fn composition_assembly_rejects_combined_text_limit_overflow_atomically() {
     let failure = crate::compile_composition_project(&overflow_capture, &CancellationToken::new())
         .expect_err("combined ceiling overflow must reject assembly");
     assert_eq!(failure.code, "NEU-COMP-010");
-    assert!(baseline.declarations.is_empty());
+    assert_eq!(
+        baseline.declarations,
+        [] as [neutral_ir::composition::project::CompositionDeclaration; 0]
+    );
 }
 
 /// Constructs exact explicit schema /2 bytes and their matching content lock.

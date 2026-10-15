@@ -75,6 +75,7 @@ pub fn encode_composition_project(
     Ok(output)
 }
 
+/// Preserves cancellation while mapping rejected producer models to the encoding limit error.
 fn encoding_validation_error(error: D) -> E {
     if error.class() == C::Cancelled {
         E::Cancelled

@@ -45,8 +45,7 @@ fn request(
         CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(
             StructuralLimits::new(1_048_576, 64).unwrap(),
         )),
-        expression,
-        expansion,
+        (expression, expansion),
         CancellationToken::new(),
     )
 }
@@ -56,8 +55,7 @@ fn request_with_inputs(
     version: &str,
     profiles: expression_profile::SemanticProfiles,
     composition: CompositionLimits,
-    expression: ExpressionLimits,
-    expansion: ExpansionLimits,
+    (expression, expansion): (ExpressionLimits, ExpansionLimits),
     cancellation: CancellationToken,
 ) -> CapturedExpressionProjectRequest {
     let bounds = ProjectCaptureLimitValues {

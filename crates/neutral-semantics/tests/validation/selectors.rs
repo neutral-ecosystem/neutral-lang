@@ -177,7 +177,7 @@ fn optional_field_list_and_variant_retain_exact_nested_obligations() {
         assert_eq!(obligation.site.root, ExpressionRoot::Binding);
         assert_eq!(obligation.site.node_path, [1]);
     }
-    assert!(model.restriction_obligations().is_empty());
+    assert_eq!(model.restriction_obligations(), []);
 }
 
 /// Catches treating required/defaulted fields as optional or validating future indices early.
@@ -195,7 +195,7 @@ fn required_and_defaulted_fields_only_require_future_index_and_alternative() {
             assert_eq!(obligations[1].requirement, A::Alternative);
             for obligation in obligations {
                 assert_eq!(obligation.site.root, ExpressionRoot::Binding);
-                assert!(obligation.site.node_path.is_empty());
+                assert_eq!(obligation.site.node_path, [] as [u64; 0]);
             }
         }
     }
@@ -340,7 +340,7 @@ fn empty_selector_returns_the_exact_root_without_availability_checks() {
     ir.expression_resources.retained_expression_text_bytes = 71;
     let model = validate(ir).unwrap();
     assert_eq!(model.facts().values(), [1, 1, 1, 1, 1, 0, 71]);
-    assert!(model.availability_obligations().is_empty());
+    assert_eq!(model.availability_obligations(), []);
 }
 
 /// Catches partially published obligations or poisoned immutable models after resource failure.
