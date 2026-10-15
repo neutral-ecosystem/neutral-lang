@@ -1,12 +1,16 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-<a href="https://github.com/neutral-ecosystem/neutral-lang"><img src="assets/neutral-lang-graph.png" alt="Neutral programming language" width="100%"></a>
+<p align="center">
+  <a href="https://github.com/neutral-ecosystem/neutral-lang">
+    <img src="assets/neutral-logo-rounded.png" alt="Neutral programming language">
+  </a>
+</p>
 
 <div align="center">
 
   <p align="center">
+    <img src="https://img.shields.io/badge/Rust-stable-CE422B?style=for-the-badge&amp;logo=rust&amp;logoColor=white" alt="Rust toolchain: latest stable"> 
     <img src="https://img.shields.io/badge/Platform-Linux-1793D1?style=for-the-badge&amp;logo=linux&amp;logoColor=white" alt="Supported platform: Linux">
-    <img src="https://img.shields.io/badge/Rust-stable-CE422B?style=for-the-badge&amp;logo=rust&amp;logoColor=white" alt="Rust toolchain: latest stable">
     <img src="https://img.shields.io/badge/Windows-experimental-0078D4?style=for-the-badge&amp;logo=windows11&amp;logoColor=white" alt="Windows support: experimental">
     <a href="https://github.com/neutral-ecosystem/neutral-lang/releases"><img src="https://img.shields.io/badge/Release-View_Releases-2EA44F?style=for-the-badge&amp;logo=github&amp;logoColor=white" alt="View Neutral releases"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-2EA44F?style=for-the-badge" alt="License: Apache 2.0"></a>
