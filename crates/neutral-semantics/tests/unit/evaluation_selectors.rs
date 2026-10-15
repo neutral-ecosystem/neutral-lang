@@ -89,6 +89,18 @@ fn selectors_reject_insufficient_work_and_mid_request_cancellation() {
         select(&value, &path, &mut Budget::new(limits, &cancel).unwrap()),
         Err(E::Limit)
     );
+    let variant = V::Variant {
+        tag: "ready".into(),
+        payload: Box::new(V::Bool(true)),
+    };
+    assert_eq!(
+        select(
+            &variant,
+            &[SelectorSegment::Alternative("ready".into())],
+            &mut Budget::new(limits, &cancel).unwrap()
+        ),
+        Err(E::Limit)
+    );
     let mut budget = Budget::new(ExpressionLimits::hard(), &cancel).unwrap();
     cancel.cancel();
     assert_eq!(select(&value, &path, &mut budget), Err(E::Cancelled));

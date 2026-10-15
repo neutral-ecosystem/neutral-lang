@@ -6,12 +6,21 @@ use super::{EvaluationError as E, Expression, Flow, State, V};
 use neutral_ir::expression::{BinaryOperator as O, ExpressionNode as N};
 
 impl<'m> State<'m, '_> {
-    /// Reuses pure evaluation before rewriting; no alternate arithmetic implementation.
+    /// Partially evaluates a typed expression without supplying external inputs.
+    ///
+    /// Fully known values use the ordinary evaluator and contract checks. A known
+    /// guard selects one branch; unknown guards retain their original branches.
+    /// This preserves deferred errors and avoids a second arithmetic implementation.
+    ///
+    /// # Errors
+    /// Propagates selected-path failures, invalid retained types, allocation,
+    /// exhausted caller controls or cancellation without publishing a partial tree.
     pub(super) fn fold(
         &mut self,
         expression: &'m Expression,
         depth: u64,
     ) -> Result<Expression, Flow<'m>> {
+        // Fold a whole value only after ordinary evaluation has checked its selected path.
         if let Some(value) = self.walk(expression, depth)? {
             let owner = self.owner;
             self.checked(&value, &expression.ty, owner)?;
@@ -20,6 +29,7 @@ impl<'m> State<'m, '_> {
                 node: N::Value(value),
             });
         }
+        // A deferred result can still have a known guard that eliminates one branch.
         match &expression.node {
             N::If {
                 guard,
@@ -35,6 +45,7 @@ impl<'m> State<'m, '_> {
                 left,
                 right,
             } => {
+                // A short-circuit result was returned above; otherwise the right side is demanded.
                 if let Some(V::Bool(_)) = self.walk(left, depth + 1)? {
                     return self.fold(right, depth + 1);
                 }
@@ -51,6 +62,7 @@ impl<'m> State<'m, '_> {
                         .find(|arm| arm.tag == tag)
                         .ok_or(E::ExpressionType)?;
                     self.budget.reserve(&mut self.frames, 1)?;
+                    // Keep the selected payload alive while closing references to this match frame.
                     self.frames.push(*payload);
                     let result = self.fold(&arm.body, depth + 1);
                     self.frames.pop();
@@ -65,7 +77,10 @@ impl<'m> State<'m, '_> {
         Ok(result)
     }
 
-    /// Folds unconditional children only; guarded branches retain their original semantics.
+    /// Folds unconditional children inside an already retained residual shape.
+    ///
+    /// Unknown guards and short-circuit left operands must not cause speculative
+    /// evaluation of their guarded branches. Container elements are unconditional.
     fn fold_children(
         &mut self,
         expression: &'m Expression,
@@ -93,6 +108,7 @@ impl<'m> State<'m, '_> {
                 },
             ) => {
                 **a = self.fold(left, depth + 1)?;
+                // An unresolved Boolean left operand leaves its right side guarded.
                 if !matches!(operator, O::And | O::Or) {
                     **b = self.fold(right, depth + 1)?;
                 }
@@ -135,7 +151,10 @@ impl<'m> State<'m, '_> {
         Ok(())
     }
 
-    /// Copies guarded data without evaluating it, substituting only eliminated outer frames.
+    /// Copies a guarded subtree and closes references to eliminated outer frames.
+    ///
+    /// Substitution changes retained data only; it must not execute a branch or
+    /// reinterpret template-local and match-local bindings.
     fn retain_guarded(&mut self, expression: &Expression) -> Result<Expression, Flow<'m>> {
         let mut result = self.budget.copy_expression(expression)?;
         if !self.frames.is_empty() {
@@ -144,7 +163,15 @@ impl<'m> State<'m, '_> {
         Ok(result)
     }
 
-    /// Preserves retained match-local binders while closing references to folded-away matches.
+    /// Substitutes known outer payloads while preserving retained local binders.
+    ///
+    /// `local_frames` counts matches still present in the residual tree. Bound
+    /// depths below that count remain local; higher depths index saved outer
+    /// payloads from the innermost eliminated frame outward.
+    ///
+    /// # Errors
+    /// Rejects impossible binder slots/depths, exhausted copy/work bounds,
+    /// allocation failure or cancellation.
     fn substitute(
         &mut self,
         expression: &mut Expression,
@@ -152,6 +179,7 @@ impl<'m> State<'m, '_> {
     ) -> Result<(), Flow<'m>> {
         self.budget.step(1)?;
         match &mut expression.node {
+            // Local frames survive; only references beyond them name eliminated matches.
             N::Bound { depth, slot } if *depth >= local_frames => {
                 if *slot != 0 {
                     return Err(E::ExpressionType.into());
@@ -182,6 +210,7 @@ impl<'m> State<'m, '_> {
             }
             N::Match { scrutinee, arms } => {
                 self.substitute(scrutinee, local_frames)?;
+                // Arm bodies introduce one retained payload frame; the scrutinee does not.
                 for arm in arms {
                     self.substitute(&mut arm.body, local_frames + 1)?;
                 }

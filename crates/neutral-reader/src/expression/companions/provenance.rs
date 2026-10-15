@@ -15,9 +15,18 @@ use neutral_semantics::ValidatedExpressionModel;
 /// Canonical borrowed structural edges, independent of occurrence-sensitive source spans.
 type Edges<'a> = OrderedSet<(&'a ModuleSymbolIdentity, K, &'a ModuleSymbolIdentity)>;
 
-/// Checks derived type/ref edges, source-owned occurrence evidence and immutable reuse cycles.
+/// Checks structural evidence against independently derived type/reference edges.
+///
+/// Every retained occurrence must belong to its claimed source owner. The edge
+/// set compares logical dependencies, while each occurrence keeps its own span.
+/// Immutable value reuse also requires typed value equality and an acyclic graph.
+///
+/// # Errors
+/// Rejects forged/missing edges, private cross-module targets, absent imports,
+/// inconsistent reuse, cycles, allocation failure, exhausted work or cancellation.
 pub(super) fn validate(model: &ValidatedExpressionModel, budget: &mut Budget<'_>) -> Result<(), E> {
     let ir = model.ir();
+    // Derive authority from declarations and typed values before consulting producer claims.
     let mut expected = Edges::new();
     for d in &ir.declarations {
         if let Some(ExpressionBody::Expression(e)) = &d.body {
@@ -74,6 +83,7 @@ pub(super) fn validate(model: &ValidatedExpressionModel, budget: &mut Budget<'_>
     let mut previous = None;
     for edge in &ir.provenance {
         owned_location(ir, &edge.from, edge.location, budget)?;
+        // Span-sensitive ordering rejects duplicate occurrences without collapsing logical edges.
         let key = (&edge.from, edge.kind, &edge.to, edge.location);
         if previous.is_some_and(|p| p >= key) {
             return Err(E::Companion);
@@ -110,6 +120,7 @@ pub(super) fn validate(model: &ValidatedExpressionModel, budget: &mut Budget<'_>
             return Err(E::Companion);
         }
     }
+    // Value reuse is erased by materialization; its evidence is checked separately above.
     for edge in &actual {
         budget.step(expected.len() as u64 + 1)?;
         if edge.1 != K::Value && !expected.contains(edge) {
@@ -119,7 +130,10 @@ pub(super) fn validate(model: &ValidatedExpressionModel, budget: &mut Budget<'_>
     reuse_cycles(&actual, budget)
 }
 
-/// Value reuse is acyclic; structural references and guarded ports do not enter this graph.
+/// Rejects cycles in immutable value reuse with an iterative worklist.
+///
+/// Identity references may be cyclic and therefore stay outside this walk.
+/// Reaching an already visited owner prunes a diamond without declaring a cycle.
 fn reuse_cycles(actual: &Edges<'_>, budget: &mut Budget<'_>) -> Result<(), E> {
     for (from, kind, to) in actual {
         if *kind != K::Value {
@@ -129,6 +143,7 @@ fn reuse_cycles(actual: &Edges<'_>, budget: &mut Budget<'_>) -> Result<(), E> {
         let mut pending = Vec::new();
         pending.try_retain(1).map_err(|_| E::Limit)?;
         pending.push(*to);
+        // Keep traversal iterative so a long reuse chain cannot consume the call stack.
         while let Some(owner) = pending.pop() {
             budget.step(actual.len() as u64 + seen.len() as u64 + 1)?;
             if owner == *from {
@@ -148,7 +163,10 @@ fn reuse_cycles(actual: &Edges<'_>, budget: &mut Budget<'_>) -> Result<(), E> {
     Ok(())
 }
 
-/// Requires logical import closure for guarded ports without turning them into structural reuse.
+/// Requires retained input/output ports to belong to the owner's import closure.
+///
+/// Traverse all typed branches, including those runtime guards might not select.
+/// A potential port does not become an immutable value-reuse edge.
 fn ports(
     ir: &ExpressionProjectIr,
     owner: &ModuleSymbolIdentity,
@@ -315,7 +333,10 @@ fn trees<'a>(
     }
     Ok(())
 }
-/// Proves public cross-unit dependencies belong to the retained logical import closure.
+/// Checks transitive module reachability using only the retained import graph.
+///
+/// An iterative visited set bounds repeated paths and cycles. Every expansion
+/// debits the shared caller budget before growing the pending worklist.
 fn reachable(
     ir: &ExpressionProjectIr,
     start: &str,
@@ -345,7 +366,10 @@ fn reachable(
     }
     Ok(false)
 }
-/// Requires a claimed immutable reuse target to occur with its invariant nominal type.
+/// Requires a claimed reuse target to occur in the owner's materialized value.
+///
+/// Equality is meaningful only under the same resolved type. Equal record
+/// payloads from distinct nominal contracts cannot establish reuse authority.
 fn reuse(
     ir: &ExpressionProjectIr,
     from: &ModuleSymbolIdentity,
@@ -375,7 +399,11 @@ fn reuse(
     }
 }
 
-/// Traverses independently preflighted materialized occurrences, paying before deep equality.
+/// Searches materialized occurrences for an exactly typed reuse target.
+///
+/// Preflight the target's retained type and value before recursive comparisons.
+/// Lists, records and the selected variant payload preserve their contextual
+/// types; nullable wrappers do not invent an additional value occurrence.
 fn contains_reuse(
     ir: &ExpressionProjectIr,
     value: &V,
@@ -399,6 +427,7 @@ fn contains_reuse(
         },
     )?;
     budget.step(cost.work)?;
+    // A matching payload under another nominal type is not evidence of immutable reuse.
     if ty == target_ty {
         let cost = inspect_expression_value_retention(target, limits, budget.cancel).map_err(
             |e| match e {
@@ -443,6 +472,7 @@ fn contains_reuse(
                 return Err(E::Semantic);
             };
             budget.step(alternatives.len() as u64 + tag.len() as u64 + 1)?;
+            // Only the actual tag contributes a materialized payload occurrence.
             let alternative = alternatives
                 .iter()
                 .find(|a| a.tag == *tag)

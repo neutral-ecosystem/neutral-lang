@@ -126,3 +126,19 @@ fn raw_group_member_and_qualified_name_boundaries_are_exact() {
         error(ec::EXP_SYNTAX, None)
     );
 }
+
+/// Nested interpolated strings require their own close, and decoded strings share aggregate retention.
+#[test]
+fn nested_interpolations_and_decoded_strings_enforce_their_own_boundaries() {
+    let cancel = CancellationToken::new();
+    assert_eq!(
+        interpolation_end("$\"unfinished", 0, &mut budget(&cancel)),
+        Err(error(ec::EXP_SYNTAX, None))
+    );
+    let mut bounded = budget(&cancel);
+    bounded.bytes(bounded.expression.retained_bytes).unwrap();
+    assert_eq!(
+        string("\"a\"", &mut bounded),
+        Err(error(ec::EXP_LIMIT, None))
+    );
+}

@@ -22,7 +22,15 @@ pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
     lex_bounded(source, usize::MAX, None)
 }
 
-/// Lexes successor source with pre-growth scalar bounds and in-loop cancellation.
+/// Lexes captured bytes with independent decoded-string bounds and cancellation.
+///
+/// Physical newlines and trivia retain original byte spans; layout decides which
+/// newlines end statements. String limits count decoded UTF-8 bytes, so escaped
+/// and literal spellings of the same scalar consume the same budget.
+///
+/// # Errors
+/// Rejects invalid source encoding, malformed literals, unsupported symbols,
+/// exhausted retention bounds, allocation failure, or cancellation atomically.
 pub(super) fn lex_bounded(
     source: &[u8],
     string_bytes: usize,
@@ -32,6 +40,7 @@ pub(super) fn lex_bounded(
         string_bytes,
         cancellation,
     };
+    // Validate once so later UTF-8 slicing can advance by complete scalar widths.
     validate_source_text(source)?;
     let mut tokens = Vec::new();
     let mut trivia = Vec::new();
@@ -124,6 +133,7 @@ pub(super) fn lex_bounded(
         }
     }
 
+    // EOF retention is fallible too; observe cancellation again before publishing tokens.
     policy.reserve(&mut tokens, 1, source.len())?;
     tokens.push(token(TokenKind::EndOfFile, source.len(), source.len()));
     policy.check(source.len())?;
@@ -162,7 +172,10 @@ fn consume_number_candidate(source: &[u8], start: usize) -> usize {
     })
 }
 
-/// Classifies one ASCII word through the centralized language-name namespace.
+/// Classifies exact ASCII spellings without normalizing case or resolving names.
+///
+/// Keyword tokens retain their spelling through the parser; contextual name and
+/// protected-name rules remain the responsibility of semantic validation.
 fn word_token(text: String) -> TokenKind {
     if text == names::NEU {
         TokenKind::Neu
@@ -268,7 +281,14 @@ fn validate_source_text(source: &[u8]) -> Result<(), FrontendError> {
     Ok(())
 }
 
-/// Reads one simple, unescaped string literal without crossing a physical line.
+/// Decodes one quoted string while retaining original source coordinates.
+///
+/// Escapes may produce control scalars, but literal control characters and raw
+/// newlines are forbidden. The policy checks decoded size before every push.
+///
+/// # Errors
+/// Returns the offending escape/scalar span or the unterminated literal span;
+/// cancellation and retention failures use the same bounded failure channel.
 fn string_literal(
     source: &[u8],
     start: usize,
@@ -287,6 +307,7 @@ fn string_literal(
                 had_escape = true;
                 index = decode_escape(source, index, &mut value, policy)?;
             }
+            // A physical newline cannot be absorbed into a quoted literal.
             b'\n' | b'\r' => {
                 return Err(FrontendError::unterminated_string_literal(span(
                     start, index,
@@ -357,6 +378,9 @@ fn decode_escape(
 }
 
 /// Decodes one `\u{HEX}` escape containing one to six hexadecimal digits.
+///
+/// The digit cap bounds parsing work; `char::from_u32` independently rejects
+/// surrogates and values beyond the Unicode scalar range.
 fn decode_unicode_escape(
     source: &[u8],
     start: usize,
@@ -382,6 +406,7 @@ fn decode_unicode_escape(
     }
     let digits = std::str::from_utf8(&source[digits_start..end])
         .expect("Unicode escape digits were restricted to ASCII hexadecimal bytes");
+    // A numeric code point is insufficient: surrogate values are not Unicode scalars.
     let scalar = u32::from_str_radix(digits, 16)
         .ok()
         .and_then(char::from_u32)

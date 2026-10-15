@@ -17,7 +17,14 @@ use neutral_core::{
 #[path = "../../tests/parser/mod.rs"]
 mod tests;
 
-/// Parses one active document or returns no private syntax model.
+/// Parses normalized tokens into one complete private syntax model.
+///
+/// Source trivia is transferred only after the entire grammar succeeds. This
+/// phase preserves names and spans; semantic resolution assigns their meaning.
+///
+/// # Errors
+/// Rejects malformed or unsupported headers, incomplete productions and any
+/// captured structural bound exceeded before syntax can be published.
 pub(super) fn parse(
     source: LexedSource,
     limits: StructuralLimits,
@@ -46,11 +53,15 @@ struct Parser<'a> {
 }
 
 impl Parser<'_> {
-    /// Parses headers followed by all root declarations.
+    /// Parses the required version/module headers and optional vocabulary use.
+    ///
+    /// The recognized profile must also be available. After the headers, each
+    /// declaration is complete before blank semantic lines may be skipped.
     fn parse_unit(&mut self) -> Result<ParsedUnit, FrontendError> {
         let language_start = self.expect_simple(&TokenKind::Neu)?.span.start();
         let version = self.next().ok_or_else(|| self.other_here())?;
         let version_span = version.span;
+        // Escaped version strings are distinct source spellings, even if they decode equally.
         match &version.kind {
             TokenKind::StringLiteral(value) if !value.had_escape => {
                 let Some(profile) = LanguageProfile::from_source_version(&value.value) else {
@@ -90,6 +101,7 @@ impl Parser<'_> {
         } else {
             None
         };
+        // Check the declaration count before retaining it, including zero-field records.
         let mut declarations = Vec::new();
         while !self.at(&TokenKind::EndOfFile) {
             Self::ensure_capacity(
@@ -176,7 +188,10 @@ impl Parser<'_> {
         })
     }
 
-    /// Parses one required or closed-defaulted record field.
+    /// Parses a typed record field with an optional unevaluated default.
+    ///
+    /// A comma is mandatory even for the last field. Default spans cover only
+    /// the original value expression, so diagnostics need not invent positions.
     fn parse_record_field(&mut self) -> Result<ParsedRecordField, FrontendError> {
         let (declared_type, type_span) = self.parse_type()?;
         let name_token = self.next().ok_or_else(|| self.other_here())?;
@@ -244,7 +259,10 @@ impl Parser<'_> {
         })
     }
 
-    /// Parses one scalar or nominal type with optional outer nullability.
+    /// Parses scalar, nominal, qualified, list and reference type syntax.
+    ///
+    /// Recursive wrappers retain their full original span. One trailing `?`
+    /// makes the outer type nullable; a second `?` is a syntax error.
     fn parse_type(&mut self) -> Result<(ParsedType, ByteSpan), FrontendError> {
         let type_token = self.next().ok_or_else(|| self.other_here())?;
         let mut type_span = type_token.span;
@@ -286,6 +304,7 @@ impl Parser<'_> {
             }
             _ => return Err(FrontendError::other(type_span)),
         };
+        // Nullability applies to the completed outer type, after its closing delimiter.
         if self.at(&TokenKind::Question) {
             let question = self
                 .next()
@@ -311,6 +330,7 @@ impl Parser<'_> {
     /// cannot evade aggregate limits by staying shallow.
     fn parse_value(&mut self, depth: u64) -> Result<ParsedValue, FrontendError> {
         let token = self.next().ok_or_else(|| self.other_here())?;
+        // Aggregate nodes are shared across declarations; shallow containers still consume work.
         self.value_nodes = self.value_nodes.saturating_add(1);
         if self.value_nodes > self.limits.traversal_nodes() {
             return Err(FrontendError::list_limit_exceeded(token.span));
@@ -344,7 +364,10 @@ impl Parser<'_> {
         })
     }
 
-    /// Parses an ordered, bounded list value with an optional trailing comma.
+    /// Parses an ordered list with one optional trailing comma.
+    ///
+    /// Container depth and immediate item count are independent controls; child
+    /// values also debit the document-wide node count in `parse_value`.
     fn parse_list_value(
         &mut self,
         open_span: ByteSpan,
@@ -373,6 +396,7 @@ impl Parser<'_> {
                 span: ByteSpan::new(start, end)
                     .expect("ordered list item tokens must form a valid span"),
             });
+            // A trailing comma completes the list without introducing an empty item.
             if self.at(&TokenKind::Comma) {
                 self.next().expect("looked-ahead list comma must exist");
                 if self.at(&TokenKind::CloseBracket) {
@@ -388,7 +412,10 @@ impl Parser<'_> {
         Ok(ParsedValue::List(items))
     }
 
-    /// Parses explicit fields in one contextual record value.
+    /// Parses explicit record fields without assigning a nominal record type.
+    ///
+    /// The enclosing declaration supplies that type later. Each field requires
+    /// its own colon and comma, and retains distinct name and value spans.
     fn parse_record_value(
         &mut self,
         open_span: ByteSpan,
@@ -509,7 +536,10 @@ impl Parser<'_> {
     }
 }
 
-/// Returns a spelling from any token that can occur in an identifier position.
+/// Returns exact spelling for a token in a contextual name position.
+///
+/// Keyword spellings are retained deliberately: semantic checks can then report
+/// a protected-name diagnostic at the original token instead of a generic parse error.
 fn identifier_spelling(token: &Token) -> Option<String> {
     match &token.kind {
         TokenKind::Identifier(value) | TokenKind::ProtectedName(value) => Some(value.clone()),

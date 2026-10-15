@@ -99,7 +99,12 @@ struct Walk<'a, 'c> {
     cancel: &'c CancellationToken,
 }
 impl<'a> ValidatedExpressionProject {
-    /// Derives all potential guarded ports without evaluating or interpreting ordinary prerequisite fields.
+    /// Derives the potential input/output occurrences of one public owner.
+    ///
+    /// Both sides of an unresolved branch remain visible with explicit guards.
+    /// Repeated keys retain separate node paths; a template body and its parameter
+    /// defaults use distinct root identifiers. No binding values are acquired.
+    ///
     /// # Errors
     /// Rejects missing/private owners, independent controls, allocation or cancellation without partial output.
     pub fn dependencies(
@@ -108,6 +113,7 @@ impl<'a> ValidatedExpressionProject {
         limits: ExpressionInspectionLimits,
         cancel: &CancellationToken,
     ) -> Result<GuardedDependencies<'a>, E> {
+        // Inspection may tighten the accepted model controls, but cannot enlarge them.
         let accepted = self.model().limits().expression;
         let mut walk = Walk {
             owner,
@@ -153,6 +159,7 @@ impl<'a> ValidatedExpressionProject {
             walk.owner = &template.identity;
             walk.root = ExpressionRoot::TemplateBody;
             walk.tree(&template.body)?;
+            // A default has its own path origin; it must not collide with the template body.
             for (index, parameter) in template.parameters.iter().enumerate() {
                 if let Some(default) = &parameter.default {
                     walk.root = ExpressionRoot::TemplateDefault(index);
@@ -215,7 +222,10 @@ impl<'a> Walk<'a, '_> {
         });
         self.step(0)
     }
-    /// Visits a canonical child while retaining bounded request-local path state.
+    /// Visits one canonical child with temporary path state.
+    ///
+    /// Restore the parent path even on failure so no sibling can inherit a
+    /// partially visited path if traversal unwinds.
     fn child(&mut self, expression: &'a Expression, index: u64) -> Result<(), E> {
         self.storage(8)?;
         self.path.try_retain_exact(1).map_err(|_| E::Limit)?;
@@ -224,7 +234,10 @@ impl<'a> Walk<'a, '_> {
         self.path.pop();
         result
     }
-    /// Adds a guard tied to its typed guard/scrutinee site before visiting a branch.
+    /// Visits a branch under a guard attached to its condition's node path.
+    ///
+    /// `child` selects the branch, while `guard_child` identifies the condition.
+    /// Retained edges copy the current guard stack before it is popped.
     fn guarded(
         &mut self,
         expression: &'a Expression,
@@ -235,6 +248,7 @@ impl<'a> Walk<'a, '_> {
         self.storage(
             (self.path.len() as u64 + 1) * 8 + std::mem::size_of::<DependencyGuard<'_>>() as u64,
         )?;
+        // Store the condition path independently from the branch path being visited.
         let mut path = copy_slice(&self.path).map_err(|_| E::Limit)?;
         path.try_retain_exact(1).map_err(|_| E::Limit)?;
         path.push(guard_child);
@@ -247,7 +261,10 @@ impl<'a> Walk<'a, '_> {
         self.guards.pop();
         result
     }
-    /// Enumerates every typed potential leaf, never selecting or evaluating a branch.
+    /// Walks canonical child positions and emits every potential external leaf.
+    ///
+    /// Short-circuit Boolean operators, conditionals and matches attach guards
+    /// to branch edges. Ordinary containers keep source-order child indices.
     fn tree(&mut self, e: &'a Expression) -> Result<(), E> {
         self.step(1)?;
         match &e.node {
@@ -268,6 +285,7 @@ impl<'a> Walk<'a, '_> {
                 right,
             } => {
                 self.child(left, 0)?;
+                // The right operand is conditional only for short-circuit Boolean operators.
                 match operator {
                     O::And => self.guarded(right, 1, 0, GuardCondition::Boolean(true))?,
                     O::Or => self.guarded(right, 1, 0, GuardCondition::Boolean(false))?,
@@ -284,6 +302,7 @@ impl<'a> Walk<'a, '_> {
                 self.guarded(else_branch, 2, 0, GuardCondition::Boolean(false))?;
             }
             N::Match { scrutinee, arms } => {
+                // Match arms refer to the scrutinee site, rather than to payload binder slots.
                 self.child(scrutinee, 0)?;
                 for (index, arm) in arms.iter().enumerate() {
                     self.guarded(

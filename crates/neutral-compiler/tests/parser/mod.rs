@@ -354,3 +354,31 @@ fn keyword_name_tokens_preserve_their_exact_spelling() {
         assert_eq!(identifier_spelling(&token).as_deref(), Some(expected));
     }
 }
+
+/// A record value has its own field-count bound even when the surrounding declaration count is small.
+#[test]
+fn contextual_record_values_enforce_their_immediate_field_limit() {
+    let source = b"{ first: 1, second: 2, }";
+    let lexed = super::super::lexer::lex(source).unwrap();
+    for limit in [1, 2, 3] {
+        let mut parser = parser(&lexed.tokens);
+        parser.limits = parser.limits.with_record_fields(limit).unwrap();
+        let result = parser.parse_value(0);
+        if limit == 1 {
+            let error = result.unwrap_err();
+            assert_eq!(error.kind, FrontendErrorKind::RecordLimitExceeded);
+            assert_eq!(error.span, span(12, 18));
+        } else {
+            let ParsedValue::Record(fields) = result.unwrap() else {
+                panic!("record value");
+            };
+            assert_eq!(
+                fields
+                    .iter()
+                    .map(|field| field.name.as_str())
+                    .collect::<Vec<_>>(),
+                ["first", "second"]
+            );
+        }
+    }
+}

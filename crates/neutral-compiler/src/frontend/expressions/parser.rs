@@ -77,7 +77,15 @@ pub(super) struct MatrixSyntax<'a> {
     pub exclusions: Vec<Lex<'a>>,
 }
 
-/// Tokenizes expression punctuation contextually, charging bytes before retention.
+/// Tokenizes expression syntax into borrowed spellings with original byte spans.
+///
+/// `offset` locates this slice inside the captured source. Newlines remain tokens
+/// until declaration parsing has balanced groups; comments never become tokens.
+/// Names and operator spelling are recognized here, before typed resolution.
+///
+/// # Errors
+/// Rejects malformed UTF-8, numbers, strings, interpolation, unknown punctuation,
+/// allocation failure, exhausted caller budgets, or cancellation.
 #[allow(clippy::too_many_lines)] // One contextual byte dispatch keeps cursor and depth accounting explicit.
 pub(super) fn lex<'a>(
     bytes: &'a [u8],
@@ -85,6 +93,7 @@ pub(super) fn lex<'a>(
     state: &mut Budget<'_>,
 ) -> Result<Vec<Lex<'a>>, E> {
     let source = std::str::from_utf8(bytes).map_err(|_| error(ec::EXP_SYNTAX, None))?;
+    // Charge the complete slice once, including skipped whitespace and comments.
     state.charge(bytes.len() as u64)?;
     let mut result = Vec::new();
     let mut i = 0;
@@ -135,6 +144,7 @@ pub(super) fn lex<'a>(
                     i += 1;
                 }
             }
+            // Leading signs remain operators; only an exponent sign belongs to this token.
             b'0'..=b'9' => {
                 i += 1;
                 while bytes
@@ -172,6 +182,7 @@ pub(super) fn lex<'a>(
                 })?;
             }
             _ => {
+                // Prefer a complete two-byte operator over its one-byte prefix.
                 if i + 1 < bytes.len()
                     && matches!(
                         &bytes[i..i + 2],
@@ -207,7 +218,10 @@ pub(super) fn lex<'a>(
     Ok(result)
 }
 
-/// Finds a complete interpolation while recognizing nested expression strings/braces.
+/// Finds the end of a quoted or interpolated string without decoding its value.
+///
+/// Nested `${...}` groups are scanned only in interpolation mode. Escaped quotes
+/// cannot terminate the string, and raw line endings are always syntax errors.
 fn string_end(
     source: &str,
     quote: usize,
@@ -232,13 +246,20 @@ fn string_end(
     }
     Err(error(ec::EXP_SYNTAX, None))
 }
-/// Finds an interpolation close after balancing nested expression groups and strings.
+/// Returns the byte index of the matching interpolation close.
+///
+/// Start at the first byte after `${`. Nested braces consume syntax depth;
+/// braces inside quoted or interpolated strings belong to those strings.
+///
+/// # Errors
+/// Rejects an unterminated group, excessive nesting, exhausted work or cancellation.
 pub(super) fn interpolation_end(
     source: &str,
     mut i: usize,
     state: &mut Budget<'_>,
 ) -> Result<usize, E> {
     let bytes = source.as_bytes();
+    // The opening `${` was consumed by the caller and still contributes one nesting level.
     let mut depth = 1;
     while i < bytes.len() {
         state.charge(1)?;
@@ -265,7 +286,10 @@ pub(super) fn interpolation_end(
     Err(error(ec::EXP_SYNTAX, None))
 }
 
-/// Reuses the frozen string decoder; interpolation's sole extra escape is handled before it.
+/// Decodes an ordinary literal using the shared source-string rules.
+///
+/// Interpolation removes its own extra escape before calling this helper. The
+/// decoded bytes are charged separately from the borrowed original token text.
 pub(super) fn string(raw: &str, state: &mut Budget<'_>) -> Result<String, E> {
     let tokens = lexer::lex_bounded(
         raw.as_bytes(),
@@ -355,7 +379,10 @@ pub(super) fn expect(tokens: &[Lex<'_>], cursor: &mut usize, spelling: &str) -> 
     *cursor += 1;
     Ok(())
 }
-/// Removes exactly one delimited group and keeps nested expressions intact.
+/// Borrows one balanced group and advances the caller past its closing delimiter.
+///
+/// Repeated matching delimiters increase depth; neither this helper nor `split`
+/// resolves names or evaluates the expressions inside a group.
 pub(super) fn group<'t, 'a>(
     tokens: &'t [Lex<'a>],
     cursor: &mut usize,
@@ -417,7 +444,15 @@ pub(super) fn split<'t, 'a>(tokens: &'t [Lex<'a>]) -> Result<Vec<&'t [Lex<'a>]>,
     Ok(result)
 }
 
-/// Parses every original declaration before resolving any name or selected value.
+/// Retains every original declaration before name resolution or evaluation.
+///
+/// A physical newline completes a statement only outside balanced groups.
+/// Matrix continuation clauses belong to their preceding expansion. A final
+/// statement without a line ending follows the same declaration checks.
+///
+/// # Errors
+/// Rejects misplaced headers, mismatched groups, malformed declarations and
+/// exhausted request-local work, storage or cancellation controls.
 pub(super) fn parse_source<'a>(
     source: &'a crate::CapturedProjectSource,
     state: &mut State<'a, '_>,
@@ -428,6 +463,7 @@ pub(super) fn parse_source<'a>(
     let mut headers_done = false;
     for (i, token) in tokens.iter().enumerate() {
         if token.spelling.starts_with(['\n', '\r']) {
+            // Matrix clauses may start on the next physical line without ending the expansion.
             let continuation = tokens[i + 1..]
                 .iter()
                 .find(|t| !t.spelling.starts_with(['\n', '\r']))
@@ -461,6 +497,7 @@ pub(super) fn parse_source<'a>(
     if depth != 0 {
         return Err(error(ec::EXP_SYNTAX, None));
     }
+    // EOF is also a statement boundary; a final newline is not required.
     if !statement.is_empty() {
         if headers_done && matches!(statement[0].spelling, "neu" | "module" | "use" | "import") {
             return Err(error(ec::EXP_SYNTAX, None));
@@ -566,7 +603,10 @@ fn declaration<'a>(
     alloc(state.bindings.insert(owner, syntax))?;
     Ok(())
 }
-/// Parses explicit parameter phases, ordered defaults and definition-scoped result syntax.
+/// Retains a template signature, ordered parameter defaults and unevaluated body.
+///
+/// Required parameters cannot follow defaults, and names must be unique before
+/// any caller arguments or expansion tuples can be considered.
 fn template<'a>(
     source: &'a crate::CapturedProjectSource,
     tokens: &[Lex<'a>],
@@ -585,6 +625,7 @@ fn template<'a>(
     let mut cursor = start + 2;
     let members = group(tokens, &mut cursor, "(", ")")?;
     let mut parameters = Vec::new();
+    // Preserve declaration order so a later required parameter cannot silently shift arguments.
     let mut default_seen = false;
     for member in split(members)? {
         let phase = match member.first().map(|t| t.spelling) {

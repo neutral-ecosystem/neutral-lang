@@ -4,7 +4,15 @@
 
 use super::{Budget, EvaluationError as E, SelectorSegment, V};
 
-/// Selects explicit fields/indices/alternatives without unwrapping null or following a ref.
+/// Borrows one occurrence from an independently typed materialized output value.
+///
+/// An empty path selects the complete value. Fields distinguish omission from
+/// explicit null; indices preserve list order; alternatives must match the
+/// actual variant tag. References are never followed implicitly.
+///
+/// # Errors
+/// Returns `Restriction` for an absent or mismatched segment, and preserves
+/// caller work exhaustion or cancellation before returning a selected value.
 pub(super) fn select<'v>(
     mut value: &'v V,
     path: &[SelectorSegment],
@@ -12,6 +20,7 @@ pub(super) fn select<'v>(
 ) -> Result<&'v V, E> {
     for segment in path {
         budget.step(1)?;
+        // Pair the segment with the current value shape before attempting any lookup.
         value = match (segment, value) {
             (SelectorSegment::Field(name), V::Record(fields)) => {
                 budget.step(
@@ -30,6 +39,7 @@ pub(super) fn select<'v>(
                 .ok_or(E::Restriction)?,
             (SelectorSegment::Alternative(expected), V::Variant { tag, payload }) => {
                 budget.step(expected.len() as u64 + 1)?;
+                // A different alternative is unavailable, even if its payload type is identical.
                 if expected != tag {
                     return Err(E::Restriction);
                 }

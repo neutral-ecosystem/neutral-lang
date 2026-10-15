@@ -421,6 +421,7 @@ fn malformed_bindings_templates_and_expansions_reject_at_their_grammar_boundary(
         ("= 1", "NEU-EXP-002"),
         ("num Upper = 1", "NEU-EXP-002"),
         ("template Item(static) -> num { 1 }", "NEU-TPL-002"),
+        ("template Item static num value -> num { 1 }", "NEU-EXP-002"),
         (
             "template Item(static num value) num { value }",
             "NEU-EXP-002",
@@ -437,5 +438,21 @@ fn malformed_bindings_templates_and_expansions_reject_at_their_grammar_boundary(
         ),
     ] {
         assert_eq!(compile(body).unwrap_err().code, code, "{body}");
+    }
+}
+
+/// EOF completes the same declaration as a physical newline, without changing its value or identity.
+#[test]
+fn final_declarations_without_newlines_keep_exact_semantics() {
+    for body in [
+        "public num answer = 42",
+        "template Item() -> num { 3 }\nnum answer = instantiate Item()",
+    ] {
+        let bytes = format!("neu \"1.0\"\nmodule example::expressions\n{body}");
+        let captured = capture(&bytes, ExpressionLimits::hard(), ExpansionLimits::hard());
+        let actual = compile_expression_project(&captured, &CancellationToken::new()).unwrap();
+        let expected = compile(body).unwrap();
+        assert_eq!(value(&actual, "answer"), value(&expected, "answer"));
+        assert_eq!(actual.interface_digest, expected.interface_digest);
     }
 }
