@@ -29,9 +29,7 @@ pub(super) fn encode_envelope(
         u64::from(constants::FRAMING_REVISION),
     )?;
     field_key(&mut writer, constants::key::REQUIRED_CAPABILITIES)?;
-    writer.array(
-        usize::try_from(capabilities.count_ones()).map_err(|_| EncodingError::InternalDefect)?,
-    )?;
+    writer.array(capabilities.count_ones() as usize)?;
     for (bit, name) in (0_u32..).zip(constants::CAPABILITY_NAMES) {
         if capabilities & capability(bit) != 0 {
             writer.text(name)?;

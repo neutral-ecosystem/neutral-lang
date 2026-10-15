@@ -71,6 +71,52 @@ fn hostile_duplicate_logical_ids_keep_source_map_error_class() {
     assert_wire_error(&artifacts, crate::DecodeErrorClass::InvalidSourceMap);
 }
 
+#[test]
+fn logical_encoder_rejects_coefficients_over_the_wire_limit() {
+    let module = LogicalModuleIdentity::new(neutral_ir::LANGUAGE_BEHAVIOR_VERSION, "example");
+    let coefficient = "1".repeat(crate::constants::MAXIMUM_EXACT_NUMBER_DIGITS + 1);
+    let number = neutral_ir::ExactNumber::from_normalized_parts(
+        false,
+        &coefficient,
+        0,
+        u64::try_from(coefficient.len()).unwrap(),
+        0,
+    )
+    .unwrap();
+    let value = LogicalValue::Number(number);
+    let ty = ResolvedType::Num;
+    let declaration = Declaration::new(
+        neutral_ir::ElementId::new(1),
+        ModuleSymbolIdentity::new(module.clone(), "answer"),
+        neutral_ir::DeclarationFingerprint::for_binding(&ty, &value).unwrap(),
+        "answer",
+        ty,
+        value,
+    );
+    let document = LogicalDocument::new(module, vec![declaration]);
+
+    assert!(matches!(
+        encode_logical(&document),
+        Err(EncodingError::EncodedSizeLimit)
+    ));
+}
+
+#[test]
+fn frame_encoder_rejects_a_section_over_the_artifact_limit() {
+    let sections = [
+        Vec::new(),
+        vec![0; crate::constants::MAXIMUM_ARTIFACT_BYTES + 1],
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+    ];
+
+    assert!(matches!(
+        assemble_frame(0, sections),
+        Err(EncodingError::EncodedSizeLimit)
+    ));
+}
+
 /// Encodes raw parts without reader authority and checks the independent decoder classification.
 fn assert_wire_error(artifacts: &CompilationArtifacts, expected: crate::DecodeErrorClass) {
     let mut budget = TraversalBudget::new();
