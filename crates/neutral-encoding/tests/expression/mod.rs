@@ -90,10 +90,62 @@ fn frozen_complete_expression_artifacts_decode_and_reencode_exactly() {
         let cancel = CancellationToken::new();
         let project =
             decode_expression_project(&bytes, DecodeLimits::hard(), limits(&ir), &cancel).unwrap();
+        assert_eq!(
+            decode_complete(&bytes, DecodeLimits::hard(), &limits(&ir), &cancel)
+                .unwrap()
+                .ir(),
+            &ir
+        );
         assert_eq!(project.ir(), &ir);
         assert_eq!(encode_expression_project(&project, &cancel).unwrap(), bytes);
         assert_eq!(forge(&ir), bytes);
     }
+}
+
+#[test]
+fn expression_and_expansion_attribution_lists_roundtrip() {
+    use neutral_core::{ByteSpan, SourceContentDigest, SourceLocation};
+    use neutral_ir::expression::attribution::{ExpansionAttribution, ExpressionAttribution};
+
+    let bytes = vectors().remove(0);
+    let mut ir = raw(&bytes);
+    let location = SourceLocation::new(
+        SourceContentDigest::from_bytes(b"source"),
+        ByteSpan::new(0, 1).unwrap(),
+    );
+    ir.expression_attributions.push(ExpressionAttribution {
+        owner: symbol(),
+        node_path: vec![0, 2],
+        occurrence: Some(location),
+        related_public_locations: vec![location],
+    });
+    ir.expansion_attributions.push(ExpansionAttribution {
+        owner: symbol(),
+        application: location,
+        definition: location,
+        arguments: vec![location],
+        original_axis_indices: vec![1, 3],
+    });
+
+    let mut writer = CborWriter::new();
+    companions::write_attributions(&mut writer, &ir).unwrap();
+    let encoded = writer.finish().unwrap();
+    let parsed = crate::decoder::parse_canonical_section(
+        &encoded,
+        0,
+        DecodeLimits::hard(),
+        &CancellationToken::new(),
+    )
+    .unwrap();
+    let sections = crate::project::array(&parsed).unwrap();
+    assert_eq!(
+        companions::read_expressions(&sections[0], &CancellationToken::new()).unwrap(),
+        ir.expression_attributions
+    );
+    assert_eq!(
+        companions::read_expansions(&sections[1], &CancellationToken::new()).unwrap(),
+        ir.expansion_attributions
+    );
 }
 
 /// Catches heuristic profile fallback, nonminimal widths and partial artifact acceptance.
@@ -262,6 +314,56 @@ fn frozen_operator_tokens_are_closed() {
     assert!(trees::binary_operator("eval").is_none());
     assert!(trees::unary_operator("eval").is_none());
     assert_eq!(trees::unary_operator("-").unwrap(), UnaryOperator::Negate);
+}
+
+#[test]
+fn tree_depth_and_selector_indexes_are_bounded() {
+    let tree = leaf();
+    let mut writer = CborWriter::new();
+    assert_eq!(
+        trees::write_tree(
+            &mut writer,
+            &tree,
+            neutral_ir::expression::profile::MAX_DEPTH + 1
+        )
+        .unwrap_err(),
+        E::EncodedSizeLimit
+    );
+
+    let mut writer = CborWriter::new();
+    writer.array(5).unwrap();
+    writer.text("output").unwrap();
+    crate::project::write_type(&mut writer, &T::Bool, 0).unwrap();
+    crate::project::write_symbol(&mut writer, &symbol()).unwrap();
+    crate::project::write_type(&mut writer, &T::Bool, 0).unwrap();
+    writer.array(1).unwrap();
+    writer.array(2).unwrap();
+    writer.text("index").unwrap();
+    writer.unsigned(u64::from(u32::MAX) + 1).unwrap();
+    let encoded = writer.finish().unwrap();
+    let parsed = crate::decoder::parse_canonical_section(
+        &encoded,
+        0,
+        DecodeLimits::hard(),
+        &CancellationToken::new(),
+    )
+    .unwrap();
+    assert_eq!(
+        trees::read_tree(&parsed, 1, &CancellationToken::new())
+            .unwrap_err()
+            .class(),
+        C::InvalidEncodedSchema
+    );
+    assert_eq!(
+        trees::read_tree(
+            &parsed,
+            neutral_ir::expression::profile::MAX_DEPTH + 1,
+            &CancellationToken::new()
+        )
+        .unwrap_err()
+        .class(),
+        C::EncodedSizeLimit
+    );
 }
 
 /// Catches trusting producer annotations, stale summaries or forged original-source evidence.

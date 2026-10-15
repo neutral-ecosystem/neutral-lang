@@ -181,6 +181,29 @@ impl TestExecution {
         );
         Ok(command)
     }
+
+    /// Restricts instrumented tests to the selected workspace packages.
+    pub(crate) fn coverage_arguments_for_packages(
+        &self,
+        backend: TestRunner,
+        packages: &[String],
+    ) -> Result<Vec<String>, String> {
+        let mut arguments = self.coverage_arguments(backend)?;
+        let Some(workspace) = arguments
+            .iter()
+            .position(|argument| argument == flags::WORKSPACE)
+        else {
+            return Err("coverage command has no workspace package selector".to_owned());
+        };
+        arguments.remove(workspace);
+        for (index, package) in packages.iter().enumerate() {
+            arguments.splice(
+                workspace + index * 2..workspace + index * 2,
+                ["--package".to_owned(), package.clone()],
+            );
+        }
+        Ok(arguments)
+    }
 }
 
 /// Selects cargo-mutants' native integration with the configured test backend.

@@ -68,7 +68,8 @@ Stable commands:\n\
   check                                          check code and repository contracts\n\
   test unit|smoke|integration|system|conformance|property|security|all\n\
   test performance --profile pr|release|soak     run a controlled performance profile\n\
-  coverage                                       enforce configured LLVM coverage\n\
+  coverage [changed]                             measure changed Rust files (default)\n\
+  coverage --full                                enforce configured whole-workspace coverage\n\
   mutate [--full]                                reuse a development campaign; --full records release evidence\n\
   fuzz smoke|campaign                            run bounded or full fuzzing\n\
   quality [--profile pr|release]                 run the documented quality composition\n\
@@ -143,8 +144,10 @@ pub(crate) enum Task {
     Performance(PerformanceProfile),
     /// Run one fuzz mode.
     Fuzz(FuzzMode),
-    /// Run configured LLVM coverage.
+    /// Run changed-file coverage.
     Coverage,
+    /// Run the configured whole-workspace coverage gate.
+    CoverageFull,
     /// Run development mutation analysis or a fresh release campaign.
     Mutate {
         /// Whether to run a fresh full campaign and record release evidence.
@@ -316,7 +319,8 @@ pub(crate) fn parse(arguments: &[String]) -> Result<Task, String> {
         }
         [TEST_COMMAND, level] => parse_test_level(level).map(Task::Test),
         [FUZZ_COMMAND, mode] => parse_fuzz_mode(mode).map(Task::Fuzz),
-        [COVERAGE_COMMAND] => Ok(Task::Coverage),
+        [COVERAGE_COMMAND] | [COVERAGE_COMMAND, "changed"] => Ok(Task::Coverage),
+        [COVERAGE_COMMAND, FULL_OPTION] => Ok(Task::CoverageFull),
         [MUTATE_COMMAND] => Ok(Task::Mutate { full: false }),
         [MUTATE_COMMAND, FULL_OPTION] => Ok(Task::Mutate { full: true }),
         [QUALITY_COMMAND] => Ok(Task::Quality(QualityAction::Run(QualityProfile::Pr))),

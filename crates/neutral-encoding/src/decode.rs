@@ -163,8 +163,10 @@ pub fn decode(
             .with_reference_provenance(provenance.references);
     neutral_reader::validate_document_companions(&artifacts).map_err(map_reader_error)?;
     let mut capability_budget = TraversalBudget::new();
-    let actual = derive_capabilities(&artifacts, &mut capability_budget)
-        .map_err(|_| error(DecodeErrorClass::EncodedSizeLimit))?;
+    let actual = match derive_capabilities(&artifacts, &mut capability_budget) {
+        Ok(actual) => actual,
+        Err(_) => return Err(error(DecodeErrorClass::EncodedSizeLimit)),
+    };
     if actual != frame.capabilities {
         return Err(error(DecodeErrorClass::UnsupportedCapability));
     }
@@ -217,23 +219,28 @@ fn decode_frame(bytes: &[u8], limits: DecodeLimits) -> Result<Frame, DecodeError
     if capabilities & !constants::KNOWN_CAPABILITY_MASK != 0 {
         return Err(at(DecodeErrorClass::UnsupportedCapability, 40));
     }
-    let directory_size = constants::DIRECTORY_ENTRY_BYTES
-        .checked_mul(constants::SECTION_COUNT)
-        .ok_or_else(|| error(DecodeErrorClass::InternalDefect))?;
-    let first_section = constants::HEADER_BYTES
-        .checked_add(directory_size)
-        .ok_or_else(|| error(DecodeErrorClass::InternalDefect))?;
+    let Some(directory_size) =
+        constants::DIRECTORY_ENTRY_BYTES.checked_mul(constants::SECTION_COUNT)
+    else {
+        return Err(error(DecodeErrorClass::InternalDefect));
+    };
+    let Some(first_section) = constants::HEADER_BYTES.checked_add(directory_size) else {
+        return Err(error(DecodeErrorClass::InternalDefect));
+    };
     if bytes.len() < first_section {
         return Err(error(DecodeErrorClass::MalformedFrame));
     }
     let mut sections: [Range<usize>; constants::SECTION_COUNT] = std::array::from_fn(|_| 0..0);
     let mut expected_offset = first_section;
     for (index, range) in sections.iter_mut().enumerate() {
-        let entry = constants::HEADER_BYTES
-            .checked_add(index * constants::DIRECTORY_ENTRY_BYTES)
-            .ok_or_else(|| error(DecodeErrorClass::InternalDefect))?;
-        let expected_kind =
-            u16::try_from(index + 1).map_err(|_| error(DecodeErrorClass::InternalDefect))?;
+        let Some(entry) =
+            constants::HEADER_BYTES.checked_add(index * constants::DIRECTORY_ENTRY_BYTES)
+        else {
+            return Err(error(DecodeErrorClass::InternalDefect));
+        };
+        let Ok(expected_kind) = u16::try_from(index + 1) else {
+            return Err(error(DecodeErrorClass::InternalDefect));
+        };
         if read_u16(bytes, entry)? != expected_kind || read_u32(bytes, entry + 4)? != 0 {
             return Err(at(DecodeErrorClass::MalformedFrame, u64_from_usize(entry)?));
         }
@@ -255,9 +262,9 @@ fn decode_frame(bytes: &[u8], limits: DecodeLimits) -> Result<Frame, DecodeError
                 u64_from_usize(entry + 8)?,
             ));
         }
-        let end = offset
-            .checked_add(length)
-            .ok_or_else(|| error(DecodeErrorClass::MalformedFrame))?;
+        let Some(end) = offset.checked_add(length) else {
+            return Err(error(DecodeErrorClass::MalformedFrame));
+        };
         if end > bytes.len() {
             return Err(at(
                 DecodeErrorClass::MalformedFrame,
@@ -310,19 +317,19 @@ fn validate_envelope(value: &LocatedValue, frame: &Frame, bytes: &[u8]) -> Resul
 /// Validates capability names in exact ascending-bit order.
 fn validate_capability_names(value: &LocatedValue, mask: u64) -> Result<(), DecodeError> {
     let values = array(value)?;
-    let expected_count =
-        usize::try_from(mask.count_ones()).map_err(|_| error(DecodeErrorClass::InternalDefect))?;
+    let Ok(expected_count) = usize::try_from(mask.count_ones()) else {
+        return Err(error(DecodeErrorClass::InternalDefect));
+    };
     if values.len() != expected_count {
         return Err(at(DecodeErrorClass::UnsupportedCapability, value.offset));
     }
     let mut index = 0;
     for (bit, expected) in (0_u32..).zip(constants::CAPABILITY_NAMES) {
         if mask & capability(bit) != 0 {
-            let actual = text(
-                values
-                    .get(index)
-                    .ok_or_else(|| error(DecodeErrorClass::InternalDefect))?,
-            )?;
+            let Some(value) = values.get(index) else {
+                return Err(error(DecodeErrorClass::InternalDefect));
+            };
+            let actual = text(value)?;
             if actual != expected {
                 return Err(at(
                     DecodeErrorClass::UnsupportedCapability,
@@ -404,17 +411,21 @@ fn validate_integrity(
         return Err(at(DecodeErrorClass::IntegrityMismatch, value.offset));
     }
     for (index, record) in records.iter().enumerate() {
-        let object = Object::exact(record, &[constants::key::SECTION, constants::key::SHA256])
-            .map_err(|_| at(DecodeErrorClass::IntegrityMismatch, record.offset))?;
-        let kind = u64::try_from(index + 2).map_err(|_| error(DecodeErrorClass::InternalDefect))?;
+        let object = match Object::exact(record, &[constants::key::SECTION, constants::key::SHA256])
+        {
+            Ok(object) => object,
+            Err(_) => return Err(at(DecodeErrorClass::IntegrityMismatch, record.offset)),
+        };
+        let Ok(kind) = u64::try_from(index + 2) else {
+            return Err(error(DecodeErrorClass::InternalDefect));
+        };
         if unsigned(object.get(constants::key::SECTION)?)? != kind {
             return Err(at(DecodeErrorClass::IntegrityMismatch, record.offset));
         }
         let expected = digest_bytes(object.get(constants::key::SHA256)?)?;
-        let section = frame
-            .sections
-            .get(index + 1)
-            .ok_or_else(|| error(DecodeErrorClass::InternalDefect))?;
+        let Some(section) = frame.sections.get(index + 1) else {
+            return Err(error(DecodeErrorClass::InternalDefect));
+        };
         let actual = EncodedSectionDigest::from_bytes(&bytes[section.clone()]).as_bytes();
         if expected != actual {
             return Err(at(DecodeErrorClass::IntegrityMismatch, record.offset));
@@ -450,10 +461,9 @@ fn decode_logical(
         records.push(decode_record_type(record, budget, 1)?);
     }
     let declaration_values = array(object.get(constants::key::DECLARATIONS)?)?;
-    let total = record_values
-        .len()
-        .checked_add(declaration_values.len())
-        .ok_or_else(|| error(DecodeErrorClass::EncodedSizeLimit))?;
+    let Some(total) = record_values.len().checked_add(declaration_values.len()) else {
+        return Err(error(DecodeErrorClass::EncodedSizeLimit));
+    };
     check_collection(total, budget.limits.declarations())?;
     let mut declarations = Vec::new();
     for declaration in declaration_values {
@@ -1456,31 +1466,40 @@ fn read_fixed<const N: usize>(bytes: &[u8], offset: usize) -> Result<[u8; N], De
     let end = offset
         .checked_add(N)
         .ok_or_else(|| error(DecodeErrorClass::MalformedFrame))?;
-    bytes
-        .get(offset..end)
-        .ok_or_else(|| {
-            at(
-                DecodeErrorClass::MalformedFrame,
-                u64_from_usize(offset).unwrap_or(0),
-            )
-        })?
-        .try_into()
-        .map_err(|_| error(DecodeErrorClass::InternalDefect))
+    let Some(bytes) = bytes.get(offset..end) else {
+        return Err(at(
+            DecodeErrorClass::MalformedFrame,
+            u64_from_usize(offset).unwrap_or(0),
+        ));
+    };
+    match bytes.try_into() {
+        Ok(array) => Ok(array),
+        Err(_) => Err(error(DecodeErrorClass::InternalDefect)),
+    }
 }
 
 /// Converts u64 framing values to host offsets without truncation.
 fn usize_from_u64(value: u64) -> Result<usize, DecodeError> {
-    usize::try_from(value).map_err(|_| error(DecodeErrorClass::MalformedFrame))
+    match usize::try_from(value) {
+        Ok(value) => Ok(value),
+        Err(_) => Err(error(DecodeErrorClass::MalformedFrame)),
+    }
 }
 
 /// Converts u32 framing values to host offsets without truncation.
 fn usize_from_u32(value: u32) -> Result<usize, DecodeError> {
-    usize::try_from(value).map_err(|_| error(DecodeErrorClass::MalformedFrame))
+    match usize::try_from(value) {
+        Ok(value) => Ok(value),
+        Err(_) => Err(error(DecodeErrorClass::MalformedFrame)),
+    }
 }
 
 /// Converts host offsets to bounded diagnostic offsets.
 fn u64_from_usize(value: usize) -> Result<u64, DecodeError> {
-    u64::try_from(value).map_err(|_| error(DecodeErrorClass::InternalDefect))
+    match u64::try_from(value) {
+        Ok(value) => Ok(value),
+        Err(_) => Err(error(DecodeErrorClass::InternalDefect)),
+    }
 }
 
 /// Saturates a captured u64 limit to the host word width.

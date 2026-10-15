@@ -197,6 +197,37 @@ fn unsupported_forms_and_offset_overflow_fail_closed() {
     );
 }
 
+/// Hostile positions and impossible retention sizes fail through the checked error mappers.
+#[test]
+fn parser_overflow_and_capacity_errors_are_bounded() {
+    let cancellation = CancellationToken::new();
+    let mut parser = Parser {
+        materialize: true,
+        bytes: &[],
+        position: 1,
+        base_offset: usize::MAX,
+        limits: DecodeLimits::hard(),
+        nodes: 0,
+        cancellation: &cancellation,
+        canonical: false,
+        allocations: 0,
+        allocation_fault: None,
+    };
+    assert_eq!(
+        parser.absolute_offset().unwrap_err().class(),
+        DecodeErrorClass::EncodedSizeLimit
+    );
+
+    let mut retained = Vec::<(String, LocatedValue)>::new();
+    assert_eq!(
+        parser
+            .reserve(&mut retained, usize::MAX)
+            .unwrap_err()
+            .class(),
+        DecodeErrorClass::EncodedSizeLimit
+    );
+}
+
 /// Every actual lexical storage checkpoint fails atomically under synthetic allocation faults or cancellation.
 #[test]
 fn security_cbor_reservation_faults_and_cancellation_are_atomic() {

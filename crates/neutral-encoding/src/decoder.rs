@@ -173,8 +173,9 @@ impl<'a> Parser<'a> {
                         offset,
                     ));
                 }
-                let magnitude = i64::try_from(argument)
-                    .map_err(|_| self.error(DecodeErrorClass::InvalidEncodedSchema))?;
+                let Ok(magnitude) = i64::try_from(argument) else {
+                    return Err(self.error(DecodeErrorClass::InvalidEncodedSchema));
+                };
                 CborValue::Negative(-1 - magnitude)
             }
             2 => CborValue::Bytes(
@@ -241,8 +242,9 @@ impl<'a> Parser<'a> {
     /// Reads and bounds one definite container length.
     fn container_length(&mut self, additional: u8) -> Result<usize, DecodeError> {
         let length = self.argument(additional)?;
-        let length =
-            usize::try_from(length).map_err(|_| self.error(DecodeErrorClass::EncodedSizeLimit))?;
+        let Ok(length) = usize::try_from(length) else {
+            return Err(self.error(DecodeErrorClass::EncodedSizeLimit));
+        };
         if length > self.limits.maximum_container_items() {
             return Err(self.error(DecodeErrorClass::EncodedSizeLimit));
         }
@@ -255,18 +257,18 @@ impl<'a> Parser<'a> {
     /// Borrows bounded string bytes after checking length, before any retention.
     fn string_slice(&mut self, additional: u8, maximum: usize) -> Result<&'a [u8], DecodeError> {
         let length = self.argument(additional)?;
-        let length =
-            usize::try_from(length).map_err(|_| self.error(DecodeErrorClass::EncodedSizeLimit))?;
+        let Ok(length) = usize::try_from(length) else {
+            return Err(self.error(DecodeErrorClass::EncodedSizeLimit));
+        };
         if length > maximum {
             return Err(self.error(DecodeErrorClass::EncodedSizeLimit));
         }
         if length > self.remaining() {
             return Err(self.error(DecodeErrorClass::MalformedCbor));
         }
-        let end = self
-            .position
-            .checked_add(length)
-            .ok_or_else(|| self.error(DecodeErrorClass::EncodedSizeLimit))?;
+        let Some(end) = self.position.checked_add(length) else {
+            return Err(self.error(DecodeErrorClass::EncodedSizeLimit));
+        };
         let start = self.position;
         self.position = end;
         Ok(&self.bytes[start..end])
@@ -296,7 +298,10 @@ impl<'a> Parser<'a> {
         if self.materialize {
             retained.extend_from_slice(bytes);
         }
-        String::from_utf8(retained).map_err(|_| self.error(DecodeErrorClass::MalformedCbor))
+        match String::from_utf8(retained) {
+            Ok(value) => Ok(value),
+            Err(_) => Err(self.error(DecodeErrorClass::MalformedCbor)),
+        }
     }
 
     /// Reads a supported CBOR argument and rejects indefinite/reserved forms.
@@ -324,18 +329,17 @@ impl<'a> Parser<'a> {
 
     /// Reads one fixed-size byte array without unchecked slicing.
     fn read_array<const N: usize>(&mut self) -> Result<[u8; N], DecodeError> {
-        let end = self
-            .position
-            .checked_add(N)
-            .ok_or_else(|| self.error(DecodeErrorClass::MalformedCbor))?;
-        let bytes = self
-            .bytes
-            .get(self.position..end)
-            .ok_or_else(|| self.error(DecodeErrorClass::MalformedCbor))?;
+        let Some(end) = self.position.checked_add(N) else {
+            return Err(self.error(DecodeErrorClass::MalformedCbor));
+        };
+        let Some(bytes) = self.bytes.get(self.position..end) else {
+            return Err(self.error(DecodeErrorClass::MalformedCbor));
+        };
         self.position = end;
-        bytes
-            .try_into()
-            .map_err(|_| self.error(DecodeErrorClass::InternalDefect))
+        match bytes.try_into() {
+            Ok(array) => Ok(array),
+            Err(_) => Err(self.error(DecodeErrorClass::InternalDefect)),
+        }
     }
 
     /// Reads one byte or returns a bounded truncation error.
@@ -356,11 +360,13 @@ impl<'a> Parser<'a> {
 
     /// Returns the current absolute offset with checked conversion.
     fn absolute_offset(&self) -> Result<u64, DecodeError> {
-        let absolute = self
-            .base_offset
-            .checked_add(self.position)
-            .ok_or_else(|| self.error(DecodeErrorClass::EncodedSizeLimit))?;
-        u64::try_from(absolute).map_err(|_| self.error(DecodeErrorClass::EncodedSizeLimit))
+        let Some(absolute) = self.base_offset.checked_add(self.position) else {
+            return Err(self.error(DecodeErrorClass::EncodedSizeLimit));
+        };
+        match u64::try_from(absolute) {
+            Ok(offset) => Ok(offset),
+            Err(_) => Err(self.error(DecodeErrorClass::EncodedSizeLimit)),
+        }
     }
 
     /// Returns an error at the current position.

@@ -31,7 +31,7 @@ tracking = "ignored"
 name = "coverage"
 path = "test-results/analysis/coverage"
 owner = "xtask"
-generate = "RUSTUP_TOOLCHAIN=nightly cargo xtask coverage"
+generate = "RUSTUP_TOOLCHAIN=nightly cargo xtask coverage --full"
 validate = "cargo xtask quality --profile release"
 tracking = "ignored"
 

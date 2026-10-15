@@ -57,6 +57,103 @@ fn project_profile_selection_never_falls_back() {
 }
 
 #[test]
+fn profile_names_and_limits_are_exact_and_intersect_independently() {
+    use neutral_ir::expression::profile::{ExpressionLimits, is_binding_name};
+
+    for valid in ["answer", "choice__0", "choice__12__3"] {
+        assert!(is_binding_name(valid), "{valid}");
+    }
+    for invalid in [
+        "Upper",
+        "choice__",
+        "choice__01",
+        "choice__1x",
+        "choice__18446744073709551616",
+    ] {
+        assert!(!is_binding_name(invalid), "{invalid}");
+    }
+
+    let hard = ExpressionLimits::hard();
+    assert_eq!(ExpressionLimits::default(), hard);
+    assert_eq!(hard.values().len(), 11);
+    let caller = ExpressionLimits {
+        nodes: 2,
+        work: 30,
+        ..hard
+    };
+    let producer = ExpressionLimits {
+        nodes: 9,
+        work: 10,
+        ..hard
+    };
+    let effective = caller.intersect(producer);
+    assert_eq!(effective.nodes, 2);
+    assert_eq!(effective.work, 10);
+    assert_eq!(
+        ExpressionLimits {
+            bindings: 0,
+            ..hard
+        }
+        .intersect(hard)
+        .bindings,
+        0
+    );
+}
+
+#[test]
+fn fallible_composition_value_clone_preserves_every_variant() {
+    use neutral_core::allocation::TryClone;
+    use neutral_ir::composition::{
+        BindingValue, CompositionBinding, CompositionBindingReference, CompositionValue as V,
+        ValuePathSegment,
+    };
+
+    let value = V::Record(vec![
+        ("bool".into(), Some(V::Bool(true))),
+        ("null".into(), Some(V::Null)),
+        ("string".into(), Some(V::String("text".into()))),
+        ("url".into(), Some(V::Url("https://example.invalid".into()))),
+        ("path".into(), Some(V::Path("/tmp/value".into()))),
+        (
+            "number".into(),
+            Some(V::Number(
+                neutral_ir::ExactNumber::from_normalized_parts(false, "12", 1, 2, 2).unwrap(),
+            )),
+        ),
+        (
+            "list".into(),
+            Some(V::List(vec![V::Variant {
+                tag: "ready".into(),
+                payload: Box::new(V::Reference(symbol("target"))),
+            }])),
+        ),
+        ("omitted".into(), None),
+    ]);
+    let copy: BindingValue = value.try_clone().unwrap();
+    assert_eq!(copy, value);
+
+    let reference = CompositionBindingReference {
+        path: vec![
+            ValuePathSegment::Field("item".into()),
+            ValuePathSegment::Element(2),
+            ValuePathSegment::Payload,
+        ],
+        target: symbol("target"),
+    };
+    assert_eq!(reference.try_clone().unwrap(), reference);
+    let value = V::Reference(reference);
+    let copy: V<CompositionBindingReference> = value.try_clone().unwrap();
+    assert_eq!(copy, value);
+    let binding = CompositionBinding {
+        owner: symbol("binding"),
+        public: true,
+        ty: T::Bool,
+        value: BindingValue::Bool(true),
+    };
+    assert_eq!(binding.try_clone().unwrap(), binding);
+}
+
+#[test]
 fn contract_preflight_rejects_deep_types_before_copy() {
     use neutral_core::{CancellationToken, allocation::testing::observe};
     use neutral_ir::{
@@ -87,4 +184,40 @@ fn contract_preflight_rejects_deep_types_before_copy() {
     });
     assert!(result.is_err());
     assert_eq!(copies, 0);
+}
+
+#[test]
+fn composition_preflight_visits_closed_choices_and_defaults() {
+    use neutral_core::CancellationToken;
+    use neutral_ir::{
+        composition::{
+            ClosedValue, CompositionBody, CompositionField, FieldPresence, FieldRestrictions,
+            project::{CompositionPolicy, inspect_composition_bodies},
+        },
+        project::ProjectLimits,
+    };
+
+    let body = CompositionBody::Record(vec![CompositionField {
+        name: "status".into(),
+        ty: T::String,
+        presence: FieldPresence::Defaulted,
+        restrictions: FieldRestrictions {
+            choices: Some(vec![ClosedValue::String("ready".into())]),
+            ..FieldRestrictions::default()
+        },
+        default: Some(ClosedValue::String("ready".into())),
+    }]);
+    let limits = ProjectLimits {
+        modules: 1,
+        declarations: 1,
+        import_edges: 1,
+        nodes: 1024,
+        text_bytes: 4096,
+        artifact_bytes: 4096,
+    };
+    let policy = CompositionPolicy::from_values([1024; 15]);
+    let inspection =
+        inspect_composition_bodies([&body], limits, policy, &CancellationToken::new()).unwrap();
+    assert_eq!(inspection.facts.types, 1);
+    assert_eq!(inspection.facts.retained_value_nodes, 2);
 }

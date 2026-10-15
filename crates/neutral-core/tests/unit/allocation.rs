@@ -16,6 +16,15 @@ fn fallible_copies_preserve_boxed_collection_ownership() {
     assert_eq!(*boxed(()).unwrap(), ());
 }
 
+/// Borrowed try-cloning preserves the referent without copying it.
+#[test]
+fn borrowed_try_clone_preserves_reference() {
+    let value = String::from("borrowed");
+    let borrowed = value.as_str();
+    let copy = borrowed.try_clone().unwrap();
+    assert!(std::ptr::eq(borrowed, copy));
+}
+
 /// A constituent failure short-circuits the same production collection-copy loop.
 #[test]
 fn fallible_collection_copy_propagates_child_failure() {
@@ -58,6 +67,7 @@ fn fallible_shared_owner_preserves_thread_safe_single_drop() {
     assert_eq!(drops.load(Ordering::SeqCst), 1);
     let text = Shared::try_new("exact bytes".to_owned()).unwrap();
     assert_eq!(text, text.clone());
+    assert_eq!(format!("{text:?}"), "\"exact bytes\"");
 }
 
 /// Observation is thread-local, nested scopes restore their parent, and unwind cannot poison later requests.

@@ -444,7 +444,7 @@ fn write_selected_output(options: &CommandOptions, bytes: &[u8]) -> Result<(), C
         stdout
             .write_all(bytes)
             .and_then(|()| stdout.flush())
-            .map_err(|_| CliFailure::one(ExitClass::Output, "stdout-write-failed"))
+            .map_err(stdout_write_failure)
     } else {
         atomic_write(Path::new(destination), bytes, options.overwrite)
     }
@@ -458,10 +458,11 @@ fn atomic_write(destination: &Path, bytes: &[u8], overwrite: bool) -> Result<(),
     let parent = destination.parent().unwrap_or_else(|| Path::new("."));
     let (temporary_path, mut temporary_file) = create_temporary(parent)?;
     let guard = TemporaryOutput::new(temporary_path.clone());
-    temporary_file
-        .write_all(bytes)
-        .and_then(|()| temporary_file.sync_all())
-        .map_err(|_| CliFailure::one(ExitClass::Output, "output-write-failed"))?;
+    write_temporary(
+        temporary_file
+            .write_all(bytes)
+            .and_then(|()| temporary_file.sync_all()),
+    )?;
     drop(temporary_file);
     if overwrite {
         fs::rename(&temporary_path, destination)
@@ -471,6 +472,16 @@ fn atomic_write(destination: &Path, bytes: &[u8], overwrite: bool) -> Result<(),
     .map_err(|_| CliFailure::one(ExitClass::Output, "output-commit-failed"))?;
     guard.commit();
     Ok(())
+}
+
+/// Maps a temporary-file write result to its stable CLI outcome.
+fn write_temporary(result: io::Result<()>) -> Result<(), CliFailure> {
+    result.map_err(|_| CliFailure::one(ExitClass::Output, "output-write-failed"))
+}
+
+/// Maps a standard-output write failure to its stable CLI outcome.
+fn stdout_write_failure(_: io::Error) -> CliFailure {
+    CliFailure::one(ExitClass::Output, "stdout-write-failed")
 }
 
 /// Creates a collision-resistant temporary output in the destination directory.

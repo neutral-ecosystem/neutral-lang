@@ -327,6 +327,48 @@ fn composition_numeric_tuple_limits_are_inclusive() {
         );
     }
     assert!(read_value::<ClosedReference>(&number("1".into(), max_scale), 0).is_ok());
+    assert_eq!(
+        read_value::<ClosedReference>(&number("01".into(), 0), 0)
+            .unwrap_err()
+            .class(),
+        C::InvalidEncodedSchema
+    );
+}
+
+/// Restrictions accept numeric choice tuples only and companion walking observes cancellation.
+#[test]
+fn composition_restrictions_and_companion_cancellation_fail_closed() {
+    let restrictions = tuple_node(vec![
+        tuple_node(vec![]),
+        tuple_node(vec![string("bool"), node(CborValue::Boolean(true))]),
+        node(CborValue::Null),
+        node(CborValue::Null),
+        node(CborValue::Null),
+        node(CborValue::Null),
+    ]);
+    assert_eq!(
+        read_restrictions(&restrictions).unwrap_err().class(),
+        C::InvalidEncodedSchema
+    );
+
+    let mut project: [LocatedValue; 12] = std::array::from_fn(|_| node(CborValue::Null));
+    project[6] = tuple_node(vec![]);
+    project[7] = tuple_node(vec![]);
+    project[8] = tuple_node(vec![]);
+    project[9] = tuple_node((0..6).map(|_| node(CborValue::Unsigned(0))).collect());
+    project[10] = tuple_node((0..7).map(|_| node(CborValue::Unsigned(0))).collect());
+    project[11] = tuple_node(vec![tuple_node(vec![
+        string("Fixture"),
+        string("1.0.0"),
+        node(CborValue::Bytes(vec![0; 32])),
+        node(CborValue::Unsigned(0)),
+    ])]);
+    let cancel = CancellationToken::new();
+    cancel.cancel();
+    assert!(matches!(
+        read_companions(&project, &cancel),
+        Err(error) if error.class() == C::Cancelled
+    ));
 }
 
 /// Reference values retain the exact owner and cannot enter closed defaults.
@@ -351,6 +393,12 @@ fn composition_references_preserve_identity_and_closedness() {
             .class(),
         C::InvalidEncodedSchema
     );
+    for error in [
+        read_value::<ClosedReference>(&tuple_node(vec![]), 0).unwrap_err(),
+        read_value::<ModuleSymbolIdentity>(&tuple_node(vec![]), 0).unwrap_err(),
+    ] {
+        assert_eq!(error.class(), C::InvalidEncodedSchema);
+    }
 }
 
 /// Builds a deep payload using one CBOR layer per semantic variant layer.
@@ -560,6 +608,23 @@ fn composition_origin_tags_are_closed() {
             C::InvalidEncodedSchema
         );
     }
+    let invalid_span = tuple_node(vec![
+        string("vocabulary"),
+        string("Fixture"),
+        string("1.0.0"),
+        string("Record"),
+        string("field"),
+        tuple_node(vec![
+            node(CborValue::Unsigned(2)),
+            node(CborValue::Unsigned(1)),
+        ]),
+    ]);
+    assert_eq!(
+        read_origin(&origin(vec![], "supplied", invalid_span))
+            .unwrap_err()
+            .class(),
+        C::InvalidEncodedSchema
+    );
     assert_eq!(
         read_origin(&origin(vec![], "explicit-null", node(CborValue::Null)))
             .unwrap()
@@ -646,6 +711,18 @@ fn composition_catalogue_definitions_are_exact_and_ordered() {
     assert!(bundles[0].definitions[0].public);
     assert_eq!(bundles[0].definitions[1].name, "Second");
     assert!(!bundles[0].definitions[1].public);
+    let mut hidden_public = catalogues(vec![tuple_node(vec![
+        string("Fixture"),
+        string("1.0.0"),
+        tuple_node(vec![]),
+    ])]);
+    hidden_public[3] = tuple_node(vec![definition("First", true)]);
+    assert_eq!(
+        read_vocabularies(&hidden_public, std::slice::from_ref(&source))
+            .unwrap_err()
+            .class(),
+        C::InvalidEncodedSchema
+    );
     for names in [["First", "First"], ["Second", "First"]] {
         p[3] = tuple_node(vec![
             definition(names[0], true),
@@ -658,6 +735,18 @@ fn composition_catalogue_definitions_are_exact_and_ordered() {
             C::InvalidEncodedSchema
         );
     }
+    let mut unowned = catalogues(vec![tuple_node(vec![
+        string("Fixture"),
+        string("1.0.0"),
+        tuple_node(vec![]),
+    ])]);
+    unowned[3] = tuple_node(vec![definition("Elsewhere", true)]);
+    assert_eq!(
+        read_vocabularies(&unowned, std::slice::from_ref(&source))
+            .unwrap_err()
+            .class(),
+        C::InvalidEncodedSchema
+    );
 }
 
 /// Supplies one catalogue, dependency owner and source for independent ownership joins.

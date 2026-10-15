@@ -197,6 +197,80 @@ fn closed_object_validation_rejects_every_invalid_key_shape() {
         budget.visit(1).unwrap_err().class(),
         DecodeErrorClass::EncodedSizeLimit
     );
+    assert!(matches!(
+        super::Object::exact(
+            &LocatedValue {
+                offset: 0,
+                value: CborValue::Null,
+            },
+            &["a"],
+        ),
+        Err(error) if error.class() == DecodeErrorClass::InvalidEncodedSchema
+    ));
+}
+
+/// Covers bounded section lookup and malformed capability/integrity summaries directly.
+#[test]
+fn section_helpers_reject_invalid_indexes_capabilities_and_integrity() {
+    let bytes = valid_frame();
+    let frame = decode_frame(&bytes, DecodeLimits::hard()).unwrap();
+    let section_error = match super::parse(
+        &bytes,
+        &frame,
+        constants::SECTION_COUNT,
+        DecodeLimits::hard(),
+        &CancellationToken::new(),
+    ) {
+        Ok(_) => panic!("out-of-range section index must fail"),
+        Err(error) => error,
+    };
+    assert_eq!(section_error.class(), DecodeErrorClass::InternalDefect);
+
+    let mut unknown_capability = bytes.clone();
+    unknown_capability[40..48].copy_from_slice(&u64::MAX.to_be_bytes());
+    let capability_error = match decode_frame(&unknown_capability, DecodeLimits::hard()) {
+        Ok(_) => panic!("unknown capability bits must fail"),
+        Err(error) => error,
+    };
+    assert_eq!(
+        capability_error.class(),
+        DecodeErrorClass::UnsupportedCapability
+    );
+    let no_capabilities = LocatedValue {
+        offset: 0,
+        value: CborValue::Array(vec![]),
+    };
+    assert_eq!(
+        super::validate_capability_names(&no_capabilities, 1)
+            .unwrap_err()
+            .class(),
+        DecodeErrorClass::UnsupportedCapability
+    );
+
+    for integrity in [
+        LocatedValue {
+            offset: 0,
+            value: CborValue::Array(vec![]),
+        },
+        LocatedValue {
+            offset: 0,
+            value: CborValue::Array(
+                (0..constants::INTEGRITY_SECTION_COUNT)
+                    .map(|_| LocatedValue {
+                        offset: 0,
+                        value: CborValue::Null,
+                    })
+                    .collect(),
+            ),
+        },
+    ] {
+        assert_eq!(
+            super::validate_integrity(&integrity, &frame, &bytes)
+                .unwrap_err()
+                .class(),
+            DecodeErrorClass::IntegrityMismatch
+        );
+    }
 }
 
 /// Total-length field offset in the frozen frame header.

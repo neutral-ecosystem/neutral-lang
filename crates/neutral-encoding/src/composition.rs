@@ -768,7 +768,9 @@ pub(crate) fn read_vocabularies(
         if definitions.last().is_none_or(|last| last.0 != owner) {
             definitions.push((owner, Vec::new()));
         }
-        let group = &mut definitions.last_mut().ok_or_else(|| schema(d))?.1;
+        let Some((_, group)) = definitions.last_mut() else {
+            return Err(schema(d));
+        };
         group
             .try_retain(1)
             .map_err(|_| failure(C::EncodedSizeLimit))?;
@@ -812,10 +814,9 @@ pub(crate) fn read_vocabularies(
             return Err(schema(c));
         }
         let owner = (identity.as_str(), version.as_str());
-        let defs = if definitions.peek().is_some_and(|entry| entry.0 == owner) {
-            definitions.next().ok_or_else(|| schema(c))?.1
-        } else {
-            Vec::new()
+        let defs = match definitions.next_if(|entry| entry.0 == owner) {
+            Some(entry) => entry.1,
+            None => Vec::new(),
         };
         let public = read_list(&a[4], owned_text)?;
         if !defs

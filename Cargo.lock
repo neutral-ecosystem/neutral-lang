@@ -187,6 +187,7 @@ dependencies = [
  "neutral-compiler",
  "neutral-core",
  "neutral-encoding",
+ "neutral-ir",
  "neutral-reader",
  "neutral-vocabulary",
 ]

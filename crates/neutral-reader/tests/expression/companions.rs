@@ -14,7 +14,8 @@ use neutral_ir::{
         project::{CompositionAttribution, CompositionOrigin, CompositionResourceFacts},
     },
     expression::{
-        ExpressionNode,
+        BinaryOperator, Expression, ExpressionBody, ExpressionNode, MatchArm, SelectorSegment,
+        UnaryOperator,
         attribution::{ExpansionAttribution, ExpressionAttribution},
         profile::{ExpressionLimits, SemanticProfiles},
         project::{ExpressionDeclaration, ExpressionResourceFacts},
@@ -173,6 +174,81 @@ fn prepare(mut ir: ExpressionProjectIr) -> ExpressionProjectIr {
     };
     ir.expression_resources = derive_expression_resources(&ir, limits(), &cancel).unwrap();
     ir
+}
+
+#[test]
+fn retained_inspection_walks_every_expression_node_shape() {
+    let leaf = || Expression {
+        ty: T::Bool,
+        node: ExpressionNode::Value(V::Bool(true)),
+    };
+    let child = || Box::new(leaf());
+    let nodes = vec![
+        ExpressionNode::Input(symbol("m", "input")),
+        ExpressionNode::Output {
+            target: symbol("m", "output"),
+            result_type: T::Bool,
+            selector: vec![SelectorSegment::Field("field".into())],
+        },
+        ExpressionNode::Unary {
+            operator: UnaryOperator::Not,
+            operand: child(),
+        },
+        ExpressionNode::Binary {
+            operator: BinaryOperator::And,
+            left: child(),
+            right: child(),
+        },
+        ExpressionNode::If {
+            guard: child(),
+            then_branch: child(),
+            else_branch: child(),
+        },
+        ExpressionNode::Match {
+            scrutinee: child(),
+            arms: vec![MatchArm {
+                tag: "ready".into(),
+                payload_type: T::Bool,
+                body: leaf(),
+            }],
+        },
+        ExpressionNode::Text(child()),
+        ExpressionNode::Interpolate(vec![leaf()]),
+        ExpressionNode::List(vec![leaf()]),
+        ExpressionNode::Record(vec![
+            ("omitted".into(), None),
+            ("present".into(), Some(leaf())),
+        ]),
+        ExpressionNode::Variant {
+            tag: "ready".into(),
+            payload: child(),
+        },
+        ExpressionNode::Bound { depth: 0, slot: 1 },
+    ];
+    let tree = Expression {
+        ty: T::Bool,
+        node: ExpressionNode::List(
+            nodes
+                .into_iter()
+                .map(|node| Expression { ty: T::Bool, node })
+                .collect(),
+        ),
+    };
+    let mut ir = empty();
+    ir.declarations.push(ExpressionDeclaration {
+        identity: symbol("m", "tree"),
+        public: false,
+        signature: S::Binding(T::Bool),
+        body: Some(ExpressionBody::Expression(tree)),
+    });
+    let result = inspect_expression_project_resources(
+        &ir,
+        ir.limits,
+        ir.composition_limits,
+        &CancellationToken::new(),
+    )
+    .unwrap();
+    assert_eq!(result.retained_value_nodes, 13);
 }
 
 /// Exercises companion checks with independently recomputed complete producer facts.

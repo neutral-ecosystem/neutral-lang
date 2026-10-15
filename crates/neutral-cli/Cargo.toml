@@ -16,5 +16,8 @@ neutral-encoding = { path = "../neutral-encoding" }
 neutral-reader = { path = "../neutral-reader" }
 neutral-vocabulary = { path = "../neutral-vocabulary" }
 
+[dev-dependencies]
+neutral-ir = { path = "../neutral-ir" }
+
 [lints]
 workspace = true

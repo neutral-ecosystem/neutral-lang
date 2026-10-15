@@ -268,6 +268,22 @@ fn security_project_wire_unknown_tags_and_duplicate_fields() {
     );
 }
 
+#[test]
+fn reader_error_mapping_preserves_stable_transport_classes() {
+    use neutral_reader::ProjectReadError as R;
+
+    for (error, class) in [
+        (R::Cancelled, DecodeErrorClass::Cancelled),
+        (R::Limit, DecodeErrorClass::EncodedSizeLimit),
+        (R::Schema, DecodeErrorClass::UnsupportedVersion),
+        (R::Companion, DecodeErrorClass::InvalidSourceMap),
+        (R::Resources, DecodeErrorClass::InvalidDerivation),
+        (R::Module, DecodeErrorClass::InvalidLogicalIr),
+    ] {
+        assert_eq!(super::reader_error(error).class(), class);
+    }
+}
+
 /// Arbitrary single-byte mutations always either fail or publish a revalidated project.
 #[test]
 fn property_project_wire_mutations_never_bypass_validation() {

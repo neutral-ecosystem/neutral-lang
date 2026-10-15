@@ -159,7 +159,7 @@ fn release_measurement_mapping_covers_all_required_gates() {
             .unwrap();
             assert!(matches!(
                 task,
-                Task::Coverage | Task::Mutate { full: true } | Task::Performance(_)
+                Task::CoverageFull | Task::Mutate { full: true } | Task::Performance(_)
             ));
         }
     }
