@@ -21,6 +21,7 @@ pub(crate) fn coverage_input_digest(root: &Path) -> Result<String, String> {
     digest(root, true)
 }
 
+/// Hashes ordered path/content pairs using the selected input scope.
 fn digest(root: &Path, all_files: bool) -> Result<String, String> {
     let mut hash = Sha256::new();
     hash.update(b"neutral-quality-inputs/2\0");

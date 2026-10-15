@@ -67,7 +67,7 @@ fn probe_routes_successor_magic_to_its_reader() {
     let error =
         super::inspect_composition(&neutral_reader::composition::profile::MAGIC, true, None)
             .unwrap_err();
-    assert!(!error.is_empty());
+    assert_ne!(error, "");
 }
 
 #[test]

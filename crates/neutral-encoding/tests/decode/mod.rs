@@ -292,7 +292,7 @@ fn typed_decoders_reject_invalid_values_at_each_nested_wire_node() {
 }
 
 #[test]
-fn logical_type_and_value_variants_decode_from_closed_wire_shapes() {
+fn logical_type_variants_decode_from_closed_wire_shapes() {
     let cancellation = CancellationToken::new();
     for kind in [
         constants::kind::NUM,
@@ -310,21 +310,6 @@ fn logical_type_and_value_variants_decode_from_closed_wire_shapes() {
         );
     }
 
-    let nominal = || {
-        CborValue::Map(value_map(vec![
-            (
-                constants::key::MODULE,
-                CborValue::Map(value_map(vec![
-                    (
-                        constants::key::LANGUAGE_BEHAVIOR_VERSION,
-                        CborValue::Text(neutral_ir::LANGUAGE_BEHAVIOR_VERSION.into()),
-                    ),
-                    (constants::key::NAME, CborValue::Text("sample".into())),
-                ])),
-            ),
-            (constants::key::NAME, CborValue::Text("ITEM".into())),
-        ]))
-    };
     let vocabulary_type = || {
         CborValue::Map(value_map(vec![
             (constants::key::VOCABULARY, CborValue::Text("SAMPLE".into())),
@@ -343,7 +328,7 @@ fn logical_type_and_value_variants_decode_from_closed_wire_shapes() {
                 constants::key::KIND,
                 CborValue::Text(constants::kind::RECORD.into()),
             ),
-            (constants::key::IDENTITY, nominal()),
+            (constants::key::IDENTITY, owned_identity("ITEM")),
         ]),
         map(vec![
             (
@@ -367,7 +352,17 @@ fn logical_type_and_value_variants_decode_from_closed_wire_shapes() {
         let mut budget = type_budget(&cancellation, 16);
         assert!(super::decode_type(&value, &mut budget, 0).is_ok());
     }
+}
 
+#[test]
+fn logical_value_variants_decode_from_closed_wire_shapes() {
+    let cancellation = CancellationToken::new();
+    let vocabulary_type = || {
+        CborValue::Map(value_map(vec![
+            (constants::key::VOCABULARY, CborValue::Text("SAMPLE".into())),
+            (constants::key::NAME, CborValue::Text("ITEM".into())),
+        ]))
+    };
     let mut values = vec![
         map(vec![
             (
@@ -401,7 +396,7 @@ fn logical_type_and_value_variants_decode_from_closed_wire_shapes() {
                 constants::key::KIND,
                 CborValue::Text(constants::kind::RECORD.into()),
             ),
-            (constants::key::IDENTITY, nominal()),
+            (constants::key::IDENTITY, owned_identity("ITEM")),
             (constants::key::FIELDS, CborValue::Array(Vec::new())),
         ]),
         map(vec![
@@ -420,28 +415,7 @@ fn logical_type_and_value_variants_decode_from_closed_wire_shapes() {
             (constants::key::ITEMS, CborValue::Array(Vec::new())),
         ]),
     ];
-    let symbol = value_map(vec![
-        (
-            constants::key::MODULE,
-            CborValue::Map(value_map(vec![
-                (
-                    constants::key::LANGUAGE_BEHAVIOR_VERSION,
-                    CborValue::Text(neutral_ir::LANGUAGE_BEHAVIOR_VERSION.into()),
-                ),
-                (constants::key::NAME, CborValue::Text("sample".into())),
-            ])),
-        ),
-        (constants::key::NAME, CborValue::Text("target".into())),
-    ]);
-    values.push(map(vec![
-        (
-            constants::key::KIND,
-            CborValue::Text(constants::kind::REF.into()),
-        ),
-        (constants::key::TARGET_ELEMENT_ID, CborValue::Unsigned(1)),
-        (constants::key::TARGET_SYMBOL, CborValue::Map(symbol)),
-        (constants::key::TARGET_TYPE, number()),
-    ]));
+    values.push(reference_value(constants::kind::REF));
     for value in values {
         let mut budget = type_budget(&cancellation, 16);
         assert!(super::decode_value(&value, &mut budget, 0).is_ok());
@@ -579,23 +553,21 @@ fn replacement_value(index: usize) -> CborValue {
 fn section_helpers_reject_invalid_indexes_capabilities_and_integrity() {
     let bytes = valid_frame();
     let frame = decode_frame(&bytes, DecodeLimits::hard()).unwrap();
-    let section_error = match super::parse(
+    let Err(section_error) = super::parse(
         &bytes,
         &frame,
         constants::SECTION_COUNT,
         DecodeLimits::hard(),
         &CancellationToken::new(),
-    ) {
-        Ok(_) => panic!("out-of-range section index must fail"),
-        Err(error) => error,
+    ) else {
+        panic!("out-of-range section index must fail");
     };
     assert_eq!(section_error.class(), DecodeErrorClass::InternalDefect);
 
     let mut unknown_capability = bytes.clone();
     unknown_capability[40..48].copy_from_slice(&u64::MAX.to_be_bytes());
-    let capability_error = match decode_frame(&unknown_capability, DecodeLimits::hard()) {
-        Ok(_) => panic!("unknown capability bits must fail"),
-        Err(error) => error,
+    let Err(capability_error) = decode_frame(&unknown_capability, DecodeLimits::hard()) else {
+        panic!("unknown capability bits must fail");
     };
     assert_eq!(
         capability_error.class(),

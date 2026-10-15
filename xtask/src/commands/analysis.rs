@@ -121,13 +121,24 @@ pub(crate) fn coverage() -> Result<(), String> {
         &tests.iter().map(String::as_str).collect::<Vec<_>>(),
         "tests",
     )?;
-    measurement.cargo(
-        &[
-            "llvm-cov",
-            "report",
-            "--html",
-            "--output-dir",
-            html,
+    for (report, mut arguments) in [
+        (
+            "html",
+            vec!["llvm-cov", "report", "--html", "--output-dir", html],
+        ),
+        (
+            "json",
+            vec![
+                "llvm-cov",
+                "report",
+                "--json",
+                "--summary-only",
+                "--output-path",
+                json,
+            ],
+        ),
+    ] {
+        arguments.extend([
             "--ignore-filename-regex",
             &exclusions,
             "--fail-under-lines",
@@ -136,28 +147,9 @@ pub(crate) fn coverage() -> Result<(), String> {
             &functions,
             "--fail-under-regions",
             &regions,
-        ],
-        "html",
-    )?;
-    measurement.cargo(
-        &[
-            "llvm-cov",
-            "report",
-            "--json",
-            "--summary-only",
-            "--output-path",
-            json,
-            "--ignore-filename-regex",
-            &exclusions,
-            "--fail-under-lines",
-            &lines,
-            "--fail-under-functions",
-            &functions,
-            "--fail-under-regions",
-            &regions,
-        ],
-        "json",
-    )?;
+        ]);
+        measurement.cargo(&arguments, report)?;
+    }
     output::file("coverage HTML", &html_index);
     output::file("coverage JSON", Path::new(json));
     measurement.copy_report(Path::new(json), "coverage.json")?;

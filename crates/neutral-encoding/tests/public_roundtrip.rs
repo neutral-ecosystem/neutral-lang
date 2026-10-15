@@ -76,7 +76,9 @@ fn public_expression_codec_roundtrips_frozen_artifact() {
         let bytes = fixture
             .trim()
             .as_bytes()
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|pair| u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap())
             .collect::<Vec<_>>();
         let cancel = CancellationToken::new();
@@ -87,8 +89,8 @@ fn public_expression_codec_roundtrips_frozen_artifact() {
     }
 }
 
-#[test]
-fn public_project_codec_roundtrips_complete_ir() {
+/// Builds complete project IR covering every public scalar and list variant.
+fn project_ir_fixture() -> ProjectIr {
     let source = b"neu \"1.0\"\nmodule sample\npublic num answer = 42\n";
     let module = LogicalModuleIdentity::new("1.0", "sample");
     let declarations = [
@@ -186,6 +188,13 @@ fn public_project_codec_roundtrips_complete_ir() {
         vocabulary_sources: Vec::new(),
     };
     ir.public_interface = ir.recompute_public_interface().unwrap();
+    ir
+}
+
+#[test]
+fn public_project_codec_roundtrips_complete_ir() {
+    let ir = project_ir_fixture();
+    let limits = neutral_encoding::project::hard_project_limits();
     let cancel = CancellationToken::new();
     let project = ValidatedProject::from_ir(Arc::new(ir), limits, &cancel).unwrap();
     let bytes = neutral_encoding::project::encode_project(&project, &cancel).unwrap();

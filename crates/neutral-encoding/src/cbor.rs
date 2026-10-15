@@ -212,6 +212,8 @@ impl CborWriter {
         }
     }
 
+    /// Returns the production ceiling or the per-writer test ceiling.
+    #[cfg_attr(not(test), allow(clippy::unused_self))]
     fn section_limit(&self) -> usize {
         #[cfg(test)]
         {

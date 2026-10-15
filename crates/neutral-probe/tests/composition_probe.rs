@@ -151,6 +151,6 @@ fn successor_probe_projects_a_complete_empty_project() {
     .unwrap();
     assert_eq!(summary.modules, 1);
     assert_eq!(summary.declarations, 0);
-    assert!(summary.view.roots().is_empty());
+    assert_eq!(summary.view.roots(), []);
     assert!(neutral_probe::composition::render_composition_summary_json(&summary, &cancel).is_ok());
 }

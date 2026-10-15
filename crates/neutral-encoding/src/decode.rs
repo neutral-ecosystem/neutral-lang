@@ -163,10 +163,8 @@ pub fn decode(
             .with_reference_provenance(provenance.references);
     neutral_reader::validate_document_companions(&artifacts).map_err(map_reader_error)?;
     let mut capability_budget = TraversalBudget::new();
-    let actual = match derive_capabilities(&artifacts, &mut capability_budget) {
-        Ok(actual) => actual,
-        Err(_) => return Err(error(DecodeErrorClass::EncodedSizeLimit)),
-    };
+    let actual = derive_capabilities(&artifacts, &mut capability_budget)
+        .map_err(|_| error(DecodeErrorClass::EncodedSizeLimit))?;
     if actual != frame.capabilities {
         return Err(error(DecodeErrorClass::UnsupportedCapability));
     }
@@ -411,10 +409,9 @@ fn validate_integrity(
         return Err(at(DecodeErrorClass::IntegrityMismatch, value.offset));
     }
     for (index, record) in records.iter().enumerate() {
-        let object = match Object::exact(record, &[constants::key::SECTION, constants::key::SHA256])
-        {
-            Ok(object) => object,
-            Err(_) => return Err(at(DecodeErrorClass::IntegrityMismatch, record.offset)),
+        let Ok(object) = Object::exact(record, &[constants::key::SECTION, constants::key::SHA256])
+        else {
+            return Err(at(DecodeErrorClass::IntegrityMismatch, record.offset));
         };
         let Ok(kind) = u64::try_from(index + 2) else {
             return Err(error(DecodeErrorClass::InternalDefect));
