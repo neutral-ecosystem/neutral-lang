@@ -116,7 +116,7 @@ fn host_compilation_failures_keep_safe_classification() {
     };
     let mapped = super::compilation_failure(&failure);
     assert_eq!(mapped.class(), ExitClass::Validation);
-    assert!(!mapped.messages().is_empty());
+    assert_ne!(mapped.messages(), &[] as &[String]);
     assert_eq!(
         super::successful_document(super::CompilationResult::Failure(failure.clone())).unwrap_err(),
         mapped
