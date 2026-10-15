@@ -138,7 +138,7 @@ pub(crate) fn ensure_measurements() -> Result<(), String> {
 /// Maps each gate to its existing command; no second measurement implementation is maintained.
 fn measurement_arguments(gate: QualityGate) -> &'static [&'static str] {
     match gate {
-        QualityGate::Coverage => &["coverage", crate::interface::FULL_OPTION],
+        QualityGate::Coverage => &["coverage"],
         QualityGate::Mutation => &["mutate", crate::interface::FULL_OPTION],
         QualityGate::Fuzz => &["fuzz", "campaign"],
         QualityGate::PerformanceRelease => &["test", "performance", "--profile", "release"],

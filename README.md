@@ -189,8 +189,7 @@ Use these commands for quality gates, coverage, fuzzing, and analysis.
 | Verify quality evidence | `cargo xtask quality verify` |
 | Evaluate retained quality | `cargo xtask quality evaluate --profile pr\|release` |
 | Approve release quality | `cargo xtask quality approve --release <version>` |
-| Measure changed-file coverage | `RUSTUP_TOOLCHAIN=nightly cargo xtask coverage` |
-| Run the whole-workspace coverage gate | `RUSTUP_TOOLCHAIN=nightly cargo xtask coverage --full` |
+| Reuse unchanged coverage or measure the whole workspace | `RUSTUP_TOOLCHAIN=nightly cargo xtask coverage` |
 | Run a fuzz smoke test | `RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz smoke` |
 | Run full fuzz campaigns | `RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign` |
 

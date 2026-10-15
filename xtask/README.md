@@ -83,8 +83,8 @@ Cargo runs doctests separately. `dev` includes both without site generation;
 `ci pr` adds the documentation build. Coverage and mutation use their native
 Nextest integrations. `NEUTRAL_TEST_RUNNER=cargo` explicitly selects the standard
 Cargo compatibility backend. Missing nextest never silently changes the backend.
-`cargo xtask coverage` measures changed Rust files and tests their workspace
-dependents; use `cargo xtask coverage --full` for the whole-workspace quality gate.
+`cargo xtask coverage` reuses verified results when measurement inputs match.
+When inputs change, it clears LLVM coverage data and measures the whole workspace again.
 
 Full coverage-guided fuzzing, LLVM coverage, and mutation analysis require their
 documented external Cargo tools. Missing tools fail their command; bounded fuzz

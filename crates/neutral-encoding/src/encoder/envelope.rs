@@ -41,13 +41,9 @@ pub(super) fn encode_envelope(
     encode_producer(&mut writer, producer)?;
     field_key(&mut writer, constants::key::INTEGRITY)?;
     writer.array(hashed_sections.len())?;
-    for (index, bytes) in hashed_sections.iter().enumerate() {
+    for (section, bytes) in (2_u64..).zip(hashed_sections) {
         writer.map(2)?;
-        field_unsigned(
-            &mut writer,
-            constants::key::SECTION,
-            u64::try_from(index + 2).map_err(|_| EncodingError::InternalDefect)?,
-        )?;
+        field_unsigned(&mut writer, constants::key::SECTION, section)?;
         field_key(&mut writer, constants::key::SHA256)?;
         writer.bytes(&EncodedSectionDigest::from_bytes(bytes).as_bytes())?;
     }

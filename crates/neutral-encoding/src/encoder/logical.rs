@@ -93,7 +93,6 @@ fn encode_record_type(
     record: &RecordTypeDefinition,
     depth: usize,
 ) -> Result<(), EncodingError> {
-    check_depth(depth)?;
     writer.map(5)?;
     field_unsigned(
         writer,
@@ -101,12 +100,10 @@ fn encode_record_type(
         record.element_id().get(),
     )?;
     field_key(writer, constants::key::SYMBOL)?;
-    check_depth(depth + 2)?;
     encode_symbol(writer, record.symbol_identity())?;
     field_key(writer, constants::key::FINGERPRINT)?;
     writer.bytes(&record.fingerprint().digest().as_bytes())?;
     field_key(writer, constants::key::IDENTITY)?;
-    check_depth(depth + 1)?;
     encode_nominal(writer, record.nominal_identity())?;
     field_key(writer, constants::key::FIELDS)?;
     writer.array(record.fields().len())?;
@@ -122,7 +119,6 @@ fn encode_record_field(
     field: &RecordFieldSchema,
     depth: usize,
 ) -> Result<(), EncodingError> {
-    check_depth(depth)?;
     writer.map(3)?;
     field_text(writer, constants::key::NAME, field.name())?;
     field_key(writer, constants::key::TYPE)?;
@@ -137,7 +133,6 @@ fn encode_declaration(
     declaration: &Declaration,
     depth: usize,
 ) -> Result<(), EncodingError> {
-    check_depth(depth)?;
     writer.map(6)?;
     field_unsigned(
         writer,
@@ -145,7 +140,6 @@ fn encode_declaration(
         declaration.element_id().get(),
     )?;
     field_key(writer, constants::key::SYMBOL)?;
-    check_depth(depth + 2)?;
     encode_symbol(writer, declaration.symbol_identity())?;
     field_key(writer, constants::key::FINGERPRINT)?;
     writer.bytes(&declaration.fingerprint().digest().as_bytes())?;
@@ -174,10 +168,8 @@ fn encode_vocabulary_contract(
     vocabulary: &VocabularyContract,
     depth: usize,
 ) -> Result<(), EncodingError> {
-    check_depth(depth)?;
     writer.map(2)?;
     field_key(writer, constants::key::IDENTITY)?;
-    check_depth(depth + 1)?;
     encode_vocabulary_identity(writer, vocabulary.identity())?;
     field_key(writer, constants::key::TYPES)?;
     writer.array(vocabulary.types().len())?;
@@ -217,10 +209,8 @@ fn encode_vocabulary_type_contract(
     contract: &VocabularyTypeContract,
     depth: usize,
 ) -> Result<(), EncodingError> {
-    check_depth(depth)?;
     writer.map(2)?;
     field_key(writer, constants::key::IDENTITY)?;
-    check_depth(depth + 1)?;
     encode_vocabulary_type(writer, contract.identity())?;
     field_key(writer, constants::key::FIELDS)?;
     writer.array(contract.fields().len())?;
@@ -236,7 +226,6 @@ fn encode_vocabulary_field(
     field: &VocabularyFieldContract,
     depth: usize,
 ) -> Result<(), EncodingError> {
-    check_depth(depth)?;
     writer.map(3)?;
     field_text(writer, constants::key::NAME, field.name())?;
     field_key(writer, constants::key::TYPE)?;
@@ -381,7 +370,6 @@ fn encode_value_fields(
     fields: &[RecordValueField],
     depth: usize,
 ) -> Result<(), EncodingError> {
-    check_depth(depth + 1)?;
     writer.array(fields.len())?;
     for field in fields {
         writer.map(2)?;

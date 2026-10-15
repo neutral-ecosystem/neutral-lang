@@ -22,6 +22,17 @@ fn mutation_accepts_explicit_full_campaign() {
     ));
     assert!(super::interface::parse(&["mutate".into(), "--full".into(), "--full".into()]).is_err());
 }
+/// Coverage has one command; former partial and full selectors are rejected.
+#[test]
+fn coverage_has_one_whole_workspace_command() {
+    assert_eq!(
+        super::interface::parse(&["coverage".into()]),
+        Ok(Task::Coverage)
+    );
+    for option in ["changed", "--full"] {
+        assert!(super::interface::parse(&["coverage".into(), option.into()]).is_err());
+    }
+}
 use super::versioning::{
     release_evidence_readme, replace_workspace_lock_versions, replace_workspace_package_version,
     validate_version_transition,
@@ -966,6 +977,9 @@ fn automation_rejects_inline_test_module_bodies() {
     ));
     assert!(!source_has_non_path_test_configuration(
         "#[cfg(test)]\n#[path = \"../tests/unit/mod.rs\"]\nmod tests;\n"
+    ));
+    assert!(!source_has_non_path_test_configuration(
+        "#[cfg(test)]\nstatic TEST_LIMIT: usize = 1;\n"
     ));
 }
 

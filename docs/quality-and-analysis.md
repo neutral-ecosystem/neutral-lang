@@ -73,6 +73,10 @@ confirm completion.
 Full stdout/stderr remain retained in the reported evidence directory. Mutable
 fuzz corpora, findings, and crash artifacts are not normative conformance data.
 
+`cargo xtask coverage` reuses passing evidence for identical measurement inputs.
+A changed source, test, fixture, lockfile, or configuration invalidates that result;
+the command clears LLVM coverage data and runs the complete workspace again.
+
 Coverage HTML is written to
 `test-results/analysis/coverage/html/index.html`; its machine-readable summary
 is `test-results/analysis/coverage/coverage.json`. Thresholds and reviewed

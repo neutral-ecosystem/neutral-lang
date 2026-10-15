@@ -48,18 +48,26 @@ pub(crate) fn check_test_layout() -> Result<(), String> {
     }
 }
 
-/// Returns whether any test-only source declaration lacks an immediate path attribute.
+/// Returns whether any test-only module declaration lacks a path attribute.
 pub(crate) fn source_has_non_path_test_configuration(content: &str) -> bool {
     let lines = content.lines().collect::<Vec<_>>();
     lines.iter().enumerate().any(|(index, line)| {
-        line.trim() == constants::TEST_CONFIGURATION_MARKER
-            && lines[index + 1..]
-                .iter()
-                .find(|candidate| !candidate.trim().is_empty())
-                .is_none_or(|candidate| {
-                    !candidate
-                        .trim()
-                        .starts_with(constants::TEST_PATH_ATTRIBUTE_MARKER)
-                })
+        if line.trim() != constants::TEST_CONFIGURATION_MARKER {
+            return false;
+        }
+        let next = lines[index + 1..]
+            .iter()
+            .position(|candidate| !candidate.trim().is_empty())
+            .map(|offset| index + 1 + offset);
+        let Some(next) = next else {
+            return true;
+        };
+        let candidate = lines[next].trim();
+        candidate.starts_with("mod ")
+            && !lines[index + 1..=next].iter().any(|candidate| {
+                candidate
+                    .trim()
+                    .starts_with(constants::TEST_PATH_ATTRIBUTE_MARKER)
+            })
     })
 }

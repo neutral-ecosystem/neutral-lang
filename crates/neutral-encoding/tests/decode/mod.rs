@@ -4,8 +4,9 @@
 
 use super::{DecodeErrorClass, DecodeLimits, SchemaBudget, constants, decode_frame, decode_type};
 use crate::decoder::{CborValue, LocatedValue};
-use neutral_core::{CancellationToken, StructuralLimits};
+use neutral_core::{CancellationToken, StructuralLimits, VocabularyContentDigest};
 use neutral_ir::ResolvedType;
+use std::path::Path;
 
 /// Independent reader rejections retain distinct schema, source-map, and provenance classes.
 #[test]
@@ -209,6 +210,370 @@ fn closed_object_validation_rejects_every_invalid_key_shape() {
     ));
 }
 
+#[test]
+fn typed_decoders_reject_invalid_values_at_each_nested_wire_node() {
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .unwrap();
+    let fixture_directory = workspace.join("conformance/releases/v0.1.0/specs/fixtures/positive");
+    let mut fixtures = Vec::new();
+    collect_fixtures(&fixture_directory, &mut fixtures);
+    fixtures.sort();
+    let vocabulary_bundle = std::fs::read(workspace.join(
+        "conformance/releases/v0.1.0/specs/fixtures/vocabulary/bundles/positive/comprehensive.json",
+    ))
+    .unwrap();
+
+    for source_path in fixtures {
+        let source = std::fs::read(&source_path).unwrap();
+        let needs_vocabulary = source_path
+            .components()
+            .any(|part| part.as_os_str() == "vocabulary");
+        let encoded = encode_fixture(
+            &source,
+            needs_vocabulary.then_some(vocabulary_bundle.as_slice()),
+        );
+        super::decode(
+            encoded.as_bytes(),
+            DecodeLimits::hard(),
+            &CancellationToken::new(),
+        )
+        .unwrap();
+        let frame = decode_frame(encoded.as_bytes(), DecodeLimits::hard()).unwrap();
+        let cancellation = CancellationToken::new();
+
+        for section_index in 0..constants::SECTION_COUNT {
+            let section = super::parse(
+                encoded.as_bytes(),
+                &frame,
+                section_index,
+                DecodeLimits::hard(),
+                &cancellation,
+            )
+            .unwrap();
+            let mut paths = Vec::new();
+            collect_paths(&section, &mut Vec::new(), &mut paths);
+            for path in paths {
+                for replacement in 0..8 {
+                    let mut malformed = super::parse(
+                        encoded.as_bytes(),
+                        &frame,
+                        section_index,
+                        DecodeLimits::hard(),
+                        &cancellation,
+                    )
+                    .unwrap();
+                    replace_value(&mut malformed, &path, replacement_value(replacement));
+                    match section_index {
+                        0 => {
+                            let _ =
+                                super::validate_envelope(&malformed, &frame, encoded.as_bytes());
+                        }
+                        1 => {
+                            let mut budget = type_budget(&cancellation, 128);
+                            let _ = super::decode_logical(&malformed, &mut budget);
+                        }
+                        2 => {
+                            let _ = super::decode_source_map(&malformed);
+                        }
+                        3 => {
+                            let _ = super::decode_provenance(&malformed);
+                        }
+                        4 => {
+                            let _ = super::decode_derivation(&malformed);
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn logical_type_and_value_variants_decode_from_closed_wire_shapes() {
+    let cancellation = CancellationToken::new();
+    for kind in [
+        constants::kind::NUM,
+        constants::kind::STRING,
+        constants::kind::BOOL,
+    ] {
+        let mut budget = type_budget(&cancellation, 16);
+        assert!(
+            super::decode_type(
+                &map(vec![(constants::key::KIND, CborValue::Text(kind.into()))]),
+                &mut budget,
+                0
+            )
+            .is_ok()
+        );
+    }
+
+    let nominal = || {
+        CborValue::Map(value_map(vec![
+            (
+                constants::key::MODULE,
+                CborValue::Map(value_map(vec![
+                    (
+                        constants::key::LANGUAGE_BEHAVIOR_VERSION,
+                        CborValue::Text(neutral_ir::LANGUAGE_BEHAVIOR_VERSION.into()),
+                    ),
+                    (constants::key::NAME, CborValue::Text("sample".into())),
+                ])),
+            ),
+            (constants::key::NAME, CborValue::Text("ITEM".into())),
+        ]))
+    };
+    let vocabulary_type = || {
+        CborValue::Map(value_map(vec![
+            (constants::key::VOCABULARY, CborValue::Text("SAMPLE".into())),
+            (constants::key::NAME, CborValue::Text("ITEM".into())),
+        ]))
+    };
+    let number = || {
+        CborValue::Map(value_map(vec![(
+            constants::key::KIND,
+            CborValue::Text(constants::kind::NUM.into()),
+        )]))
+    };
+    let mut types = vec![
+        map(vec![
+            (
+                constants::key::KIND,
+                CborValue::Text(constants::kind::RECORD.into()),
+            ),
+            (constants::key::IDENTITY, nominal()),
+        ]),
+        map(vec![
+            (
+                constants::key::KIND,
+                CborValue::Text(constants::kind::VOCABULARY_RECORD.into()),
+            ),
+            (constants::key::IDENTITY, vocabulary_type()),
+        ]),
+    ];
+    for kind in [
+        constants::kind::LIST,
+        constants::kind::REF,
+        constants::kind::NULLABLE,
+    ] {
+        types.push(map(vec![
+            (constants::key::KIND, CborValue::Text(kind.into())),
+            (constants::key::INNER, number()),
+        ]));
+    }
+    for value in types {
+        let mut budget = type_budget(&cancellation, 16);
+        assert!(super::decode_type(&value, &mut budget, 0).is_ok());
+    }
+
+    let mut values = vec![
+        map(vec![
+            (
+                constants::key::KIND,
+                CborValue::Text(constants::kind::NUM.into()),
+            ),
+            (constants::key::NEGATIVE, CborValue::Boolean(false)),
+            (constants::key::COEFFICIENT, CborValue::Text("0".into())),
+            (constants::key::SCALE, CborValue::Negative(0)),
+        ]),
+        map(vec![
+            (
+                constants::key::KIND,
+                CborValue::Text(constants::kind::STRING.into()),
+            ),
+            (constants::key::VALUE, CborValue::Text("text".into())),
+        ]),
+        map(vec![
+            (
+                constants::key::KIND,
+                CborValue::Text(constants::kind::BOOL.into()),
+            ),
+            (constants::key::VALUE, CborValue::Boolean(true)),
+        ]),
+        map(vec![(
+            constants::key::KIND,
+            CborValue::Text(constants::kind::NULL.into()),
+        )]),
+        map(vec![
+            (
+                constants::key::KIND,
+                CborValue::Text(constants::kind::RECORD.into()),
+            ),
+            (constants::key::IDENTITY, nominal()),
+            (constants::key::FIELDS, CborValue::Array(Vec::new())),
+        ]),
+        map(vec![
+            (
+                constants::key::KIND,
+                CborValue::Text(constants::kind::VOCABULARY_RECORD.into()),
+            ),
+            (constants::key::IDENTITY, vocabulary_type()),
+            (constants::key::FIELDS, CborValue::Array(Vec::new())),
+        ]),
+        map(vec![
+            (
+                constants::key::KIND,
+                CborValue::Text(constants::kind::LIST.into()),
+            ),
+            (constants::key::ITEMS, CborValue::Array(Vec::new())),
+        ]),
+    ];
+    let symbol = value_map(vec![
+        (
+            constants::key::MODULE,
+            CborValue::Map(value_map(vec![
+                (
+                    constants::key::LANGUAGE_BEHAVIOR_VERSION,
+                    CborValue::Text(neutral_ir::LANGUAGE_BEHAVIOR_VERSION.into()),
+                ),
+                (constants::key::NAME, CborValue::Text("sample".into())),
+            ])),
+        ),
+        (constants::key::NAME, CborValue::Text("target".into())),
+    ]);
+    values.push(map(vec![
+        (
+            constants::key::KIND,
+            CborValue::Text(constants::kind::REF.into()),
+        ),
+        (constants::key::TARGET_ELEMENT_ID, CborValue::Unsigned(1)),
+        (constants::key::TARGET_SYMBOL, CborValue::Map(symbol)),
+        (constants::key::TARGET_TYPE, number()),
+    ]));
+    for value in values {
+        let mut budget = type_budget(&cancellation, 16);
+        assert!(super::decode_value(&value, &mut budget, 0).is_ok());
+    }
+}
+
+#[test]
+fn top_level_decoder_propagates_each_section_parse_error_after_integrity_check() {
+    let source = b"neu \"0.1\"\nmodule sample\nnum count = 42\n";
+    let encoded = encode_fixture(source, None);
+    for section in [
+        crate::SectionKind::LogicalPayload,
+        crate::SectionKind::SourceMap,
+        crate::SectionKind::Provenance,
+        crate::SectionKind::Derivation,
+    ] {
+        let malformed = mutate_and_rehash(&encoded, section, |bytes| bytes[0] = 0xff);
+        assert_eq!(
+            super::decode(&malformed, DecodeLimits::hard(), &CancellationToken::new())
+                .unwrap_err()
+                .class(),
+            DecodeErrorClass::MalformedCbor
+        );
+    }
+}
+
+fn collect_fixtures(directory: &Path, files: &mut Vec<std::path::PathBuf>) {
+    for entry in std::fs::read_dir(directory).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            collect_fixtures(&path, files);
+        } else if path.extension().is_some_and(|extension| extension == "neu") {
+            files.push(path);
+        }
+    }
+}
+
+fn encode_fixture(source: &[u8], vocabulary_bundle: Option<&[u8]>) -> crate::EncodedArtifact {
+    let request = neutral_compiler::CompilationRequest::new(
+        source.to_vec(),
+        StructuralLimits::new(16_384, 16).unwrap(),
+        CancellationToken::new(),
+    );
+    let request = if let Some(bundle) = vocabulary_bundle {
+        let lock = neutral_vocabulary::VocabularyLock::new(
+            "Fixture",
+            "0.1.0",
+            neutral_vocabulary::VOCABULARY_ENCODING_VERSION,
+            neutral_vocabulary::VOCABULARY_SCHEMA_VERSION,
+            VocabularyContentDigest::from_bytes(bundle),
+            Vec::new(),
+        )
+        .unwrap();
+        request.with_captured_vocabulary(bundle.to_vec(), lock)
+    } else {
+        request
+    };
+    let Ok(neutral_compiler::CompilationResult::Success(artifacts)) =
+        neutral_compiler::compile(request)
+    else {
+        panic!("fixture source should compile");
+    };
+    let document = neutral_reader::ValidatedDocument::from_compiler_output(artifacts).unwrap();
+    crate::encode(&document, &crate::ProducerInfo::new("coverage", "1")).unwrap()
+}
+
+fn mutate_and_rehash(
+    encoded: &crate::EncodedArtifact,
+    kind: crate::SectionKind,
+    mutate: impl FnOnce(&mut [u8]),
+) -> Vec<u8> {
+    let mut bytes = encoded.as_bytes().to_vec();
+    let range = encoded.sections[kind.index()].clone();
+    let old_digest =
+        neutral_core::EncodedSectionDigest::from_bytes(&bytes[range.clone()]).as_bytes();
+    mutate(&mut bytes[range.clone()]);
+    let new_digest =
+        neutral_core::EncodedSectionDigest::from_bytes(&bytes[range.clone()]).as_bytes();
+    let envelope = encoded.sections[crate::SectionKind::Envelope.index()].clone();
+    let digest_offset = envelope.start + find_subsequence(&bytes[envelope.clone()], &old_digest);
+    bytes[digest_offset..digest_offset + old_digest.len()].copy_from_slice(&new_digest);
+    bytes
+}
+
+fn find_subsequence(haystack: &[u8], needle: &[u8]) -> usize {
+    haystack
+        .windows(needle.len())
+        .position(|candidate| candidate == needle)
+        .expect("encoded envelope should contain the old section digest")
+}
+
+fn collect_paths(value: &LocatedValue, path: &mut Vec<usize>, paths: &mut Vec<Vec<usize>>) {
+    paths.push(path.clone());
+    let children = match &value.value {
+        CborValue::Map(members) => members.iter().map(|(_, value)| value).collect::<Vec<_>>(),
+        CborValue::Array(values) => values.iter().collect::<Vec<_>>(),
+        _ => return,
+    };
+    for (index, child) in children.into_iter().enumerate() {
+        path.push(index);
+        collect_paths(child, path, paths);
+        path.pop();
+    }
+}
+
+fn replace_value(value: &mut LocatedValue, path: &[usize], replacement: CborValue) {
+    if path.is_empty() {
+        value.value = replacement;
+        return;
+    }
+    let child = match &mut value.value {
+        CborValue::Map(members) => &mut members[path[0]].1,
+        CborValue::Array(values) => &mut values[path[0]],
+        _ => panic!("collected path must refer to a map or array"),
+    };
+    replace_value(child, &path[1..], replacement);
+}
+
+fn replacement_value(index: usize) -> CborValue {
+    match index {
+        0 => CborValue::Null,
+        1 => CborValue::Boolean(true),
+        2 => CborValue::Unsigned(u64::MAX),
+        3 => CborValue::Negative(i64::MIN),
+        4 => CborValue::Text(String::new()),
+        5 => CborValue::Bytes(Vec::new()),
+        6 => CborValue::Array(Vec::new()),
+        7 => CborValue::Map(Vec::new()),
+        _ => unreachable!(),
+    }
+}
+
 /// Covers bounded section lookup and malformed capability/integrity summaries directly.
 #[test]
 fn section_helpers_reject_invalid_indexes_capabilities_and_integrity() {
@@ -367,6 +732,13 @@ fn map(members: Vec<(&str, CborValue)>) -> LocatedValue {
                 .collect(),
         ),
     }
+}
+
+fn value_map(members: Vec<(&str, CborValue)>) -> Vec<(String, LocatedValue)> {
+    members
+        .into_iter()
+        .map(|(key, value)| (key.to_owned(), LocatedValue { offset: 0, value }))
+        .collect()
 }
 
 /// Creates a mutable schema budget with caller-selected nesting capacity.
