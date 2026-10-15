@@ -72,15 +72,8 @@ pub fn encode_project(
     }
     let payload = write_ir(project.complete_ir(), Some(cancellation))?;
     // Enforce the same aggregate lexical/depth ceilings as an independent reader.
-    crate::decoder::validate_section(&payload, DecodeLimits::hard(), cancellation).map_err(
-        |e| {
-            if e.class() == DecodeErrorClass::Cancelled {
-                EncodingError::Cancelled
-            } else {
-                EncodingError::EncodedSizeLimit
-            }
-        },
-    )?;
+    crate::decoder::validate_section(&payload, DecodeLimits::hard(), cancellation)
+        .map_err(validation_error)?;
     let mut bytes = MAGIC.to_vec();
     bytes.extend(payload);
     if bytes.len() > crate::constants::MAXIMUM_ARTIFACT_BYTES
@@ -130,9 +123,7 @@ pub fn decode_project(
     if !ir.within_schema_limits(limits.intersect(project_limits)) {
         return Err(failure(DecodeErrorClass::EncodedSizeLimit));
     }
-    let computed = ir
-        .recompute_public_interface()
-        .map_err(|_| failure(DecodeErrorClass::InvalidLogicalIr))?;
+    let computed = ir.recompute_public_interface().map_err(interface_error)?;
     ir.public_interface = ProjectInterface::from_parts_with_vocabularies(
         computed.vocabularies().to_vec(),
         computed.exports().to_vec(),
@@ -140,6 +131,20 @@ pub fn decode_project(
         fingerprint,
     );
     ValidatedProject::from_ir(Arc::new(ir), project_limits, cancellation).map_err(reader_error)
+}
+
+/// Maps lexical validation failures to the stable project encoder class.
+fn validation_error(error: DecodeError) -> EncodingError {
+    if error.class() == DecodeErrorClass::Cancelled {
+        EncodingError::Cancelled
+    } else {
+        EncodingError::EncodedSizeLimit
+    }
+}
+
+/// Maps an unrecomputable derived interface to invalid logical IR.
+fn interface_error(_: neutral_core::CoreError) -> DecodeError {
+    failure(DecodeErrorClass::InvalidLogicalIr)
 }
 
 /// Writes a definite array with one shared item encoder.

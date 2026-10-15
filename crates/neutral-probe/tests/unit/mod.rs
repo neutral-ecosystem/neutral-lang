@@ -48,3 +48,34 @@ fn probe_renders_bounded_decode_errors() {
         neutral_encoding::DecodeErrorClass::Cancelled.code()
     );
 }
+
+#[test]
+fn probe_parses_version_and_rejects_malformed_option_lists() {
+    assert!(run(["--version".to_owned()]).is_ok());
+    for arguments in [
+        vec!["--root"],
+        vec!["--json", "--json", "artifact.nir"],
+        vec!["--unknown", "artifact.nir"],
+        vec!["artifact-a.nir", "artifact-b.nir"],
+    ] {
+        assert!(run(arguments.into_iter().map(str::to_owned)).is_err());
+    }
+}
+
+#[test]
+fn probe_routes_successor_magic_to_its_reader() {
+    let error =
+        super::inspect_composition(&neutral_reader::composition::profile::MAGIC, true, None)
+            .unwrap_err();
+    assert!(!error.is_empty());
+}
+
+#[test]
+fn process_render_failure_has_a_stable_diagnostic() {
+    assert_eq!(
+        super::render_failure(neutral_probe::composition::CompositionProbeError::View(
+            neutral_reader::composition::CompositionReadError::Limit,
+        )),
+        "probe-render-failed"
+    );
+}

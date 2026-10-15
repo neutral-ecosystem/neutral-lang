@@ -33,13 +33,8 @@ pub fn encode_expression_project(
     let mut writer = CborWriter::with_cancellation(cancel);
     project::write_ir(&mut writer, ir)?;
     let payload = writer.finish()?;
-    crate::decoder::validate_section(&payload, DecodeLimits::hard(), cancel).map_err(|error| {
-        if error.class() == C::Cancelled {
-            E::Cancelled
-        } else {
-            E::EncodedSizeLimit
-        }
-    })?;
+    crate::decoder::validate_section(&payload, DecodeLimits::hard(), cancel)
+        .map_err(validation_error)?;
     let length = profile::MAGIC
         .len()
         .checked_add(payload.len())
@@ -146,6 +141,15 @@ fn check_cancelled(cancel: &CancellationToken) -> Result<(), D> {
         Err(failure(C::Cancelled))
     } else {
         Ok(())
+    }
+}
+
+/// Maps a post-write lexical validation error to the stable encoder class.
+fn validation_error(error: D) -> E {
+    if error.class() == C::Cancelled {
+        E::Cancelled
+    } else {
+        E::EncodedSizeLimit
     }
 }
 

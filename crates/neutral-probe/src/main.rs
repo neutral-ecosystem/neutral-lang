@@ -122,7 +122,7 @@ fn inspect_composition(bytes: &[u8], json: bool, roots: Option<&[String]>) -> Re
         ),
     })?;
     let rendered = render_composition_summary_json(&summary, &CancellationToken::new())
-        .map_err(|_| "probe-render-failed".to_owned())?;
+        .map_err(render_failure)?;
     if json {
         emit_stdout(&rendered)
     } else {
@@ -181,6 +181,11 @@ fn render_decode_error(error: DecodeError) -> String {
         || error.code().to_owned(),
         |offset| format!("{} at encoded byte {offset}", error.code()),
     )
+}
+
+/// Keeps internal JSON formatting failures stable at the process boundary.
+fn render_failure(_: neutral_probe::composition::CompositionProbeError) -> String {
+    "probe-render-failed".to_owned()
 }
 
 #[cfg(test)]

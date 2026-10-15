@@ -171,7 +171,7 @@ pub fn inspect_composition_encoded(
                         )
                             .cmp(&(module, name))
                     })
-                    .map_err(|_| CompositionProbeError::View(CompositionReadError::Semantic))?;
+                    .map_err(missing_root)?;
                 let owner = &ir.declarations[index];
                 if !owner.public {
                     return Err(CompositionProbeError::View(CompositionReadError::Semantic));
@@ -215,7 +215,7 @@ fn summary(
     fingerprint
         .try_retain_exact(ir.interface_digest.as_bytes().len() * 2)
         .map_err(|_| probe_limit())?;
-    write!(fingerprint, "{}", ir.interface_digest).map_err(|_| probe_limit())?;
+    write!(fingerprint, "{}", ir.interface_digest).map_err(fingerprint_error)?;
     if cancel.is_cancelled() {
         return Err(CompositionProbeError::View(CompositionReadError::Cancelled));
     }
@@ -231,6 +231,16 @@ fn summary(
 /// Classifies failed probe retention without allocating diagnostic text.
 fn probe_limit() -> CompositionProbeError {
     CompositionProbeError::View(CompositionReadError::Limit)
+}
+
+/// Keeps infallible string formatting failures within the probe's stable error envelope.
+fn fingerprint_error(_: std::fmt::Error) -> CompositionProbeError {
+    probe_limit()
+}
+
+/// Redacts absent, malformed and private root lookup outcomes to one semantic failure.
+fn missing_root(_: usize) -> CompositionProbeError {
+    CompositionProbeError::View(CompositionReadError::Semantic)
 }
 
 /// Borrowed owner formatting avoids an intermediate allocated root name.
@@ -359,6 +369,10 @@ pub fn render_composition_summary_json(
     }
     Ok(output.text)
 }
+
+#[cfg(test)]
+#[path = "../tests/unit/composition.rs"]
+mod tests;
 
 /// Formats the redacted reader view using borrowed facts and the shared inspection schema version.
 fn render_projection(summary: &CompositionProbeSummary, out: &mut Output<'_>) -> std::fmt::Result {

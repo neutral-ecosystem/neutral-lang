@@ -103,6 +103,13 @@ fn composition_exact_transport_bounds() {
         ir.limits.artifact_bytes = length;
     }
     let project = validated(ir.clone());
+    assert_eq!(
+        project.profile_facts(),
+        neutral_reader::composition::profile::COMPOSITION_PROFILE
+    );
+    let diagnostic = format!("{project:?}");
+    assert!(diagnostic.contains("ValidatedCompositionProject"));
+    assert!(diagnostic.contains("modules"));
     let bytes = forge(&ir);
     assert_eq!(
         encode_composition_project(&project, &cancel).unwrap(),
@@ -157,6 +164,10 @@ fn composition_exact_transport_bounds() {
 /// Validation cancellation remains distinct from a malformed or oversized writer section.
 #[test]
 fn composition_validation_error_mapping_preserves_cancellation() {
+    assert_eq!(
+        neutral_reader::composition::CompositionReadError::Schema.schema(),
+        neutral_reader::composition::profile::PROJECT_RESULT_SCHEMA
+    );
     assert_eq!(
         encoding_validation_error(failure(C::Cancelled)),
         E::Cancelled

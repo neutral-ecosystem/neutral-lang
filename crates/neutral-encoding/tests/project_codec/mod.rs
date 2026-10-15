@@ -284,6 +284,52 @@ fn reader_error_mapping_preserves_stable_transport_classes() {
     }
 }
 
+#[test]
+fn project_codec_helpers_reject_empty_tuples_and_overflowing_numbers() {
+    let parse = |writer: CborWriter| {
+        crate::decoder::parse_canonical_section(
+            &writer.finish().unwrap(),
+            0,
+            DecodeLimits::hard(),
+            &CancellationToken::new(),
+        )
+        .unwrap()
+    };
+    let mut empty = CborWriter::new();
+    empty.array(0).unwrap();
+    let empty = parse(empty);
+    assert!(read_type(&empty, 0).is_err());
+    assert!(read_value(&empty, 0).is_err());
+
+    let mut overflow = CborWriter::new();
+    overflow.unsigned(u64::MAX).unwrap();
+    assert!(signed(&parse(overflow)).is_err());
+
+    let mut invalid_number = CborWriter::new();
+    invalid_number.array(4).unwrap();
+    invalid_number.text("num").unwrap();
+    invalid_number.boolean(false).unwrap();
+    invalid_number.text("00").unwrap();
+    invalid_number.unsigned(0).unwrap();
+    assert!(read_value(&parse(invalid_number), 0).is_err());
+}
+
+#[test]
+fn project_codec_error_mappers_keep_public_error_classes() {
+    assert_eq!(
+        validation_error(failure(DecodeErrorClass::Cancelled)),
+        EncodingError::Cancelled
+    );
+    assert_eq!(
+        validation_error(failure(DecodeErrorClass::MalformedCbor)),
+        EncodingError::EncodedSizeLimit
+    );
+    assert_eq!(
+        interface_error(neutral_core::CoreError::InvalidDiagnosticCode).class(),
+        DecodeErrorClass::InvalidLogicalIr
+    );
+}
+
 /// Arbitrary single-byte mutations always either fail or publish a revalidated project.
 #[test]
 fn property_project_wire_mutations_never_bypass_validation() {

@@ -668,3 +668,7 @@ pub fn inspect_expression_project_resources(
         &trees,
     )
 }
+
+#[cfg(test)]
+#[path = "../../../tests/unit/composition_project_inspection.rs"]
+mod tests;

@@ -148,6 +148,78 @@ fn expression_and_expansion_attribution_lists_roundtrip() {
     );
 }
 
+#[test]
+fn residual_unary_tree_roundtrips_through_the_closed_tuple_codec() {
+    let expression = Expression {
+        ty: T::Bool,
+        node: ExpressionNode::Unary {
+            operator: UnaryOperator::Not,
+            operand: Box::new(Expression {
+                ty: T::Bool,
+                node: ExpressionNode::Value(CompositionValue::Bool(true)),
+            }),
+        },
+    };
+    let mut writer = CborWriter::new();
+    trees::write_tree(&mut writer, &expression, 0).unwrap();
+    let bytes = writer.finish().unwrap();
+    let parsed = crate::decoder::parse_canonical_section(
+        &bytes,
+        0,
+        DecodeLimits::hard(),
+        &CancellationToken::new(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        trees::read_tree(&parsed, 0, &CancellationToken::new()).unwrap(),
+        expression
+    );
+}
+
+#[test]
+fn expression_write_validation_preserves_cancellation_classification() {
+    assert_eq!(
+        validation_error(crate::project::failure(C::Cancelled)),
+        E::Cancelled
+    );
+    assert_eq!(
+        validation_error(crate::project::failure(C::MalformedCbor)),
+        E::EncodedSizeLimit
+    );
+}
+
+#[test]
+fn residual_tree_reader_rejects_missing_tuple_fields_and_unknown_unary_tokens() {
+    let parse = |writer: CborWriter| {
+        let bytes = writer.finish().unwrap();
+        crate::decoder::parse_canonical_section(
+            &bytes,
+            0,
+            DecodeLimits::hard(),
+            &CancellationToken::new(),
+        )
+        .unwrap()
+    };
+
+    let mut missing_tag = CborWriter::new();
+    missing_tag.array(0).unwrap();
+    assert!(trees::read_tree(&parse(missing_tag), 0, &CancellationToken::new()).is_err());
+
+    let mut missing_type = CborWriter::new();
+    missing_type.array(1).unwrap();
+    missing_type.text("value").unwrap();
+    assert!(trees::read_tree(&parse(missing_type), 0, &CancellationToken::new()).is_err());
+
+    let mut unknown_operator = CborWriter::new();
+    unknown_operator.array(4).unwrap();
+    unknown_operator.text("unary").unwrap();
+    crate::project::write_type(&mut unknown_operator, &T::Bool, 0).unwrap();
+    unknown_operator.text("eval").unwrap();
+    trees::write_tree(&mut unknown_operator, &leaf(), 1).unwrap();
+    assert!(trees::read_tree(&parse(unknown_operator), 0, &CancellationToken::new()).is_err());
+}
+
 /// Catches heuristic profile fallback, nonminimal widths and partial artifact acceptance.
 #[test]
 fn distinct_magic_exact_arity_and_canonical_framing_reject_without_fallback() {
