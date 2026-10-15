@@ -819,7 +819,7 @@ fn composition_attribution_preserves_nested_source_spans() {
         };
         let span = location.span();
         assert_eq!(
-            &source[span.start() as usize..span.end() as usize],
+            &source[usize::try_from(span.start()).unwrap()..usize::try_from(span.end()).unwrap()],
             expected.as_bytes()
         );
     }
@@ -833,7 +833,7 @@ fn composition_attribution_preserves_nested_source_spans() {
     };
     let span = location.span();
     assert_eq!(
-        &source[span.start() as usize..span.end() as usize],
+        &source[usize::try_from(span.start()).unwrap()..usize::try_from(span.end()).unwrap()],
         b"{ tag: \"ready\", payload: [{ count: 23 }, {}] }"
     );
 }

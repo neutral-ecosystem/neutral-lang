@@ -62,9 +62,9 @@ fn malformed_declarations_and_members_return_syntax_diagnostics() {
         ("public record Item { List field }", false),
     ] {
         let captured = capture(body);
-        let failure = match parse(&captured.sources()[0], &captured, &CancellationToken::new()) {
-            Err(failure) => failure,
-            Ok(_) => panic!("accepted malformed composition source: {body}"),
+        let Err(failure) = parse(&captured.sources()[0], &captured, &CancellationToken::new())
+        else {
+            panic!("accepted malformed composition source: {body}");
         };
         assert_eq!(failure.code, codes::INVALID_SOURCE, "{body}");
         assert_eq!(failure.location.is_some(), has_location, "{body}");
@@ -84,13 +84,12 @@ fn inverted_declaration_spans_fail_as_invalid_source() {
             span: ByteSpan::new(0, 1).unwrap(),
         },
     ];
-    let failure = match parse_declaration(
+    let Err(failure) = parse_declaration(
         &captured.sources()[0],
         &tokens,
         captured.composition_limits(),
-    ) {
-        Err(failure) => failure,
-        Ok(_) => panic!("accepted inverted declaration span"),
+    ) else {
+        panic!("accepted inverted declaration span");
     };
     assert_eq!(failure.code, codes::INVALID_SOURCE);
     assert_eq!(failure.location, None);

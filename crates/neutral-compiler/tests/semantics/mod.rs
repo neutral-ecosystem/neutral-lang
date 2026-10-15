@@ -40,8 +40,7 @@ fn unit_semantics_rejects_invalid_closed_number_default() {
         &std::collections::BTreeMap::new(),
         limits,
     )
-    .err()
-    .expect("malformed numeric default must fail");
+    .expect_err("malformed numeric default must fail");
 
     assert_eq!(error.code, crate::diagnostics::INVALID_NUMBER);
     assert_eq!(error.span, span);

@@ -464,9 +464,8 @@ impl<'a> State<'a, '_> {
                         return Err(error(ec::TPL_LIMIT, Some(matrix.root.location)));
                     }
                     let mut name = alloc(text(matrix.root.owner.declaration_name()))?;
-                    let extra = match (indices.len() as u64).checked_mul(22) {
-                        Some(bytes) => bytes,
-                        None => return Err(error(ec::TPL_LIMIT, Some(matrix.root.location))),
+                    let Some(extra) = (indices.len() as u64).checked_mul(22) else {
+                        return Err(error(ec::TPL_LIMIT, Some(matrix.root.location)));
                     };
                     let limit = self.captured.composition_limits().json.string_bytes();
                     if (name.len() as u64)

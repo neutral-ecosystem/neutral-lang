@@ -103,12 +103,11 @@ fn assembly_rejects_missing_checked_declarations_with_source_location() {
             &cancel,
         )
         .unwrap();
-        let failure = match declarations(&mut resolver, &scope, &bindings) {
-            Ok(_) => panic!("assembly accepted missing checked declaration: {body}"),
-            Err(failure) => failure,
+        let Err(failure) = declarations(&mut resolver, &scope, &bindings) else {
+            panic!("assembly accepted missing checked declaration: {body}");
         };
         assert_eq!(failure.code, codes::INCOMPATIBLE_VALUE, "{body}");
         assert_eq!(failure.location, Some(location), "{body}");
-        assert!(resolver.provenance.is_empty());
+        assert_eq!(resolver.provenance, Vec::new());
     }
 }

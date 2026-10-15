@@ -579,7 +579,8 @@ fn nested_conditional_defaults_preserve_values_and_argument_spans() {
     let source = format!("neu \"1.0\"\nmodule example::expressions\n{body}\n");
     for (location, spelling) in attribution.arguments.iter().zip(["true", "4 + 1"]) {
         assert_eq!(
-            &source[location.span().start() as usize..location.span().end() as usize],
+            &source[usize::try_from(location.span().start()).unwrap()
+                ..usize::try_from(location.span().end()).unwrap()],
             spelling
         );
     }

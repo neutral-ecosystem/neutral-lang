@@ -150,6 +150,14 @@ type LoweredBindings = (
     u64,
 );
 
+/// Declarations and source evidence assembled from lowered binding values.
+type AssembledBindings = (
+    Vec<Declaration>,
+    Vec<SourceMapEntry>,
+    Vec<ProvenanceRecord>,
+    u64,
+);
+
 /// One ordinary immutable-value dependency discovered in parsed value syntax.
 #[derive(Clone, Debug)]
 struct ValueDependency {
@@ -576,13 +584,9 @@ fn lower_bindings(
         .iter()
         .map(|record| (record.name().to_owned(), record))
         .collect::<BTreeMap<_, _>>();
-    let mut declarations = Vec::new();
-    let mut source_entries = Vec::new();
-    let mut provenance = Vec::new();
     let mut field_provenance = Vec::new();
     let mut reuse_provenance = Vec::new();
     let mut reference_provenance = Vec::new();
-    let mut decoded_string_bytes = 0_u64;
     let resolved_types = bindings
         .iter()
         .map(|(name, binding)| {
@@ -628,6 +632,31 @@ fn lower_bindings(
         resolved_values.insert(name.clone(), value.clone());
         lowered.insert(name, (value, normalization, decoded_bytes));
     }
+    let (declarations, source_entries, provenance, decoded_string_bytes) =
+        assemble_lowered_bindings(bindings, &resolved_types, lowered, module, element_ids)?;
+    Ok((
+        declarations,
+        source_entries,
+        provenance,
+        field_provenance,
+        reuse_provenance,
+        reference_provenance,
+        decoded_string_bytes,
+    ))
+}
+
+/// Builds declarations and source evidence from dependency-ordered binding values.
+fn assemble_lowered_bindings(
+    bindings: &BTreeMap<String, ParsedBinding>,
+    resolved_types: &BTreeMap<String, ResolvedType>,
+    mut lowered: BTreeMap<String, (LogicalValue, Normalization, u64)>,
+    module: &LogicalModuleIdentity,
+    element_ids: &BTreeMap<String, ElementId>,
+) -> Result<AssembledBindings, SemanticError> {
+    let mut declarations = Vec::new();
+    let mut source_entries = Vec::new();
+    let mut provenance = Vec::new();
+    let mut decoded_string_bytes = 0_u64;
     for (name, binding) in bindings {
         let resolved_type = resolved_types[name].clone();
         let (value, normalization, decoded_bytes) = lowered
@@ -670,9 +699,6 @@ fn lower_bindings(
         declarations,
         source_entries,
         provenance,
-        field_provenance,
-        reuse_provenance,
-        reference_provenance,
         decoded_string_bytes,
     ))
 }
