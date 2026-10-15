@@ -50,6 +50,7 @@ pub(crate) fn check_boundaries() -> Result<(), String> {
         &probe_closure,
         &set([
             constants::NEUTRAL_PROBE,
+            constants::NEUTRAL_TEST_SUPPORT,
             constants::NEUTRAL_CORE,
             constants::NEUTRAL_ENCODING,
             constants::NEUTRAL_IR,
@@ -206,7 +207,10 @@ pub(crate) fn direct_dependency_policy() -> BTreeMap<&'static str, BTreeSet<&'st
             ]),
         ),
         (constants::NEUTRAL_TEST_SUITE, set([])),
-        (constants::NEUTRAL_TEST_SUPPORT, set([])),
+        (
+            constants::NEUTRAL_TEST_SUPPORT,
+            set([constants::NEUTRAL_CORE, constants::NEUTRAL_IR]),
+        ),
         (
             constants::NEUTRAL_VOCABULARY,
             set([constants::NEUTRAL_CORE, constants::NEUTRAL_IR]),

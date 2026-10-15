@@ -4,45 +4,18 @@
 
 #![cfg(unix)]
 
+mod support;
+
 use std::{
     fs,
-    os::unix::fs::PermissionsExt,
-    path::{Path, PathBuf},
     process::{Command, Output},
 };
-
-/// Isolated workspace whose mutation tool finishes immediately instead of running real mutants.
-struct Fixture {
-    /// Disposable Git workspace containing copied, current automation configuration.
-    root: PathBuf,
-}
+use support::Workspace as Fixture;
 
 impl Fixture {
-    /// Installs a deterministic tool protocol fixture with native iteration files.
+    /// Installs the mutation protocol in an isolated command workspace.
     fn new() -> Self {
-        let parent =
-            std::env::temp_dir().join(format!("neutral-mutation-command-{}", std::process::id()));
-        fs::create_dir_all(&parent).unwrap();
-        let root = parent.join("workspace");
-        fs::create_dir(&root).unwrap();
-        fs::create_dir(root.join("config")).unwrap();
-        fs::create_dir(root.join("tests")).unwrap();
-        let source = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
-        for path in [
-            "config/automation.toml",
-            "config/quality-gates.toml",
-            "config/nextest.toml",
-            "config/dependency-sources.toml",
-        ] {
-            fs::copy(source.join(path), root.join(path)).unwrap();
-        }
-        fs::write(root.join("Cargo.toml"), "[workspace]\nmembers = []\n").unwrap();
-        fs::write(root.join(".gitignore"), "test-results/\ncontrol/\n").unwrap();
-        fs::write(root.join("source.rs"), "initial source").unwrap();
-        fs::create_dir(root.join("control")).unwrap();
-        let tool = root.join("fake-cargo");
-        fs::write(
-            &tool,
+        Self::with_cargo(
             r#"#!/bin/sh
 if [ "$2" = "--version" ] || [ "$1" = "--version" ]; then
     printf 'fixture tool 1\n'
@@ -82,47 +55,11 @@ fi
 printf '{"caught":1,"missed":0,"timeout":0,"success":0}\n' > "$output/mutants.out/outcomes.json"
 "#,
         )
-        .unwrap();
-        fs::set_permissions(&tool, fs::Permissions::from_mode(0o755)).unwrap();
-        let fixture = Self { root };
-        fixture.git(&["init", "--quiet", "--initial-branch=main"]);
-        fixture.git(&["add", "."]);
-        fixture.git(&[
-            "-c",
-            "user.name=Mutation fixture",
-            "-c",
-            "user.email=test@example.invalid",
-            "-c",
-            "commit.gpgsign=false",
-            "commit",
-            "--quiet",
-            "-m",
-            "fixture",
-        ]);
-        fixture
-    }
-
-    /// Runs only local Git operations in the disposable workspace.
-    fn git(&self, arguments: &[&str]) {
-        assert!(
-            Command::new("git")
-                .args(arguments)
-                .current_dir(&self.root)
-                .status()
-                .unwrap()
-                .success()
-        );
     }
 
     /// Keeps execution environment stable across repeated command invocations.
     fn command(&self, full: bool) -> Command {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_xtask"));
-        command
-            .arg("mutate")
-            .current_dir(&self.root)
-            .env("NEUTRAL_CARGO_COMMAND", self.root.join("fake-cargo"))
-            .env_remove("NEUTRAL_TEST_RESULTS")
-            .env("NO_COLOR", "1");
+        let mut command = self.xtask("mutate");
         if full {
             command.arg("--full");
         }
@@ -152,14 +89,6 @@ printf '{"caught":1,"missed":0,"timeout":0,"success":0}\n' > "$output/mutants.ou
             .unwrap(),
         )
         .unwrap()
-    }
-}
-
-impl Drop for Fixture {
-    /// Removes only this test's validated disposable workspace.
-    fn drop(&mut self) {
-        fs::remove_dir_all(&self.root).unwrap();
-        fs::remove_dir(self.root.parent().unwrap()).unwrap();
     }
 }
 

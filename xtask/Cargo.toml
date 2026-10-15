@@ -19,5 +19,8 @@ toml_edit = "0.25"
 cargo_metadata = "0.23"
 nextest-metadata = "0.15"
 
+[dev-dependencies]
+neutral-test-support = { path = "../crates/neutral-test-support" }
+
 [lints]
 workspace = true

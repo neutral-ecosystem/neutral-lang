@@ -202,22 +202,4 @@ fn public_project_codec_roundtrips_complete_ir() {
         neutral_encoding::project::decode_project(&bytes, DecodeLimits::hard(), limits, &cancel)
             .unwrap();
     assert_eq!(decoded.complete_ir(), project.complete_ir());
-
-    let mut stale_resources = bytes;
-    let end = stale_resources
-        .windows(2)
-        .rposition(|pair| pair == [8, 0x80])
-        .unwrap();
-    stale_resources[end] = 7;
-    assert_eq!(
-        neutral_encoding::project::decode_project(
-            &stale_resources,
-            DecodeLimits::hard(),
-            limits,
-            &cancel,
-        )
-        .unwrap_err()
-        .class(),
-        neutral_encoding::DecodeErrorClass::InvalidDerivation
-    );
 }

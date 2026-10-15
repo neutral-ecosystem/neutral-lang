@@ -18,6 +18,7 @@ neutral-reader = { path = "../neutral-reader" }
 neutral-vocabulary = { path = "../neutral-vocabulary" }
 
 [dev-dependencies]
+neutral-test-support = { path = "../neutral-test-support" }
 neutral-compiler = { path = "../neutral-compiler" }
 neutral-core = { path = "../neutral-core", features = ["allocation-testing"] }
 

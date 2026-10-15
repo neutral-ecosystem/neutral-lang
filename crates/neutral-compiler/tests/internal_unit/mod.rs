@@ -170,3 +170,6 @@ fn compiler_convenience_entry_points_preserve_contracts() {
     .expect("valid request should format");
     assert_eq!(formatted.as_bytes(), source);
 }
+
+#[path = "../project_cache/support.rs"]
+pub(crate) mod project_cache_support;

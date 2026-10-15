@@ -63,14 +63,6 @@ fn probe_parses_version_and_rejects_malformed_option_lists() {
 }
 
 #[test]
-fn probe_routes_successor_magic_to_its_reader() {
-    let error =
-        super::inspect_composition(&neutral_reader::composition::profile::MAGIC, true, None)
-            .unwrap_err();
-    assert_ne!(error, "");
-}
-
-#[test]
 fn process_render_failure_has_a_stable_diagnostic() {
     assert_eq!(
         super::render_failure(neutral_probe::composition::CompositionProbeError::View(

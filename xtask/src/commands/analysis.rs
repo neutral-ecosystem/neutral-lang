@@ -69,12 +69,12 @@ pub(crate) fn coverage() -> Result<(), String> {
     let policy = &settings.policy.coverage;
     let results = result_root()?;
     let html_index = results.join(&policy.html_output);
-    let fingerprint_file = results
-        .join(&policy.json_output)
-        .with_file_name("inputs.sha256");
+    let json_output = results.join(&policy.json_output);
+    let fingerprint_file = json_output.with_file_name("inputs.sha256");
     let fingerprint = quality_evidence::coverage_input_digest(&root)?;
     if fs::read_to_string(&fingerprint_file).is_ok_and(|previous| previous == fingerprint)
         && html_index.is_file()
+        && json_output.is_file()
         && quality_evidence::verify_gate(QualityGate::Coverage).is_ok()
     {
         output::pass("coverage inputs unchanged; reusing verified whole-workspace coverage");
@@ -94,7 +94,7 @@ pub(crate) fn coverage() -> Result<(), String> {
         .parent()
         .and_then(Path::parent)
         .ok_or_else(|| "coverage HTML output must be below a report directory".to_owned())?;
-    let json = results.join(&settings.json_output);
+    let json = json_output;
     match fs::remove_dir_all(html) {
         Ok(()) => {}
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}

@@ -219,6 +219,7 @@ dependencies = [
  "neutral-core",
  "neutral-ir",
  "neutral-reader",
+ "neutral-test-support",
  "neutral-vocabulary",
 ]
 
@@ -237,6 +238,7 @@ dependencies = [
  "neutral-encoding",
  "neutral-ir",
  "neutral-reader",
+ "neutral-test-support",
 ]
 
 [[package]]
@@ -276,6 +278,10 @@ dependencies = [
 [[package]]
 name = "neutral-test-support"
 version = "0.8.0"
+dependencies = [
+ "neutral-core",
+ "neutral-ir",
+]
 
 [[package]]
 name = "neutral-vocabulary"
@@ -558,6 +564,7 @@ name = "xtask"
 version = "0.8.0"
 dependencies = [
  "cargo_metadata",
+ "neutral-test-support",
  "nextest-metadata",
  "serde",
  "serde_json",

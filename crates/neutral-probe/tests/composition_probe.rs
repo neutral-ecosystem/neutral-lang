@@ -2,18 +2,9 @@
 
 //! Successor probe entrypoints reject incomplete inputs at their independent boundaries.
 
-use neutral_core::{
-    CancellationToken, SemanticDigest, SourceContentDigest, StructuralLimits, allocation::Shared,
-    profile::V1_SOURCE_PROFILE,
-};
+use neutral_core::{CancellationToken, StructuralLimits, allocation::Shared};
 use neutral_encoding::{DecodeErrorClass, DecodeLimits, composition::encode_composition_project};
-use neutral_ir::{
-    LogicalModuleIdentity,
-    composition::project::{CompositionProjectIr, CompositionResourceFacts},
-    project::{ProjectModule, ProjectResourceFacts, ProjectSource},
-    project_identity::{IdentityLimits, MAX_TRANSCRIPT_BYTES, composition_interface},
-    project_interface::ProjectPublicType,
-};
+use neutral_ir::project_interface::ProjectPublicType;
 use neutral_probe::composition::{
     CompositionEntryProbeRequest, CompositionProbeError, inspect_composition_encoded,
     inspect_composition_entries_encoded,
@@ -34,50 +25,11 @@ fn limits() -> ProjectCompositionLimits {
 }
 
 fn empty_project() -> neutral_reader::composition::ValidatedCompositionProject {
-    let source = b"neu \"1.0\"\nmodule example\n";
     let composition = limits();
-    let mut ir = CompositionProjectIr {
-        schema: profile::PROJECT_IR_SCHEMA.to_owned(),
-        modules: vec![ProjectModule {
-            identity: LogicalModuleIdentity::new(V1_SOURCE_PROFILE, "example"),
-            imports: vec![],
-        }],
-        declarations: vec![],
-        vocabularies: vec![],
-        interface_digest: SemanticDigest::from_raw_bytes([0; 32]),
-        sources: vec![ProjectSource {
-            module: "example".into(),
-            source_id: "source:example".into(),
-            digest: SourceContentDigest::from_bytes(source),
-            byte_len: source.len() as u64,
-        }],
-        source_maps: vec![],
-        provenance: vec![],
-        limits: neutral_encoding::project::hard_project_limits(),
-        resources: ProjectResourceFacts {
-            source_units: 1,
-            source_bytes: source.len() as u64,
-            vocabulary_units: 0,
-            vocabulary_bytes: 0,
-            declarations: 0,
-            import_edges: 0,
-            value_nodes: 0,
-        },
-        vocabulary_sources: vec![],
-        origins: vec![],
-        composition_limits: composition.policy(),
-        composition_resources: CompositionResourceFacts::from_values([0; 7]),
-    };
-    ir.interface_digest = composition_interface(
-        &ir,
-        IdentityLimits {
-            bytes: MAX_TRANSCRIPT_BYTES,
-            nodes: 65_536,
-        },
-        &CancellationToken::new(),
-    )
-    .unwrap()
-    .identity();
+    let ir = neutral_test_support::empty_composition_ir(
+        neutral_encoding::project::hard_project_limits(),
+        composition.policy(),
+    );
     neutral_reader::composition::ValidatedCompositionProject::from_ir(
         Shared::try_new(ir).unwrap(),
         neutral_encoding::project::hard_project_limits(),
@@ -153,4 +105,39 @@ fn successor_probe_projects_a_complete_empty_project() {
     assert_eq!(summary.declarations, 0);
     assert_eq!(summary.view.roots(), []);
     assert!(neutral_probe::composition::render_composition_summary_json(&summary, &cancel).is_ok());
+}
+
+/// The actual executable recognizes composition magic and renders the independently decoded summary.
+#[test]
+fn system_probe_routes_composition_artifacts() {
+    let cancel = CancellationToken::new();
+    let project = empty_project();
+    let bytes = encode_composition_project(&project, &cancel).unwrap();
+    let summary = inspect_composition_encoded(
+        &bytes,
+        DecodeLimits::hard(),
+        neutral_encoding::project::hard_project_limits(),
+        limits(),
+        None,
+        &cancel,
+    )
+    .unwrap();
+    let directory = neutral_test_support::TestDirectory::new().unwrap();
+    let path = directory.path().join("composition.nir");
+    std::fs::write(&path, bytes).unwrap();
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_neutral-probe"))
+        .arg("--json")
+        .arg(path)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(output.stderr, []);
+    assert_eq!(
+        String::from_utf8(output.stdout).unwrap(),
+        neutral_probe::composition::render_composition_summary_json(&summary, &cancel).unwrap()
+    );
 }

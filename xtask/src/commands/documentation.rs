@@ -93,7 +93,7 @@ pub(crate) fn run_rustdoc() -> Result<(), String> {
     rustdoc_flags.push(constants::RUSTDOC_FLAG_SEPARATOR);
     rustdoc_flags.push_str("--cfg");
     rustdoc_flags.push(constants::RUSTDOC_FLAG_SEPARATOR);
-    rustdoc_flags.push_str(&rustdoc_header_configuration());
+    rustdoc_flags.push_str(&rustdoc_header_configuration(RUSTDOC_HEADER_TEMPLATE));
 
     let arguments = ["doc", flags::WORKSPACE, "--no-deps"];
     let cargo = cargo_command()?;
@@ -112,9 +112,9 @@ pub(crate) fn run_rustdoc() -> Result<(), String> {
 }
 
 /// Derives a stable non-security cache token from the shared rustdoc header.
-pub(crate) fn rustdoc_header_configuration() -> String {
+pub(crate) fn rustdoc_header_configuration(header: &str) -> String {
     let mut hash = constants::RUSTDOC_HEADER_HASH_OFFSET;
-    for byte in RUSTDOC_HEADER_TEMPLATE.bytes() {
+    for byte in header.bytes() {
         hash ^= u64::from(byte);
         hash = hash.wrapping_mul(constants::RUSTDOC_HEADER_HASH_PRIME);
     }

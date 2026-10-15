@@ -15,6 +15,7 @@ neutral-encoding = { path = "../neutral-encoding" }
 neutral-reader = { path = "../neutral-reader" }
 
 [dev-dependencies]
+neutral-test-support = { path = "../neutral-test-support" }
 neutral-core = { path = "../neutral-core", features = ["allocation-testing"] }
 neutral-ir = { path = "../neutral-ir" }
 

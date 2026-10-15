@@ -4,9 +4,7 @@
 
 use super::*;
 use neutral_core::{SourceLocation, StructuralLimits, allocation::testing};
-use neutral_ir::{
-    LogicalModuleIdentity, project_identity, project_interface::ProjectPublicType as T,
-};
+use neutral_ir::{LogicalModuleIdentity, project_interface::ProjectPublicType as T};
 use neutral_vocabulary::VocabularyLimits;
 
 /// Supplies positive independent composition budgets.
@@ -18,54 +16,10 @@ fn policy() -> CompositionLimits {
 
 /// Builds a complete source-only project without compiler coupling.
 fn fixture() -> Ir {
-    let source = b"neu \"1.0\"\nmodule example\n";
-    let cancel = CancellationToken::new();
-    let mut ir = Ir {
-        schema: profile::PROJECT_IR_SCHEMA.to_owned(),
-        modules: vec![ProjectModule {
-            identity: LogicalModuleIdentity::new(
-                neutral_core::profile::V1_SOURCE_PROFILE,
-                "example",
-            ),
-            imports: vec![],
-        }],
-        declarations: vec![],
-        vocabularies: vec![],
-        interface_digest: SemanticDigest::from_raw_bytes([0; 32]),
-        sources: vec![ProjectSource {
-            module: "example".into(),
-            source_id: "source:example".into(),
-            digest: SourceContentDigest::from_bytes(source),
-            byte_len: source.len() as u64,
-        }],
-        source_maps: vec![],
-        provenance: vec![],
-        limits: crate::project::hard_project_limits(),
-        resources: ProjectResourceFacts {
-            source_units: 1,
-            source_bytes: source.len() as u64,
-            vocabulary_units: 0,
-            vocabulary_bytes: 0,
-            declarations: 0,
-            import_edges: 0,
-            value_nodes: 0,
-        },
-        vocabulary_sources: vec![],
-        origins: vec![],
-        composition_limits: policy().policy(),
-        composition_resources: CompositionResourceFacts::from_values([0; 7]),
-    };
-    ir.interface_digest = project_identity::composition_interface(
-        &ir,
-        project_identity::IdentityLimits {
-            bytes: project_identity::MAX_TRANSCRIPT_BYTES,
-            nodes: 65_536,
-        },
-        &cancel,
+    neutral_test_support::empty_composition_ir(
+        crate::project::hard_project_limits(),
+        policy().policy(),
     )
-    .unwrap()
-    .identity();
-    ir
 }
 
 /// Serializes producer data directly to exercise independent hostile-input checks.

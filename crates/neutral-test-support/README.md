@@ -10,6 +10,11 @@ graph. Unit tests remain with the package under test, while cross-package tests
 belong to `neutral-test-suite`; this package only removes duplication between
 those test locations.
 
+`TestDirectory` owns a newly created temporary directory and cleans it up on scope
+exit. `empty_composition_ir` builds shared compiler-independent fixture input; each
+caller still validates that input through its own reader or codec boundary. Frozen
+wire and identity expectations remain with their owning tests.
+
 ## Command
 
 This is test-only support infrastructure. Verify its shared helpers with:

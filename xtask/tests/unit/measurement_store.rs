@@ -26,8 +26,8 @@ fn measurement_lock_child() {
 #[test]
 fn measurement_lock_survives_competition_and_releases_after_kill() {
     let root =
-        std::env::temp_dir().join(format!("neutral-measurement-lock-{}", std::process::id()));
-    fs::create_dir_all(&root).unwrap();
+        crate::unique_generated_directory(&std::env::temp_dir().join("neutral-measurement-lock"))
+            .unwrap();
     let gate = root.join("coverage");
     let mut child = Command::new(std::env::current_exe().unwrap())
         .args([

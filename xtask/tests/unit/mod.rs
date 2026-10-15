@@ -702,9 +702,19 @@ fn automation_generates_a_safe_rustdoc_index() {
 #[test]
 /// Verifies that the shared rustdoc header contributes a stable cache token.
 fn automation_tracks_the_rustdoc_header_content() {
-    let configuration = rustdoc_header_configuration();
+    let configuration = rustdoc_header_configuration(super::RUSTDOC_HEADER_TEMPLATE);
     assert!(configuration.starts_with(constants::RUSTDOC_HEADER_CFG_PREFIX));
-    assert_eq!(configuration, rustdoc_header_configuration());
+    assert_eq!(
+        configuration,
+        rustdoc_header_configuration(super::RUSTDOC_HEADER_TEMPLATE)
+    );
+    assert_ne!(
+        configuration,
+        rustdoc_header_configuration(&format!(
+            "{}<!-- changed -->",
+            super::RUSTDOC_HEADER_TEMPLATE
+        ))
+    );
     assert!(super::RUSTDOC_HEADER_TEMPLATE.contains("neutral-docs-nav"));
     assert!(super::RUSTDOC_HEADER_TEMPLATE.contains("assets/neutral-logo.png"));
 }
@@ -962,77 +972,6 @@ fn automation_rejects_inline_test_module_bodies() {
 }
 
 #[test]
-/// Verifies xtask commands run successfully.
-fn xtask_commands_and_helpers() {
-    assert!(super::run(["environment".into(), "manifest".into()]).is_ok());
-    assert!(crate::checks::dependencies::check_boundaries().is_ok());
-    assert!(crate::checks::test_layout::check_test_layout().is_ok());
-    assert!(crate::checks::traceability::check_traceability().is_ok());
-    assert!(crate::checks::repository::check_workflow_contract().is_ok());
-    assert!(super::run(["--help".into()]).is_ok());
-
-    assert_eq!(
-        super::json_string("hello\n\"world\""),
-        "hello\\n\\\"world\\\""
-    );
-    let root = super::workspace_root().expect("workspace root should exist");
-    assert!(root.exists());
-    let res_root = super::result_root().expect("result root should exist");
-    let configured = super::configuration::automation()
-        .unwrap()
-        .output
-        .results_root;
-    assert!(res_root.ends_with(configured));
-
-    let uniq_dir =
-        crate::runtime::files::unique_generated_directory(&res_root.join("unit-test-probe"))
-            .expect("unique result dir");
-    assert!(uniq_dir.exists());
-
-    let text = crate::runtime::files::read_workspace_text(&root, "Cargo.toml")
-        .expect("read workspace text");
-    assert!(text.contains("workspace"));
-
-    let mut files = Vec::new();
-    assert!(crate::runtime::files::collect_regular_files(&root.join("config"), &mut files).is_ok());
-    assert_ne!(files.len(), 0);
-
-    let bundle = super::ReleasedBundle::load(&root).expect("configured inherited bundle");
-    assert!(
-        bundle
-            .member("specs/REQUIREMENTS.md")
-            .starts_with("conformance/releases/v")
-    );
-    assert!(
-        crate::checks::traceability::ensure_registered_paths_exist(
-            &root,
-            &bundle.member("specs/REQUIREMENTS.md")
-        )
-        .is_ok()
-    );
-    let inventory = files
-        .iter()
-        .map(|path| {
-            path.strip_prefix(&root)
-                .expect("workspace file")
-                .to_string_lossy()
-                .replace('\\', "/")
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    assert!(
-        crate::checks::traceability::ensure_inventory_registered(&root, "config", &inventory)
-            .is_ok()
-    );
-    assert!(crate::checks::traceability::ensure_inventory_registered(&root, "config", "").is_err());
-
-    assert!(super::print_environment_manifest().is_ok());
-    assert_eq!(super::configuration::active_test_profile(), "current");
-    let min_map = super::configuration::test_minimums("current").expect("test minimums");
-    assert_ne!(min_map.len(), 0);
-}
-
-#[test]
 /// Conformance selection rejects traversal, absent bundles, and unknown schemas.
 fn inherited_conformance_selection_is_bounded_and_explicit() {
     let root = super::workspace_root().expect("workspace root");
@@ -1054,3 +993,6 @@ fn inherited_conformance_selection_is_bounded_and_explicit() {
         .is_ok()
     );
 }
+
+mod repository_policy;
+mod runtime_helpers;
