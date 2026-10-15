@@ -297,6 +297,55 @@ fn input_fingerprint_tracks_oracles_scripts_templates_and_deletions() {
     fs::remove_dir_all(directory).unwrap();
 }
 
+/// Any repository file change invalidates coverage; ignored reports do not.
+#[test]
+fn coverage_fingerprint_tracks_all_files() {
+    let directory =
+        crate::unique_generated_directory(&std::env::temp_dir().join("neutral-coverage-inputs"))
+            .unwrap();
+    assert!(
+        Command::new(constants::GIT_COMMAND)
+            .args(["init", "--quiet"])
+            .current_dir(&directory)
+            .status()
+            .unwrap()
+            .success()
+    );
+    fs::write(directory.join(".gitignore"), "reports/\n").unwrap();
+    fs::create_dir_all(directory.join("docs")).unwrap();
+    let original = coverage_input_digest(&directory).unwrap();
+    assert_eq!(original, coverage_input_digest(&directory).unwrap());
+    for name in ["source.rs", "README.md", "docs/guide.md", "Cargo.lock"] {
+        let file = directory.join(name);
+        fs::write(&file, "first").unwrap();
+        let added = coverage_input_digest(&directory).unwrap();
+        assert_ne!(original, added, "addition: {name}");
+        fs::write(&file, "other").unwrap();
+        assert_ne!(
+            added,
+            coverage_input_digest(&directory).unwrap(),
+            "same-size edit: {name}"
+        );
+        let edited = coverage_input_digest(&directory).unwrap();
+        fs::rename(&file, directory.join("renamed")).unwrap();
+        assert_ne!(
+            edited,
+            coverage_input_digest(&directory).unwrap(),
+            "rename: {name}"
+        );
+        fs::remove_file(directory.join("renamed")).unwrap();
+        assert_eq!(
+            original,
+            coverage_input_digest(&directory).unwrap(),
+            "deletion: {name}"
+        );
+    }
+    fs::create_dir_all(directory.join("reports")).unwrap();
+    fs::write(directory.join("reports/coverage.json"), "generated").unwrap();
+    assert_eq!(original, coverage_input_digest(&directory).unwrap());
+    fs::remove_dir_all(directory).unwrap();
+}
+
 /// A missing receipt or unsupported schema never proves gate acceptance.
 #[test]
 fn rejects_missing_and_unknown_receipts() {

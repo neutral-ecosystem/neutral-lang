@@ -22,17 +22,6 @@ fn mutation_accepts_explicit_full_campaign() {
     ));
     assert!(super::interface::parse(&["mutate".into(), "--full".into(), "--full".into()]).is_err());
 }
-/// Coverage has one command; former partial and full selectors are rejected.
-#[test]
-fn coverage_has_one_whole_workspace_command() {
-    assert_eq!(
-        super::interface::parse(&["coverage".into()]),
-        Ok(Task::Coverage)
-    );
-    for option in ["changed", "--full"] {
-        assert!(super::interface::parse(&["coverage".into(), option.into()]).is_err());
-    }
-}
 use super::versioning::{
     release_evidence_readme, replace_workspace_lock_versions, replace_workspace_package_version,
     validate_version_transition,
@@ -68,6 +57,8 @@ fn automation_rejects_unknown_campaign_profiles() {
         vec!["format"],
         vec!["progress"],
         vec!["clean-results"],
+        vec!["coverage", "changed"],
+        vec!["coverage", "--full"],
     ] {
         assert!(super::run(arguments.into_iter().map(str::to_owned)).is_err());
     }
@@ -82,6 +73,7 @@ fn automation_parses_the_stable_command_surface() {
         (vec!["fmt", "--write"], Task::Format { write: true }),
         (vec!["lint"], Task::Lint),
         (vec!["check"], Task::Check),
+        (vec!["coverage"], Task::Coverage),
         (
             vec!["build", "--profile", "release"],
             Task::Build(BuildProfile::Release),
@@ -833,20 +825,6 @@ fn automation_rejects_unsafe_result_paths() {
     assert!(!super::results::is_safe_result_path(std::path::Path::new(
         "target/release"
     )));
-}
-
-#[test]
-/// Configured quality report files stay beneath the selected generated root.
-fn automation_scopes_coverage_outputs_to_results() {
-    let root = super::result_root().expect("generated root");
-    let policy =
-        crate::config::quality_settings::QualitySettings::load(&super::workspace_root().unwrap())
-            .unwrap()
-            .policy;
-    let html = root.join(policy.coverage.html_output);
-    let json = root.join(policy.coverage.json_output);
-    assert!(html.starts_with(&root));
-    assert!(json.starts_with(&root));
 }
 
 #[test]

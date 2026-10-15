@@ -3,8 +3,8 @@
 //! Fingerprint the repository inputs a quality measurement actually observes.
 //!
 //! Git supplies tracked and nonignored new paths; ordered path/content framing
-//! makes file additions and edits part of the digest. Only designated guide and
-//! approval-record locations are excluded. This binds evidence to inputs, not
+//! makes file additions and edits part of the digest. General quality measurements
+//! exclude designated guides and approval records; coverage includes them. This binds evidence to inputs, not
 //! merely a commit label, and rejects nonregular files rather than following them.
 
 use super::{BTreeSet, Command, Path, Sha256, constants};
@@ -13,9 +13,18 @@ use std::fs;
 
 /// Hashes ordered code, tests, fixtures, locks, and configuration, including new files.
 pub(crate) fn input_digest(root: &Path) -> Result<String, String> {
+    digest(root, false)
+}
+
+/// Coverage reuse requires every nonignored repository file to match, including guides.
+pub(crate) fn coverage_input_digest(root: &Path) -> Result<String, String> {
+    digest(root, true)
+}
+
+fn digest(root: &Path, all_files: bool) -> Result<String, String> {
     let mut hash = Sha256::new();
     hash.update(b"neutral-quality-inputs/2\0");
-    visit_inputs(root, |relative, bytes| {
+    visit_inputs(root, all_files, |relative, bytes| {
         hash.update((relative.len() as u64).to_be_bytes());
         hash.update(relative.as_bytes());
         hash.update((bytes.len() as u64).to_be_bytes());
@@ -29,14 +38,18 @@ pub(crate) fn input_snapshot(
     root: &Path,
 ) -> Result<std::collections::BTreeMap<String, String>, String> {
     let mut snapshot = std::collections::BTreeMap::new();
-    visit_inputs(root, |relative, bytes| {
+    visit_inputs(root, false, |relative, bytes| {
         snapshot.insert(relative.to_owned(), crate::sha256_hex(bytes));
     })?;
     Ok(snapshot)
 }
 
 /// Shares the measured-input selection between complete digests and development snapshots.
-fn visit_inputs(root: &Path, mut visit: impl FnMut(&str, &[u8])) -> Result<(), String> {
+fn visit_inputs(
+    root: &Path,
+    all_files: bool,
+    mut visit: impl FnMut(&str, &[u8]),
+) -> Result<(), String> {
     let output = Command::new(constants::GIT_COMMAND)
         .current_dir(root)
         .args([
@@ -64,9 +77,10 @@ fn visit_inputs(root: &Path, mut visit: impl FnMut(&str, &[u8])) -> Result<(), S
             && (path.parent() == Some(Path::new("docs"))
                 || path.file_name().and_then(std::ffi::OsStr::to_str) == Some("README.md")
                 || path == Path::new(constants::QUALITY_STATUS_FILE));
-        if guide
-            || (path.starts_with(constants::QUALITY_EVIDENCE_DIRECTORY)
-                && path.file_name().and_then(std::ffi::OsStr::to_str) == Some("record.toml"))
+        if !all_files
+            && (guide
+                || (path.starts_with(constants::QUALITY_EVIDENCE_DIRECTORY)
+                    && path.file_name().and_then(std::ffi::OsStr::to_str) == Some("record.toml")))
         {
             continue;
         }

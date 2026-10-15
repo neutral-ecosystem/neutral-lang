@@ -11,7 +11,7 @@
 mod inputs;
 mod measurement;
 mod validation;
-pub(crate) use inputs::{input_digest, input_snapshot};
+pub(crate) use inputs::{coverage_input_digest, input_digest, input_snapshot};
 pub(crate) use measurement::Measurement;
 use validation::{read_receipt, validate_reports, verify};
 

@@ -64,25 +64,46 @@ pub(crate) fn coverage_guided_fuzz_campaign() -> Result<(), String> {
 
 /// Reuses verified coverage for identical inputs, otherwise measures the whole workspace.
 pub(crate) fn coverage() -> Result<(), String> {
-    if quality_evidence::verify_gate(QualityGate::Coverage).is_ok() {
+    let root = workspace_root()?;
+    let settings = QualitySettings::load(&root)?;
+    let policy = &settings.policy.coverage;
+    let results = result_root()?;
+    let html_index = results.join(&policy.html_output);
+    let fingerprint_file = results
+        .join(&policy.json_output)
+        .with_file_name("inputs.sha256");
+    let fingerprint = quality_evidence::coverage_input_digest(&root)?;
+    if fs::read_to_string(&fingerprint_file).is_ok_and(|previous| previous == fingerprint)
+        && html_index.is_file()
+        && quality_evidence::verify_gate(QualityGate::Coverage).is_ok()
+    {
         output::pass("coverage inputs unchanged; reusing verified whole-workspace coverage");
+        output::file("coverage HTML", &html_index);
         return Ok(());
     }
     let execution = super::test_execution::TestExecution::load()?;
     execution.verify()?;
-    let mut measurement = quality_evidence::Measurement::begin(QualityGate::Coverage)?;
+    let mut measurement =
+        quality_evidence::Measurement::begin_with_settings(QualityGate::Coverage, settings)?;
     let settings = measurement.settings.policy.coverage.clone();
     let lines = settings.minimum_line_percent.to_string();
     let functions = settings.minimum_function_percent.to_string();
     let regions = settings.minimum_region_percent.to_string();
     let exclusions = settings.exclusion_regex;
-    let results = result_root()?;
-    let html_index = results.join(&settings.html_output);
     let html = html_index
         .parent()
         .and_then(Path::parent)
         .ok_or_else(|| "coverage HTML output must be below a report directory".to_owned())?;
     let json = results.join(&settings.json_output);
+    match fs::remove_dir_all(html) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => {
+            return Err(format!(
+                "could not clear previous coverage reports: {error}"
+            ));
+        }
+    }
     fs::create_dir_all(
         json.parent()
             .ok_or_else(|| "coverage JSON output has no parent".to_owned())?,
@@ -140,7 +161,12 @@ pub(crate) fn coverage() -> Result<(), String> {
     output::file("coverage HTML", &html_index);
     output::file("coverage JSON", Path::new(json));
     measurement.copy_report(Path::new(json), "coverage.json")?;
-    measurement.finish()
+    if quality_evidence::coverage_input_digest(&root)? != fingerprint {
+        return Err("coverage inputs changed during measurement; rerun coverage".to_owned());
+    }
+    measurement.finish()?;
+    fs::write(fingerprint_file, fingerprint)
+        .map_err(|error| format!("could not save coverage input fingerprint: {error}"))
 }
 
 /// Runs mutation analysis for every reviewed critical production target.
