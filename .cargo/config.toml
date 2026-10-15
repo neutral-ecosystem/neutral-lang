@@ -13,5 +13,9 @@ check-fixtures = "run --package xtask -- fixtures check"
 [build]
 incremental = true
 
+[env]
+# Keep instrumented subprocess profiles out of source directories; llvm-cov can override this.
+LLVM_PROFILE_FILE = { value = "target/coverage/default_%m_%p.profraw", relative = true, force = false }
+
 [net]
 retry = 2
