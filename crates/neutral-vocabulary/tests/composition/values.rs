@@ -233,6 +233,28 @@ fn numeric_digit_limit_is_inclusive_and_independent_of_scale() {
     }
 }
 
+/// Numeric scale is accepted at its configured ceiling and rejected above it.
+#[test]
+fn numeric_scale_limit_is_inclusive() {
+    let cancellation = CancellationToken::new();
+    let mut policy = limits();
+    policy.json.numeric_scale = 1;
+    for (source, expected) in [("1e1", Ok(())), ("1e2", Err(E::Limit))] {
+        let value = V::Number(ExactNumber::from_source(source, 64, 64).unwrap());
+        assert_eq!(
+            materialize(
+                &value,
+                &T::Num,
+                &Catalogue::new(),
+                &mut Budget::new(policy, &cancellation),
+                1
+            )
+            .map(|_| ()),
+            expected
+        );
+    }
+}
+
 /// Nullable interpretation and list children retain standalone depth boundaries.
 #[test]
 fn nullable_and_list_materialization_charge_child_depth() {

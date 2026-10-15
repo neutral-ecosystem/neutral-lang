@@ -154,6 +154,19 @@ fn composition_exact_transport_bounds() {
     );
 }
 
+/// Validation cancellation remains distinct from a malformed or oversized writer section.
+#[test]
+fn composition_validation_error_mapping_preserves_cancellation() {
+    assert_eq!(
+        encoding_validation_error(failure(C::Cancelled)),
+        E::Cancelled
+    );
+    assert_eq!(
+        encoding_validation_error(failure(C::MalformedCbor)),
+        E::EncodedSizeLimit
+    );
+}
+
 /// Every allocation boundary observes real cancellation before publishing any artifact.
 #[test]
 fn composition_cancellation_at_each_retention_boundary() {
@@ -285,6 +298,35 @@ fn composition_scalar_wire_tags() {
             value
         );
     }
+}
+
+/// Numeric tuple hard limits are inclusive and report oversized values as schema errors.
+#[test]
+fn composition_numeric_tuple_limits_are_inclusive() {
+    let number = |coefficient: String, scale: u64| {
+        tuple_node(vec![
+            string("num"),
+            node(CborValue::Boolean(false)),
+            string(&coefficient),
+            node(CborValue::Unsigned(scale)),
+        ])
+    };
+    let max_digits = crate::constants::MAXIMUM_EXACT_NUMBER_DIGITS;
+    let max_scale = crate::constants::MAXIMUM_TEXT_BYTES as u64;
+
+    assert!(read_value::<ClosedReference>(&number("1".repeat(max_digits), 0), 0).is_ok());
+    for value in [
+        number("1".repeat(max_digits + 1), 0),
+        number("1".into(), max_scale + 1),
+    ] {
+        assert_eq!(
+            read_value::<ClosedReference>(&value, 0)
+                .unwrap_err()
+                .class(),
+            C::InvalidEncodedSchema
+        );
+    }
+    assert!(read_value::<ClosedReference>(&number("1".into(), max_scale), 0).is_ok());
 }
 
 /// Reference values retain the exact owner and cannot enter closed defaults.

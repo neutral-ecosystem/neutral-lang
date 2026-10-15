@@ -2,18 +2,21 @@
 
 //! Literal successor wire checks and atomic hostile-input recovery.
 
-#[path = "../coverage_gaps/expression_project.rs"]
-mod coverage_gaps;
-
 use super::*;
 use neutral_core::allocation::testing;
 use neutral_ir::{
-    LogicalModuleIdentity,
-    composition::CompositionValue,
+    LogicalModuleIdentity, ModuleSymbolIdentity, VocabularyIdentity,
+    composition::{
+        CompositionBody, CompositionBundle, CompositionDefinition, CompositionDependency,
+        CompositionValue,
+    },
     expression::{
         BinaryOperator, Expression, ExpressionBody, ExpressionNode, MatchArm, SelectorSegment,
-        UnaryOperator, project::ExpressionProjectIr,
+        UnaryOperator,
+        project::ExpressionProjectIr,
+        templates::{ParameterPhase, PublicTemplate, TemplateParameter},
     },
+    project::{ProjectModule, ProjectVocabularySource},
     project_interface::ProjectPublicType as T,
 };
 
@@ -487,5 +490,176 @@ fn all_observed_encode_reservations_fail_atomically_and_recover() {
             assert_eq!(result, Err(E::Cancelled), "cancellation {index}");
             assert_eq!(encode(&CancellationToken::new()).unwrap(), bytes);
         }
+    }
+}
+
+#[test]
+fn expression_module_imports_preserve_order_in_the_wire_tuple_and_raw_ir() {
+    let cases = vectors();
+    let mut ir = raw(&cases[0]);
+    ir.modules = vec![ProjectModule {
+        identity: LogicalModuleIdentity::new("1.0", "main"),
+        imports: vec!["alpha".into(), "beta".into()],
+    }];
+
+    let parsed = parse_written_ir(&ir);
+    let tuple = crate::project::array(&parsed).unwrap();
+    let modules = crate::project::array(&tuple[1]).unwrap();
+    let module = crate::project::tuple::<2>(&modules[0]).unwrap();
+    let imports = crate::project::array(&module[1]).unwrap();
+    assert_eq!(
+        imports
+            .iter()
+            .map(|value| crate::project::text(value).unwrap())
+            .collect::<Vec<_>>(),
+        ["alpha", "beta"]
+    );
+
+    let roundtrip = project::read_ir(&parsed, &CancellationToken::new()).unwrap();
+    assert_eq!(roundtrip.modules, ir.modules);
+}
+
+#[test]
+fn expression_vocabulary_catalogues_preserve_features_visibility_and_dependencies() {
+    let cases = vectors();
+    let mut ir = raw(&cases[0]);
+    let digest = neutral_core::VocabularyContentDigest::from_raw_bytes([7; 32]);
+    ir.vocabularies = vec![CompositionBundle {
+        identity: VocabularyIdentity::new(
+            "Example",
+            "1.0.0",
+            neutral_vocabulary::VOCABULARY_SCHEMA_VERSION,
+            neutral_vocabulary::composition::ENCODING_VERSION,
+            digest,
+            vec!["feature-alpha".into(), "feature-zeta".into()],
+        ),
+        dependencies: vec![CompositionDependency {
+            identity: "Base".into(),
+            version: "2.1.0".into(),
+        }],
+        definitions: vec![
+            CompositionDefinition {
+                name: "PrivateThing".into(),
+                public: false,
+                body: CompositionBody::Record(Vec::new()),
+            },
+            CompositionDefinition {
+                name: "PublicThing".into(),
+                public: true,
+                body: CompositionBody::Record(Vec::new()),
+            },
+        ],
+    }];
+    ir.vocabulary_sources = vec![ProjectVocabularySource {
+        identity: "Example".into(),
+        version: "1.0.0".into(),
+        digest,
+        byte_len: 123,
+    }];
+
+    let parsed = parse_written_ir(&ir);
+    let tuple = crate::project::array(&parsed).unwrap();
+    let definitions = crate::project::array(&tuple[3]).unwrap();
+    assert_eq!(definitions.len(), 2);
+    for ((definition, name), public) in definitions
+        .iter()
+        .zip(["PrivateThing", "PublicThing"])
+        .zip([false, true])
+    {
+        let definition = crate::project::tuple::<5>(definition).unwrap();
+        assert_eq!(crate::project::text(&definition[2]).unwrap(), name);
+        assert_eq!(crate::project::boolean(&definition[3]).unwrap(), public);
+        let body = crate::project::tuple::<2>(&definition[4]).unwrap();
+        assert_eq!(crate::project::text(&body[0]).unwrap(), "record");
+        assert!(crate::project::array(&body[1]).unwrap().is_empty());
+    }
+
+    let catalogues = crate::project::array(&tuple[4]).unwrap();
+    let catalogue = crate::project::tuple::<5>(&catalogues[0]).unwrap();
+    assert_eq!(
+        crate::project::array(&catalogue[3])
+            .unwrap()
+            .iter()
+            .map(|feature| crate::project::text(feature).unwrap())
+            .collect::<Vec<_>>(),
+        ["feature-alpha", "feature-zeta"]
+    );
+    assert_eq!(
+        crate::project::array(&catalogue[4])
+            .unwrap()
+            .iter()
+            .map(|name| crate::project::text(name).unwrap())
+            .collect::<Vec<_>>(),
+        ["PublicThing"]
+    );
+
+    let dependency_groups = crate::project::array(&tuple[12]).unwrap();
+    let group = crate::project::tuple::<3>(&dependency_groups[0]).unwrap();
+    let dependencies = crate::project::array(&group[2]).unwrap();
+    let dependency = crate::project::tuple::<2>(&dependencies[0]).unwrap();
+    assert_eq!(crate::project::text(&dependency[0]).unwrap(), "Base");
+    assert_eq!(crate::project::text(&dependency[1]).unwrap(), "2.1.0");
+
+    let roundtrip = project::read_ir(&parsed, &CancellationToken::new()).unwrap();
+    assert_eq!(roundtrip.vocabularies, ir.vocabularies);
+    assert_eq!(roundtrip.vocabulary_sources, ir.vocabulary_sources);
+}
+
+#[test]
+fn public_template_parameter_defaults_preserve_trees_phases_types_and_order() {
+    let cases = vectors();
+    let mut ir = raw(&cases[2]);
+    ir.public_templates = vec![PublicTemplate {
+        identity: ModuleSymbolIdentity::new(LogicalModuleIdentity::new("1.0", "main"), "choose"),
+        parameters: vec![
+            TemplateParameter {
+                name: "mode".into(),
+                phase: ParameterPhase::Static,
+                ty: T::Bool,
+                default: Some(bool_tree(true)),
+            },
+            TemplateParameter {
+                name: "label".into(),
+                phase: ParameterPhase::Deferred,
+                ty: T::String,
+                default: None,
+            },
+        ],
+        result_type: T::Bool,
+        body: bool_tree(true),
+    }];
+
+    let roundtrip = project::read_ir(&parse_written_ir(&ir), &CancellationToken::new()).unwrap();
+    let template = &roundtrip.public_templates[0];
+    assert_eq!(template.parameters.len(), 2);
+    assert_eq!(template.parameters[0].name, "mode");
+    assert_eq!(template.parameters[0].phase, ParameterPhase::Static);
+    assert_eq!(template.parameters[0].ty, T::Bool);
+    assert_eq!(template.parameters[0].default, Some(bool_tree(true)));
+    assert_eq!(template.parameters[1].name, "label");
+    assert_eq!(template.parameters[1].phase, ParameterPhase::Deferred);
+    assert_eq!(template.parameters[1].ty, T::String);
+    assert_eq!(template.parameters[1].default, None);
+    assert_eq!(template.result_type, T::Bool);
+    assert_eq!(template.body, bool_tree(true));
+}
+
+/// Canonically parses the exact raw expression IR produced by the wire writer.
+fn parse_written_ir(ir: &ExpressionProjectIr) -> crate::decoder::LocatedValue {
+    let bytes = forge(ir);
+    crate::decoder::parse_canonical_section(
+        &bytes[8..],
+        8,
+        DecodeLimits::hard(),
+        &CancellationToken::new(),
+    )
+    .unwrap()
+}
+
+/// Constructs the same typed literal expression for tree and default assertions.
+fn bool_tree(value: bool) -> Expression {
+    Expression {
+        ty: T::Bool,
+        node: ExpressionNode::Value(CompositionValue::Bool(value)),
     }
 }

@@ -58,6 +58,30 @@ fn request() -> CapturedCompositionProjectRequest {
     )
 }
 
+/// Adding otherwise valid total source and vocabulary ceilings must not overflow assembly.
+#[test]
+fn composition_assembly_rejects_combined_text_limit_overflow_atomically() {
+    let baseline_capture = capture_composition_project(request()).unwrap();
+    let baseline = crate::compile_composition_project(&baseline_capture, &CancellationToken::new())
+        .expect("ordinary text ceilings should compile");
+
+    let mut overflow_request = request();
+    let mut values = overflow_request.envelope.controls.limits.values();
+    values.total_source_bytes = u64::MAX;
+    values.total_vocabulary_bytes = u64::MAX;
+    overflow_request.envelope.controls.limits = ProjectCaptureLimits::new(values);
+    let overflow_capture = capture_composition_project(overflow_request)
+        .expect("individually positive ceilings and exact bytes should capture");
+    assert_eq!(
+        overflow_capture.sources()[0].bytes(),
+        baseline_capture.sources()[0].bytes()
+    );
+    let failure = crate::compile_composition_project(&overflow_capture, &CancellationToken::new())
+        .expect_err("combined ceiling overflow must reject assembly");
+    assert_eq!(failure.code, "NEU-COMP-010");
+    assert!(baseline.declarations.is_empty());
+}
+
 /// Constructs exact explicit schema /2 bytes and their matching content lock.
 fn vocabulary() -> CapturedVocabularyInput {
     let bytes = br#"{

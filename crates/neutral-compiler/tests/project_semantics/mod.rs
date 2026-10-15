@@ -4,10 +4,16 @@
 
 use super::*;
 use crate::{
-    CAPTURE_REQUEST_VERSION, CapturedProjectRequest, CapturedSourceInput, ProjectCaptureControls,
-    ProjectCaptureLimitValues, ProjectCaptureLimits, build_module_graph, capture_project,
+    CAPTURE_REQUEST_VERSION, CapturedCompositionProjectRequest, CapturedProjectRequest,
+    CapturedSourceInput, CapturedVocabularyInput, ProjectCaptureControls,
+    ProjectCaptureLimitValues, ProjectCaptureLimits, build_module_graph,
+    capture_composition_project, capture_project,
 };
-use neutral_core::profile::LanguageProfile;
+use neutral_core::{
+    CancellationToken, StructuralLimits, VocabularyContentDigest, profile::LanguageProfile,
+};
+use neutral_ir::composition::{ValueOriginKind, ValuePathSegment, project::CompositionAttribution};
+use neutral_vocabulary::{VocabularyLimits, VocabularyLock, composition::CompositionLimits};
 use std::fmt::Write;
 
 /// Malformed declarations and contextual shapes fail at the semantic grammar boundary.
@@ -244,6 +250,124 @@ fn first_code(sources: &[(&str, &str)]) -> &'static str {
         .expect_err("project must be rejected")
         .diagnostics()[0]
         .code()
+}
+
+/// Captures one source module using an exact vocabulary-owned default.
+fn composition_project_with_default() -> crate::CapturedCompositionProject {
+    let bytes = br#"{
+  "format": "neutral-vocabulary-bundle",
+  "encoding_version": "1.0",
+  "schema_version": "2.0",
+  "identity": "ExampleDomain",
+  "version": "1.0.0",
+  "required_features": ["vocabulary-composition-v2"],
+  "dependencies": [],
+  "types": [{
+    "kind": "record",
+    "name": "Item",
+    "public": true,
+    "fields": [{
+      "name": "count",
+      "type": { "kind": "num" },
+      "presence": "defaulted",
+      "restrictions": {},
+      "default": { "kind": "num", "value": "3" }
+    }]
+  }]
+}
+"#
+    .to_vec();
+    let lock = VocabularyLock::new(
+        "ExampleDomain",
+        "1.0.0",
+        neutral_vocabulary::composition::ENCODING_VERSION,
+        neutral_ir::composition::profile::VOCABULARY_SCHEMA_VERSION,
+        VocabularyContentDigest::from_bytes(&bytes),
+        vec![neutral_ir::composition::profile::VOCABULARY_COMPOSITION_FEATURE.to_owned()],
+    )
+    .unwrap();
+    let source = b"neu \"1.0\"\nmodule example\nuse ExampleDomain as domain\ndomain::Item original = {}\ndomain::Item copied = original\n".to_vec();
+    let capture_limits = ProjectCaptureLimits::new(ProjectCaptureLimitValues {
+        total_source_bytes: 4096,
+        source_bytes_per_unit: 4096,
+        source_units: 1,
+        source_id_bytes: 64,
+        module_id_bytes: 64,
+        vocabulary_units: 1,
+        vocabulary_bytes_per_unit: 4096,
+        total_vocabulary_bytes: 4096,
+        imports_per_module: 4,
+        import_edges: 4,
+        scc_units: 1,
+        declarations: 16,
+        diagnostics: 16,
+        output_bytes: 16_384,
+    });
+    capture_composition_project(CapturedCompositionProjectRequest::new(
+        CapturedProjectRequest::new(
+            neutral_ir::composition::profile::CAPTURE_REQUEST_VERSION,
+            LanguageProfile::V1_0,
+            vec![CapturedSourceInput::new(
+                "source:example",
+                "example",
+                source,
+            )],
+            vec![CapturedVocabularyInput::new(bytes, lock)],
+            ProjectCaptureControls::new(capture_limits, CancellationToken::new()),
+        ),
+        neutral_ir::composition::profile::REQUIRED_FEATURES
+            .iter()
+            .map(|feature| (*feature).to_owned())
+            .collect(),
+        CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(
+            StructuralLimits::new(65_536, 64).unwrap(),
+        )),
+    ))
+    .expect("valid defaulted vocabulary request should capture")
+}
+
+/// Reusing a materialized vocabulary default does not invent a second default occurrence.
+#[test]
+fn reused_vocabulary_default_keeps_original_default_attribution() {
+    let captured = composition_project_with_default();
+    let ir = compile_composition_project(&captured, &CancellationToken::new())
+        .expect("valid default reuse should compile");
+    let path = [ValuePathSegment::Field("count".to_owned())];
+    let default = ir
+        .origins
+        .iter()
+        .find(|origin| {
+            origin.binding.declaration_name() == "original"
+                && origin.path == path
+                && origin.kind == ValueOriginKind::Defaulted
+        })
+        .expect("source omission must retain the original default occurrence");
+    assert!(matches!(
+        &default.attribution,
+        Some(CompositionAttribution::Vocabulary {
+            identity,
+            version,
+            type_name,
+            field_name,
+            ..
+        }) if identity == "ExampleDomain"
+            && version == "1.0.0"
+            && type_name == "Item"
+            && field_name == "count"
+    ));
+    let reused = ir
+        .origins
+        .iter()
+        .find(|origin| {
+            origin.binding.declaration_name() == "copied"
+                && origin.path.is_empty()
+                && origin.kind == ValueOriginKind::Supplied
+        })
+        .expect("copied materialized binding root remains supplied");
+    assert!(matches!(
+        &reused.attribution,
+        Some(CompositionAttribution::Source(_))
+    ));
 }
 
 #[test]

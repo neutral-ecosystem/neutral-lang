@@ -54,13 +54,8 @@ pub fn encode_composition_project(
     let mut w = CborWriter::with_cancellation(cancel);
     write_ir(&mut w, ir)?;
     let payload = w.finish()?;
-    crate::decoder::validate_section(&payload, DecodeLimits::hard(), cancel).map_err(|e| {
-        if e.class() == C::Cancelled {
-            E::Cancelled
-        } else {
-            E::EncodedSizeLimit
-        }
-    })?;
+    crate::decoder::validate_section(&payload, DecodeLimits::hard(), cancel)
+        .map_err(encoding_validation_error)?;
     let length = profile::MAGIC
         .len()
         .checked_add(payload.len())
@@ -78,6 +73,14 @@ pub fn encode_composition_project(
         return Err(E::Cancelled);
     }
     Ok(output)
+}
+
+fn encoding_validation_error(error: D) -> E {
+    if error.class() == C::Cancelled {
+        E::Cancelled
+    } else {
+        E::EncodedSizeLimit
+    }
 }
 
 /// Decodes the explicit successor frame, then independently checks all semantic and companion facts.

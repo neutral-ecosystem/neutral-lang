@@ -140,7 +140,10 @@ pub(crate) fn coverage() -> Result<(), String> {
 }
 
 /// Runs mutation analysis for every reviewed critical production target.
-pub(crate) fn mutate() -> Result<(), String> {
+pub(crate) fn mutate(full: bool) -> Result<(), String> {
+    if !full {
+        return super::mutation::develop();
+    }
     let execution = super::test_execution::TestExecution::load()?;
     execution.verify()?;
     let mut measurement = quality_evidence::Measurement::begin(QualityGate::Mutation)?;

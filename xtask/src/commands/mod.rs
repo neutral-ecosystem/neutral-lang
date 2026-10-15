@@ -6,6 +6,7 @@ pub(crate) mod analysis;
 pub(crate) mod development;
 pub(crate) mod distribution;
 pub(crate) mod documentation;
+pub(crate) mod mutation;
 pub(crate) mod portable;
 pub(crate) mod quality;
 pub(crate) mod source_formatting;

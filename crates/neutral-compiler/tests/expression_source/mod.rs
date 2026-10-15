@@ -5,7 +5,8 @@
 use super::*;
 use crate::{
     CapturedExpressionProjectRequest, CapturedProjectRequest, CapturedSourceInput,
-    ProjectCaptureControls, ProjectCaptureLimitValues, ProjectCaptureLimits,
+    CapturedVocabularyInput, CompositionCaptureFailure, ExpressionCaptureFailure,
+    ProjectCaptureControls, ProjectCaptureError, ProjectCaptureLimitValues, ProjectCaptureLimits,
     capture_expression_project,
 };
 use neutral_core::{StructuralLimits, profile::LanguageProfile};
@@ -13,6 +14,10 @@ use neutral_vocabulary::{VocabularyLimits, composition::CompositionLimits};
 
 /// Source-level regression cases for complete expression and expansion boundaries.
 mod boundaries;
+/// Exact captured expression request facts and rejection boundaries.
+mod capture;
+/// Template resolution, static checking and finite matrix expansion.
+mod expansion;
 /// Request-local allocation and cancellation checks across complete source lowering.
 mod fault_sweeps;
 
@@ -27,6 +32,33 @@ fn request(
     bytes: &str,
     expression: ExpressionLimits,
     expansion: ExpansionLimits,
+) -> CapturedExpressionProjectRequest {
+    request_with_inputs(
+        vec![CapturedSourceInput::new(
+            "source:fixture",
+            "example::expressions",
+            bytes.as_bytes().to_vec(),
+        )],
+        Vec::new(),
+        expression_profile::CAPTURE_REQUEST_VERSION,
+        expression_profile::SemanticProfiles::try_frozen().unwrap(),
+        CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(
+            StructuralLimits::new(1_048_576, 64).unwrap(),
+        )),
+        expression,
+        expansion,
+        CancellationToken::new(),
+    )
+}
+fn request_with_inputs(
+    sources: Vec<CapturedSourceInput>,
+    vocabularies: Vec<CapturedVocabularyInput>,
+    version: &str,
+    profiles: expression_profile::SemanticProfiles,
+    composition: CompositionLimits,
+    expression: ExpressionLimits,
+    expansion: ExpansionLimits,
+    cancellation: CancellationToken,
 ) -> CapturedExpressionProjectRequest {
     let bounds = ProjectCaptureLimitValues {
         total_source_bytes: 1_048_576,
@@ -46,23 +78,14 @@ fn request(
     };
     CapturedExpressionProjectRequest::new(
         CapturedProjectRequest::new(
-            expression_profile::CAPTURE_REQUEST_VERSION,
+            version,
             LanguageProfile::V1_0,
-            vec![CapturedSourceInput::new(
-                "source:fixture",
-                "example::expressions",
-                bytes.as_bytes().to_vec(),
-            )],
-            Vec::new(),
-            ProjectCaptureControls::new(
-                ProjectCaptureLimits::new(bounds),
-                CancellationToken::new(),
-            ),
+            sources,
+            vocabularies,
+            ProjectCaptureControls::new(ProjectCaptureLimits::new(bounds), cancellation),
         ),
-        expression_profile::SemanticProfiles::try_frozen().unwrap(),
-        CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(
-            StructuralLimits::new(1_048_576, 64).unwrap(),
-        )),
+        profiles,
+        composition,
         expression,
         expansion,
     )
@@ -294,4 +317,32 @@ fn exact_capture_tuple_and_cancellation_precede_body_publication() {
             .code,
         "NEU-EXP-010"
     );
+}
+
+/// Checks hand-derived decimal values without relying on the evaluator for expectations.
+fn number(literal: &str) -> V {
+    V::Number(
+        ExactNumber::from_source(
+            literal,
+            ExpressionLimits::hard().coefficient_digits,
+            ExpressionLimits::hard().absolute_scale,
+        )
+        .unwrap(),
+    )
+}
+
+/// Compiles real captured source with one deliberately narrowed policy dimension.
+fn bounded(
+    body: &str,
+    expression: ExpressionLimits,
+    expansion: ExpansionLimits,
+) -> Result<Arc<ExpressionProjectIr>, E> {
+    let source = format!(
+        "neu \"{}\"\nmodule example::expressions\n{body}\n",
+        LanguageProfile::V1_0.source_version()
+    );
+    compile_expression_project(
+        &capture(&source, expression, expansion),
+        &CancellationToken::new(),
+    )
 }

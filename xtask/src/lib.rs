@@ -133,7 +133,7 @@ fn execute(task: Task) -> Result<(), String> {
         Task::Performance(profile) => performance(profile),
         Task::Fuzz(mode) => fuzz(mode),
         Task::Coverage => coverage(),
-        Task::Mutate => mutate(),
+        Task::Mutate { full } => mutate(full),
         Task::Quality(action) => quality_action(action),
         Task::Validate(target) => validate(target),
         Task::Package => package(),

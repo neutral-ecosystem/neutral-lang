@@ -160,6 +160,7 @@ pub fn capture_expression_project(
         return Err(ExpressionCaptureFailure::Limit);
     }
     let profiles = request.profiles;
+    let cancellation = request.envelope.controls.cancellation.clone();
     let features = neutral_core::allocation::TryClone::try_clone(&profiles.required_features)
         .map_err(|_| ExpressionCaptureFailure::Limit)?;
     let composition = super::composition::capture_selected(
@@ -174,6 +175,9 @@ pub fn capture_expression_project(
     )
     .map_err(ExpressionCaptureFailure::Capture)?;
     let profiles = Shared::try_new(profiles).map_err(|_| ExpressionCaptureFailure::Limit)?;
+    if cancellation.is_cancelled() {
+        return Err(ProjectCaptureError::Cancelled.into());
+    }
     Ok(CapturedExpressionProject {
         composition,
         profiles,

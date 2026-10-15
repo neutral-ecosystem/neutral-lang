@@ -2,9 +2,6 @@
 
 //! Exact boundary tests for private frame and logical-schema validation.
 
-#[path = "../coverage_gaps/decode.rs"]
-mod coverage_gaps;
-
 use super::{DecodeErrorClass, DecodeLimits, SchemaBudget, constants, decode_frame, decode_type};
 use crate::decoder::{CborValue, LocatedValue};
 use neutral_core::{CancellationToken, StructuralLimits};
@@ -308,6 +305,71 @@ fn type_budget(cancellation: &CancellationToken, nesting_depth: u64) -> SchemaBu
         nodes: 0,
         cancellation,
     }
+}
+
+/// Builds a located map for decoder diagnostics that point to the containing schema.
+fn map_at(offset: u64, members: Vec<(&str, CborValue)>) -> LocatedValue {
+    let mut value = map(members);
+    value.offset = offset;
+    value
+}
+
+/// Builds the ten-position acceptance map with a caller-selected set of limits.
+fn acceptance_map(values: [u64; 10]) -> LocatedValue {
+    map_at(
+        37,
+        [
+            constants::key::SOURCE_BYTES,
+            constants::key::DIAGNOSTICS,
+            constants::key::STRING_BYTES,
+            constants::key::NUMERIC_DIGITS,
+            constants::key::NUMERIC_SCALE,
+            constants::key::DECLARATIONS,
+            constants::key::RECORD_FIELDS,
+            constants::key::NESTING_DEPTH,
+            constants::key::LIST_ITEMS,
+            constants::key::TRAVERSAL_NODES,
+        ]
+        .into_iter()
+        .zip(values)
+        .map(|(key, value)| (key, CborValue::Unsigned(value)))
+        .collect(),
+    )
+}
+
+/// Builds a valid captured vocabulary identity apart from its requested feature list.
+fn vocabulary_identity(features: &[&str]) -> LocatedValue {
+    map_at(
+        37,
+        vec![
+            (constants::key::IDENTITY, CborValue::Text("Fixture".into())),
+            (constants::key::VERSION, CborValue::Text("1.0.0".into())),
+            (
+                constants::key::SCHEMA_VERSION,
+                CborValue::Text(neutral_vocabulary::VOCABULARY_SCHEMA_VERSION.into()),
+            ),
+            (
+                constants::key::ENCODING_VERSION,
+                CborValue::Text(neutral_vocabulary::VOCABULARY_ENCODING_VERSION.into()),
+            ),
+            (
+                constants::key::CONTENT_DIGEST,
+                CborValue::Bytes(vec![0; 32]),
+            ),
+            (
+                constants::key::REQUIRED_FEATURES,
+                CborValue::Array(
+                    features
+                        .iter()
+                        .map(|feature| LocatedValue {
+                            offset: 0,
+                            value: CborValue::Text((*feature).to_owned()),
+                        })
+                        .collect(),
+                ),
+            ),
+        ],
+    )
 }
 
 #[test]
@@ -660,4 +722,128 @@ fn recursive_values_account_for_each_child_depth() {
         .class(),
         DecodeErrorClass::InvalidEncodedSchema
     );
+}
+
+#[test]
+fn reversed_source_spans_report_invalid_source_map_at_the_span_offset() {
+    let reversed = map_at(
+        37,
+        vec![
+            (constants::key::START, CborValue::Unsigned(4)),
+            (constants::key::END, CborValue::Unsigned(3)),
+        ],
+    );
+    let error = super::decode_span(&reversed, 8).unwrap_err();
+    assert_eq!(error.class(), DecodeErrorClass::InvalidSourceMap);
+    assert_eq!(error.offset(), Some(37));
+
+    let empty = map_at(
+        37,
+        vec![
+            (constants::key::START, CborValue::Unsigned(3)),
+            (constants::key::END, CborValue::Unsigned(3)),
+        ],
+    );
+    assert_eq!(
+        super::decode_span(&empty, 8).unwrap(),
+        neutral_core::ByteSpan::new(3, 3).unwrap()
+    );
+}
+
+#[test]
+fn unknown_value_origins_report_schema_error_and_frozen_spellings_decode() {
+    use neutral_ir::ValueOrigin as O;
+
+    let spellings = [
+        O::ExplicitSource,
+        O::OrdinaryReuse,
+        O::IdentityReference,
+        O::ExplicitRecordField,
+        O::UserRecordDefault,
+        O::VocabularyDefault,
+    ];
+    for expected in spellings {
+        let value = LocatedValue {
+            offset: 37,
+            value: CborValue::Text(expected.as_str().to_owned()),
+        };
+        assert_eq!(super::decode_origin(&value).unwrap(), expected);
+    }
+
+    let unknown = LocatedValue {
+        offset: 37,
+        value: CborValue::Text("unknown-origin".to_owned()),
+    };
+    let error = super::decode_origin(&unknown).unwrap_err();
+    assert_eq!(error.class(), DecodeErrorClass::InvalidEncodedSchema);
+    assert_eq!(error.offset(), Some(37));
+}
+
+#[test]
+fn unknown_normalizations_report_schema_error_and_frozen_spellings_decode() {
+    use neutral_ir::Normalization as N;
+
+    let spellings = [
+        N::ExactNumberCanonicalization,
+        N::StringEscapeDecoding,
+        N::BooleanIdentity,
+        N::NullIdentity,
+        N::RecordContextualization,
+        N::ListContextualization,
+        N::ImmutableValueReuse,
+        N::IdentityReferenceResolution,
+    ];
+    for expected in spellings {
+        let value = LocatedValue {
+            offset: 37,
+            value: CborValue::Text(expected.as_str().to_owned()),
+        };
+        assert_eq!(super::decode_normalization(&value).unwrap(), expected);
+    }
+
+    let unknown = LocatedValue {
+        offset: 37,
+        value: CborValue::Text("unknown-normalization".to_owned()),
+    };
+    let error = super::decode_normalization(&unknown).unwrap_err();
+    assert_eq!(error.class(), DecodeErrorClass::InvalidEncodedSchema);
+    assert_eq!(error.offset(), Some(37));
+}
+
+#[test]
+fn captured_acceptance_limits_reject_invalid_values_at_the_map_offset() {
+    let valid = acceptance_map([1; 10]);
+    assert!(super::decode_acceptance(&valid).is_ok());
+
+    let mut invalid = [1; 10];
+    invalid[1] = u64::from(u32::MAX) + 1;
+    let mut cases = vec![invalid];
+    for index in [0, 2, 3, 4, 5, 6, 7, 8, 9] {
+        let mut invalid = [1; 10];
+        invalid[index] = 0;
+        cases.push(invalid);
+    }
+
+    for values in cases {
+        let error = super::decode_acceptance(&acceptance_map(values)).unwrap_err();
+        assert_eq!(error.class(), DecodeErrorClass::InvalidDerivation);
+        assert_eq!(error.offset(), Some(37));
+    }
+}
+
+#[test]
+fn captured_vocabulary_features_must_be_valid_unique_and_sorted() {
+    let valid = vocabulary_identity(&["alpha/v1", "beta-v1"]);
+    let decoded = super::decode_vocabulary_identity(&valid).unwrap();
+    assert_eq!(decoded.required_features(), ["alpha/v1", "beta-v1"]);
+
+    for features in [
+        vec!["Invalid"],
+        vec!["alpha-v1", "alpha-v1"],
+        vec!["zeta-v1", "alpha-v1"],
+    ] {
+        let error = super::decode_vocabulary_identity(&vocabulary_identity(&features)).unwrap_err();
+        assert_eq!(error.class(), DecodeErrorClass::InvalidEncodedSchema);
+        assert_eq!(error.offset(), Some(37));
+    }
 }

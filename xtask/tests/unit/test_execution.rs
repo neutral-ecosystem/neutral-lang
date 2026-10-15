@@ -4,6 +4,29 @@
 
 use super::*;
 
+/// Empty native iterations still test the complete workspace with the same mutation profile.
+#[test]
+fn mutation_zero_pending_baseline_preserves_backend_profile_and_scope() {
+    let settings = configuration::automation().unwrap().testing;
+    for backend in [TestRunner::Nextest, TestRunner::Cargo] {
+        let baseline = mutation_baseline_arguments(backend, &settings);
+        assert!(baseline.contains(&flags::WORKSPACE.to_owned()));
+        assert!(baseline.contains(&flags::LOCKED.to_owned()));
+        if backend == TestRunner::Nextest {
+            assert_eq!(&baseline[..2], ["nextest", "run"]);
+            let mutation =
+                mutation_arguments(backend, &["src/lib.rs".to_owned()], "reports", &settings);
+            let separator = mutation
+                .iter()
+                .position(|argument| argument == "--")
+                .unwrap();
+            assert_eq!(&baseline[4..], &mutation[separator + 1..]);
+        } else {
+            assert_eq!(baseline, ["test", flags::WORKSPACE, flags::LOCKED]);
+        }
+    }
+}
+
 /// Argument construction consumes its supplied snapshot, never a fresh configuration read.
 #[test]
 fn command_arguments_use_one_local_settings_snapshot() {

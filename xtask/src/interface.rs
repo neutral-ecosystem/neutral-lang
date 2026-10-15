@@ -52,6 +52,8 @@ const HELP_OPTION: &str = "--help";
 const SHORT_HELP_OPTION: &str = "-h";
 /// Profile selector shared by profiled commands.
 const PROFILE_OPTION: &str = "--profile";
+/// Fresh full mutation campaign selector.
+pub(crate) const FULL_OPTION: &str = "--full";
 
 /// Complete help rendered by `cargo xtask --help`.
 pub(crate) const HELP: &str = "Neutral repository automation\n\n\
@@ -67,7 +69,7 @@ Stable commands:\n\
   test unit|smoke|integration|system|conformance|property|security|all\n\
   test performance --profile pr|release|soak     run a controlled performance profile\n\
   coverage                                       enforce configured LLVM coverage\n\
-  mutate                                         measure the configured mutation target\n\
+  mutate [--full]                                reuse a development campaign; --full records release evidence\n\
   fuzz smoke|campaign                            run bounded or full fuzzing\n\
   quality [--profile pr|release]                 run the documented quality composition\n\
   quality status|render|verify                   inspect or synchronize the quality ledger\n\
@@ -143,8 +145,11 @@ pub(crate) enum Task {
     Fuzz(FuzzMode),
     /// Run configured LLVM coverage.
     Coverage,
-    /// Run configured mutation analysis.
-    Mutate,
+    /// Run development mutation analysis or a fresh release campaign.
+    Mutate {
+        /// Whether to run a fresh full campaign and record release evidence.
+        full: bool,
+    },
     /// Operate the managed quality ledger or run an aggregate profile.
     Quality(QualityAction),
     /// Validate released binaries or one encoded artifact.
@@ -312,7 +317,8 @@ pub(crate) fn parse(arguments: &[String]) -> Result<Task, String> {
         [TEST_COMMAND, level] => parse_test_level(level).map(Task::Test),
         [FUZZ_COMMAND, mode] => parse_fuzz_mode(mode).map(Task::Fuzz),
         [COVERAGE_COMMAND] => Ok(Task::Coverage),
-        [MUTATE_COMMAND] => Ok(Task::Mutate),
+        [MUTATE_COMMAND] => Ok(Task::Mutate { full: false }),
+        [MUTATE_COMMAND, FULL_OPTION] => Ok(Task::Mutate { full: true }),
         [QUALITY_COMMAND] => Ok(Task::Quality(QualityAction::Run(QualityProfile::Pr))),
         [QUALITY_COMMAND, PROFILE_OPTION, profile] => parse_quality_profile(profile)
             .map(QualityAction::Run)

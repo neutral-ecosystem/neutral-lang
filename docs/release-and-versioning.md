@@ -34,6 +34,8 @@ once; preparation does not install software or weaken checks when a tool is miss
 - Runs the ordinary quality gate, then coverage, mutation, performance,
   and advisory checks. Valid evidence for the exact current inputs is
   reused; missing or stale measurements are run automatically.
+- Uses `cargo xtask mutate --full` for mutation measurements; development campaign
+  history does not supply release evidence.
 - Selects nightly only for coverage child commands, leaving the global
   stable toolchain unchanged.
 - Records a passing evaluation for the exact candidate and assembles binaries,

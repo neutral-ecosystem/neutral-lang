@@ -207,19 +207,41 @@ pub(crate) fn mutation_arguments(
     command.extend(["--copy-vcs".to_owned(), "true".to_owned()]);
     if backend == TestRunner::Nextest {
         // cargo-mutants tests copied workspaces: resolve config relative to that copy.
-        command.extend([
-            "--".to_owned(),
-            "--config-file".to_owned(),
-            testing.config.clone(),
-            "--profile".to_owned(),
-            testing.mutation_profile.clone(),
-            "--fail-fast".to_owned(),
-            "--ignore-default-filter".to_owned(),
-            "--no-tests".to_owned(),
-            "fail".to_owned(),
-        ]);
+        command.push("--".to_owned());
+        command.extend(mutation_nextest_arguments(testing));
     }
     command
+}
+
+/// Runs the unmutated suite even when native iteration has skipped every mutant.
+pub(crate) fn mutation_baseline_arguments(
+    backend: TestRunner,
+    testing: &crate::configuration_models::Testing,
+) -> Vec<String> {
+    let mut command = if backend == TestRunner::Nextest {
+        vec!["nextest".to_owned(), "run".to_owned()]
+    } else {
+        vec!["test".to_owned()]
+    };
+    command.extend([flags::WORKSPACE, flags::LOCKED].map(str::to_owned));
+    if backend == TestRunner::Nextest {
+        command.extend(mutation_nextest_arguments(testing));
+    }
+    command
+}
+
+/// Shares the complete mutation-profile test selection with the zero-pending baseline.
+fn mutation_nextest_arguments(testing: &crate::configuration_models::Testing) -> Vec<String> {
+    vec![
+        "--config-file".to_owned(),
+        testing.config.clone(),
+        "--profile".to_owned(),
+        testing.mutation_profile.clone(),
+        "--fail-fast".to_owned(),
+        "--ignore-default-filter".to_owned(),
+        "--no-tests".to_owned(),
+        "fail".to_owned(),
+    ]
 }
 
 /// Accepts conventional Boolean spellings for the per-command verbosity override.

@@ -168,6 +168,15 @@ fn validates_real_mutation_counts() {
         r#"{"caught":38,"missed":0,"timeout":0,"success":0}"#,
     );
     let complete = receipt.invocations[0].arguments.clone();
+    for flag in ["--iterate", "--in-diff=changes.patch"] {
+        receipt.invocations[0].arguments.clone_from(&complete);
+        receipt.invocations[0].arguments.push(flag.to_owned());
+        assert!(
+            validate_reports(&receipt, &directory, &settings).is_err(),
+            "{flag}"
+        );
+    }
+    receipt.invocations[0].arguments.clone_from(&complete);
     receipt.invocations[0].arguments.drain(..2);
     assert!(validate_reports(&receipt, &directory, &settings).is_err());
     receipt.invocations[0].arguments.clone_from(&complete);
@@ -207,9 +216,18 @@ fn input_fingerprint_includes_untracked_source() {
     let before = input_digest(&directory).unwrap();
     fs::write(directory.join("new.rs"), "// new source\n").unwrap();
     let after = input_digest(&directory).unwrap();
+    let snapshot = input_snapshot(&directory).unwrap();
+    assert_eq!(
+        snapshot,
+        BTreeMap::from([(
+            "new.rs".to_owned(),
+            sha256_file(&directory.join("new.rs")).unwrap()
+        )])
+    );
     assert_ne!(before, after);
     fs::write(directory.join("README.md"), "documentation only\n").unwrap();
     assert_eq!(after, input_digest(&directory).unwrap());
+    assert_eq!(snapshot, input_snapshot(&directory).unwrap());
     fs::remove_dir_all(directory).unwrap();
 }
 

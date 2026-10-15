@@ -11,7 +11,7 @@
 mod inputs;
 mod measurement;
 mod validation;
-pub(crate) use inputs::input_digest;
+pub(crate) use inputs::{input_digest, input_snapshot};
 pub(crate) use measurement::Measurement;
 use validation::{read_receipt, validate_reports, verify};
 
@@ -69,7 +69,7 @@ fn plain_filename(value: &str) -> bool {
 }
 
 /// Resolves the configurable ignored measurement root.
-fn generated_root(settings: &QualitySettings) -> Result<PathBuf, String> {
+pub(crate) fn generated_root(settings: &QualitySettings) -> Result<PathBuf, String> {
     Ok(result_root()?.join(&settings.evidence_root))
 }
 

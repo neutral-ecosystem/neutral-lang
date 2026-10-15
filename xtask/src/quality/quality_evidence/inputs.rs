@@ -13,6 +13,30 @@ use std::fs;
 
 /// Hashes ordered code, tests, fixtures, locks, and configuration, including new files.
 pub(crate) fn input_digest(root: &Path) -> Result<String, String> {
+    let mut hash = Sha256::new();
+    hash.update(b"neutral-quality-inputs/2\0");
+    visit_inputs(root, |relative, bytes| {
+        hash.update((relative.len() as u64).to_be_bytes());
+        hash.update(relative.as_bytes());
+        hash.update((bytes.len() as u64).to_be_bytes());
+        hash.update(bytes);
+    })?;
+    Ok(format!("{:x}", hash.finalize()))
+}
+
+/// Retains file hashes, not contents, for conservative development-cache invalidation.
+pub(crate) fn input_snapshot(
+    root: &Path,
+) -> Result<std::collections::BTreeMap<String, String>, String> {
+    let mut snapshot = std::collections::BTreeMap::new();
+    visit_inputs(root, |relative, bytes| {
+        snapshot.insert(relative.to_owned(), crate::sha256_hex(bytes));
+    })?;
+    Ok(snapshot)
+}
+
+/// Shares the measured-input selection between complete digests and development snapshots.
+fn visit_inputs(root: &Path, mut visit: impl FnMut(&str, &[u8])) -> Result<(), String> {
     let output = Command::new(constants::GIT_COMMAND)
         .current_dir(root)
         .args([
@@ -29,8 +53,6 @@ pub(crate) fn input_digest(root: &Path) -> Result<String, String> {
     }
     let paths = String::from_utf8(output.stdout)
         .map_err(|error| format!("non-UTF-8 gate input: {error}"))?;
-    let mut hash = Sha256::new();
-    hash.update(b"neutral-quality-inputs/2\0");
     let paths = paths
         .split('\0')
         .filter(|value| !value.is_empty())
@@ -58,10 +80,7 @@ pub(crate) fn input_digest(root: &Path) -> Result<String, String> {
         }
         let bytes = fs::read(root.join(path))
             .map_err(|error| format!("could not read gate input {relative}: {error}"))?;
-        hash.update((relative.len() as u64).to_be_bytes());
-        hash.update(relative.as_bytes());
-        hash.update((bytes.len() as u64).to_be_bytes());
-        hash.update(bytes);
+        visit(relative, &bytes);
     }
-    Ok(format!("{:x}", hash.finalize()))
+    Ok(())
 }

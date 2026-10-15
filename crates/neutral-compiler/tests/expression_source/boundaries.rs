@@ -5,34 +5,6 @@
 use super::*;
 use neutral_ir::composition::{ValueOriginKind, ValuePathSegment};
 
-/// Compiles real captured source with one deliberately narrowed policy dimension.
-fn bounded(
-    body: &str,
-    expression: ExpressionLimits,
-    expansion: ExpansionLimits,
-) -> Result<Arc<ExpressionProjectIr>, E> {
-    let source = format!(
-        "neu \"{}\"\nmodule example::expressions\n{body}\n",
-        LanguageProfile::V1_0.source_version()
-    );
-    compile_expression_project(
-        &capture(&source, expression, expansion),
-        &CancellationToken::new(),
-    )
-}
-
-/// Checks hand-derived decimal values without relying on the evaluator for expectations.
-fn number(literal: &str) -> V {
-    V::Number(
-        ExactNumber::from_source(
-            literal,
-            ExpressionLimits::hard().coefficient_digits,
-            ExpressionLimits::hard().absolute_scale,
-        )
-        .unwrap(),
-    )
-}
-
 /// Guard operators belong to the conditional primary while surrounding operators keep precedence.
 #[test]
 fn unparenthesized_compound_guards_preserve_surrounding_operator_precedence() {
@@ -141,6 +113,56 @@ fn nullable_variant_constructor_preserves_tag_payload_and_null() {
         );
     }
     assert_eq!(compile("variant Choice { num ready, string failed }\nChoice? present = { tag: \"ready\", payload: false }").unwrap_err().code, "NEU-EXP-004");
+}
+
+/// Empty lists need an expected element type before comparison or matrix expansion.
+#[test]
+fn inferred_empty_list_requires_element_type() {
+    assert_eq!(
+        compile("bool item = [] == [1]").unwrap_err().code,
+        "NEU-EXP-004"
+    );
+    assert_eq!(
+        compile("template Item(static num value) -> num { value }\nList<num> empty = []\nexpand items = Item(value: axis) for (axis in empty)")
+            .unwrap()
+            .declarations
+            .len(),
+        1
+    );
+    assert!(compile("List<num> item = [] ++ [1]").is_ok());
+}
+
+/// Record field names alone cannot choose a nominal constructor context.
+#[test]
+fn context_free_record_constructor_requires_nominal_type() {
+    let body = "record Item { num count }\nbool item = { count: 1 } == { count: 1 }";
+    assert_eq!(compile(body).unwrap_err().code, "NEU-EXP-004");
+    assert!(compile("record Item { num count }\nItem item = { count: 1 }").is_ok());
+}
+
+/// Variant constructors require exactly the tag and payload fields.
+#[test]
+fn two_field_variant_constructor_requires_tag_and_payload() {
+    for value in [
+        "{ other: \"ready\", payload: \"ok\" }",
+        "{ tag: \"ready\", other: \"ok\" }",
+    ] {
+        let body = format!("variant Choice {{ string ready, num failed }}\nChoice item = {value}");
+        let error = compile(&body).expect_err("invalid variant field pair must fail");
+        assert_eq!(error.code, "NEU-EXP-004", "{value}");
+        assert!(error.location.is_some(), "{value}");
+    }
+    let valid = compile(
+        "variant Choice { string ready, num failed }\nChoice item = { tag: \"ready\", payload: \"ok\" }",
+    )
+    .expect("valid tag/payload pair");
+    assert_eq!(
+        value(&valid, "item"),
+        &V::Variant {
+            tag: "ready".into(),
+            payload: Box::new(V::String("ok".into())),
+        }
+    );
 }
 
 /// Closed nominal defaults recursively preserve scalar, null and composite values.
@@ -305,174 +327,6 @@ fn match_rejects_duplicate_unknown_and_mistyped_arms() {
     }
 }
 
-/// Exported templates retain ordered defaults and definition contracts while applications fold.
-#[test]
-fn exported_template_defaults_use_preceding_parameters() {
-    let ir = compile("public template Scale(static num base, static num factor = base + 1, deferred num result = factor * 2) -> num { result }\nnum answer = instantiate Scale(base: 3)").unwrap();
-    assert_eq!(value(&ir, "answer"), &number("8"));
-    assert_eq!(ir.public_templates.len(), 1);
-    let template = &ir.public_templates[0];
-    assert_eq!(template.identity.declaration_name(), "Scale");
-    assert_eq!(
-        template
-            .parameters
-            .iter()
-            .map(|p| (p.name.as_str(), p.phase, p.default.is_some()))
-            .collect::<Vec<_>>(),
-        [
-            ("base", ParameterPhase::Static, false),
-            ("factor", ParameterPhase::Static, true),
-            ("result", ParameterPhase::Deferred, true)
-        ]
-    );
-    assert!(matches!(template.body.node, N::Bound { depth: 0, slot: 2 }));
-    assert_eq!(ir.expansion_attributions.len(), 1);
-    assert_eq!(ir.expansion_attributions[0].arguments.len(), 3);
-}
-
-/// Static nested applications may use static lexical parameters and reject deferred ones.
-#[test]
-fn nested_template_arguments_keep_static_phase_and_hygienic_match_binders() {
-    let ir = compile("public variant Choice { num ready, string failed }\ntemplate Inner(static num value) -> num { value + 1 }\npublic template Outer(static num value) -> num { instantiate Inner(value: -value + 4) }\ntemplate Match(deferred Choice choice, deferred num offset) -> num { match choice { ready(offset) => offset, failed(message) => offset } }\nnum nested = instantiate Outer(value: 2)\nnum matched = instantiate Match(choice: { tag: \"ready\", payload: 7 }, offset: 100)").unwrap();
-    assert_eq!(value(&ir, "nested"), &number("3"));
-    assert_eq!(value(&ir, "matched"), &number("7"));
-    assert_eq!(compile("template Inner(static num value) -> num { value }\ntemplate Outer(deferred num value) -> num { instantiate Inner(value: value) }").unwrap_err().code, "NEU-TPL-004");
-    assert_eq!(compile("input num external\ntemplate Inner(static num value) -> num { 0 }\nnum result = instantiate Inner(value: external)").unwrap_err().code, "NEU-TPL-004");
-}
-
-/// Name and phase errors reject unused definitions and complete named applications.
-#[test]
-fn template_names_defaults_and_arguments_reject_invalid_contracts() {
-    for (body, code) in [
-        (
-            "template lower(static num value) -> num { value }",
-            "NEU-TPL-003",
-        ),
-        ("template Item(num value) -> num { value }", "NEU-TPL-002"),
-        (
-            "template Item(static num value, static num value) -> num { value }",
-            "NEU-TPL-003",
-        ),
-        (
-            "template Item(static num first = 1, static num second) -> num { first }",
-            "NEU-TPL-003",
-        ),
-        (
-            "template Item(static num first = second, static num second = 1) -> num { first }",
-            "NEU-EXP-003",
-        ),
-        (
-            "template Item(static num value) -> num { value }\nnum item = instantiate Item()",
-            "NEU-TPL-003",
-        ),
-        (
-            "template Item(static num value) -> num { value }\nnum item = instantiate Item(other: 1)",
-            "NEU-TPL-003",
-        ),
-        (
-            "template Item(static num value) -> num { value }\nnum item = instantiate Item(value: 1, value: 2)",
-            "NEU-TPL-003",
-        ),
-        (
-            "template Item(static num value) -> num { value }\nstring item = instantiate Item(value: 1)",
-            "NEU-TPL-004",
-        ),
-        (
-            "num hidden = 2\ntemplate Item() -> num { hidden }",
-            "NEU-TPL-003",
-        ),
-        (
-            "num hidden = 2\ntemplate Item() -> Ref<num> { ref(hidden) }",
-            "NEU-TPL-003",
-        ),
-        ("num item = instantiate Missing()", "NEU-TPL-003"),
-    ] {
-        assert_eq!(compile(body).unwrap_err().code, code, "{body}");
-    }
-}
-
-/// Matrix tuple values and source indices survive filtering and exact exclusions.
-#[test]
-fn matrix_values_follow_original_tuple_order_after_filter_and_exclusion() {
-    let ir = compile("template Sum(static num left, static num right) -> num { left + right }\npublic expand sums = Sum(left: left, right: right)\nfor (left in [1, 2], right in [10, 20])\nwhere left == 2 || right == 10\nexclude [{ left: 2, right: 10 }]").unwrap();
-    assert_eq!(
-        ir.declarations
-            .iter()
-            .map(|d| d.identity.declaration_name())
-            .collect::<Vec<_>>(),
-        ["sums__0__0", "sums__1__1"]
-    );
-    assert_eq!(value(&ir, "sums__0__0"), &number("11"));
-    assert_eq!(value(&ir, "sums__1__1"), &number("22"));
-    assert!(ir.declarations.iter().all(|d| d.public));
-    assert_eq!(
-        ir.expansion_attributions
-            .iter()
-            .map(|a| a.original_axis_indices.as_slice())
-            .collect::<Vec<_>>(),
-        [&[0, 0][..], &[1, 1][..]]
-    );
-}
-
-/// Empty and filtered matrices still validate shape, phase and exclusion membership.
-#[test]
-fn matrix_shape_errors_cannot_hide_behind_empty_or_filtered_axes() {
-    let prelude = "template Item(static num value) -> num { value }\n";
-    for (body, code) in [
-        (
-            "expand items = Item(value: axis) for (axis in 1)",
-            "NEU-TPL-007",
-        ),
-        ("expand items = Item(value: axis) for ()", "NEU-TPL-007"),
-        (
-            "expand items = Item(value: axis) for (axis in [1], axis in [2])",
-            "NEU-TPL-007",
-        ),
-        (
-            "expand items = Item(value: axis) for (axis in [1]) where 1",
-            "NEU-EXP-004",
-        ),
-        (
-            "expand items = Item(value: axis) for (axis in [1]) exclude [{ axis: 2 }]",
-            "NEU-TPL-007",
-        ),
-        (
-            "expand items = Item(value: axis) for (axis in [1]) exclude [{ other: 1 }]",
-            "NEU-TPL-007",
-        ),
-        (
-            "expand items = Item(value: axis) for (axis in [1]) exclude [{ axis: 1 }, { axis: 1 }]",
-            "NEU-TPL-007",
-        ),
-        (
-            "expand items = Item(value: axis) for (axis in [1]) exclude [{ axis: 1, extra: 1 }]",
-            "NEU-TPL-007",
-        ),
-        (
-            "input List<num> values\nexpand items = Item(value: axis) for (axis in values)",
-            "NEU-TPL-007",
-        ),
-        (
-            "input bool enabled\nexpand items = Item(value: axis) for (axis in [1]) where enabled",
-            "NEU-TPL-007",
-        ),
-        (
-            "List<num> empty = []\nexpand items = Item(value: missing) for (axis in empty)",
-            "NEU-EXP-003",
-        ),
-        (
-            "expand items = Item(value: missing) for (axis in [1]) where false",
-            "NEU-EXP-003",
-        ),
-    ] {
-        assert_eq!(
-            compile(&format!("{prelude}{body}")).unwrap_err().code,
-            code,
-            "{body}"
-        );
-    }
-}
-
 /// Independently narrowed expression policies reject source work, retention, nodes and numbers.
 #[test]
 fn source_expression_limits_reject_before_publication() {
@@ -535,187 +389,6 @@ fn source_expression_limits_reject_before_publication() {
             "{body}"
         );
     }
-}
-
-/// Expansion ceilings are aggregate controls, including definition typing and filtered tuples.
-#[test]
-fn independent_expansion_limits_reject_complete_request() {
-    let template = "template Item(static num value) -> num { value }\n";
-    for (body, expansion) in [
-        (
-            "template Other() -> num { 0 }",
-            ExpansionLimits {
-                definitions: 1,
-                ..ExpansionLimits::hard()
-            },
-        ),
-        (
-            "template Other(static num first, static num second) -> num { first }",
-            ExpansionLimits {
-                parameters: 1,
-                ..ExpansionLimits::hard()
-            },
-        ),
-        (
-            "num first = instantiate Item(value: 1)\nnum second = instantiate Item(value: 2)",
-            ExpansionLimits {
-                applications: 1,
-                ..ExpansionLimits::hard()
-            },
-        ),
-        (
-            "expand items = Item(value: axis) for (axis in [1, 2])",
-            ExpansionLimits {
-                axis_items: 1,
-                ..ExpansionLimits::hard()
-            },
-        ),
-        (
-            "expand first = Item(value: axis) for (axis in [1, 2]) where false\nexpand second = Item(value: axis) for (axis in [1]) where false",
-            ExpansionLimits {
-                aggregate_tuples: 2,
-                ..ExpansionLimits::hard()
-            },
-        ),
-        (
-            "expand items = Item(value: axis) for (axis in [1, 2])",
-            ExpansionLimits {
-                expanded_bindings: 1,
-                ..ExpansionLimits::hard()
-            },
-        ),
-        (
-            "num item = instantiate Item(value: 1 + 2)",
-            ExpansionLimits {
-                expanded_nodes: 1,
-                ..ExpansionLimits::hard()
-            },
-        ),
-        (
-            "expand items = Item(value: axis) for (axis in [1, 2]) where false",
-            ExpansionLimits {
-                work: 1,
-                ..ExpansionLimits::hard()
-            },
-        ),
-    ] {
-        assert_eq!(
-            bounded(
-                &format!("{template}{body}"),
-                ExpressionLimits::hard(),
-                expansion
-            )
-            .unwrap_err()
-            .code,
-            "NEU-TPL-008",
-            "{body}"
-        );
-    }
-}
-
-/// Output paths preserve all three segment contracts as deferred consumer data.
-#[test]
-fn output_keeps_field_index_and_alternative_contracts() {
-    let ir = compile("public record Job { string name }\npublic variant Choice { string ready, num failed }\npublic record Result { List<Choice> choices }\npublic Job job = { name: \"build\" }\npublic num result = output<num>(ref(job), Result, [{ kind: \"field\", name: \"choices\" }, { kind: \"index\", index: 1 }, { kind: \"alternative\", name: \"failed\" }])").unwrap();
-    let result = ir
-        .declarations
-        .iter()
-        .find(|d| d.identity.declaration_name() == "result")
-        .unwrap();
-    let Some(ExpressionBody::Expression(Expression {
-        node:
-            N::Output {
-                target,
-                result_type,
-                selector,
-            },
-        ..
-    })) = &result.body
-    else {
-        panic!("future output must remain deferred")
-    };
-    assert_eq!(target.declaration_name(), "job");
-    assert!(matches!(result_type, T::Nominal(owner) if owner.declaration_name() == "Result"));
-    assert_eq!(
-        selector,
-        &[
-            SelectorSegment::Field("choices".into()),
-            SelectorSegment::Index(1),
-            SelectorSegment::Alternative("failed".into())
-        ]
-    );
-    assert_eq!(ir.expression_resources.output_leaves, 1);
-    assert!(
-        ir.provenance
-            .iter()
-            .any(|edge| edge.from.declaration_name() == "result"
-                && edge.to.declaration_name() == "Result"
-                && edge.kind == Edge::Type)
-    );
-}
-
-/// Malformed output selectors reject before consumer obligations can be published.
-#[test]
-fn output_rejects_malformed_and_incompatible_selector_contracts() {
-    let prelude = "public record Job { string name }\npublic record Result { num count }\npublic Job job = { name: \"build\" }\n";
-    for (expression, code) in [
-        ("output<num>(ref(job), Result)", "NEU-EXP-002"),
-        ("output<num>(ref(job), num, [])", "NEU-EXP-004"),
-        (
-            "output<num>(ref(job), Result, [{ kind: \"field\" }])",
-            "NEU-EXP-002",
-        ),
-        (
-            "output<num>(ref(job), Result, [{ kind: \"field\", kind: \"field\" }])",
-            "NEU-EXP-002",
-        ),
-        (
-            "output<num>(ref(job), Result, [{ kind: \"field\", unknown: \"count\" }])",
-            "NEU-EXP-002",
-        ),
-        (
-            "output<num>(ref(job), Result, [{ kind: \"field\", index: 0 }])",
-            "NEU-EXP-008",
-        ),
-        (
-            "output<num>(ref(job), Result, [{ kind: \"index\", name: \"count\" }])",
-            "NEU-EXP-008",
-        ),
-        (
-            "output<num>(ref(job), Result, [{ kind: \"index\", index: 1.5 }])",
-            "NEU-EXP-008",
-        ),
-        (
-            "output<num>(ref(job), Result, [{ kind: \"index\", index: 4294967296 }])",
-            "NEU-EXP-008",
-        ),
-        (
-            "output<num>(ref(job), Result, [{ kind: \"unknown\", name: \"count\" }])",
-            "NEU-EXP-008",
-        ),
-        (
-            "output<num>(ref(job), Result, [{ kind: \"field\", name: \"missing\" }])",
-            "NEU-EXP-008",
-        ),
-        (
-            "output<string>(ref(job), Result, [{ kind: \"field\", name: \"count\" }])",
-            "NEU-EXP-004",
-        ),
-    ] {
-        assert_eq!(
-            compile(&format!("{prelude}num result = {expression}"))
-                .unwrap_err()
-                .code,
-            code,
-            "{expression}"
-        );
-    }
-    assert_eq!(
-        compile("public num target = 1\nnum result = output<num>(ref(target), num, [])")
-            .unwrap_err()
-            .code,
-        "NEU-EXP-003"
-    );
 }
 
 /// Safe error envelopes identify their selected result schema without retaining supplied names.

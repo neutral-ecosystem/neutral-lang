@@ -8,6 +8,20 @@ use super::interface::{
     BuildProfile, CiProfile, FuzzMode, PerformanceProfile, PortableAction, QualityAction,
     QualityProfile, Task, TestLevel, ValidationTarget, VersionAction,
 };
+
+/// Release campaigns have an explicit full mode rather than reusing development history.
+#[test]
+fn mutation_accepts_explicit_full_campaign() {
+    assert!(matches!(
+        super::interface::parse(&["mutate".into(), "--full".into()]),
+        Ok(Task::Mutate { full: true })
+    ));
+    assert!(matches!(
+        super::interface::parse(&["mutate".into()]),
+        Ok(Task::Mutate { full: false })
+    ));
+    assert!(super::interface::parse(&["mutate".into(), "--full".into(), "--full".into()]).is_err());
+}
 use super::versioning::{
     release_evidence_readme, replace_workspace_lock_versions, replace_workspace_package_version,
     validate_version_transition,

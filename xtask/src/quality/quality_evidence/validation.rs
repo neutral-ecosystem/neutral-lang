@@ -163,6 +163,8 @@ fn validate_mutation(
                         | "-p"
                         | "--config"
                         | "--skip-calls"
+                        | "--iterate"
+                        | "--in-diff"
                 )
             })
     }) {

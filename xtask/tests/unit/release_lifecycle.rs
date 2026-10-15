@@ -144,6 +144,9 @@ fn recovery_accepts_new_scaffold_and_rejects_unrelated_changes() {
 fn release_measurement_mapping_covers_all_required_gates() {
     for gate in QualityGate::RELEASE_REQUIRED {
         let arguments = measurement_arguments(gate);
+        if gate == QualityGate::Mutation {
+            assert_eq!(arguments, ["mutate", "--full"]);
+        }
         if gate == QualityGate::Advisories {
             assert_eq!(arguments, [] as [&str; 0]);
         } else {
@@ -156,7 +159,7 @@ fn release_measurement_mapping_covers_all_required_gates() {
             .unwrap();
             assert!(matches!(
                 task,
-                Task::Coverage | Task::Mutate | Task::Performance(_)
+                Task::Coverage | Task::Mutate { full: true } | Task::Performance(_)
             ));
         }
     }

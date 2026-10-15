@@ -109,11 +109,27 @@ a failure on the final source inputs:
 
 ```sh
 RUSTUP_TOOLCHAIN=nightly cargo xtask coverage
-cargo xtask mutate
+cargo xtask mutate --full
 cargo xtask test performance --profile release
 ```
 
-`mutate` measures every production file in `mutation.critical_targets` in
+For development, `cargo xtask mutate` keeps a persistent local campaign and writes
+no release receipt. Successful results are reused when the inputs are unchanged.
+For unchanged interrupted or failed inputs, it uses cargo-mutants `--iterate` to
+retry surviving and unfinished mutations. New standalone `.rs` test files can be
+added conservatively without discarding the campaign. Modifying or deleting an
+existing test, or changing source, configuration, dependencies, or the toolchain,
+invalidates the campaign and starts it fresh.
+Execution environment changes also invalidate it. When iteration leaves no pending
+mutants, xtask runs the complete unmutated suite with the mutation test profile
+before accepting the new inputs. The cache is local ignored output, removed by
+`cargo xtask clean`; the first development campaign starts fresh rather than
+importing historical release reports.
+
+`cargo xtask mutate --full` always starts a fresh campaign and records release
+evidence through the existing receipt pipeline. Release preparation automatically
+selects this mode when mutation evidence is missing or stale. Both modes measure
+every production file in `mutation.critical_targets` in
 `config/quality-gates.toml`, spanning syntax, semantic restrictions, decoding,
 reader references and identity framing. The command disables separate cargo-mutants
 configuration so it cannot silently narrow that reviewed scope, and tests each
@@ -143,7 +159,7 @@ use disk-backed temporary storage:
 
 ```sh
 mkdir -p target/mutation-tmp
-TMPDIR="$PWD/target/mutation-tmp" cargo xtask mutate
+TMPDIR="$PWD/target/mutation-tmp" cargo xtask mutate --full
 ```
 
 For an optional broader investigation, use the native tool (not a substitute for
