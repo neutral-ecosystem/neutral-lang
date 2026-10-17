@@ -21,6 +21,7 @@ neutral-encoding = { path = "../neutral-encoding" }
 neutral-ir = { path = "../neutral-ir" }
 neutral-probe = { path = "../neutral-probe" }
 neutral-reader = { path = "../neutral-reader" }
+neutral-semantics = { path = "../neutral-semantics" }
 neutral-vocabulary = { path = "../neutral-vocabulary" }
 
 [lints]

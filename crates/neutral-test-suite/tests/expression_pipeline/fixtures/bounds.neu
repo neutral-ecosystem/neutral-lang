@@ -1,0 +1,36 @@
+neu "1.0"
+module pipeline
+use PipelineDomain as domain
+import pipeline::shared as shared
+import pipeline::other as other
+
+public record Payload {
+    List<List<num>> items = [[1, 2], [3, 4]],
+    num other = 1
+}
+
+public variant Choice {
+    Payload ready,
+    string failed,
+}
+
+public template Make(static num first, deferred num second) -> Choice {
+    { tag: "ready", payload: { other: first + second } }
+}
+
+public template Sum(static num first, deferred num second) -> num {
+    first + second
+}
+
+public input bool enabled
+public input bool other_enabled
+public bool decision = enabled && other_enabled
+public Payload base = {}
+public num digits = 123
+public num scale = 0.001
+public num total = shared::number + other::number
+public domain::Operation operation = {}
+
+public expand choices = Make(first: x, second: y)
+    for (x in [1, 2], y in [2, 3])
+    where x == 2

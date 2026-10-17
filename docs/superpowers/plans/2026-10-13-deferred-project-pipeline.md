@@ -154,9 +154,23 @@ Later-task code already present is not qualification or activation evidence; Tas
 
 **Interfaces:** `encode_expression_project(&ValidatedExpressionProject, &CancellationToken) -> Result<Vec<u8>, EncodingError>` and `decode_expression_project(bytes, DecodeLimits, SemanticLimits, &CancellationToken) -> Result<ValidatedExpressionProject, DecodeError>`.
 
-- [ ] Write literal comparisons for magic `NEUP3\r\n\x1a`, exact 22-position arity, all node/body tags and complete registered CBOR vectors. Old readers reject new magic and new readers never retry old bytes as expressions.
-- [ ] Implement exact tuple grammar; decode all sections then independently validate before exposing any root. Reject nonminimal/truncated/trailing/oversized/unknown tuples, malformed binders and forged annotations, including unselected branches.
-- [ ] Sweep allocation/cancellation at every observed decode boundary, test each independent retention limit exactly/one-over, and require recovery on unchanged valid bytes. No failed decode may return a partial project/view.
+- [x] Write literal comparisons for magic `NEUP3\r\n\x1a`, exact 22-position arity, all node/body tags and complete registered CBOR vectors. Old readers reject new magic and new readers never retry old bytes as expressions.
+- [x] Implement exact tuple grammar; decode all sections then independently validate before exposing any root. Reject nonminimal/truncated/trailing/oversized/unknown tuples, malformed binders and forged annotations, including unselected branches.
+- [x] Sweep allocation/cancellation at every observed decode boundary, test each independent retention limit exactly/one-over, and require recovery on unchanged valid bytes. No failed decode may return a partial project/view.
+
+Qualification (17-10-2026): owning transport tests compare hand-encoded node/operator
+tuples and all three complete frozen artifacts, reject each of the 45 zero producer
+and caller controls, and exercise literal semantic plus wire boundaries. Reservation
+and cancellation sweeps require the injected checkpoint to be reached and valid bytes
+to recover. The file-backed expression pipeline exercises 37 positive retained-count,
+storage and work controls with multiple modules, diamond vocabulary closure and
+multi-axis templates. This caught and fixed expansion attribution using producer
+limits instead of the effective caller/producer intersection. Compile-time expansion
+visitation/depth and later evaluator output controls are execution requirements, not
+invented retained history; their qualification remains with the owning tasks.
+`cargo xtask test all` passes (1,300 tests, zero skipped, plus doctests); full workspace
+Clippy and `cargo xtask ci pr` pass, including documentation generation. Frozen bytes
+and historical codec acceptance are unchanged.
 
 ## Task 7: Public closure, entry discovery and guarded dependency exposure
 
@@ -179,6 +193,15 @@ Later-task code already present is not qualification or activation evidence; Tas
 - [ ] Use a file-backed project-neutral operation/result/prerequisite vocabulary. Expose its explicit prerequisite values separately from expression dependencies; consumer-specific cycle/capability decisions remain reported consumer decisions, not a core scheduler.
 - [ ] Test duplicate/unknown/malformed/skipped bindings, exact type/revision/visibility, null versus absence, private-origin redaction, atomic failure and subsequent-request recovery.
 
+Continuation evidence (17-10-2026): runtime-owned file-backed source/vocabulary
+fixtures now exercise static decimal/short-circuit results, filtered template
+expansion, guarded input/output dependencies, explicit prerequisite separation,
+independent public views, result-root validation and retained vocabulary restrictions
+through source → complete wire → independent reader → explicit consumer reports.
+Binding-generation changes preserve complete identity; unavailable/failed bindings
+have literal outcomes and later valid requests recover. These integration cases
+supplement the component suites; they do not yet close every Task 7–9 corpus gate.
+
 ## Task 9: Explicit `/3` capture, source semantics and finite expansion
 
 **Files:** `neutral-compiler/src/project_capture/expression.rs`; `frontend/expressions/{mod,parser,resolution,lowering}.rs`; `frontend/expansion/{mod,parameters,matrix,attribution}.rs`; owning compiler tests. Reuse existing lexer/header/capture/graph ownership and shared semantic library; make contextual successor parsing explicit rather than widening historical parser acceptance.
@@ -199,6 +222,12 @@ Later-task code already present is not qualification or activation evidence; Tas
 - [ ] Verify probe dependency graph is compiler-free. Compare complete independently decoded public contracts and literal consumer reports with source-produced artifacts; no source reparse or registry acquisition.
 - [ ] Compare actual clean, warm-cache and changed-unit compilation, including changed vocabulary/default/restriction, source evidence and semantic tuple. Failed/cancelled attempts preserve the prior successful generation; a later valid request succeeds without cross-request leakage.
 - [ ] Confirm binding context and selected roots cannot alter complete captured/logical identity. Test unsupported tuple/feature and missing contract rejection before public summary publication.
+
+Continuation evidence (17-10-2026): independent encoded entry probing now compares
+unique and explicit-empty roots on source-produced artifacts, preserves complete
+logical identity, and rejects unsupported features/truncation before a summary.
+Actual expression-cache execution is still required; captured replay and these
+reader/probe tests are not cache equivalence evidence.
 
 ## Task 11: Qualification, scope registration and honest gate closure
 

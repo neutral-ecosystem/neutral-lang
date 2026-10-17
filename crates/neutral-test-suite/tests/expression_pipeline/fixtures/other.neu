@@ -1,0 +1,4 @@
+neu "1.0"
+module pipeline::other
+
+public num number = 2

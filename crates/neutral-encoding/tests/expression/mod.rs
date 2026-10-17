@@ -20,6 +20,8 @@ use neutral_ir::{
     project_interface::ProjectPublicType as T,
 };
 
+mod qualification;
+
 /// Decodes independently registered hex literals, never deriving expected bytes from the codec.
 fn hex(value: &str) -> Vec<u8> {
     value
@@ -622,15 +624,23 @@ fn all_observed_decode_reservations_fail_atomically_and_recover() {
         };
         let (result, count) = testing::observe(None, || decode(&CancellationToken::new()));
         assert!(result.is_ok());
+        assert!(count > 0, "decode sweep must observe actual reservations");
         for index in 0..count {
-            let (result, _) = testing::observe(Some(index), || decode(&CancellationToken::new()));
+            let (result, observed) =
+                testing::observe(Some(index), || decode(&CancellationToken::new()));
+            assert!(observed > index, "allocation {index} must be reached");
             assert_eq!(
                 result.unwrap_err().class(),
                 C::EncodedSizeLimit,
                 "allocation {index}"
             );
             let cancel = CancellationToken::new();
-            let (result, _) = testing::observe_cancellation(index, &cancel, || decode(&cancel));
+            let (result, observed) =
+                testing::observe_cancellation(index, &cancel, || decode(&cancel));
+            assert!(
+                observed > index && cancel.is_cancelled(),
+                "cancellation {index} must be reached"
+            );
             assert_eq!(
                 result.unwrap_err().class(),
                 C::Cancelled,

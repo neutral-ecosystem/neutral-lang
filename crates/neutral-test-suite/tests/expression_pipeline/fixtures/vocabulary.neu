@@ -1,0 +1,17 @@
+neu "1.0"
+module pipeline
+use PipelineDomain as domain
+
+public domain::Operation producer = {}
+public input bool enabled
+
+public domain::Plan entry = {
+    value: if enabled {
+        output<num>(ref(producer), domain::Result, [
+            { kind: "field", name: "values" },
+            { kind: "index", index: 1 },
+        ])
+    } else {
+        1 / 8
+    },
+}

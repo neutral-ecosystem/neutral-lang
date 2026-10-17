@@ -41,3 +41,7 @@ mod source_pipeline;
 #[cfg(test)]
 #[path = "../tests/composition_contract/mod.rs"]
 mod composition_contract;
+
+#[cfg(test)]
+#[path = "../tests/expression_pipeline/mod.rs"]
+mod expression_pipeline;

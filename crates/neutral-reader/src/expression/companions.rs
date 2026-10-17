@@ -10,6 +10,7 @@ use neutral_ir::{
     expression::{
         Expression, ExpressionBody, ExpressionNode as N,
         project::{ExpressionProjectIr, inspect_expression_project_resources},
+        templates::ExpansionLimits,
     },
     project::{ProjectResourceFacts, ProjectSourceMap},
 };
@@ -96,7 +97,7 @@ pub(super) fn validate(
         cancel,
     };
     sources(ir, &mut budget)?;
-    attributions(ir, &mut budget)?;
+    attributions(ir, limits.expansion, &mut budget)?;
     origins::validate(model, &mut budget)?;
     provenance::validate(model, &mut budget)?;
     budget.step(0)
@@ -287,8 +288,12 @@ fn node<'a>(
     Ok(root)
 }
 /// Checks paths, canonical evidence order and real expansion lineage.
-fn attributions(ir: &ExpressionProjectIr, budget: &mut Budget<'_>) -> Result<(), E> {
-    expansion_attributions(ir, budget)?;
+fn attributions(
+    ir: &ExpressionProjectIr,
+    expansion: ExpansionLimits,
+    budget: &mut Budget<'_>,
+) -> Result<(), E> {
+    expansion_attributions(ir, expansion, budget)?;
     let mut previous = None;
     for attribution in &ir.expression_attributions {
         budget.step(
@@ -359,7 +364,11 @@ fn attributions(ir: &ExpressionProjectIr, budget: &mut Budget<'_>) -> Result<(),
 }
 
 /// Checks retained lineage before expression/provenance locations may rely on it.
-fn expansion_attributions(ir: &ExpressionProjectIr, budget: &mut Budget<'_>) -> Result<(), E> {
+fn expansion_attributions(
+    ir: &ExpressionProjectIr,
+    limits: ExpansionLimits,
+    budget: &mut Budget<'_>,
+) -> Result<(), E> {
     let mut previous = None;
     for attribution in &ir.expansion_attributions {
         budget.step(
@@ -408,18 +417,16 @@ fn expansion_attributions(ir: &ExpressionProjectIr, budget: &mut Budget<'_>) -> 
                 return Err(E::Companion);
             }
         }
-        if attribution.arguments.len() as u64 > ir.expansion_limits.parameters
-            || attribution.original_axis_indices.len() as u64 > ir.expansion_limits.axes
+        if attribution.arguments.len() as u64 > limits.parameters
+            || attribution.original_axis_indices.len() as u64 > limits.axes
         {
             return Err(E::Limit);
         }
-        if attribution.original_axis_indices.iter().any(|index| {
-            *index
-                >= ir
-                    .expansion_limits
-                    .axis_items
-                    .min(neutral_ir::expression::templates::ExpansionLimits::hard().axis_items)
-        }) {
+        if attribution
+            .original_axis_indices
+            .iter()
+            .any(|index| *index >= limits.axis_items)
+        {
             return Err(E::Limit);
         }
     }

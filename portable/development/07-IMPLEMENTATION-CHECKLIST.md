@@ -630,9 +630,14 @@ Slice 1 — consumer contract foundation:
   Nullable list/record/variant constructors preserve their exact declared context;
   selectors still cannot implicitly unwrap nullable values. These tests are partial
   qualification, not activation or completion of the remaining pipeline gates.
-  Remaining: qualification of complete source/IR/wire/reader integration, expansion,
-  guarded consumer binding/dependency reports and actual cache execution. Work stops
-  at the implementation plan's Task 5; later-task code is not completion evidence.
+  Task 6 complete transport qualification now covers frozen wire literals, hostile
+  tuples, observed allocation/cancellation recovery and independent retained limits.
+  File-backed integration also covers static/residual/template source-to-artifact
+  reading, guarded consumer reports, vocabulary restriction debt and independent
+  entry probing. A tighter caller expansion limit is enforced on retained lineage.
+  Remaining: every registered source/expansion/consumer corpus gate, actual `/3`
+  cache execution and final unchanged-input qualification campaigns. Integration
+  examples do not replace these requirements or complete later plan tasks.
   This gate remains open and `/3` is not activated.
 
 Slice 2 — pure semantics and identity:

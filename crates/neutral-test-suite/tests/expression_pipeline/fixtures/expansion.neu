@@ -1,0 +1,24 @@
+neu "1.0"
+module pipeline
+
+public record Item {
+    num count = 2,
+}
+
+public variant Choice {
+    Item ready,
+    string failed,
+}
+
+public template Make(static num value = 1, deferred num offset = 2) -> Choice {
+    if value > 0 {
+        { tag: "ready", payload: { count: value + offset } }
+    } else {
+        { tag: "failed", payload: "bad" }
+    }
+}
+
+public expand choices = Make(value: axis)
+    for (axis in [1, 2])
+    where axis > 0
+    exclude [{ axis: 2 }]
