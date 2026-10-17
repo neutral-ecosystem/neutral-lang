@@ -14,6 +14,9 @@ No ambient bindings, execution, backend adapters or acquisition are involved.
   obligations that survive encoding.
 - `inspection.rs`: independently decoded probe/entry selection, root-invariant
   identity and exact feature rejection without evaluation.
+- `projection.rs`: literal nested if/match/short-circuit guard paths, repeated
+  output-key occurrences, retained vocabulary obligations and private-origin
+  redaction through the public accessors after independent decoding.
 - `bounds.rs`: inclusive and positive one-over boundaries for 37 artifact-retained
   project, vocabulary, expression and expansion controls, with recovery.
 - `fixtures/`: file-backed source and a closed captured vocabulary; imports and

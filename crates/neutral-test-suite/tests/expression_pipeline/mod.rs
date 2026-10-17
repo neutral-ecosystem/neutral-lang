@@ -32,6 +32,7 @@ use neutral_vocabulary::{VocabularyLimits, composition::CompositionLimits};
 mod bounds;
 mod consumer;
 mod inspection;
+mod projection;
 
 /// Stable logical symbol; source IDs and host paths never participate in meaning.
 fn symbol(name: &str) -> ModuleSymbolIdentity {

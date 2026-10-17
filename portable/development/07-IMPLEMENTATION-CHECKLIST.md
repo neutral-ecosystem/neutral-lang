@@ -635,6 +635,11 @@ Slice 1 — consumer contract foundation:
   File-backed integration also covers static/residual/template source-to-artifact
   reading, guarded consumer reports, vocabulary restriction debt and independent
   entry probing. A tighter caller expansion limit is enforced on retained lineage.
+  Task 7 public closure qualification now verifies nested/repeated-key guards,
+  independently decoded presence/index/alternative and restriction obligations,
+  private-origin redaction, exact ordered entry selection and positive shared
+  selection/projection budgets with fault recovery. Reader checks do not imply
+  complete source-producer reuse lineage; that remains Task 9 qualification.
   Remaining: every registered source/expansion/consumer corpus gate, actual `/3`
   cache execution and final unchanged-input qualification campaigns. Integration
   examples do not replace these requirements or complete later plan tasks.

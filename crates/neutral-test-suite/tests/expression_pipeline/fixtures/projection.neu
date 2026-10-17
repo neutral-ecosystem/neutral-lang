@@ -1,0 +1,21 @@
+neu "1.0"
+module pipeline
+use PipelineDomain as domain
+
+num private_seed = 1 / 8
+string private_secret = "not-public"
+public num exposed = private_seed
+
+public input bool enabled
+public domain::Operation producer = {}
+public domain::Plan entry = {
+    value: if enabled {
+        output<num>(ref(producer), domain::Result, [
+            { kind: "field", name: "values" },
+            { kind: "index", index: 1 },
+            { kind: "alternative", name: "ready" },
+        ])
+    } else {
+        exposed
+    },
+}

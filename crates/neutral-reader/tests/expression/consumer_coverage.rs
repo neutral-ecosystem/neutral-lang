@@ -292,9 +292,8 @@ fn dependency_limits_and_cancellation_fail_atomically_then_recover() {
     );
 }
 
-#[test]
-/// Distinguishes enumeration, ambiguous uniqueness and missing uniqueness.
-fn entry_cardinality_distinguishes_empty_unique_and_ambiguous_matches() {
+/// Two public entries share one exact nominal contract without inventing materialized inputs.
+fn two_entries_fixture() -> ExpressionProjectIr {
     let mut ir = default_fixture(loc("m", 20, 21));
     let owner = symbol("m", "b");
     ir.declarations.push(ExpressionDeclaration {
@@ -313,7 +312,13 @@ fn entry_cardinality_distinguishes_empty_unique_and_ambiguous_matches() {
         kind: K::Type,
         location: loc("m", 81, 82),
     });
-    let project = authority(ir);
+    ir
+}
+
+#[test]
+/// Distinguishes enumeration, ambiguous uniqueness and missing uniqueness.
+fn entry_cardinality_distinguishes_empty_unique_and_ambiguous_matches() {
+    let project = authority(two_entries_fixture());
     let ty = T::Nominal(symbol("m", "Record"));
     let request = EntryRequest {
         schema: ENTRY_REQUEST_SCHEMA,
@@ -452,3 +457,6 @@ fn template_dependencies_inspect_the_body_without_evaluating_it() {
 
 #[path = "dependency_regions.rs"]
 mod dependency_regions;
+
+#[path = "selection.rs"]
+mod selection;

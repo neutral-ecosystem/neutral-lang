@@ -178,9 +178,24 @@ and historical codec acceptance are unchanged.
 
 **Interfaces:** A validated expression project exposes `dependencies(owner, limits, cancel) -> Result<GuardedDependencies, ExpressionReadError>` and a bounded redacted public view. Each dependency retains canonical consuming site, exact input/output key, and guard path conditions (Boolean branch or match tag) derived from the validated tree. Guard facts reference validated expression sites, not executable strings. Separate accessors expose structural refs and consumer-selected ordinary prerequisite data.
 
-- [ ] Write literal dependency oracles for nested if/match/short-circuit branches; repeated output keys at different sites retain their distinct guards. No traversal evaluates a guard or changes topology.
-- [ ] Test public views retain all potential public dependencies and all interpretation contracts, even for unselected branches, while redacting private implementation attribution. Future selector availability and restriction obligations remain discoverable after independent decode.
-- [ ] Test canonical entry ordering, ambiguous/missing/explicit-empty selection, exact profile/features and independent root/edge/work/output controls on `/3`. Do not advertise a profile through a wildcard tuple.
+- [x] Write literal dependency oracles for nested if/match/short-circuit branches; repeated output keys at different sites retain their distinct guards. No traversal evaluates a guard or changes topology.
+- [x] Test public views retain all potential public dependencies and all interpretation contracts, even for unselected branches, while redacting private implementation attribution. Future selector availability and restriction obligations remain discoverable after independent decode.
+- [x] Test canonical entry ordering, ambiguous/missing/explicit-empty selection, exact profile/features and independent root/edge/work/output controls on `/3`. Do not advertise a profile through a wildcard tuple.
+
+Qualification (17-10-2026): six owning-reader tests and three source → wire →
+reader integration tests extend the existing cardinality and projection suites.
+Literal nested if/match/AND/OR paths distinguish four occurrences of one exact
+output key. Decoded views retain optional-field presence, list-index and variant
+availability obligations, exact vocabulary restrictions and all potential public
+contracts. Complete private reuse evidence is redacted by the owning reader test;
+decoded source exports preserve materialized values without exposing private
+occurrences. Positive root/edge/work/storage boundaries, shared selection/projection
+budgets and observed allocation/cancellation recovery pass. Deliberate guard leaks,
+budget resets, private-origin leaks and dropped availability obligations each fail
+the corresponding oracle; all temporary faults were restored. No production API,
+type checker, codec, frozen vector or profile-availability change was needed.
+`cargo xtask test all` passes (1,309 tests, zero skipped, plus doctests), as do
+formatting, full workspace Clippy and `cargo xtask ci pr`, including documentation.
 
 ## Task 8: Explicit consumer binding and availability/failure reports
 
@@ -212,6 +227,12 @@ supplement the component suites; they do not yet close every Task 7–9 corpus g
 - [ ] Implement definition-scoped templates, static/deferred parameters, ordered named/default arguments, capture-free lexical substitution and recursion rejection. Templates are never runtime-callable values.
 - [ ] Implement finite static matrices with preflight Cartesian cardinality, original axis-index names, aggregate visitation/work/storage limits, filters/exclusions and source attribution. Deferred values cannot affect count/names/topology. Test empty axes, repeated values, collisions and filtered one-over products.
 - [ ] Run all registered source/type/evaluation/expansion literal cases through compilation and independent reading; preserve errors and no-I/O behavior. Complete all required feature paths before any explicit capture `/3` availability advertisement.
+
+Known source-companion qualification gap: expression normalization currently
+materializes private immutable reuse without emitting its reuse edge in
+`frontend/expressions/lowering.rs`. Task 7 proves redaction of supplied, checked
+reuse evidence; it does not prove that this source producer retains that evidence.
+Cover producer lineage before closing this task's complete source/companion gate.
 
 ## Task 10: Independent probe and actual clean/cache equivalence
 

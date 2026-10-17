@@ -226,10 +226,9 @@ fn integration_expression_output_roots_validate_before_demand_and_recover() {
 }
 
 /// Captures the file-backed domain under one exact content lock and crosses the independent wire boundary.
-fn vocabulary_project() -> ValidatedExpressionProject {
+pub(super) fn vocabulary_project(source: &[u8], bytes: &[u8]) -> ValidatedExpressionProject {
     use neutral_core::VocabularyContentDigest;
     use neutral_vocabulary::{VocabularyLock, composition};
-    let bytes = include_bytes!("fixtures/domain.json");
     let lock = VocabularyLock::new(
         "PipelineDomain",
         "1.0.0",
@@ -240,7 +239,7 @@ fn vocabulary_project() -> ValidatedExpressionProject {
     )
     .unwrap();
     let captured = capture_with_vocabularies(
-        include_bytes!("fixtures/vocabulary.neu"),
+        source,
         vec![neutral_compiler::CapturedVocabularyInput::new(
             bytes.to_vec(),
             lock,
@@ -252,7 +251,10 @@ fn vocabulary_project() -> ValidatedExpressionProject {
 /// Vocabulary restrictions remain obligations over the wire and are enforced only on demanded values.
 #[test]
 fn integration_expression_vocabulary_restrictions_survive_wire_and_binding_revisions() {
-    let project = vocabulary_project();
+    let project = vocabulary_project(
+        include_bytes!("fixtures/vocabulary.neu"),
+        include_bytes!("fixtures/domain.json"),
+    );
     let cancel = CancellationToken::new();
     let ty = |name: &str| T::VocabularyNominal {
         identity: "PipelineDomain".into(),
