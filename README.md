@@ -2,7 +2,12 @@
 
 <p align="center">
   <a href="https://github.com/neutral-ecosystem/neutral-lang">
-    <img src="assets/neutral-logo-rounded.png" alt="Neutral programming language">
+    <img
+      src="assets/neutral-banner.png"
+      alt="Neutral — a portable declarative language"
+      width="100%"
+      style="border-radius: 16px;"
+    />
   </a>
 </p>
 
