@@ -241,6 +241,10 @@ impl<'a> Budget<'a> {
     pub(super) fn remaining_work(&self) -> u64 {
         self.limits.work - self.work
     }
+    /// Carries already charged context/envelope bytes into a dependent semantic request.
+    pub(super) fn remaining_bytes(&self) -> u64 {
+        self.limits.bytes - self.bytes
+    }
     /// Starts independent accounting for one atomic request.
     pub(super) fn new(limits: ConsumerLimits, cancellation: &'a CancellationToken) -> Self {
         Self {

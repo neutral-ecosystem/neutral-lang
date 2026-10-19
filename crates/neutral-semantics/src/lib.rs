@@ -13,7 +13,7 @@ mod validation;
 mod values;
 pub use evaluation::{
     Binding, BindingKey, BindingState, EvaluationError, EvaluationRequest, EvaluationResult,
-    NormalizedBinding, OutputAssociation, evaluate, normalize_binding,
+    NormalizedBinding, OutputAssociation, evaluate, evaluate_checked, normalize_binding,
     validate_evaluation_bindings,
 };
 pub use model::*;

@@ -640,6 +640,12 @@ Slice 1 — consumer contract foundation:
   private-origin redaction, exact ordered entry selection and positive shared
   selection/projection budgets with fault recovery. Reader checks do not imply
   complete source-producer reuse lineage; that remains Task 9 qualification.
+  Task 8 consumer qualification covers vocabulary-owned prerequisites, exact
+  associations/types/revisions, malformed skipped envelopes, null/absence and safe
+  unavailable/failure reports. Context, policy and semantic work/storage share one
+  request budget; every observed registration/preflight/report allocation and
+  cancellation preserves prior authority and recovers. Consumer revisions do not
+  rewrite project identity; unretained evaluation attribution is explicit.
   Remaining: every registered source/expansion/consumer corpus gate, actual `/3`
   cache execution and final unchanged-input qualification campaigns. Integration
   examples do not replace these requirements or complete later plan tasks.

@@ -170,3 +170,33 @@ no partial selection and never mutates the reader. JSON transport owners still
 must reject unknown fields and invalid index representations before these typed
 APIs. Run `cargo test -p neutral-test-suite selectors::` for decoded-artifact,
 privacy, boundary and allocation/cancellation regression tests.
+
+## Explicit expression bindings and reports
+
+`expression::ExpressionConsumerBoundary` borrows complete independently validated
+expression authority. Its policy registers exact public report/result contracts,
+producer associations and supported features. Associations are consumer assertions,
+not proof of authorization or successful execution; no operation field name grants
+authority. Duplicate or unregistered request associations reject before substitution
+of the registered policy.
+
+`validate_bindings` checks every supplied envelope, including skipped branches,
+without evaluation. Explicit `evaluate` validates once and shares the remaining
+work/storage budget with evaluation. Context revisions, policy checks and semantic
+work cannot each restart the request budget. Reports bind complete logical identity,
+the public selected entry and opaque adapter/target/input revisions. Changed bindings
+or revisions never rewrite project identity or a previous report.
+
+Null, absent, unavailable and failed inputs have distinct closed outcomes. Malformed
+envelopes are outer errors; demanded failures use the evaluator's safe codes, never
+compiler diagnostics or raw backend text. Occurrence-specific evaluation evidence
+is explicitly `Unavailable(NotRetained)`, not a fabricated declaration span or a
+private origin. Use public view accessors for independently checked retained evidence.
+
+Prerequisites remain ordinary vocabulary-owned values, separate from guarded value
+dependencies. Cycle/capability decisions and their consumer diagnostic codes remain
+consumer-owned; these APIs do not schedule, authorize, acquire or execute anything.
+The successor remains explicitly requested, not the default source/CLI profile.
+Run `cargo test -p neutral-test-suite expression_pipeline::consumer` for file-backed
+source → wire → reader → explicit report tests, and
+`cargo test -p neutral-reader binding_reports` for budget/fault/recovery tests.

@@ -199,14 +199,16 @@ formatting, full workspace Clippy and `cargo xtask ci pr`, including documentati
 
 ## Task 8: Explicit consumer binding and availability/failure reports
 
-**Files:** `neutral-reader/src/consumer/expression/{bindings,reports,context}.rs`; owning consumer tests and project-neutral runtime fixtures in `neutral-test-suite/tests/expression_pipeline/fixtures/`.
+**Files:** `neutral-reader/src/consumer/expression.rs`, shared consumer validation
+and semantic evaluation; owning `tests/expression/{boundary_coverage,binding_reports}.rs`
+and project-neutral runtime fixtures in `neutral-test-suite/tests/expression_pipeline/fixtures/`.
 
 **Interfaces:** `ExpressionConsumerBoundary` borrows complete validated `/3` authority and an explicit consumer policy. The policy registers exact report contract, public producer/result associations and consumer diagnostic codes. `validate_bindings(request, cancel)` checks borrowed explicit input/output binding envelopes without evaluating; explicit `evaluate(request, cancel)` delegates to Task 4. Reports bind complete logical identity, selected public entry and adapter/target/input revisions. Reuse existing closed status/location/diagnostic concepts; never relabel consumer availability or scheduling-policy failures as compiler errors.
 
-- [ ] Write `forged_output_association_is_rejected`, `restriction_debt_survives_until_value_supply`, `prerequisites_do_not_become_guarded_value_edges`, `binding_revisions_do_not_rewrite_project_identity`, and safe unavailable/failed report oracles.
-- [ ] Verify explicit producer/result association is checked against registered consumer policy and public model contracts; it is not evidence of authorization or real backend success. No universal operation field name conveys authority.
-- [ ] Use a file-backed project-neutral operation/result/prerequisite vocabulary. Expose its explicit prerequisite values separately from expression dependencies; consumer-specific cycle/capability decisions remain reported consumer decisions, not a core scheduler.
-- [ ] Test duplicate/unknown/malformed/skipped bindings, exact type/revision/visibility, null versus absence, private-origin redaction, atomic failure and subsequent-request recovery.
+- [x] Write `forged_output_association_is_rejected`, `restriction_debt_survives_until_value_supply`, `prerequisites_do_not_become_guarded_value_edges`, `binding_revisions_do_not_rewrite_project_identity`, and safe unavailable/failed report oracles.
+- [x] Verify explicit producer/result association is checked against registered consumer policy and public model contracts; it is not evidence of authorization or real backend success. No universal operation field name conveys authority.
+- [x] Use a file-backed project-neutral operation/result/prerequisite vocabulary. Expose its explicit prerequisite values separately from expression dependencies; consumer-specific cycle/capability decisions remain reported consumer decisions, not a core scheduler.
+- [x] Test duplicate/unknown/malformed/skipped bindings, exact type/revision/visibility, null versus absence, private-origin redaction, atomic failure and subsequent-request recovery.
 
 Continuation evidence (17-10-2026): runtime-owned file-backed source/vocabulary
 fixtures now exercise static decimal/short-circuit results, filtered template
@@ -216,6 +218,20 @@ through source → complete wire → independent reader → explicit consumer re
 Binding-generation changes preserve complete identity; unavailable/failed bindings
 have literal outcomes and later valid requests recover. These integration cases
 supplement the component suites; they do not yet close every Task 7–9 corpus gate.
+
+Task 8 qualification (19-10-2026): the independently decoded `consumer.neu` /
+`consumer-domain.json` fixture retains vocabulary-owned prerequisites separately
+from guarded outputs. Owning and pipeline tests cover exact policy/revision/type
+checks, duplicate associations, malformed skipped generations, null/absence,
+unavailable/failed outcomes, safe explicit `NotRetained` attribution and recovery.
+Context/policy work and bytes now carry into semantic preflight/evaluation without
+resetting; checked evaluation performs preflight once. Every observed registration,
+binding-validation and demanded-report allocation/cancellation is swept with recovery
+and preservation of accepted reports. Long common-prefix association keys charge
+lookup/membership/duplicate comparison bytes, not constant-time handles. Consumer
+decisions remain outside evaluation.
+This completes Task 8 only; source/expansion, actual cache execution and final
+unchanged-input campaigns retain their own later checkboxes.
 
 ## Task 9: Explicit `/3` capture, source semantics and finite expansion
 

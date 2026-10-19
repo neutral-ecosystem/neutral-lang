@@ -122,11 +122,27 @@ pub fn evaluate<'m>(
     request: &EvaluationRequest<'_>,
     cancellation: &CancellationToken,
 ) -> EvaluationResult<'m> {
-    match run(model, request, cancellation, Mode::Consumer) {
+    evaluate_checked(model, request, cancellation).unwrap_or_else(EvaluationResult::Failure)
+}
+
+/// Validates supplied envelopes once, then evaluates with the same remaining request budget.
+///
+/// Unlike [`evaluate`], malformed request/envelope failures remain outer errors;
+/// demanded unavailability and selected-path failures remain report outcomes.
+/// # Errors
+/// Rejects incompatible profiles, invalid bindings and preflight limits/cancellation before evaluation.
+pub fn evaluate_checked<'m>(
+    model: &'m ValidatedExpressionModel,
+    request: &EvaluationRequest<'_>,
+    cancellation: &CancellationToken,
+) -> Result<EvaluationResult<'m>, EvaluationError> {
+    let (state, declaration, ty) =
+        prepare(model, request, cancellation, Mode::Consumer).map_err(preparation_error)?;
+    Ok(match run(state, declaration, ty, cancellation) {
         Ok(value) => value,
         Err(Flow::Failure(error)) => EvaluationResult::Failure(error),
         Err(Flow::Unavailable(key)) => EvaluationResult::Unavailable(key),
-    }
+    })
 }
 
 /// Checks a complete explicit binding generation without evaluating its selected path.
@@ -139,10 +155,15 @@ pub fn validate_evaluation_bindings(
 ) -> Result<(), EvaluationError> {
     prepare(model, request, cancellation, Mode::Consumer)
         .map(|_| ())
-        .map_err(|flow| match flow {
-            Flow::Failure(error) => error,
-            Flow::Unavailable(_) => EvaluationError::InvalidBinding,
-        })
+        .map_err(preparation_error)
+}
+
+/// Preparation never demands a value; preserve safe boundary failures without publishing state.
+fn preparation_error(flow: Flow<'_>) -> EvaluationError {
+    match flow {
+        Flow::Failure(error) => error,
+        Flow::Unavailable(_) => EvaluationError::InvalidBinding,
+    }
 }
 
 /// Producer folding can inspect private bindings but cannot accept consumer envelopes.
@@ -155,6 +176,7 @@ enum Mode {
 }
 
 /// Internal short-circuit control; failures/unavailable states stop ordinary traversal atomically.
+#[derive(Clone, Copy)]
 enum Flow<'m> {
     /// Safe failure without partially calculated data.
     Failure(EvaluationError),
@@ -196,12 +218,11 @@ struct State<'m, 'r> {
 
 /// Validates envelopes first, then walks only demanded operands and checks complete results.
 fn run<'m>(
-    model: &'m ValidatedExpressionModel,
-    request: &EvaluationRequest<'_>,
+    mut state: State<'m, '_>,
+    declaration: &'m neutral_ir::expression::project::ExpressionDeclaration,
+    ty: &'m T,
     cancel: &CancellationToken,
-    mode: Mode,
 ) -> Result<EvaluationResult<'m>, Flow<'m>> {
-    let (mut state, declaration, ty) = prepare(model, request, cancel, mode)?;
     let value = match declaration
         .body
         .as_ref()

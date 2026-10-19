@@ -1,0 +1,23 @@
+neu "1.0"
+module pipeline
+use PipelineDomain as domain
+
+public domain::Operation prepare = {}
+public domain::Operation producer = {}
+domain::Operation private_operation = {}
+input num private_number
+public input bool enabled
+public input num? nullable_value
+public input domain::Result result_input
+
+public domain::Plan entry = {
+    prerequisites: [ref(prepare)],
+    value: if enabled {
+        output<num>(ref(producer), domain::Result, [
+            { kind: "field", name: "values" },
+            { kind: "index", index: 1 },
+        ])
+    } else {
+        1 / 8
+    },
+}

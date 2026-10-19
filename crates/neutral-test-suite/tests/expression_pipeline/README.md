@@ -12,6 +12,9 @@ No ambient bindings, execution, backend adapters or acquisition are involved.
 - `consumer.rs`: explicitly supplied input/output generations, complete result
   validation, guarded demand, unavailable/failed reports and vocabulary restriction
   obligations that survive encoding.
+- `consumer/generations.rs`: vocabulary-owned prerequisites, exact policy/result
+  associations, malformed skipped generations, null/absence/unavailable/failure,
+  explicit unavailable attribution and adapter/target/input revision invariance.
 - `inspection.rs`: independently decoded probe/entry selection, root-invariant
   identity and exact feature rejection without evaluation.
 - `projection.rs`: literal nested if/match/short-circuit guard paths, repeated
@@ -19,7 +22,8 @@ No ambient bindings, execution, backend adapters or acquisition are involved.
   redaction through the public accessors after independent decoding.
 - `bounds.rs`: inclusive and positive one-over boundaries for 37 artifact-retained
   project, vocabulary, expression and expansion controls, with recovery.
-- `fixtures/`: file-backed source and a closed captured vocabulary; imports and
+- `fixtures/`: file-backed source and closed captured vocabularies, including
+  `consumer.neu` / `consumer-domain.json` for operation/result/prerequisite data; imports and
   diamond bundles in the boundary test remain explicit request inputs.
 
 Run `cargo xtask test integration` for these and other integration tests, or

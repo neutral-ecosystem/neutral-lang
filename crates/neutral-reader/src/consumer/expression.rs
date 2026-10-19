@@ -3,7 +3,8 @@
 //! Explicit consumer policy and binding reports; no scheduler, callback or ambient lookup.
 
 use super::{
-    ConsumerContext, ConsumerError, ConsumerLimits, ConsumerProtocol,
+    ConsumerContext, ConsumerError, ConsumerLimits, ConsumerLocation, ConsumerProtocol,
+    LocationUnavailable,
     validation::{Budget, public_scope_type},
 };
 use crate::expression::ValidatedExpressionProject;
@@ -17,7 +18,7 @@ use neutral_ir::{
     project_interface::ProjectPublicType as T,
 };
 use neutral_semantics::{
-    EvaluationError, EvaluationRequest, EvaluationResult, OutputAssociation, evaluate,
+    EvaluationError, EvaluationRequest, EvaluationResult, OutputAssociation, evaluate_checked,
     validate_evaluation_bindings,
 };
 
@@ -57,6 +58,8 @@ pub struct ExpressionEvaluationReport<'p, 'r> {
     pub entry: &'p ModuleSymbolIdentity,
     /// Consumer context; it never replaces or rewrites project identity.
     pub context: ConsumerContext<'r>,
+    /// Explicit absence of occurrence-specific evaluation evidence; never a fabricated declaration span.
+    pub attribution: ConsumerLocation<'p>,
     /// Complete value, selected demand, unavailable state or structured failure.
     pub outcome: EvaluationResult<'p>,
 }
@@ -113,11 +116,21 @@ impl<'p, 'a> ExpressionConsumerBoundary<'p, 'a> {
             return Err(ConsumerError::Limit.into());
         }
         for (index, association) in policy.associations.iter().enumerate() {
+            let before = budget.remaining_work();
             budget.symbol(association.target)?;
             public_scope_type(
                 project.model().scope(),
                 association.result_type,
                 &mut budget,
+            )?;
+            let key_work = before - budget.remaining_work();
+            // Equality and lookup compare identifier bytes, not constant-size handles.
+            let comparisons =
+                index as u64 + u64::from(project.ir().declarations.len().bit_width()) + 1;
+            budget.work(
+                key_work
+                    .checked_mul(comparisons)
+                    .ok_or(ConsumerError::Limit)?,
             )?;
             let d = project
                 .ir()
@@ -134,7 +147,6 @@ impl<'p, 'a> ExpressionConsumerBoundary<'p, 'a> {
             {
                 return Err(ConsumerError::PrivateTarget.into());
             }
-            budget.work(index as u64 + 1)?;
             if policy.associations[..index]
                 .iter()
                 .any(|a| a == association)
@@ -145,9 +157,9 @@ impl<'p, 'a> ExpressionConsumerBoundary<'p, 'a> {
         let identity = canonical_expression_project(
             project.ir(),
             IdentityLimits {
-                bytes: limits.bytes,
-                nodes: limits
-                    .work
+                bytes: budget.remaining_bytes(),
+                nodes: budget
+                    .remaining_work()
                     .min(neutral_ir::project_identity::MAX_TRANSCRIPT_NODES),
             },
             cancellation,
@@ -179,7 +191,8 @@ impl<'p, 'a> ExpressionConsumerBoundary<'p, 'a> {
         request: &EvaluationRequest<'_>,
         cancellation: &CancellationToken,
     ) -> Result<(), ExpressionConsumerError> {
-        let request = self.request(request, cancellation)?;
+        let mut budget = Budget::new(self.limits, cancellation);
+        let request = self.request(request, &mut budget)?;
         validate_evaluation_bindings(self.project.model(), &request, cancellation)?;
         Ok(())
     }
@@ -196,8 +209,8 @@ impl<'p, 'a> ExpressionConsumerBoundary<'p, 'a> {
         budget.text(context.adapter_revision)?;
         budget.text(context.target_revision)?;
         budget.text(context.input_revision)?;
-        let request = self.request(request, cancellation)?;
-        validate_evaluation_bindings(self.project.model(), &request, cancellation)?;
+        let request = self.request(request, &mut budget)?;
+        let outcome = evaluate_checked(self.project.model(), &request, cancellation)?;
         let entry = self
             .project
             .ir()
@@ -206,12 +219,12 @@ impl<'p, 'a> ExpressionConsumerBoundary<'p, 'a> {
             .ok()
             .map(|i| &self.project.ir().declarations[i].identity)
             .ok_or(ConsumerError::PrivateTarget)?;
-        let outcome = evaluate(self.project.model(), &request, cancellation);
         budget.work(0)?;
         Ok(ExpressionEvaluationReport {
             project_identity: self.identity,
             entry,
             context,
+            attribution: ConsumerLocation::Unavailable(LocationUnavailable::NotRetained),
             outcome,
         })
     }
@@ -219,21 +232,29 @@ impl<'p, 'a> ExpressionConsumerBoundary<'p, 'a> {
     fn request<'r>(
         &'r self,
         request: &'r EvaluationRequest<'r>,
-        cancellation: &CancellationToken,
+        budget: &mut Budget<'_>,
     ) -> Result<EvaluationRequest<'r>, ExpressionConsumerError> {
-        let mut budget = Budget::new(self.limits, cancellation);
         if request.associations.len() as u64 > self.limits.closure_edges {
             return Err(ConsumerError::Limit.into());
         }
-        for association in request.associations {
+        for (index, association) in request.associations.iter().enumerate() {
+            let before = budget.remaining_work();
             budget.symbol(association.target)?;
             public_scope_type(
                 self.project.model().scope(),
                 association.result_type,
-                &mut budget,
+                budget,
             )?;
-            budget.work(self.policy.associations.len() as u64 + 1)?;
-            if !self.policy.associations.contains(association) {
+            let key_work = before - budget.remaining_work();
+            let comparisons = self.policy.associations.len() as u64 + index as u64 + 1;
+            budget.work(
+                key_work
+                    .checked_mul(comparisons)
+                    .ok_or(ConsumerError::Limit)?,
+            )?;
+            if request.associations[..index].contains(association)
+                || !self.policy.associations.contains(association)
+            {
                 return Err(ConsumerError::InvalidInput.into());
             }
         }
@@ -243,8 +264,8 @@ impl<'p, 'a> ExpressionConsumerBoundary<'p, 'a> {
                 .limits
                 .dependency_edges
                 .min(self.limits.closure_edges),
-            work: request.limits.work.min(self.limits.work),
-            retained_bytes: request.limits.retained_bytes.min(self.limits.bytes),
+            work: request.limits.work.min(budget.remaining_work()),
+            retained_bytes: request.limits.retained_bytes.min(budget.remaining_bytes()),
             output_bytes: request.limits.output_bytes.min(self.limits.output_bytes),
             diagnostics: request.limits.diagnostics.min(self.limits.diagnostics),
             ..request.limits

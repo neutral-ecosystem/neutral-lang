@@ -13,6 +13,8 @@ use neutral_semantics::{
     OutputAssociation,
 };
 
+mod generations;
+
 /// Registers explicit public result associations, not an executor or backend callback.
 fn boundary<'p, 'a>(
     project: &'p ValidatedExpressionProject,
@@ -250,7 +252,7 @@ pub(super) fn vocabulary_project(source: &[u8], bytes: &[u8]) -> ValidatedExpres
 
 /// Vocabulary restrictions remain obligations over the wire and are enforced only on demanded values.
 #[test]
-fn integration_expression_vocabulary_restrictions_survive_wire_and_binding_revisions() {
+fn integration_restriction_debt_survives_until_value_supply() {
     let project = vocabulary_project(
         include_bytes!("fixtures/vocabulary.neu"),
         include_bytes!("fixtures/domain.json"),
@@ -321,6 +323,7 @@ fn integration_expression_vocabulary_restrictions_survive_wire_and_binding_revis
             associations: &associations,
             limits: ExpressionLimits::hard(),
         };
+        boundary.validate_bindings(&request, &cancel).unwrap();
         let report = boundary
             .evaluate(&request, context(number), &cancel)
             .unwrap();
@@ -343,4 +346,6 @@ fn integration_expression_vocabulary_restrictions_survive_wire_and_binding_revis
             assert_eq!(report.outcome, R::Failure(EvaluationError::Restriction));
         }
     }
+    assert_eq!(project.model().restriction_obligations().len(), 1);
+    assert_eq!(view.restriction_obligations().count(), 1);
 }

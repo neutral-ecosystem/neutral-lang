@@ -352,6 +352,16 @@ fn consumer_association_registration_cannot_be_overridden() {
         &cancel,
     )
     .unwrap();
+    request.associations = &duplicates;
+    assert_eq!(
+        registered.validate_bindings(&request, &cancel),
+        Err(CE::Consumer(ConsumerError::InvalidInput))
+    );
+    assert!(matches!(
+        registered.evaluate(&request, context(), &cancel),
+        Err(CE::Consumer(ConsumerError::InvalidInput))
+    ));
+    request.associations = &associations;
     assert_eq!(
         registered.validate_bindings(&request, &cancel),
         Err(CE::Evaluation(EvaluationError::InvalidBinding))
@@ -436,3 +446,6 @@ fn consumer_identity_budget_fails_without_revoking_reader_authority() {
         }
     );
 }
+
+#[path = "binding_reports.rs"]
+mod binding_reports;

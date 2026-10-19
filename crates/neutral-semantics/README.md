@@ -21,6 +21,11 @@ paths. Missing, unavailable, failed and null are distinct. Output values must
 supply the complete result root so restrictions and selector availability are
 checked against real data. Decimal arithmetic uses the frozen decimal contract,
 not host floats; work, storage, numerical growth and cancellation are bounded.
+`evaluate_checked` uses the same kernel but leaves malformed preflight/envelope
+failures as outer errors, while demanded unavailable/failed states remain report
+outcomes. Complete-artifact consumer adapters use it to avoid preparing bindings
+twice or resetting the shared request budget. `validate_evaluation_bindings` stops
+after preflight and never demands a value.
 
 `normalize_binding` reuses that kernel with no external bindings. It permits
 producer-private entries without making them public evaluator entries. Fully
