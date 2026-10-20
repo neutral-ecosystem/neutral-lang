@@ -55,6 +55,9 @@ input_files = [
   "portable/specs/fixtures/expressions/positive/identity.neu",
   "portable/specs/fixtures/expressions/positive/identity-literal.neu",
   "portable/conformance/oracles/expressions/verify.py",
+  "portable/conformance/oracles/expressions/verify_revision.py",
+  "portable/conformance/oracles/expressions/results-v2.json",
+  "portable/conformance/oracles/expressions/results.json",
   "portable/conformance/oracles/expressions/project_vectors.py",
   "portable/conformance/oracles/expressions/authoring_vectors.py",
   "portable/specs/fixtures/expressions/positive/public-template.neu",
@@ -64,29 +67,29 @@ input_files = [
 id = "V1-CONS-EXPRESSION-RESULT-CANDIDATES"
 fixture = "portable/specs/fixtures/expressions/cases.json"
 fixture_sha256 = "0dc74642700558eceedfb1fb93867a2aafbee667445d3d8474acdc579c734a4f"
-oracle = "portable/conformance/oracles/expressions/results.json"
-oracle_sha256 = "1d6081e5b53b900bb0f3d560ac1eeb23796935c7e4c1ee7cb6ed353ab9581118"
+oracle = "portable/conformance/oracles/expressions/results-v2.json"
+oracle_sha256 = "f17b60569eb1a013e12ed3ab8d904e98b0f682adf303c7b78da79911883e6862"
 
 [[case]]
 id = "V1-CONS-EXPRESSION-VECTOR-CANDIDATES"
 fixture = "portable/specs/fixtures/expressions/vectors.json"
 fixture_sha256 = "4c71ca33aed3c22ed720a9a506bda561b46109580050c74bc96feff20e46bba6"
-oracle = "portable/conformance/oracles/expressions/results.json"
-oracle_sha256 = "1d6081e5b53b900bb0f3d560ac1eeb23796935c7e4c1ee7cb6ed353ab9581118"
+oracle = "portable/conformance/oracles/expressions/results-v2.json"
+oracle_sha256 = "f17b60569eb1a013e12ed3ab8d904e98b0f682adf303c7b78da79911883e6862"
 
 [[case]]
 id = "V1-CONS-EXPRESSION-COMPLETE-CANDIDATES"
 fixture = "portable/specs/fixtures/expressions/complete-vectors.json"
 fixture_sha256 = "96d1ff5663b736b04d8fdf22ea2ae9fdbabc0c29d8f139a5958ae14e3bbd8266"
-oracle = "portable/conformance/oracles/expressions/results.json"
-oracle_sha256 = "1d6081e5b53b900bb0f3d560ac1eeb23796935c7e4c1ee7cb6ed353ab9581118"
+oracle = "portable/conformance/oracles/expressions/results-v2.json"
+oracle_sha256 = "f17b60569eb1a013e12ed3ab8d904e98b0f682adf303c7b78da79911883e6862"
 
 [[case]]
 id = "V1-CONS-EXPRESSION-AUTHORING-CANDIDATES"
 fixture = "portable/specs/fixtures/expressions/authoring-vectors.json"
 fixture_sha256 = "e987b00f36b136e1fc43df716f29eee1b227c5034a73b66ba408b944ea37a46a"
-oracle = "portable/conformance/oracles/expressions/results.json"
-oracle_sha256 = "1d6081e5b53b900bb0f3d560ac1eeb23796935c7e4c1ee7cb6ed353ab9581118"
+oracle = "portable/conformance/oracles/expressions/results-v2.json"
+oracle_sha256 = "f17b60569eb1a013e12ed3ab8d904e98b0f682adf303c7b78da79911883e6862"
 
 [[suite]]
 id = "consumer-graphs"

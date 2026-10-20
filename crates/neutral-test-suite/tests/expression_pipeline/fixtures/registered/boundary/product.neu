@@ -1,0 +1,10 @@
+neu "1.0"
+module example::expressions
+
+template Item(static num left, static num right) -> num {
+    left + right
+}
+
+expand items = Item(left: left, right: right)
+    for (left in [1, 2], right in [3, 4])
+    where false

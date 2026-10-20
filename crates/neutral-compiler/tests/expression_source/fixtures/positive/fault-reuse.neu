@@ -1,0 +1,14 @@
+neu "1.0"
+module example::expressions
+
+public record Item {
+    num count
+}
+
+public variant Choice {
+    Item ready,
+    string failed
+}
+
+Choice private_seed = { tag: "ready", payload: { count: 4 } }
+public Choice choice = private_seed

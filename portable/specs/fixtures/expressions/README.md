@@ -28,16 +28,22 @@ select these forms by source spelling, package version or fallback.
   projections with byte mappings and six negative model cases. The independent
   projector covers only these named constructs, not the full authoring service.
 
-The [result projections](../../../conformance/oracles/expressions/results.json)
+The current [result projections](../../../conformance/oracles/expressions/results-v2.json)
 are literal review expectations, not production observations or complete result
 envelopes. A supplied malformed binding fails preflight even on a skipped branch;
 a valid unavailable/failed binding is demanded only on a selected branch.
 Core errors do not impersonate consumer scheduling/availability policy failures.
 
+Oracle revision /2 was approved on 20-10-2026. It corrects only the two explicit
+evaluator-limit cases to `NEU-EVAL-006`, as required by the evaluator contract.
+The [prior oracle](../../../conformance/oracles/expressions/results.json) is
+deprecated but immutable. Source/case/contract/identity/wire snapshots are unchanged;
+the revision is pinned in `freeze.toml` and selected by the conformance manifest.
+
 Run the independent integrity check from the repository root:
 
 ```bash
-python3 portable/conformance/oracles/expressions/verify.py
+python3 -B portable/conformance/oracles/expressions/verify_revision.py
 ```
 
 It checks file pins, case/oracle correspondence, rational division results,

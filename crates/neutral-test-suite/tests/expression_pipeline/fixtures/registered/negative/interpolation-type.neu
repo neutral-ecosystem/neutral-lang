@@ -1,0 +1,4 @@
+neu "1.0"
+module example::expressions
+
+string result = $"count=${1}"

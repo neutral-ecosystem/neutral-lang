@@ -6,6 +6,51 @@ use super::*;
 use neutral_ir::composition::BindingValue as V;
 use neutral_semantics::{NormalizedBinding, normalize_binding};
 
+/// Producer roots debit actual shared work/storage; rejected requests publish no budget update.
+#[test]
+fn producer_normalization_debits_shared_budget_and_recovers_after_exhaustion() {
+    use neutral_semantics::{EvaluationError, normalize_binding_with_budget};
+    for body in [ExpressionBody::Value(V::Bool(true)), ExpressionBody::Input] {
+        let mut ir = project(vec![binding("result", T::Bool, body)]);
+        ir.expression_resources = neutral_semantics::derive_expression_resources(
+            &ir,
+            controls(),
+            &CancellationToken::new(),
+        )
+        .unwrap();
+        let model = validate(ir).unwrap();
+        let selected = symbol("result");
+        let cancel = CancellationToken::new();
+        let original = ExpressionLimits::hard();
+        let mut remaining = original;
+        let expected = normalize_binding(&model, &selected, original, &cancel).unwrap();
+        assert_eq!(
+            normalize_binding_with_budget(&model, &selected, &mut remaining, &cancel),
+            Ok(expected)
+        );
+        let used = original.work - remaining.work;
+        assert!(used > 0);
+        assert!(remaining.retained_bytes <= original.retained_bytes);
+        let mut exact = ExpressionLimits {
+            work: used,
+            ..original
+        };
+        assert!(normalize_binding_with_budget(&model, &selected, &mut exact, &cancel).is_ok());
+        assert_eq!(exact.work, 0);
+        let mut short = ExpressionLimits {
+            work: used - 1,
+            ..original
+        };
+        let before = short;
+        assert_eq!(
+            normalize_binding_with_budget(&model, &selected, &mut short, &cancel),
+            Err(EvaluationError::Limit)
+        );
+        assert_eq!(short, before);
+        assert!(normalize_binding(&model, &selected, original, &cancel).is_ok());
+    }
+}
+
 #[test]
 fn static_decimal_folding_matches_literal_and_recovers_after_every_reservation_failure() {
     use neutral_core::allocation::testing::{observe, observe_cancellation};

@@ -638,16 +638,24 @@ Slice 1 — consumer contract foundation:
   Task 7 public closure qualification now verifies nested/repeated-key guards,
   independently decoded presence/index/alternative and restriction obligations,
   private-origin redaction, exact ordered entry selection and positive shared
-  selection/projection budgets with fault recovery. Reader checks do not imply
-  complete source-producer reuse lineage; that remains Task 9 qualification.
+  selection/projection budgets with fault recovery. Task 9 now produces checked
+  immutable-copy lineage with original occurrences for direct/list/record/variant
+  reuse, retained through independent decoding and private-origin redaction.
   Task 8 consumer qualification covers vocabulary-owned prerequisites, exact
   associations/types/revisions, malformed skipped envelopes, null/absence and safe
   unavailable/failure reports. Context, policy and semantic work/storage share one
   request budget; every observed registration/preflight/report allocation and
   cancellation preserves prior authority and recovers. Consumer revisions do not
   rewrite project identity; unretained evaluation attribution is explicit.
-  Remaining: every registered source/expansion/consumer corpus gate, actual `/3`
-  cache execution and final unchanged-input qualification campaigns. Integration
+  Task 9 compares 67 registered core source/type/evaluation/expansion cases against
+  literal oracles through independent decoding; the authoring-service case remains
+  separate. The approved current oracle corrects only two evaluator-limit codes;
+  original frozen bytes and identity vectors remain preserved. Empty matrix axes
+  reject deferred shape filters and use full Cartesian cardinality. Folding shares
+  actual work/storage across roots and filters without discarding copied bodies.
+  Remaining: aggregate source work/storage qualification across whole-model
+  validation, companions and bounded-copy paths; remaining consumer/authoring
+  corpus gates, actual `/3` cache execution and final unchanged-input campaigns. Integration
   examples do not replace these requirements or complete later plan tasks.
   This gate remains open and `/3` is not activated.
 

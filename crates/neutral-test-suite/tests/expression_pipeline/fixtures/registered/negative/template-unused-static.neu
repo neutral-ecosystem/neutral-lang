@@ -1,0 +1,8 @@
+neu "1.0"
+module example::expressions
+
+template Select(static num value) -> num {
+    0
+}
+
+num result = instantiate Select(value: 1 / 0)

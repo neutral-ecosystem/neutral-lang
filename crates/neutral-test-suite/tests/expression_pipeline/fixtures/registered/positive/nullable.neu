@@ -1,0 +1,5 @@
+neu "1.0"
+module example::expressions
+
+public input num? maybe
+public num? result = if true { maybe } else { null }

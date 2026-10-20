@@ -1,0 +1,26 @@
+neu "1.0"
+module pipeline
+
+public record Item {
+    num count
+}
+
+public record Container {
+    Item child
+}
+
+public variant Choice {
+    Item ready,
+    string failed
+}
+
+Item private_seed = { count: 7 }
+Item private_alias = private_seed
+public Item exposed = private_alias
+public List<Item> copies = [private_seed, (private_seed)]
+public Container container = { child: private_seed }
+public Choice choice = { tag: "ready", payload: private_seed }
+
+num private_number = 7
+public num computed = private_number + 1
+public num selected = if true { 2 } else { private_number }

@@ -1,0 +1,10 @@
+neu "1.0"
+module example::expressions
+
+input num count
+
+template Item(static num value) -> num {
+    value
+}
+
+num result = instantiate Item(value: count)

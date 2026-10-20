@@ -33,6 +33,8 @@ mod bounds;
 mod consumer;
 mod inspection;
 mod projection;
+mod registered;
+mod source_qualification;
 
 /// Stable logical symbol; source IDs and host paths never participate in meaning.
 fn symbol(name: &str) -> ModuleSymbolIdentity {
@@ -71,32 +73,12 @@ fn capture_sources(
     sources: Vec<CapturedSourceInput>,
     vocabularies: Vec<neutral_compiler::CapturedVocabularyInput>,
 ) -> CapturedExpressionProject {
-    let bytes = 1_048_576;
     capture_expression_project(CapturedExpressionProjectRequest::new(
-        CapturedProjectRequest::new(
-            profile::CAPTURE_REQUEST_VERSION,
-            LanguageProfile::V1_0,
+        capture_envelope(
             sources,
             vocabularies,
-            ProjectCaptureControls::new(
-                ProjectCaptureLimits::new(ProjectCaptureLimitValues {
-                    total_source_bytes: bytes,
-                    source_bytes_per_unit: bytes,
-                    source_units: 8,
-                    source_id_bytes: 256,
-                    module_id_bytes: 256,
-                    vocabulary_units: 8,
-                    vocabulary_bytes_per_unit: bytes,
-                    total_vocabulary_bytes: bytes,
-                    imports_per_module: 16,
-                    import_edges: 64,
-                    scc_units: 8,
-                    declarations: 4096,
-                    diagnostics: 64,
-                    output_bytes: bytes,
-                }),
-                CancellationToken::new(),
-            ),
+            profile::CAPTURE_REQUEST_VERSION,
+            CancellationToken::new(),
         ),
         SemanticProfiles::try_frozen().unwrap(),
         composition_limits(),
@@ -104,6 +86,41 @@ fn capture_sources(
         ExpansionLimits::hard(),
     ))
     .unwrap()
+}
+
+/// Shares only explicit capture plumbing; literal corpus controls and results remain independent.
+fn capture_envelope(
+    sources: Vec<CapturedSourceInput>,
+    vocabularies: Vec<neutral_compiler::CapturedVocabularyInput>,
+    version: &str,
+    cancellation: CancellationToken,
+) -> CapturedProjectRequest {
+    let bytes = 1_048_576;
+    CapturedProjectRequest::new(
+        version,
+        LanguageProfile::V1_0,
+        sources,
+        vocabularies,
+        ProjectCaptureControls::new(
+            ProjectCaptureLimits::new(ProjectCaptureLimitValues {
+                total_source_bytes: bytes,
+                source_bytes_per_unit: bytes,
+                source_units: 8,
+                source_id_bytes: 256,
+                module_id_bytes: 256,
+                vocabulary_units: 8,
+                vocabulary_bytes_per_unit: bytes,
+                total_vocabulary_bytes: bytes,
+                imports_per_module: 16,
+                import_edges: 64,
+                scc_units: 8,
+                declarations: 4096,
+                diagnostics: 64,
+                output_bytes: bytes,
+            }),
+            cancellation,
+        ),
+    )
 }
 
 /// Compiles real files, then obtains fresh reader authority only from their encoded bytes.

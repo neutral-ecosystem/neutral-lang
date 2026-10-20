@@ -1,0 +1,7 @@
+neu "1.0"
+module example::caller
+
+import example::definitions as definitions
+
+string prefix = "caller-"
+public string label = instantiate definitions::Label(suffix: "ok")

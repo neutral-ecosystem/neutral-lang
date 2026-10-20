@@ -244,11 +244,24 @@ unchanged-input campaigns retain their own later checkboxes.
 - [ ] Implement finite static matrices with preflight Cartesian cardinality, original axis-index names, aggregate visitation/work/storage limits, filters/exclusions and source attribution. Deferred values cannot affect count/names/topology. Test empty axes, repeated values, collisions and filtered one-over products.
 - [ ] Run all registered source/type/evaluation/expansion literal cases through compilation and independent reading; preserve errors and no-I/O behavior. Complete all required feature paths before any explicit capture `/3` availability advertisement.
 
-Known source-companion qualification gap: expression normalization currently
-materializes private immutable reuse without emitting its reuse edge in
-`frontend/expressions/lowering.rs`. Task 7 proves redaction of supplied, checked
-reuse evidence; it does not prove that this source producer retains that evidence.
-Cover producer lineage before closing this task's complete source/companion gate.
+Continuation qualification (21-10-2026): 67 registered core source/type/evaluation/
+expansion cases now compare literal results through compilation and independent
+wire decoding, including captured/logical identity distinctions; the separate
+authoring-service case remains outside this task. Source-produced immutable-copy
+edges retain original occurrences through list/record/variant construction and
+independent public redaction. Computed and skipped expressions do not invent copy
+edges. Empty axes now preflight the complete product and reject deferred filters.
+
+The user-approved [current oracle revision](../../../portable/conformance/oracles/expressions/results-v2.json)
+deprecates the original result oracle without altering its frozen bytes. Only two
+evaluator-limit diagnostic expectations change to `NEU-EVAL-006`; original cases,
+source inputs, arithmetic results and identity vectors remain immutable.
+
+Shared normalization now debits actual kernel work/storage across roots and matrix
+filters; retained bodies are not copied merely to discard them. Remaining before
+Task 9 closure: qualify shared accounting across repeated whole-model validation,
+companion assembly and all bounded-copy paths. Per-call limits alone do not close
+that aggregate gate. No `/3` availability advertisement or activation is implied.
 
 ## Task 10: Independent probe and actual clean/cache equivalence
 

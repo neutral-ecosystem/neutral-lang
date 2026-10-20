@@ -13,8 +13,8 @@ use super::{
     ExpressionLimits, ExpressionProjectIr, ExpressionResourceFacts, ModuleSymbolIdentity, N,
     NormalizedBinding, ProjectProvenance, ProjectResourceFacts, ProjectSourceMap, PublicTemplate,
     Root, S, SemanticDigest, SourceLocation, State, T, TemplateParameter, TryClone, V, alloc,
-    composition_error, copy_slice, derive_expression_resources, error, expression_profile, grow,
-    normalize_binding, text, validate_expression_model,
+    composition_error, copy_slice, derive_expression_resources, error, evaluation_error,
+    expression_profile, grow, normalize_binding_with_budget, text, validate_expression_model,
 };
 use crate::frontend::expression_codes as ec;
 use neutral_ir::composition::{
@@ -22,6 +22,22 @@ use neutral_ir::composition::{
 };
 
 impl State<'_, '_> {
+    /// Nested folding consumes the request's remaining kernel work and scratch retention.
+    pub(super) fn normalize(
+        &mut self,
+        model: &neutral_semantics::ValidatedExpressionModel,
+        owner: &ModuleSymbolIdentity,
+        location: Option<SourceLocation>,
+    ) -> Result<NormalizedBinding, E> {
+        let mut remaining = self.budget.remaining();
+        let before = remaining;
+        let result =
+            normalize_binding_with_budget(model, owner, &mut remaining, self.budget.cancel)
+                .map_err(|e| evaluation_error(e, location))?;
+        self.budget.debit(before, remaining)?;
+        Ok(result)
+    }
+
     /// Normalizes an actual typed subtree in a closed request-local semantic model.
     /// No unavailable declaration is relabelled as null or as an external input.
     pub(super) fn static_value(
@@ -34,7 +50,7 @@ impl State<'_, '_> {
         collect_targets(expression, &mut references)?;
         for target in references {
             if target != owner.owner && !self.bodies.contains_key(&target) {
-                self.binding(&target)?;
+                self.ensure_binding(&target)?;
             }
         }
         let expression = self.clone_expression(expression)?;
@@ -45,14 +61,7 @@ impl State<'_, '_> {
             self.budget.cancel,
         )
         .map_err(|e| error(e.code(), Some(owner.location)))?;
-        match normalize_binding(
-            &model,
-            &owner.owner,
-            self.budget.expression,
-            self.budget.cancel,
-        )
-        .map_err(|e| error(e.code(), Some(owner.location)))?
-        {
+        match self.normalize(&model, &owner.owner, Some(owner.location))? {
             NormalizedBinding::Value(v) => Ok(Some(v)),
             NormalizedBinding::Residual(_) => Ok(None),
         }
@@ -269,6 +278,7 @@ impl State<'_, '_> {
                     }
                     Some(ExpressionBody::Value(value)) => {
                         value_edges(&d.identity, value, location, &mut ir.provenance)?;
+                        self.source_reuse_edges(&d.identity, value, &mut ir.provenance)?;
                         materialized_origins(
                             &d.identity,
                             value,
@@ -458,7 +468,7 @@ fn collect_value_targets(v: &V, targets: &mut Vec<ModuleSymbolIdentity>) -> Resu
     Ok(())
 }
 /// Records one original source-owned structural dependency occurrence.
-fn edge(
+pub(super) fn edge(
     owner: &ModuleSymbolIdentity,
     target: &ModuleSymbolIdentity,
     kind: Edge,

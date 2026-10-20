@@ -14,7 +14,7 @@ mod values;
 pub use evaluation::{
     Binding, BindingKey, BindingState, EvaluationError, EvaluationRequest, EvaluationResult,
     NormalizedBinding, OutputAssociation, evaluate, evaluate_checked, normalize_binding,
-    validate_evaluation_bindings,
+    normalize_binding_with_budget, validate_evaluation_bindings,
 };
 pub use model::*;
 pub use validation::{derive_expression_resources, validate_expression_model};

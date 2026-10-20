@@ -19,6 +19,11 @@ fn expression_source_allocation_and_cancellation_sweeps_preserve_request_reuse()
             "choices__0",
             "3",
         ),
+        (
+            include_str!("fixtures/positive/fault-reuse.neu"),
+            "choice",
+            "4",
+        ),
     ] {
         let captured = capture(source, ExpressionLimits::hard(), ExpansionLimits::hard());
         let cancel = CancellationToken::new();

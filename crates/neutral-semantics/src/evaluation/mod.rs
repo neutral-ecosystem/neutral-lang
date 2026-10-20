@@ -24,7 +24,7 @@ mod normalization;
 mod selectors;
 mod walk;
 pub use bindings::{Binding, BindingKey, BindingState, OutputAssociation};
-pub use normalization::{NormalizedBinding, normalize_binding};
+pub use normalization::{NormalizedBinding, normalize_binding, normalize_binding_with_budget};
 
 /// Stable safe evaluator failures without raw values, private names or host details.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

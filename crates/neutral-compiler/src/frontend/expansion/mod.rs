@@ -216,7 +216,14 @@ impl<'a> State<'a, '_> {
             let (value, location) =
                 if let Some((_, tokens)) = arguments.iter().find(|(n, _)| *n == name) {
                     (
-                        self.expression(caller, tokens, Some(&ty), caller_frames, depth + 1)?,
+                        self.expression(caller, tokens, Some(&ty), caller_frames, depth + 1)
+                            .map_err(|e| {
+                                if e.code == ec::EXP_TYPE {
+                                    error(ec::TPL_TYPE, e.location)
+                                } else {
+                                    e
+                                }
+                            })?,
                         SourceLocation::new(
                             caller.location.source(),
                             match ByteSpan::new(
@@ -333,7 +340,6 @@ impl<'a> State<'a, '_> {
             self.template(&owner)?;
             let result_type = alloc(self.typed_templates[&owner].result_type.try_clone())?;
             let mut axes = Vec::new();
-            let mut product = 1_u64;
             // Full unfiltered cardinality is checked before allocating or visiting tuples.
             for (name, tokens) in &matrix.axes {
                 let value = self.expression(&matrix.root, tokens, None, &mut Vec::new(), 1)?;
@@ -342,20 +348,20 @@ impl<'a> State<'a, '_> {
                 };
                 let inner = alloc(inner.try_clone())?;
                 let Some(V::List(items)) = self.static_value(&matrix.root, &value)? else {
-                    return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
+                    return Err(error(ec::TPL_TYPE, Some(matrix.root.location)));
                 };
                 if items.len() as u64 > self.budget.expansion.axis_items {
                     return Err(error(ec::TPL_LIMIT, Some(matrix.root.location)));
                 }
-                product = match product.checked_mul(items.len() as u64) {
-                    Some(product) => product,
-                    None => return Err(error(ec::TPL_LIMIT, Some(matrix.root.location))),
-                };
-                if product > self.budget.expansion.product_tuples {
-                    return Err(error(ec::TPL_LIMIT, Some(matrix.root.location)));
-                }
                 grow(&mut axes, 1)?;
                 axes.push((*name, inner, items));
+            }
+            let mut product = u64::from(!axes.iter().any(|(_, _, values)| values.is_empty()));
+            for (_, _, values) in &axes {
+                product = product
+                    .checked_mul(values.len() as u64)
+                    .filter(|n| *n <= self.budget.expansion.product_tuples)
+                    .ok_or_else(|| error(ec::TPL_LIMIT, Some(matrix.root.location)))?;
             }
             self.budget.tuples = match self.budget.tuples.checked_add(product) {
                 Some(count) => count,
@@ -380,13 +386,16 @@ impl<'a> State<'a, '_> {
             let before = self.typing_template;
             self.typing_template = true;
             if !matrix.filter.is_empty() {
-                self.expression(
+                let filter = self.expression(
                     &matrix.root,
                     &matrix.filter,
                     Some(&T::Bool),
                     &mut axis_frames,
                     1,
                 )?;
+                if !phase_static(&filter, &axis_frames, &[]) {
+                    return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
+                }
             }
             self.application(
                 &matrix.root,

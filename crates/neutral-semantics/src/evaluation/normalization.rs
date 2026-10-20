@@ -31,7 +31,24 @@ pub enum NormalizedBinding {
 pub fn normalize_binding(
     model: &ValidatedExpressionModel,
     selected: &ModuleSymbolIdentity,
-    limits: ExpressionLimits,
+    mut limits: ExpressionLimits,
+    cancellation: &CancellationToken,
+) -> Result<NormalizedBinding, EvaluationError> {
+    normalize_binding_with_budget(model, selected, &mut limits, cancellation)
+}
+
+/// Folds one root using a producer's remaining aggregate work and retention budget.
+///
+/// Successful calls debit actual kernel work and cumulative scratch/result storage;
+/// independent shape/numeric limits remain unchanged. Failure leaves the caller's
+/// counters unchanged and returns no accepted value.
+///
+/// # Errors
+/// Returns the same closed failures as [`normalize_binding`].
+pub fn normalize_binding_with_budget(
+    model: &ValidatedExpressionModel,
+    selected: &ModuleSymbolIdentity,
+    remaining: &mut ExpressionLimits,
     cancellation: &CancellationToken,
 ) -> Result<NormalizedBinding, EvaluationError> {
     let request = EvaluationRequest {
@@ -39,7 +56,7 @@ pub fn normalize_binding(
         profiles: &model.ir().semantic_profiles,
         bindings: &[],
         associations: &[],
-        limits,
+        limits: *remaining,
     };
     let result = (|| {
         let (mut state, declaration, ty) = prepare(model, &request, cancellation, Mode::Producer)?;
@@ -80,6 +97,7 @@ pub fn normalize_binding(
             }
             NormalizedBinding::Residual(ExpressionBody::Input) => {
                 state.budget.step(0)?;
+                debit(remaining, &state.budget);
                 return Ok(result);
             }
             NormalizedBinding::Residual(ExpressionBody::Value(_)) => {
@@ -91,10 +109,18 @@ pub fn normalize_binding(
         if let NormalizedBinding::Value(value) = &result {
             state.budget.value_output(value)?;
         }
+        debit(remaining, &state.budget);
         Ok(result)
     })();
     result.map_err(|flow| match flow {
         Flow::Failure(error) => error,
         Flow::Unavailable(_) => EvaluationError::InvalidBinding,
     })
+}
+
+/// Charge consumed amounts, not unused headroom excluded by stricter model policy.
+fn debit(remaining: &mut ExpressionLimits, budget: &crate::budget::Budget<'_>) {
+    let unused = budget.remaining();
+    remaining.work -= budget.limits.work - unused.work;
+    remaining.retained_bytes -= budget.limits.retained_bytes - unused.retained_bytes;
 }

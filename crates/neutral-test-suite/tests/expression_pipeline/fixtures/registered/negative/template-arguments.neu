@@ -1,0 +1,8 @@
+neu "1.0"
+module example::expressions
+
+template Item(static num value) -> num {
+    value
+}
+
+num result = instantiate Item(value: 1, value: 2)

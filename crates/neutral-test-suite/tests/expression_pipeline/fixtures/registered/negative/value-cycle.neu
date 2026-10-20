@@ -1,0 +1,5 @@
+neu "1.0"
+module example::expressions
+
+num left = right + 1
+num right = left + 1

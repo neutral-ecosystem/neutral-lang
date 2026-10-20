@@ -1,0 +1,7 @@
+neu "1.0"
+module example::expressions
+
+num count = 0
+while true {
+    count = count + 1
+}

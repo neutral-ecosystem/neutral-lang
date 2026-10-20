@@ -4,6 +4,77 @@
 
 use super::*;
 
+/// Numeric work is shared across producer roots and every visited matrix filter.
+#[test]
+fn normalization_work_is_aggregate_across_bindings() {
+    use std::fmt::Write;
+    let operand = "9".repeat(100);
+    let mut body = String::new();
+    for i in 0..4 {
+        writeln!(body, "num value_{i} = {operand} * {operand}").unwrap();
+    }
+    let matrix = format!(
+        "template Item(static num value) -> num {{ value }}\nexpand items = Item(value: item) for (item in [1, 2, 3, 4]) where {operand} * {operand} > 0"
+    );
+    for source in [body, matrix] {
+        assert_eq!(
+            bounded(
+                &source,
+                ExpressionLimits {
+                    work: 20_000,
+                    ..ExpressionLimits::hard()
+                },
+                ExpansionLimits::hard()
+            )
+            .unwrap_err()
+            .code,
+            "NEU-EXP-009"
+        );
+        assert!(compile(&source).is_ok());
+    }
+}
+
+/// Empty products cannot hide a deferred filter that controls generated topology.
+#[test]
+fn deferred_matrix_filter_is_rejected_even_for_an_empty_axis() {
+    for values in ["[]", "[1]"] {
+        let body = format!(
+            "template Item(static num value) -> num {{ value }}\npublic input bool enabled\nList<num> axis = {values}\nexpand items = Item(value: item) for (item in axis) where enabled"
+        );
+        assert_eq!(compile(&body).unwrap_err().code, "NEU-TPL-007");
+    }
+}
+
+/// A later empty axis makes the full product zero, irrespective of nonempty prefix cardinality.
+#[test]
+fn empty_axis_position_does_not_consume_nonexistent_product_tuples() {
+    for axes in [
+        "left in [1, 2], right in empty",
+        "right in empty, left in [1, 2]",
+    ] {
+        let source = format!(
+            "template Item(static num value) -> num {{ value }}\nList<num> empty = []\nexpand items = Item(value: left) for ({axes})"
+        );
+        let ir = bounded(
+            &source,
+            ExpressionLimits::hard(),
+            ExpansionLimits {
+                product_tuples: 1,
+                aggregate_tuples: 1,
+                ..ExpansionLimits::hard()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            ir.declarations
+                .iter()
+                .filter(|d| d.identity.declaration_name().starts_with("items__"))
+                .count(),
+            0
+        );
+    }
+}
+
 /// Captures and compiles an explicit multi-module expression project.
 fn compile_sources(sources: &[(&str, &str, &str)]) -> Result<Arc<ExpressionProjectIr>, E> {
     let bounds = ProjectCaptureLimitValues {
@@ -198,7 +269,7 @@ fn matrix_shape_errors_cannot_hide_behind_empty_or_filtered_axes() {
         ),
         (
             "input List<num> values\nexpand items = Item(value: axis) for (axis in values)",
-            "NEU-TPL-007",
+            "NEU-TPL-004",
         ),
         (
             "input bool enabled\nexpand items = Item(value: axis) for (axis in [1]) where enabled",

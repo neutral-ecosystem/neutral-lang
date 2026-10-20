@@ -1,0 +1,13 @@
+neu "1.0"
+module example::expressions
+
+public variant Outcome {
+    string ready,
+    num failed
+}
+
+Outcome outcome = { tag: "ready", payload: "ok" }
+string result = match outcome {
+    ready(message) => message,
+    failed(code) => text(code),
+}

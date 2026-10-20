@@ -1,0 +1,10 @@
+neu "1.0"
+module example::expressions
+
+input List<num> choices
+
+template Item(static num value) -> num {
+    value
+}
+
+expand items = Item(value: item) for (item in choices)

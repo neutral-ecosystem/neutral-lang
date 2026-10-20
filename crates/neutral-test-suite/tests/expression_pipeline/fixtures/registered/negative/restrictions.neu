@@ -1,0 +1,11 @@
+neu "1.0"
+module example::expressions
+
+use ExpressionDomain as domain
+
+domain::Bounded result = {
+    count: 2 + 2,
+    label: "ab",
+    items: [],
+    mode: "safe",
+}

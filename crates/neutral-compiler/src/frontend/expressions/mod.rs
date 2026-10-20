@@ -29,7 +29,7 @@ use neutral_ir::expression::{
     templates::{ExpansionLimits, ParameterPhase, PublicTemplate, TemplateParameter},
 };
 use neutral_semantics::{
-    NormalizedBinding, SemanticLimits, derive_expression_resources, normalize_binding,
+    NormalizedBinding, SemanticLimits, derive_expression_resources, normalize_binding_with_budget,
     validate_expression_model,
 };
 #[path = "../expansion/mod.rs"]
@@ -41,6 +41,8 @@ mod lowering;
 mod parser;
 /// Exact all-branch expression typing and stable names.
 mod resolution;
+/// Bounded original immutable-copy evidence after static normalization.
+mod source_reuse;
 use parser::{BindingSyntax, Lex, MatrixSyntax, TemplateSyntax};
 
 /// Safe atomic successor compilation failure with checked original-byte occurrence.
@@ -63,6 +65,22 @@ type E = ExpressionCompileFailure;
 /// Constructs an atomic error without retaining raw supplied text.
 fn error(code: &'static str, location: Option<SourceLocation>) -> E {
     E { code, location }
+}
+/// Compiler folding reports source failures; explicit consumer evaluation keeps its own registry.
+fn evaluation_error(
+    failure: neutral_semantics::EvaluationError,
+    location: Option<SourceLocation>,
+) -> E {
+    use neutral_semantics::EvaluationError;
+    error(
+        match failure {
+            EvaluationError::Limit => ec::EXP_LIMIT,
+            EvaluationError::Cancelled => ec::EXP_CANCELLED,
+            EvaluationError::Restriction => ec::EXP_RESTRICTION,
+            other => other.code(),
+        },
+        location,
+    )
 }
 /// Preserves graph/nominal boundary failure classes under the successor source registry.
 fn composition_error(e: super::E) -> E {
@@ -120,6 +138,19 @@ struct Budget<'a> {
     expansion_bytes: u64,
 }
 impl Budget<'_> {
+    /// Nested work must fit the unspent request budget, not a fresh full policy.
+    fn remaining(&self) -> ExpressionLimits {
+        ExpressionLimits {
+            work: self.expression.work - self.work,
+            retained_bytes: self.expression.retained_bytes - self.bytes,
+            ..self.expression
+        }
+    }
+    /// Successful nested kernels report actual checked work and cumulative storage.
+    fn debit(&mut self, before: ExpressionLimits, after: ExpressionLimits) -> Result<(), E> {
+        self.charge(before.work - after.work)?;
+        self.storage(before.retained_bytes - after.retained_bytes)
+    }
     /// Charges before traversal and checks cancellation.
     fn charge(&mut self, count: u64) -> Result<(), E> {
         if self.cancel.is_cancelled() {
@@ -140,6 +171,10 @@ impl Budget<'_> {
             return Err(error(ec::EXP_LIMIT, None));
         };
         self.charge(work)?;
+        self.storage(count)
+    }
+    /// Storage ceilings count bytes; fixed-size node construction counts visits, not Rust layout.
+    fn storage(&mut self, count: u64) -> Result<(), E> {
         let Some(bytes) = self.bytes.checked_add(count) else {
             return Err(error(ec::EXP_LIMIT, None));
         };
@@ -154,7 +189,12 @@ impl Budget<'_> {
         let Some(bytes) = (std::mem::size_of::<T>() as u64).checked_mul(count as u64) else {
             return Err(error(ec::EXP_LIMIT, None));
         };
-        self.bytes(bytes)
+        self.charge(
+            (count as u64)
+                .checked_add(1)
+                .ok_or_else(|| error(ec::EXP_LIMIT, None))?,
+        )?;
+        self.storage(bytes)
     }
     /// Checks complete source tree occurrences before recursive descent.
     fn node(&mut self, depth: u64) -> Result<(), E> {
@@ -280,7 +320,7 @@ pub fn compile_expression_project(
         .map(|o| alloc(o.try_clone()))
         .collect::<Result<_, _>>()?;
     for owner in &owners {
-        state.binding(owner)?;
+        state.ensure_binding(owner)?;
     }
     let ir = state.assemble(false, None)?;
     let model =
@@ -294,13 +334,8 @@ pub fn compile_expression_project(
     let mut normalized = BTreeMap::new();
     for owner in owners {
         state.budget.charge(1)?;
-        let body = match normalize_binding(&model, &owner, state.budget.expression, cancel)
-            .map_err(|e| {
-                error(
-                    e.code(),
-                    state.resolver.roots.get(&owner).map(|r| r.location),
-                )
-            })? {
+        let location = state.resolver.roots.get(&owner).map(|r| r.location);
+        let body = match state.normalize(&model, &owner, location)? {
             NormalizedBinding::Value(v) => ExpressionBody::Value(v),
             NormalizedBinding::Residual(body) => body,
         };
@@ -459,24 +494,9 @@ impl State<'_, '_> {
             )
         })?;
         self.budget.charge(cost.work)?;
-        self.budget.bytes(cost.retained_bytes)?;
+        self.budget.storage(cost.retained_bytes)?;
         e.try_clone_bounded(self.budget.expression, self.budget.cancel)
             .map_err(|_| error(ec::EXP_LIMIT, None))
-    }
-    /// Copies a body sum without fabricated input values or lossy tree conversion.
-    fn copy_body(&mut self, body: &ExpressionBody) -> Result<ExpressionBody, E> {
-        Ok(match body {
-            ExpressionBody::Input => ExpressionBody::Input,
-            ExpressionBody::Value(v) => ExpressionBody::Value(
-                neutral_ir::expression::try_clone_value_bounded(
-                    v,
-                    self.budget.expression,
-                    self.budget.cancel,
-                )
-                .map_err(|_| error(ec::EXP_LIMIT, None))?,
-            ),
-            ExpressionBody::Expression(e) => ExpressionBody::Expression(self.clone_expression(e)?),
-        })
     }
 }
 

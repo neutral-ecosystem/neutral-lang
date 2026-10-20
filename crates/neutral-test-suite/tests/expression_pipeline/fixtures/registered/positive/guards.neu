@@ -1,0 +1,6 @@
+neu "1.0"
+module example::expressions
+
+num selected = if true { 7 } else { 1 / 0 }
+bool and_guard = false && (1 / 0 > 0)
+bool or_guard = true || (1 / 0 > 0)

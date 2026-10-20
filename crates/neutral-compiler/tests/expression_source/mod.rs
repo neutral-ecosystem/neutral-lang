@@ -204,7 +204,7 @@ fn templates_evaluate_unused_static_arguments_and_guard_deferred_arguments() {
         &V::Number(ExactNumber::from_source("0", 4096, 4096).unwrap())
     );
     assert_eq!(compile("template Select(static num value) -> num { 0 }\nnum result = instantiate Select(value: 1 / 0)").unwrap_err().code,"NEU-EXP-006");
-    assert_eq!(compile("template Item(static num value = 3) -> num { value }\nnum result = instantiate Item(value: null)").unwrap_err().code,"NEU-EXP-004");
+    assert_eq!(compile("template Item(static num value = 3) -> num { value }\nnum result = instantiate Item(value: null)").unwrap_err().code,"NEU-TPL-004");
     assert_eq!(compile("template Recur(static num value) -> num { if true { value } else { instantiate Recur(value: value) } }\nnum result = instantiate Recur(value: 1)").unwrap_err().code,"NEU-TPL-005");
 }
 #[test]
@@ -357,11 +357,17 @@ fn copied_materialized_body_rejects_allocation_failure_without_consuming_value()
     );
     let cancel = CancellationToken::new();
     let mut state = initial_state(&captured, &cancel).unwrap();
-    let body = ExpressionBody::Value(V::String("retained".into()));
-    let (failed, checkpoints) = observe(Some(0), || state.copy_body(&body));
+    let value = V::String("retained".into());
+    let body = ExpressionBody::Value(value.clone());
+    let owner = symbol("example::expressions", "retained").unwrap();
+    state
+        .bodies
+        .insert(owner.clone(), ExpressionBody::Value(value))
+        .unwrap();
+    let (failed, checkpoints) = observe(Some(0), || state.binding(&owner));
     assert!(checkpoints > 0);
     assert_eq!(failed.unwrap_err(), error(ec::EXP_LIMIT, None));
-    assert_eq!(state.copy_body(&body).unwrap(), body);
+    assert_eq!(state.binding(&owner).unwrap(), body);
 }
 
 /// Checked arithmetic keeps overflow failures lazy and preserves counter update order.

@@ -18,9 +18,10 @@ use crate::frontend::expression_codes as ec;
 impl<'a> State<'a, '_> {
     /// Resolves ordinary reuse once per request and rejects value cycles before evaluation.
     pub(super) fn binding(&mut self, owner: &ModuleSymbolIdentity) -> Result<ExpressionBody, E> {
+        self.ensure_binding(owner)?;
         self.budget.charge(1)?;
-        if let Some(body) = self.bodies.get(owner) {
-            return Ok(match body {
+        match self.bodies.get(owner) {
+            Some(body) => Ok(match body {
                 ExpressionBody::Input => ExpressionBody::Input,
                 ExpressionBody::Value(v) => ExpressionBody::Value(
                     neutral_ir::expression::try_clone_value_bounded(
@@ -34,7 +35,16 @@ impl<'a> State<'a, '_> {
                     e.try_clone_bounded(self.budget.expression, self.budget.cancel)
                         .map_err(|_| error(ec::EXP_LIMIT, None))?,
                 ),
-            });
+            }),
+            None => Err(error(ec::EXP_NAME, None)),
+        }
+    }
+
+    /// Retains each resolved body once; callers that only require resolution do not copy it.
+    pub(super) fn ensure_binding(&mut self, owner: &ModuleSymbolIdentity) -> Result<(), E> {
+        self.budget.charge(1)?;
+        if self.bodies.contains_key(owner) {
+            return Ok(());
         }
         if self.active.len() as u64 >= self.budget.expression.syntax_depth
             || !alloc(self.active.insert(alloc(owner.try_clone())?))?
@@ -88,9 +98,8 @@ impl<'a> State<'a, '_> {
             )?)
         };
         self.active.remove(owner);
-        let retained = self.copy_body(&body)?;
-        alloc(self.bodies.insert(alloc(owner.try_clone())?, retained))?;
-        Ok(body)
+        alloc(self.bodies.insert(alloc(owner.try_clone())?, body))?;
+        Ok(())
     }
 
     /// Types all branches and lowers contextual syntax into closed ordered expression nodes.

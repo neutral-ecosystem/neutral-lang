@@ -1,0 +1,8 @@
+neu "1.0"
+module example::expressions
+
+template Select(static bool enabled, deferred num value) -> num {
+    if enabled { value } else { 0 }
+}
+
+public num result = instantiate Select(enabled: false, value: 1 / 0)

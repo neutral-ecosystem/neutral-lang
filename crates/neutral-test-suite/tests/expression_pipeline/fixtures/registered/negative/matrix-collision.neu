@@ -1,0 +1,9 @@
+neu "1.0"
+module example::expressions
+
+template Item(static num value) -> num {
+    value
+}
+
+num items__0 = 0
+expand items = Item(value: item) for (item in [1])
