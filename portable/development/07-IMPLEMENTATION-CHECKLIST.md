@@ -649,7 +649,10 @@ Slice 1 — consumer contract foundation:
   rewrite project identity; unretained evaluation attribution is explicit.
   Task 9 compares 67 registered core source/type/evaluation/expansion cases against
   literal oracles through independent decoding; the authoring-service case remains
-  separate. The approved current oracle corrects only two evaluator-limit codes;
+  separate. Three of its four plan subitems are checked: source semantics,
+  definition-scoped templates and registered core corpus comparisons. The aggregate
+  matrix-budget subitem and Task 9 overall remain open; passing tests/CI alone do
+  not qualify the missing shared accounting. The approved current oracle corrects only two evaluator-limit codes;
   original frozen bytes and identity vectors remain preserved. Empty matrix axes
   reject deferred shape filters and use full Cartesian cardinality. Folding shares
   actual work/storage across roots and filters without discarding copied bodies.

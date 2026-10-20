@@ -239,10 +239,16 @@ unchanged-input campaigns retain their own later checkboxes.
 
 **Interfaces:** `CapturedExpressionProjectRequest`, `capture_expression_project(request)`, and `compile_expression_project(&CapturedExpressionProject, cancel) -> Result<Shared<ExpressionProjectIr>, ExpressionCompileFailure>`. Requests carry exact `/3` tuple and positive expression/expansion controls. The compiler resolves source/import/binder names, builds raw typed trees and uses Tasks 2–4 for typing/normalization; it cannot read external bindings from ambient state.
 
-- [ ] Test every frozen operator/precedence, input/output intrinsic, match exhaustiveness, interpolation and existing source construction form. All branches resolve/type-check; selected static paths normalize, unresolved guarded bodies remain residual. Historical boundaries reject the same new syntax.
-- [ ] Implement definition-scoped templates, static/deferred parameters, ordered named/default arguments, capture-free lexical substitution and recursion rejection. Templates are never runtime-callable values.
+- [x] Test every frozen operator/precedence, input/output intrinsic, match exhaustiveness, interpolation and existing source construction form. All branches resolve/type-check; selected static paths normalize, unresolved guarded bodies remain residual. Historical boundaries reject the same new syntax.
+- [x] Implement definition-scoped templates, static/deferred parameters, ordered named/default arguments, capture-free lexical substitution and recursion rejection. Templates are never runtime-callable values.
 - [ ] Implement finite static matrices with preflight Cartesian cardinality, original axis-index names, aggregate visitation/work/storage limits, filters/exclusions and source attribution. Deferred values cannot affect count/names/topology. Test empty axes, repeated values, collisions and filtered one-over products.
-- [ ] Run all registered source/type/evaluation/expansion literal cases through compilation and independent reading; preserve errors and no-I/O behavior. Complete all required feature paths before any explicit capture `/3` availability advertisement.
+- [x] Run all registered source/type/evaluation/expansion literal cases through compilation and independent reading; preserve errors and no-I/O behavior. Complete all required feature paths before any explicit capture `/3` availability advertisement.
+
+Status (21-10-2026): three of four Task 9 subitems are qualified by the owning
+source/template suites and registered core corpus. The user reports the oracle
+verifier, full tests and CI PR checks passing again. The matrix aggregate-budget
+subitem and Task 9 overall remain open for the accounting gap described below;
+these checks do not complete Tasks 10–11 or activate `/3`.
 
 Continuation qualification (21-10-2026): 67 registered core source/type/evaluation/
 expansion cases now compare literal results through compilation and independent
