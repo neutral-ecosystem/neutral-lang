@@ -27,9 +27,23 @@ use neutral_ir::{
 /// before exposing any immutable catalogue or recursively cloning unbounded data.
 pub fn validate_composition_model(
     bundles: &[CompositionBundle],
-    limits: CompositionLimits,
+    mut limits: CompositionLimits,
     cancellation: &CancellationToken,
 ) -> Result<ValidatedComposition, E> {
+    validate_composition_model_with_budget(bundles, limits, &mut limits.work, cancellation)
+}
+
+/// Validates a nested catalogue using the caller's remaining aggregate semantic work.
+///
+/// # Errors
+/// Same failures as [`validate_composition_model`]; rejected requests do not debit counters.
+pub fn validate_composition_model_with_budget(
+    bundles: &[CompositionBundle],
+    mut limits: CompositionLimits,
+    remaining_work: &mut u64,
+    cancellation: &CancellationToken,
+) -> Result<ValidatedComposition, E> {
+    limits.work = limits.work.min(*remaining_work);
     limits.validate()?;
     let mut budget = Budget::new(limits, cancellation);
     budget.step(1)?;
@@ -113,6 +127,7 @@ pub fn validate_composition_model(
         return Err(E::InvalidContract);
     }
     budget.step(1)?;
+    *remaining_work -= budget.work;
     Ok(ValidatedComposition {
         bundles: normalized,
     })

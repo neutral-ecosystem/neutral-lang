@@ -45,6 +45,12 @@ impl std::fmt::Debug for ValidatedCompositionScope {
 }
 
 impl ValidatedCompositionScope {
+    /// Transfers normalized source contracts to a producer without another deep copy.
+    #[must_use]
+    pub fn into_sources(self) -> Vec<SourceCompositionDefinition> {
+        self.sources
+    }
+
     /// Checks one actual immutable field's restrictions without cloning validated contracts.
     ///
     /// This is not full value typing, reference validation or public-view authority.
@@ -204,10 +210,32 @@ impl ValidatedCompositionScope {
 /// embedded cycles, exhausted independent bounds or cancellation atomically.
 pub fn validate_composition_scope(
     catalogue: Arc<ValidatedComposition>,
-    mut sources: Vec<SourceCompositionDefinition>,
-    limits: CompositionLimits,
+    sources: Vec<SourceCompositionDefinition>,
+    mut limits: CompositionLimits,
     cancellation: &CancellationToken,
 ) -> Result<ValidatedCompositionScope, E> {
+    validate_composition_scope_with_budget(
+        catalogue,
+        sources,
+        limits,
+        &mut limits.work,
+        cancellation,
+    )
+}
+
+/// Validates source/default closure without resetting a parent request's semantic work.
+///
+/// # Errors
+/// Same failures as [`validate_composition_scope`]; failed requests publish no partial scope.
+#[allow(clippy::too_many_lines)] // One atomic scope validation publishes only after every contract passes.
+pub fn validate_composition_scope_with_budget(
+    catalogue: Arc<ValidatedComposition>,
+    mut sources: Vec<SourceCompositionDefinition>,
+    mut limits: CompositionLimits,
+    remaining_work: &mut u64,
+    cancellation: &CancellationToken,
+) -> Result<ValidatedCompositionScope, E> {
+    limits.work = limits.work.min(*remaining_work);
     limits.validate()?;
     let mut budget = Budget::new(limits, cancellation);
     budget.step(1)?;
@@ -310,6 +338,7 @@ pub fn validate_composition_scope(
         }
     }
     budget.step(1)?;
+    *remaining_work -= budget.work;
     Ok(ValidatedCompositionScope { catalogue, sources })
 }
 

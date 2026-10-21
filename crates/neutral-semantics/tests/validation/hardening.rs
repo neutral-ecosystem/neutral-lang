@@ -229,7 +229,12 @@ fn materialized_values_share_retention_budget() {
             ),
         ])
     };
-    let bytes = 2 * (std::mem::size_of::<V>() as u64 + 64);
+    // The independently owned catalogue/scope payloads also survive validation.
+    let context_bytes =
+        (std::mem::size_of::<neutral_vocabulary::composition::ValidatedCompositionScope>()
+            + std::mem::size_of::<neutral_vocabulary::composition::ValidatedComposition>())
+            as u64;
+    let bytes = context_bytes + 2 * (std::mem::size_of::<V>() as u64 + 64);
     let mut exact = make();
     exact.expression_limits.retained_bytes = bytes;
     assert!(validate(exact).is_ok());

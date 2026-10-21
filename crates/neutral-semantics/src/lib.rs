@@ -17,7 +17,10 @@ pub use evaluation::{
     normalize_binding_with_budget, validate_evaluation_bindings,
 };
 pub use model::*;
-pub use validation::{derive_expression_resources, validate_expression_model};
+pub use validation::{
+    derive_expression_resources, derive_expression_resources_with_budget, prepare_expression_model,
+    validate_expression_model,
+};
 
 #[cfg(test)]
 #[path = "../tests/unit/decimal.rs"]

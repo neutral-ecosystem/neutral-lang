@@ -241,14 +241,13 @@ unchanged-input campaigns retain their own later checkboxes.
 
 - [x] Test every frozen operator/precedence, input/output intrinsic, match exhaustiveness, interpolation and existing source construction form. All branches resolve/type-check; selected static paths normalize, unresolved guarded bodies remain residual. Historical boundaries reject the same new syntax.
 - [x] Implement definition-scoped templates, static/deferred parameters, ordered named/default arguments, capture-free lexical substitution and recursion rejection. Templates are never runtime-callable values.
-- [ ] Implement finite static matrices with preflight Cartesian cardinality, original axis-index names, aggregate visitation/work/storage limits, filters/exclusions and source attribution. Deferred values cannot affect count/names/topology. Test empty axes, repeated values, collisions and filtered one-over products.
+- [x] Implement finite static matrices with preflight Cartesian cardinality, original axis-index names, aggregate visitation/work/storage limits, filters/exclusions and source attribution. Deferred values cannot affect count/names/topology. Test empty axes, repeated values, collisions and filtered one-over products.
 - [x] Run all registered source/type/evaluation/expansion literal cases through compilation and independent reading; preserve errors and no-I/O behavior. Complete all required feature paths before any explicit capture `/3` availability advertisement.
 
-Status (21-10-2026): three of four Task 9 subitems are qualified by the owning
-source/template suites and registered core corpus. The user reports the oracle
-verifier, full tests and CI PR checks passing again. The matrix aggregate-budget
-subitem and Task 9 overall remain open for the accounting gap described below;
-these checks do not complete Tasks 10–11 or activate `/3`.
+Status (21-10-2026): all four Task 9 subitems are qualified. Final CI PR passes
+1,335 tests (zero skipped), doctests, formatting, Clippy, smoke/probe checks and
+generated documentation; the independent oracle revision verifier also passes.
+This completes Task 9, not Tasks 10–11 or `/3` activation.
 
 Continuation qualification (21-10-2026): 67 registered core source/type/evaluation/
 expansion cases now compare literal results through compilation and independent
@@ -263,11 +262,15 @@ deprecates the original result oracle without altering its frozen bytes. Only tw
 evaluator-limit diagnostic expectations change to `NEU-EVAL-006`; original cases,
 source inputs, arithmetic results and identity vectors remain immutable.
 
-Shared normalization now debits actual kernel work/storage across roots and matrix
-filters; retained bodies are not copied merely to discard them. Remaining before
-Task 9 closure: qualify shared accounting across repeated whole-model validation,
-companion assembly and all bounded-copy paths. Per-call limits alone do not close
-that aggregate gate. No `/3` availability advertisement or activation is implied.
+Aggregate qualification: producer model preparation derives facts and validates
+once; nested catalogue/scope validation reports consumed work to the parent.
+Syntax, contract, tree and companion copies preflight retained payloads. Template
+scratch and queued static arguments share expansion counters; generated output
+includes string/list payloads and checks its independent output ceiling. Exact/
+one-over work/storage, pre-allocation rejection, allocation/cancellation sweeps
+and recovery regressions pass. Structural work and retained bytes remain separate
+dimensions; frozen controls, historical wire formats and identity vectors are
+unchanged. No `/3` availability advertisement or activation is implied.
 
 ## Task 10: Independent probe and actual clean/cache equivalence
 

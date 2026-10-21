@@ -16,16 +16,20 @@ use neutral_ir::{
     expression::project::ExpressionProjectIr,
 };
 use neutral_vocabulary::composition::{
-    ValidatedCompositionScope, validate_composition_model, validate_composition_scope,
+    ValidatedCompositionScope, validate_composition_model_with_budget,
+    validate_composition_scope_with_budget,
 };
 
 /// Reuses the independent vocabulary/default/embedding validator without fake binding values.
+#[allow(clippy::too_many_lines)] // Preflight, canonicalization and comparison share one atomic budget.
 pub(super) fn scope(
     ir: &ExpressionProjectIr,
     limits: &SemanticLimits,
     cancel: &CancellationToken,
     budget: &mut Budget<'_>,
 ) -> Result<Shared<ValidatedCompositionScope>, E> {
+    let mut policy = limits.composition.policy();
+    policy.work = policy.work.min(budget.work);
     let inspection = inspect_composition_bodies(
         ir.declarations.iter().filter_map(|d| {
             if let S::Definition(b) = &d.signature {
@@ -35,7 +39,7 @@ pub(super) fn scope(
             }
         }),
         limits.project,
-        limits.composition.policy(),
+        policy,
         cancel,
     )
     .map_err(|e| match e {
@@ -44,15 +48,53 @@ pub(super) fn scope(
     })?;
     // Pay preflight, guarded copy and canonical equality before their proportional work.
     budget.step(inspection.work.checked_mul(3).ok_or(E::Limit)?)?;
-    let catalogue = Shared::try_new(
-        validate_composition_model(&ir.vocabularies, limits.composition, cancel)
-            .map_err(E::from)?,
+    budget.storage(inspection.retained_bytes.checked_mul(3).ok_or(E::Limit)?)?;
+    budget.storage(
+        (std::mem::size_of::<ValidatedCompositionScope>()
+            + std::mem::size_of::<neutral_vocabulary::composition::ValidatedComposition>())
+            as u64,
+    )?;
+    policy.work = policy.work.min(budget.work);
+    let catalogue_copy = neutral_ir::composition::project::inspect_composition_catalogue(
+        &ir.vocabularies,
+        limits.project,
+        policy,
+        cancel,
     )
-    .map_err(|_| E::Limit)?;
+    .map_err(|_| {
+        if cancel.is_cancelled() {
+            E::Cancelled
+        } else {
+            E::Limit
+        }
+    })?;
+    budget.step(catalogue_copy.work.checked_mul(3).ok_or(E::Limit)?)?;
+    budget.storage(
+        catalogue_copy
+            .retained_bytes
+            .checked_mul(3)
+            .ok_or(E::Limit)?,
+    )?;
+    let mut remaining = budget.work;
+    let before = remaining;
+    let validated_catalogue = validate_composition_model_with_budget(
+        &ir.vocabularies,
+        limits.composition,
+        &mut remaining,
+        cancel,
+    )
+    .map_err(E::from)?;
+    budget.step(before - remaining)?;
+    let catalogue = Shared::try_new(validated_catalogue).map_err(|_| E::Limit)?;
     let mut sources = Vec::new();
     for d in &ir.declarations {
         if let S::Definition(body) = &d.signature {
             budget.step(1)?;
+            budget.symbol(&d.identity)?;
+            budget.storage(
+                std::mem::size_of::<SourceCompositionDefinition>() as u64
+                    + d.identity.declaration_name().len() as u64,
+            )?;
             sources.try_retain_exact(1).map_err(|_| E::Limit)?;
             sources.push(SourceCompositionDefinition {
                 owner: d.identity.try_clone().map_err(|_| E::Limit)?,
@@ -64,11 +106,18 @@ pub(super) fn scope(
             });
         }
     }
-    let scope = Shared::try_new(
-        validate_composition_scope(catalogue, sources, limits.composition, cancel)
-            .map_err(E::from)?,
+    let mut remaining = budget.work;
+    let before = remaining;
+    let validated_scope = validate_composition_scope_with_budget(
+        catalogue,
+        sources,
+        limits.composition,
+        &mut remaining,
+        cancel,
     )
-    .map_err(|_| E::Limit)?;
+    .map_err(E::from)?;
+    budget.step(before - remaining)?;
+    let scope = Shared::try_new(validated_scope).map_err(|_| E::Limit)?;
     for (raw, validated) in ir
         .declarations
         .iter()

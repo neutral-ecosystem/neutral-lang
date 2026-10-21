@@ -649,16 +649,19 @@ Slice 1 — consumer contract foundation:
   rewrite project identity; unretained evaluation attribution is explicit.
   Task 9 compares 67 registered core source/type/evaluation/expansion cases against
   literal oracles through independent decoding; the authoring-service case remains
-  separate. Three of its four plan subitems are checked: source semantics,
-  definition-scoped templates and registered core corpus comparisons. The aggregate
-  matrix-budget subitem and Task 9 overall remain open; passing tests/CI alone do
-  not qualify the missing shared accounting. The approved current oracle corrects only two evaluator-limit codes;
+  separate. All four Task 9 plan subitems are checked, including aggregate matrix
+  work/storage qualification. The approved current oracle corrects only two evaluator-limit codes;
   original frozen bytes and identity vectors remain preserved. Empty matrix axes
   reject deferred shape filters and use full Cartesian cardinality. Folding shares
   actual work/storage across roots and filters without discarding copied bodies.
-  Remaining: aggregate source work/storage qualification across whole-model
-  validation, companions and bounded-copy paths; remaining consumer/authoring
-  corpus gates, actual `/3` cache execution and final unchanged-input campaigns. Integration
+  Producer preparation and nested contract validation share consumed budgets;
+  syntax/tree/companion copies preflight retention. Template scratch, queued static
+  arguments and payload-aware expansion output obey independent controls. Exact/
+  one-over, pre-allocation rejection and allocation/cancellation recovery tests pass;
+  final CI passes 1,335 tests (zero skipped), doctests and all seven quality steps.
+  Frozen controls and historical wire/identity vectors remain unchanged.
+  Remaining: consumer/authoring corpus gates, actual `/3` cache execution and final
+  unchanged-input campaigns. Integration
   examples do not replace these requirements or complete later plan tasks.
   This gate remains open and `/3` is not activated.
 

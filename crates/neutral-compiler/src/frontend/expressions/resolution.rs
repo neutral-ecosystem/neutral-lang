@@ -23,18 +23,10 @@ impl<'a> State<'a, '_> {
         match self.bodies.get(owner) {
             Some(body) => Ok(match body {
                 ExpressionBody::Input => ExpressionBody::Input,
-                ExpressionBody::Value(v) => ExpressionBody::Value(
-                    neutral_ir::expression::try_clone_value_bounded(
-                        v,
-                        self.budget.expression,
-                        self.budget.cancel,
-                    )
-                    .map_err(|_| error(ec::EXP_LIMIT, None))?,
-                ),
-                ExpressionBody::Expression(e) => ExpressionBody::Expression(
-                    e.try_clone_bounded(self.budget.expression, self.budget.cancel)
-                        .map_err(|_| error(ec::EXP_LIMIT, None))?,
-                ),
+                ExpressionBody::Value(v) => ExpressionBody::Value(self.budget.copy_value(v)?),
+                ExpressionBody::Expression(e) => {
+                    ExpressionBody::Expression(self.budget.copy_expression(e)?)
+                }
             }),
             None => Err(error(ec::EXP_NAME, None)),
         }
@@ -46,43 +38,46 @@ impl<'a> State<'a, '_> {
         if self.bodies.contains_key(owner) {
             return Ok(());
         }
+        self.budget.retain::<ModuleSymbolIdentity>(1)?;
         if self.active.len() as u64 >= self.budget.expression.syntax_depth
-            || !alloc(self.active.insert(alloc(owner.try_clone())?))?
+            || !alloc(self.active.insert(self.budget.copy_symbol(owner)?))?
         {
             return Err(error(ec::EXP_CYCLE, None));
         }
-        let root = alloc(
+        let root = self.budget.copy_root(
             self.resolver
                 .roots
                 .get(owner)
-                .ok_or_else(|| error(ec::EXP_NAME, None))?
-                .try_clone(),
+                .ok_or_else(|| error(ec::EXP_NAME, None))?,
         )?;
         let syntax = self
             .bindings
             .get(owner)
             .ok_or_else(|| error(ec::EXP_NAME, Some(root.location)))?;
         let input = syntax.input;
+        self.budget.retain::<Lex<'_>>(syntax.tokens.len())?;
         let tokens = alloc(copy_slice(&syntax.tokens))?;
         let mut axes = Vec::new();
+        self.budget.retain::<Local<'_>>(syntax.axes.len())?;
         grow(&mut axes, syntax.axes.len())?;
         for (name, value) in &syntax.axes {
             axes.push(Local::Value(
                 name,
-                value
-                    .try_clone_bounded(self.budget.expression, self.budget.cancel)
-                    .map_err(|_| error(ec::EXP_LIMIT, Some(root.location)))?,
+                self.budget.copy_expression(value).map_err(|mut e| {
+                    e.location = Some(root.location);
+                    e
+                })?,
             ));
         }
-        let ty = alloc(
+        let ty = self.budget.copy_type(
             self.resolver
                 .types
                 .get(owner)
-                .ok_or_else(|| error(ec::EXP_NAME, Some(root.location)))?
-                .try_clone(),
+                .ok_or_else(|| error(ec::EXP_NAME, Some(root.location)))?,
         )?;
         let mut frames = Vec::new();
         if !axes.is_empty() {
+            self.budget.retain::<Frame<'_>>(1)?;
             grow(&mut frames, 1)?;
             frames.push(axes);
         }
@@ -98,7 +93,8 @@ impl<'a> State<'a, '_> {
             )?)
         };
         self.active.remove(owner);
-        alloc(self.bodies.insert(alloc(owner.try_clone())?, body))?;
+        self.budget.retain::<ExpressionBody>(1)?;
+        alloc(self.bodies.insert(self.budget.copy_symbol(owner)?, body))?;
         Ok(())
     }
 
@@ -220,7 +216,7 @@ impl<'a> State<'a, '_> {
                 }
                 Op::And | Op::Or if left.ty == T::Bool && right.ty == T::Bool => T::Bool,
                 Op::Concat if left.ty == right.ty && matches!(left.ty, T::String | T::List(_)) => {
-                    alloc(left.ty.try_clone())?
+                    self.budget.copy_type(&left.ty)?
                 }
                 Op::Less | Op::LessEqual | Op::Greater | Op::GreaterEqual
                     if left.ty == right.ty && matches!(left.ty, T::Num | T::String) =>
@@ -315,9 +311,17 @@ impl<'a> State<'a, '_> {
         Ok(value)
     }
     /// Gives literals their exact contextual nullable type when explicitly expected.
-    fn literal(ty: T, value: V, expected: Option<&T>, root: &Root) -> Result<Expression, E> {
+    fn literal(
+        &mut self,
+        ty: T,
+        value: V,
+        expected: Option<&T>,
+        root: &Root,
+    ) -> Result<Expression, E> {
         let ty = match expected {
-            Some(context @ T::Nullable(inner)) if **inner == ty => alloc(context.try_clone())?,
+            Some(context @ T::Nullable(inner)) if **inner == ty => {
+                self.budget.copy_type(context)?
+            }
             _ => ty,
         };
         Self::checked(
@@ -330,6 +334,7 @@ impl<'a> State<'a, '_> {
         )
     }
     /// Resolves scalar literals, lexical slots and ordinary immutable binding reuse.
+    #[allow(clippy::too_many_lines)] // Name resolution and its exact source diagnostic stay together.
     fn leaf(
         &mut self,
         root: &Root,
@@ -351,17 +356,17 @@ impl<'a> State<'a, '_> {
                     T::Path => V::Path(value),
                     _ => V::String(value),
                 };
-                return Self::literal(ty, v, expected, root);
+                return self.literal(ty, v, expected, root);
             }
             if matches!(first, "true" | "false") {
-                return Self::literal(T::Bool, V::Bool(first == "true"), expected, root);
+                return self.literal(T::Bool, V::Bool(first == "true"), expected, root);
             }
             if first == "null" {
                 let ty = expected
                     .filter(|t| matches!(t, T::Nullable(_)))
                     .ok_or_else(|| error(ec::EXP_TYPE, Some(root.location)))?;
                 return Ok(Expression {
-                    ty: alloc(ty.try_clone())?,
+                    ty: self.budget.copy_type(ty)?,
                     node: N::Value(V::Null),
                 });
             }
@@ -381,7 +386,7 @@ impl<'a> State<'a, '_> {
                         Some(root.location),
                     )
                 })?;
-                return Self::literal(T::Num, V::Number(value), expected, root);
+                return self.literal(T::Num, V::Number(value), expected, root);
             }
             let mut lexical_depth = 0_u64;
             for frame in frames.iter().rev() {
@@ -390,7 +395,7 @@ impl<'a> State<'a, '_> {
                         Local::Bound(name, ty, _) if *name == first => {
                             return Self::checked(
                                 Expression {
-                                    ty: alloc(ty.try_clone())?,
+                                    ty: self.budget.copy_type(ty)?,
                                     node: N::Bound {
                                         depth: lexical_depth,
                                         slot: slot as u64,
@@ -401,9 +406,11 @@ impl<'a> State<'a, '_> {
                             );
                         }
                         Local::Value(name, value) if *name == first => {
-                            let mut value = value
-                                .try_clone_bounded(self.budget.expression, self.budget.cancel)
-                                .map_err(|_| error(ec::EXP_LIMIT, Some(root.location)))?;
+                            let mut value =
+                                self.budget.copy_expression(value).map_err(|mut e| {
+                                    e.location = Some(root.location);
+                                    e
+                                })?;
                             lift(&mut value, lexical_depth, 0)?;
                             return Self::checked(value, expected, root);
                         }
@@ -430,9 +437,9 @@ impl<'a> State<'a, '_> {
         {
             return Err(error(ec::TPL_NAME, Some(root.location)));
         }
-        let ty = alloc(self.resolver.types[&owner].try_clone())?;
+        let ty = self.budget.copy_type(&self.resolver.types[&owner])?;
         let node = match self.binding(&owner)? {
-            ExpressionBody::Input => N::Input(alloc(owner.try_clone())?),
+            ExpressionBody::Input => N::Input(self.budget.copy_symbol(&owner)?),
             ExpressionBody::Value(v) => N::Value(v),
             ExpressionBody::Expression(e) => return Self::checked(e, expected, root),
         };
@@ -461,7 +468,7 @@ impl<'a> State<'a, '_> {
             self.expression(root, else_tokens, Some(&then_branch.ty), frames, depth + 1)?;
         Self::checked(
             Expression {
-                ty: alloc(then_branch.ty.try_clone())?,
+                ty: self.budget.copy_type(&then_branch.ty)?,
                 node: N::If {
                     guard: alloc(boxed(guard))?,
                     then_branch: alloc(boxed(then_branch))?,
@@ -496,7 +503,7 @@ impl<'a> State<'a, '_> {
             return Err(error(ec::EXP_SYNTAX, Some(root.location)));
         }
         let mut arms = Vec::new();
-        let mut result = expected.map(|t| alloc(t.try_clone())).transpose()?;
+        let mut result = expected.map(|t| self.budget.copy_type(t)).transpose()?;
         for member in parser::split(members)? {
             let Some(first) = member.first() else {
                 return Err(error(ec::EXP_MATCH, Some(root.location)));
@@ -522,7 +529,7 @@ impl<'a> State<'a, '_> {
             grow(&mut frame, 1)?;
             frame.push(Local::Bound(
                 binder[0].spelling,
-                alloc(alternative.ty.try_clone())?,
+                self.budget.copy_type(&alternative.ty)?,
                 ParameterPhase::Deferred,
             ));
             grow(frames, 1)?;
@@ -530,12 +537,12 @@ impl<'a> State<'a, '_> {
             let body = self.expression(root, &member[i..], result.as_ref(), frames, depth + 1)?;
             frames.pop();
             if result.is_none() {
-                result = Some(alloc(body.ty.try_clone())?);
+                result = Some(self.budget.copy_type(&body.ty)?);
             }
             grow(&mut arms, 1)?;
             arms.push(MatchArm {
                 tag: alloc(text(tag))?,
-                payload_type: alloc(alternative.ty.try_clone())?,
+                payload_type: self.budget.copy_type(&alternative.ty)?,
                 body,
             });
         }
@@ -576,12 +583,12 @@ impl<'a> State<'a, '_> {
             },
             _ => None,
         };
-        let mut element = inner.map(|t| alloc(t.try_clone())).transpose()?;
+        let mut element = inner.map(|t| self.budget.copy_type(t)).transpose()?;
         let mut values = Vec::new();
         for item in parser::split(items)? {
             let expression = self.expression(root, item, element.as_ref(), frames, depth + 1)?;
             if element.is_none() {
-                element = Some(alloc(expression.ty.try_clone())?);
+                element = Some(self.budget.copy_type(&expression.ty)?);
             }
             grow(&mut values, 1)?;
             values.push(expression);
@@ -590,7 +597,9 @@ impl<'a> State<'a, '_> {
             element.ok_or_else(|| error(ec::EXP_TYPE, Some(root.location)))?,
         ))?);
         let ty = match expected {
-            Some(context @ T::Nullable(inner)) if **inner == ty => alloc(context.try_clone())?,
+            Some(context @ T::Nullable(inner)) if **inner == ty => {
+                self.budget.copy_type(context)?
+            }
             _ => ty,
         };
         Self::checked(
@@ -693,8 +702,8 @@ impl<'a> State<'a, '_> {
                                     return Err(error(ec::EXP_TYPE, Some(root.location)));
                                 };
                                 Some(Expression {
-                                    ty: alloc(field.ty.try_clone())?,
-                                    node: N::Value(closed_binding(default)?),
+                                    ty: self.budget.copy_type(&field.ty)?,
+                                    node: N::Value(closed_binding(default, &mut self.budget)?),
                                 })
                             }
                         }
@@ -705,7 +714,7 @@ impl<'a> State<'a, '_> {
             }
         };
         Ok(Expression {
-            ty: alloc(ty.try_clone())?,
+            ty: self.budget.copy_type(ty)?,
             node,
         })
     }
@@ -736,10 +745,10 @@ impl<'a> State<'a, '_> {
         {
             return Err(error(ec::TPL_NAME, Some(root.location)));
         }
-        let ty = T::Ref(alloc(boxed(alloc(
-            self.resolver.types[&owner].try_clone(),
-        )?))?);
-        Self::literal(ty, V::Reference(owner), expected, root)
+        let ty = T::Ref(alloc(boxed(
+            self.budget.copy_type(&self.resolver.types[&owner])?,
+        ))?);
+        self.literal(ty, V::Reference(owner), expected, root)
     }
     /// Parses explicit future output/result/selector contracts without acquisition.
     #[allow(clippy::too_many_lines)] // Exact typed selector grammar is validated as one source operation.
@@ -1007,6 +1016,7 @@ fn first_group(tokens: &[Lex<'_>], start: usize) -> Result<usize, E> {
 }
 /// Preserves ordinary string escapes plus the frozen escaped interpolation opener.
 fn interpolation_text(raw: &str, budget: &mut Budget<'_>) -> Result<String, E> {
+    budget.bytes(raw.len() as u64 + 2)?;
     let mut literal = String::new();
     alloc(literal.try_retain(raw.len() + 2))?;
     literal.push('"');
@@ -1030,36 +1040,45 @@ fn interpolation_text(raw: &str, budget: &mut Budget<'_>) -> Result<String, E> {
     parser::string(&literal, budget)
 }
 /// Closed defaults retain all optional/null distinctions when entering binding values.
-pub(super) fn closed_binding(value: &ClosedValue) -> Result<V, E> {
+pub(super) fn closed_binding(value: &ClosedValue, budget: &mut Budget<'_>) -> Result<V, E> {
+    budget.retain::<V>(1)?;
     Ok(match value {
-        ClosedValue::Number(v) => V::Number(alloc(v.try_clone())?),
-        ClosedValue::String(v) => V::String(alloc(v.try_clone())?),
+        ClosedValue::Number(v) => {
+            budget.bytes(v.coefficient().len() as u64)?;
+            V::Number(alloc(v.try_clone())?)
+        }
+        ClosedValue::String(v) => V::String(budget.copy_text(v)?),
         ClosedValue::Bool(v) => V::Bool(*v),
-        ClosedValue::Url(v) => V::Url(alloc(v.try_clone())?),
-        ClosedValue::Path(v) => V::Path(alloc(v.try_clone())?),
+        ClosedValue::Url(v) => V::Url(budget.copy_text(v)?),
+        ClosedValue::Path(v) => V::Path(budget.copy_text(v)?),
         ClosedValue::Null => V::Null,
         ClosedValue::List(items) => {
             let mut values = Vec::new();
+            budget.retain::<V>(items.len())?;
             grow(&mut values, items.len())?;
             for item in items {
-                values.push(closed_binding(item)?);
+                values.push(closed_binding(item, budget)?);
             }
             V::List(values)
         }
         ClosedValue::Record(fields) => {
             let mut values = Vec::new();
+            budget.retain::<(String, Option<V>)>(fields.len())?;
             grow(&mut values, fields.len())?;
             for (name, value) in fields {
                 values.push((
-                    alloc(name.try_clone())?,
-                    value.as_ref().map(closed_binding).transpose()?,
+                    budget.copy_text(name)?,
+                    value
+                        .as_ref()
+                        .map(|value| closed_binding(value, budget))
+                        .transpose()?,
                 ));
             }
             V::Record(values)
         }
         ClosedValue::Variant { tag, payload } => V::Variant {
-            tag: alloc(tag.try_clone())?,
-            payload: alloc(boxed(closed_binding(payload)?))?,
+            tag: budget.copy_text(tag)?,
+            payload: alloc(boxed(closed_binding(payload, budget)?))?,
         },
         ClosedValue::Reference(never) => match *never {},
     })

@@ -8,13 +8,13 @@
 //! identity facts describe the complete project, never a selected public view.
 
 use super::{
-    Arc, B, CancellationToken, CompositionOrigin, CompositionResourceFacts, E, Edge,
-    ExpansionAttribution, Expression, ExpressionAttribution, ExpressionBody, ExpressionDeclaration,
-    ExpressionLimits, ExpressionProjectIr, ExpressionResourceFacts, ModuleSymbolIdentity, N,
-    NormalizedBinding, ProjectProvenance, ProjectResourceFacts, ProjectSourceMap, PublicTemplate,
-    Root, S, SemanticDigest, SourceLocation, State, T, TemplateParameter, TryClone, V, alloc,
-    composition_error, copy_slice, derive_expression_resources, error, evaluation_error,
-    expression_profile, grow, normalize_binding_with_budget, text, validate_expression_model,
+    B, Budget, CompositionOrigin, CompositionResourceFacts, E, Edge, ExpansionAttribution,
+    Expression, ExpressionAttribution, ExpressionBody, ExpressionDeclaration, ExpressionProjectIr,
+    ExpressionResourceFacts, ModuleSymbolIdentity, N, NormalizedBinding, ProjectProvenance,
+    ProjectResourceFacts, ProjectSourceMap, PublicTemplate, Root, S, SemanticDigest,
+    SourceLocation, State, T, TemplateParameter, TryClone, V, alloc, composition_error, copy_slice,
+    error, evaluation_error, expression_profile, grow, normalize_binding_with_budget,
+    prepare_expression_model,
 };
 use crate::frontend::expression_codes as ec;
 use neutral_ir::composition::{
@@ -22,6 +22,142 @@ use neutral_ir::composition::{
 };
 
 impl State<'_, '_> {
+    /// Default/type preflight and normalization share aggregate source-validation work.
+    pub(super) fn source_scope(
+        &mut self,
+    ) -> Result<neutral_vocabulary::composition::ValidatedCompositionScope, E> {
+        use neutral_ir::composition::{CompositionDefinition, SourceCompositionDefinition};
+        let project = self.semantic_limits().project;
+        let policy = self.captured.composition_limits().policy();
+        let mut definitions = Vec::new();
+        self.budget
+            .retain::<SourceCompositionDefinition>(self.resolver.definitions.len())?;
+        grow(&mut definitions, self.resolver.definitions.len())?;
+        for source in &self.resolver.definitions {
+            definitions.push(SourceCompositionDefinition {
+                owner: self.budget.copy_symbol(&source.owner)?,
+                definition: CompositionDefinition {
+                    name: self.budget.copy_text(&source.definition.name)?,
+                    public: source.definition.public,
+                    body: self
+                        .budget
+                        .copy_definition(&source.definition.body, project, policy)?,
+                },
+            });
+        }
+        let mut remaining = self.budget.remaining().work;
+        let before = remaining;
+        let scope = neutral_vocabulary::composition::validate_composition_scope_with_budget(
+            self.captured.catalogue(),
+            definitions,
+            self.captured.composition_limits(),
+            &mut remaining,
+            self.budget.cancel,
+        )
+        .map_err(|e| error(e.diagnostic_code(), None))?;
+        self.budget.charge(before - remaining)?;
+        Ok(scope)
+    }
+    /// Captured metadata and catalogue copies pay before the shared legacy builder allocates.
+    fn charge_captured_companions(&mut self) -> Result<(), E> {
+        use neutral_ir::project::{ProjectModule, ProjectSource, ProjectVocabularySource};
+        self.budget
+            .retain::<ProjectModule>(self.captured.sources().len())?;
+        self.budget
+            .retain::<ProjectSource>(self.captured.sources().len())?;
+        self.budget
+            .retain::<ProjectVocabularySource>(self.captured.vocabularies().len())?;
+        let edges = self.resolver.graph.edges();
+        self.budget.charge(
+            (edges.len() as u64)
+                .checked_mul(self.captured.sources().len() as u64)
+                .ok_or_else(|| error(ec::EXP_LIMIT, None))?,
+        )?;
+        for source in self.captured.sources() {
+            self.budget.bytes(
+                (super::V1_SOURCE_PROFILE.len()
+                    + source.module_id().len() * 2
+                    + source.source_id().len()) as u64,
+            )?;
+            let imports = edges
+                .iter()
+                .filter(|e| e.from() == source.module_id())
+                .count();
+            self.budget.retain::<String>(imports)?;
+            for edge in edges.iter().filter(|e| e.from() == source.module_id()) {
+                self.budget.bytes(edge.target().len() as u64)?;
+                self.budget.charge(
+                    (edge.target().len() as u64 + 1)
+                        .checked_mul(u64::from(imports.bit_width()) + 1)
+                        .ok_or_else(|| error(ec::EXP_LIMIT, None))?,
+                )?;
+            }
+        }
+        for bundle in self.captured.catalogue().bundles() {
+            self.budget.bytes(
+                (bundle.identity.identity().len() + bundle.identity.version().len()) as u64,
+            )?;
+            self.budget.charge(
+                (self.captured.vocabularies().len() as u64)
+                    .checked_mul(bundle.identity.identity().len() as u64 + 1)
+                    .ok_or_else(|| error(ec::EXP_LIMIT, None))?,
+            )?;
+        }
+        let mut policy = self.captured.composition_limits().policy();
+        policy.work = policy.work.min(self.budget.remaining().work);
+        let catalogue = neutral_ir::composition::project::inspect_composition_catalogue(
+            self.captured.catalogue().bundles(),
+            self.semantic_limits().project,
+            policy,
+            self.budget.cancel,
+        )
+        .map_err(|_| self.budget.resource_error())?;
+        self.budget.charge(
+            catalogue
+                .work
+                .checked_mul(2)
+                .ok_or_else(|| error(ec::EXP_LIMIT, None))?,
+        )?;
+        self.budget.storage(catalogue.retained_bytes)?;
+        let profiles = self.captured.semantic_profiles();
+        self.budget
+            .retain::<String>(profiles.required_features.len())?;
+        for text in [
+            &profiles.expression,
+            &profiles.evaluator,
+            &profiles.expansion,
+            &profiles.decimal,
+        ]
+        .into_iter()
+        .chain(profiles.required_features.iter())
+        {
+            self.budget.bytes(text.len() as u64)?;
+        }
+        Ok(())
+    }
+    /// Producer fact derivation and validation share one pass and the remaining request budget.
+    pub(super) fn prepare_model(
+        &mut self,
+        ir: ExpressionProjectIr,
+    ) -> Result<neutral_semantics::ValidatedExpressionModel, E> {
+        let mut remaining = self.budget.remaining();
+        let before = remaining;
+        let model = prepare_expression_model(
+            ir,
+            self.semantic_limits(),
+            &mut remaining,
+            self.budget.cancel,
+        )
+        .map_err(|e| {
+            if e == neutral_semantics::ExpressionValidationError::Limit {
+                self.budget.resource_error()
+            } else {
+                error(e.code(), None)
+            }
+        })?;
+        self.budget.debit(before, remaining)?;
+        Ok(model)
+    }
     /// Nested folding consumes the request's remaining kernel work and scratch retention.
     pub(super) fn normalize(
         &mut self,
@@ -33,7 +169,15 @@ impl State<'_, '_> {
         let before = remaining;
         let result =
             normalize_binding_with_budget(model, owner, &mut remaining, self.budget.cancel)
-                .map_err(|e| evaluation_error(e, location))?;
+                .map_err(|e| {
+                    if e == neutral_semantics::EvaluationError::Limit {
+                        let mut failure = self.budget.resource_error();
+                        failure.location = location;
+                        failure
+                    } else {
+                        evaluation_error(e, location)
+                    }
+                })?;
         self.budget.debit(before, remaining)?;
         Ok(result)
     }
@@ -47,20 +191,15 @@ impl State<'_, '_> {
     ) -> Result<Option<V>, E> {
         self.budget.charge(1)?;
         let mut references = Vec::new();
-        collect_targets(expression, &mut references)?;
+        collect_targets(&mut self.budget, expression, &mut references)?;
         for target in references {
             if target != owner.owner && !self.bodies.contains_key(&target) {
                 self.ensure_binding(&target)?;
             }
         }
-        let expression = self.clone_expression(expression)?;
+        let expression = self.budget.copy_expression(expression)?;
         let ir = self.assemble(true, Some((&owner.owner, &expression)))?;
-        let model = validate_expression_model(
-            alloc(Arc::try_new(ir))?,
-            self.semantic_limits(),
-            self.budget.cancel,
-        )
-        .map_err(|e| error(e.code(), Some(owner.location)))?;
+        let model = self.prepare_model(ir)?;
         match self.normalize(&model, &owner.owner, Some(owner.location))? {
             NormalizedBinding::Value(v) => Ok(Some(v)),
             NormalizedBinding::Residual(_) => Ok(None),
@@ -75,35 +214,33 @@ impl State<'_, '_> {
         selected: Option<(&ModuleSymbolIdentity, &Expression)>,
     ) -> Result<ExpressionProjectIr, E> {
         self.budget.charge(1)?;
+        let project_limits = self.semantic_limits().project;
         let mut declarations = Vec::new();
         let mut maps = Vec::new();
-        let roots = self.resolver.retained_roots().map_err(composition_error)?;
-        for root in roots {
+        self.budget
+            .retain::<ExpressionDeclaration>(self.resolver.roots.len())?;
+        self.budget
+            .retain::<ProjectSourceMap>(self.resolver.roots.len())?;
+        for root in self.resolver.roots.values() {
             let (signature, body) = if let Some((_, expression)) =
                 selected.filter(|(owner, _)| **owner == root.owner)
             {
                 (
-                    S::Binding(alloc(expression.ty.try_clone())?),
+                    S::Binding(self.budget.copy_type(&expression.ty)?),
                     Some(ExpressionBody::Expression(
-                        self.clone_expression(expression)?,
+                        self.budget.copy_expression(expression)?,
                     )),
                 )
             } else if root.ty.is_some() {
                 let body = if let Some(body) = self.bodies.get(&root.owner) {
                     match body {
                         ExpressionBody::Input => ExpressionBody::Input,
-                        ExpressionBody::Value(v) => ExpressionBody::Value(
-                            neutral_ir::expression::try_clone_value_bounded(
-                                v,
-                                self.budget.expression,
-                                self.budget.cancel,
-                            )
-                            .map_err(|_| error(ec::EXP_LIMIT, Some(root.location)))?,
-                        ),
-                        ExpressionBody::Expression(e) => ExpressionBody::Expression(
-                            e.try_clone_bounded(self.budget.expression, self.budget.cancel)
-                                .map_err(|_| error(ec::EXP_LIMIT, Some(root.location)))?,
-                        ),
+                        ExpressionBody::Value(v) => {
+                            ExpressionBody::Value(self.budget.copy_value(v)?)
+                        }
+                        ExpressionBody::Expression(e) => {
+                            ExpressionBody::Expression(self.budget.copy_expression(e)?)
+                        }
                     }
                 } else if self.bindings.get(&root.owner).is_some_and(|s| s.input) {
                     ExpressionBody::Input
@@ -113,7 +250,7 @@ impl State<'_, '_> {
                     return Err(error(ec::EXP_NAME, Some(root.location)));
                 };
                 (
-                    S::Binding(alloc(self.resolver.types[&root.owner].try_clone())?),
+                    S::Binding(self.budget.copy_type(&self.resolver.types[&root.owner])?),
                     Some(body),
                 )
             } else {
@@ -126,7 +263,11 @@ impl State<'_, '_> {
                     return Err(error(ec::EXP_NAME, Some(root.location)));
                 };
                 (
-                    S::Definition(alloc(definition.definition.body.try_clone())?),
+                    S::Definition(self.budget.copy_definition(
+                        &definition.definition.body,
+                        project_limits,
+                        self.captured.composition_limits().policy(),
+                    )?),
                     None,
                 )
             };
@@ -137,12 +278,12 @@ impl State<'_, '_> {
             };
             grow(&mut maps, 1)?;
             maps.push(ProjectSourceMap {
-                declaration: alloc(root.owner.try_clone())?,
+                declaration: self.budget.copy_symbol(&root.owner)?,
                 location: root.location,
             });
             grow(&mut declarations, 1)?;
             declarations.push(ExpressionDeclaration {
-                identity: root.owner,
+                identity: self.budget.copy_symbol(&root.owner)?,
                 public,
                 signature,
                 body,
@@ -151,17 +292,19 @@ impl State<'_, '_> {
         if let Some((owner, expression)) = selected
             && !declarations.iter().any(|d| d.identity == *owner)
         {
+            self.budget.retain::<ExpressionDeclaration>(1)?;
             grow(&mut declarations, 1)?;
             declarations.push(ExpressionDeclaration {
-                identity: alloc(owner.try_clone())?,
+                identity: self.budget.copy_symbol(owner)?,
                 public: false,
-                signature: S::Binding(alloc(expression.ty.try_clone())?),
+                signature: S::Binding(self.budget.copy_type(&expression.ty)?),
                 body: Some(ExpressionBody::Expression(
-                    self.clone_expression(expression)?,
+                    self.budget.copy_expression(expression)?,
                 )),
             });
         }
         declarations.sort_unstable_by(|a, b| a.identity.cmp(&b.identity));
+        self.charge_captured_companions()?;
         let companions = super::super::assembly::captured_companions(&self.resolver)
             .map_err(composition_error)?;
         let mut public_templates = Vec::new();
@@ -170,15 +313,13 @@ impl State<'_, '_> {
                 if !self.templates[owner].root.public {
                     continue;
                 }
+                self.budget.retain::<PublicTemplate>(1)?;
                 grow(&mut public_templates, 1)?;
-                public_templates.push(copy_template(
-                    template,
-                    self.budget.expression,
-                    self.budget.cancel,
-                )?);
+                public_templates.push(copy_template(template, &mut self.budget)?);
+                self.budget.retain::<ProjectSourceMap>(1)?;
                 grow(&mut maps, 1)?;
                 maps.push(ProjectSourceMap {
-                    declaration: alloc(owner.try_clone())?,
+                    declaration: self.budget.copy_symbol(owner)?,
                     location: self.templates[owner].root.location,
                 });
             }
@@ -187,7 +328,9 @@ impl State<'_, '_> {
         let cap = self.captured.resource_facts();
         let limits = self.semantic_limits().project;
         let mut ir = ExpressionProjectIr {
-            schema: alloc(text(expression_profile::PROJECT_IR_SCHEMA))?,
+            schema: self
+                .budget
+                .copy_text(expression_profile::PROJECT_IR_SCHEMA)?,
             modules: companions.modules,
             declarations,
             vocabularies: alloc(copy_slice(self.captured.catalogue().bundles()))?,
@@ -219,14 +362,20 @@ impl State<'_, '_> {
         };
         if !temporary {
             for attribution in &self.expansions {
+                self.budget.charge(ir.declarations.len() as u64 + 1)?;
                 if ir
                     .declarations
                     .iter()
                     .any(|d| d.identity == attribution.owner)
                 {
+                    self.budget.retain::<ExpansionAttribution>(1)?;
+                    self.budget
+                        .retain::<SourceLocation>(attribution.arguments.len())?;
+                    self.budget
+                        .retain::<u64>(attribution.original_axis_indices.len())?;
                     grow(&mut ir.expansion_attributions, 1)?;
                     ir.expansion_attributions.push(ExpansionAttribution {
-                        owner: alloc(attribution.owner.try_clone())?,
+                        owner: self.budget.copy_symbol(&attribution.owner)?,
                         application: attribution.application,
                         definition: attribution.definition,
                         arguments: {
@@ -264,22 +413,42 @@ impl State<'_, '_> {
                     return Err(error(ec::EXP_SYNTAX, None));
                 };
                 let location = source_map.location;
-                signature_edges(&d.identity, &d.signature, location, &mut ir.provenance)?;
+                signature_edges(
+                    &mut self.budget,
+                    &d.identity,
+                    &d.signature,
+                    location,
+                    &mut ir.provenance,
+                )?;
                 match &d.body {
                     Some(ExpressionBody::Expression(e)) => {
-                        tree_edges(&d.identity, e, location, &mut ir.provenance)?;
+                        tree_edges(
+                            &mut self.budget,
+                            &d.identity,
+                            e,
+                            location,
+                            &mut ir.provenance,
+                        )?;
+                        self.budget.retain::<ExpressionAttribution>(1)?;
                         grow(&mut ir.expression_attributions, 1)?;
                         ir.expression_attributions.push(ExpressionAttribution {
-                            owner: alloc(d.identity.try_clone())?,
+                            owner: self.budget.copy_symbol(&d.identity)?,
                             node_path: Vec::new(),
                             occurrence: Some(location),
                             related_public_locations: Vec::new(),
                         });
                     }
                     Some(ExpressionBody::Value(value)) => {
-                        value_edges(&d.identity, value, location, &mut ir.provenance)?;
+                        value_edges(
+                            &mut self.budget,
+                            &d.identity,
+                            value,
+                            location,
+                            &mut ir.provenance,
+                        )?;
                         self.source_reuse_edges(&d.identity, value, &mut ir.provenance)?;
                         materialized_origins(
+                            &mut self.budget,
                             &d.identity,
                             value,
                             &mut Vec::new(),
@@ -300,6 +469,7 @@ impl State<'_, '_> {
                 };
                 let location = source_map.location;
                 type_edges(
+                    &mut self.budget,
                     &template.identity,
                     &template.result_type,
                     false,
@@ -307,6 +477,7 @@ impl State<'_, '_> {
                     &mut ir.provenance,
                 )?;
                 tree_edges(
+                    &mut self.budget,
                     &template.identity,
                     &template.body,
                     location,
@@ -314,6 +485,7 @@ impl State<'_, '_> {
                 )?;
                 for p in &template.parameters {
                     type_edges(
+                        &mut self.budget,
                         &template.identity,
                         &p.ty,
                         false,
@@ -321,12 +493,19 @@ impl State<'_, '_> {
                         &mut ir.provenance,
                     )?;
                     if let Some(default) = &p.default {
-                        tree_edges(&template.identity, default, location, &mut ir.provenance)?;
+                        tree_edges(
+                            &mut self.budget,
+                            &template.identity,
+                            default,
+                            location,
+                            &mut ir.provenance,
+                        )?;
                     }
                 }
+                self.budget.retain::<ExpressionAttribution>(1)?;
                 grow(&mut ir.expression_attributions, 1)?;
                 ir.expression_attributions.push(ExpressionAttribution {
-                    owner: alloc(template.identity.try_clone())?,
+                    owner: self.budget.copy_symbol(&template.identity)?,
                     node_path: Vec::new(),
                     occurrence: Some(location),
                     related_public_locations: Vec::new(),
@@ -339,14 +518,18 @@ impl State<'_, '_> {
             ir.expression_attributions
                 .sort_unstable_by(|a, b| (&a.owner, &a.node_path).cmp(&(&b.owner, &b.node_path)));
         }
-        ir.composition_resources =
-            neutral_ir::expression::project::inspect_expression_project_resources(
+        let mut policy = ir.composition_limits;
+        policy.work = policy.work.min(self.budget.remaining().work);
+        let inspected =
+            neutral_ir::composition::project::inspect_expression_project_resources_with_work(
                 &ir,
                 limits,
-                ir.composition_limits,
+                policy,
                 self.budget.cancel,
             )
-            .map_err(|_| error(ec::EXP_LIMIT, None))?;
+            .map_err(|_| self.budget.resource_error())?;
+        self.budget.charge(inspected.work)?;
+        ir.composition_resources = inspected.facts;
         ir.resources.declarations = ir.declarations.len() as u64;
         let Some(import_edges) = ir
             .modules
@@ -358,127 +541,129 @@ impl State<'_, '_> {
         };
         ir.resources.import_edges = import_edges;
         ir.resources.value_nodes = ir.composition_resources.retained_value_nodes;
-        ir.expression_resources =
-            derive_expression_resources(&ir, self.semantic_limits(), self.budget.cancel)
-                .map_err(|e| error(e.code(), None))?;
         Ok(ir)
     }
 }
 
 /// Copies retained exported contracts through fallible tree/type ownership.
-fn copy_template(
-    template: &PublicTemplate,
-    limits: ExpressionLimits,
-    cancel: &CancellationToken,
-) -> Result<PublicTemplate, E> {
+fn copy_template(template: &PublicTemplate, budget: &mut Budget<'_>) -> Result<PublicTemplate, E> {
     let mut parameters = Vec::new();
+    budget.retain::<TemplateParameter>(template.parameters.len())?;
     grow(&mut parameters, template.parameters.len())?;
     for p in &template.parameters {
         parameters.push(TemplateParameter {
-            name: alloc(p.name.try_clone())?,
+            name: budget.copy_text(&p.name)?,
             phase: p.phase,
-            ty: alloc(p.ty.try_clone())?,
+            ty: budget.copy_type(&p.ty)?,
             default: p
                 .default
                 .as_ref()
-                .map(|e| {
-                    e.try_clone_bounded(limits, cancel)
-                        .map_err(|_| error(ec::EXP_LIMIT, None))
-                })
+                .map(|e| budget.copy_expression(e))
                 .transpose()?,
         });
     }
     Ok(PublicTemplate {
-        identity: alloc(template.identity.try_clone())?,
+        identity: budget.copy_symbol(&template.identity)?,
         parameters,
-        result_type: alloc(template.result_type.try_clone())?,
-        body: template
-            .body
-            .try_clone_bounded(limits, cancel)
-            .map_err(|_| error(ec::EXP_LIMIT, None))?,
+        result_type: budget.copy_type(&template.result_type)?,
+        body: budget.copy_expression(&template.body)?,
     })
 }
 /// Collects typed target owners for request-local static dependency resolution.
-fn collect_targets(e: &Expression, targets: &mut Vec<ModuleSymbolIdentity>) -> Result<(), E> {
+fn collect_targets(
+    budget: &mut Budget<'_>,
+    e: &Expression,
+    targets: &mut Vec<ModuleSymbolIdentity>,
+) -> Result<(), E> {
+    budget.charge(1)?;
     match &e.node {
-        N::Value(v) => collect_value_targets(v, targets)?,
+        N::Value(v) => collect_value_targets(budget, v, targets)?,
         N::Input(owner) | N::Output { target: owner, .. } => {
             grow(targets, 1)?;
-            targets.push(alloc(owner.try_clone())?);
+            budget.retain::<ModuleSymbolIdentity>(1)?;
+            targets.push(budget.copy_symbol(owner)?);
         }
-        N::Unary { operand, .. } | N::Text(operand) => collect_targets(operand, targets)?,
+        N::Unary { operand, .. } | N::Text(operand) => collect_targets(budget, operand, targets)?,
         N::Binary { left, right, .. } => {
-            collect_targets(left, targets)?;
-            collect_targets(right, targets)?;
+            collect_targets(budget, left, targets)?;
+            collect_targets(budget, right, targets)?;
         }
         N::If {
             guard,
             then_branch,
             else_branch,
         } => {
-            collect_targets(guard, targets)?;
-            collect_targets(then_branch, targets)?;
-            collect_targets(else_branch, targets)?;
+            collect_targets(budget, guard, targets)?;
+            collect_targets(budget, then_branch, targets)?;
+            collect_targets(budget, else_branch, targets)?;
         }
         N::Match { scrutinee, arms } => {
-            collect_targets(scrutinee, targets)?;
+            collect_targets(budget, scrutinee, targets)?;
             for arm in arms {
-                collect_targets(&arm.body, targets)?;
+                collect_targets(budget, &arm.body, targets)?;
             }
         }
         N::List(items) | N::Interpolate(items) => {
             for item in items {
-                collect_targets(item, targets)?;
+                collect_targets(budget, item, targets)?;
             }
         }
         N::Record(fields) => {
             for (_, item) in fields {
                 if let Some(item) = item {
-                    collect_targets(item, targets)?;
+                    collect_targets(budget, item, targets)?;
                 }
             }
         }
-        N::Variant { payload, .. } => collect_targets(payload, targets)?,
+        N::Variant { payload, .. } => collect_targets(budget, payload, targets)?,
         N::Bound { .. } => {}
     }
     Ok(())
 }
 /// Retains only explicit reference owners from already bounded materialized values.
-fn collect_value_targets(v: &V, targets: &mut Vec<ModuleSymbolIdentity>) -> Result<(), E> {
+fn collect_value_targets(
+    budget: &mut Budget<'_>,
+    v: &V,
+    targets: &mut Vec<ModuleSymbolIdentity>,
+) -> Result<(), E> {
+    budget.charge(1)?;
     match v {
         V::Reference(owner) => {
             grow(targets, 1)?;
-            targets.push(alloc(owner.try_clone())?);
+            budget.retain::<ModuleSymbolIdentity>(1)?;
+            targets.push(budget.copy_symbol(owner)?);
         }
         V::List(items) => {
             for item in items {
-                collect_value_targets(item, targets)?;
+                collect_value_targets(budget, item, targets)?;
             }
         }
         V::Record(fields) => {
             for (_, item) in fields {
                 if let Some(item) = item {
-                    collect_value_targets(item, targets)?;
+                    collect_value_targets(budget, item, targets)?;
                 }
             }
         }
-        V::Variant { payload, .. } => collect_value_targets(payload, targets)?,
+        V::Variant { payload, .. } => collect_value_targets(budget, payload, targets)?,
         _ => {}
     }
     Ok(())
 }
 /// Records one original source-owned structural dependency occurrence.
 pub(super) fn edge(
+    budget: &mut Budget<'_>,
     owner: &ModuleSymbolIdentity,
     target: &ModuleSymbolIdentity,
     kind: Edge,
     location: SourceLocation,
     edges: &mut Vec<ProjectProvenance>,
 ) -> Result<(), E> {
+    budget.retain::<ProjectProvenance>(1)?;
     grow(edges, 1)?;
     edges.push(ProjectProvenance {
-        from: alloc(owner.try_clone())?,
-        to: alloc(target.try_clone())?,
+        from: budget.copy_symbol(owner)?,
+        to: budget.copy_symbol(target)?,
         kind,
         location,
     });
@@ -486,14 +671,17 @@ pub(super) fn edge(
 }
 /// Retains nominal type dependencies separately from value/reference occurrences.
 fn type_edges(
+    budget: &mut Budget<'_>,
     owner: &ModuleSymbolIdentity,
     ty: &T,
     reference: bool,
     location: SourceLocation,
     edges: &mut Vec<ProjectProvenance>,
 ) -> Result<(), E> {
+    budget.charge(1)?;
     match ty {
         T::Nominal(target) => edge(
+            budget,
             owner,
             target,
             if reference {
@@ -504,9 +692,9 @@ fn type_edges(
             location,
             edges,
         )?,
-        T::Ref(inner) => type_edges(owner, inner, true, location, edges)?,
+        T::Ref(inner) => type_edges(budget, owner, inner, true, location, edges)?,
         T::List(inner) | T::Nullable(inner) => {
-            type_edges(owner, inner, reference, location, edges)?;
+            type_edges(budget, owner, inner, reference, location, edges)?;
         }
         _ => {}
     }
@@ -514,21 +702,23 @@ fn type_edges(
 }
 /// Retains all nominal dependencies from a complete definition or binding signature.
 fn signature_edges(
+    budget: &mut Budget<'_>,
     owner: &ModuleSymbolIdentity,
     signature: &S,
     location: SourceLocation,
     edges: &mut Vec<ProjectProvenance>,
 ) -> Result<(), E> {
+    budget.charge(1)?;
     match signature {
-        S::Binding(ty) => type_edges(owner, ty, false, location, edges)?,
+        S::Binding(ty) => type_edges(budget, owner, ty, false, location, edges)?,
         S::Definition(B::Record(fields)) => {
             for field in fields {
-                type_edges(owner, &field.ty, false, location, edges)?;
+                type_edges(budget, owner, &field.ty, false, location, edges)?;
             }
         }
         S::Definition(B::Variant(alts)) => {
             for alt in alts {
-                type_edges(owner, &alt.ty, false, location, edges)?;
+                type_edges(budget, owner, &alt.ty, false, location, edges)?;
             }
         }
     }
@@ -536,90 +726,102 @@ fn signature_edges(
 }
 /// Retains actual immutable reference targets without evaluating external ports.
 fn value_edges(
+    budget: &mut Budget<'_>,
     owner: &ModuleSymbolIdentity,
     value: &V,
     location: SourceLocation,
     edges: &mut Vec<ProjectProvenance>,
 ) -> Result<(), E> {
+    budget.charge(1)?;
     match value {
-        V::Reference(target) => edge(owner, target, Edge::Reference, location, edges)?,
+        V::Reference(target) => edge(budget, owner, target, Edge::Reference, location, edges)?,
         V::List(items) => {
             for item in items {
-                value_edges(owner, item, location, edges)?;
+                value_edges(budget, owner, item, location, edges)?;
             }
         }
         V::Record(fields) => {
             for (_, value) in fields {
                 if let Some(value) = value {
-                    value_edges(owner, value, location, edges)?;
+                    value_edges(budget, owner, value, location, edges)?;
                 }
             }
         }
-        V::Variant { payload, .. } => value_edges(owner, payload, location, edges)?,
+        V::Variant { payload, .. } => value_edges(budget, owner, payload, location, edges)?,
         _ => {}
     }
     Ok(())
 }
 /// Retains structural type/ref dependencies from every branch of a typed tree.
 fn tree_edges(
+    budget: &mut Budget<'_>,
     owner: &ModuleSymbolIdentity,
     e: &Expression,
     location: SourceLocation,
     edges: &mut Vec<ProjectProvenance>,
 ) -> Result<(), E> {
-    type_edges(owner, &e.ty, false, location, edges)?;
+    budget.charge(1)?;
+    type_edges(budget, owner, &e.ty, false, location, edges)?;
     match &e.node {
-        N::Value(v) => value_edges(owner, v, location, edges)?,
-        N::Output { result_type, .. } => type_edges(owner, result_type, false, location, edges)?,
-        N::Unary { operand, .. } | N::Text(operand) => tree_edges(owner, operand, location, edges)?,
+        N::Value(v) => value_edges(budget, owner, v, location, edges)?,
+        N::Output { result_type, .. } => {
+            type_edges(budget, owner, result_type, false, location, edges)?;
+        }
+        N::Unary { operand, .. } | N::Text(operand) => {
+            tree_edges(budget, owner, operand, location, edges)?;
+        }
         N::Binary { left, right, .. } => {
-            tree_edges(owner, left, location, edges)?;
-            tree_edges(owner, right, location, edges)?;
+            tree_edges(budget, owner, left, location, edges)?;
+            tree_edges(budget, owner, right, location, edges)?;
         }
         N::If {
             guard,
             then_branch,
             else_branch,
         } => {
-            tree_edges(owner, guard, location, edges)?;
-            tree_edges(owner, then_branch, location, edges)?;
-            tree_edges(owner, else_branch, location, edges)?;
+            tree_edges(budget, owner, guard, location, edges)?;
+            tree_edges(budget, owner, then_branch, location, edges)?;
+            tree_edges(budget, owner, else_branch, location, edges)?;
         }
         N::Match { scrutinee, arms } => {
-            tree_edges(owner, scrutinee, location, edges)?;
+            tree_edges(budget, owner, scrutinee, location, edges)?;
             for arm in arms {
-                type_edges(owner, &arm.payload_type, false, location, edges)?;
-                tree_edges(owner, &arm.body, location, edges)?;
+                type_edges(budget, owner, &arm.payload_type, false, location, edges)?;
+                tree_edges(budget, owner, &arm.body, location, edges)?;
             }
         }
         N::List(items) | N::Interpolate(items) => {
             for item in items {
-                tree_edges(owner, item, location, edges)?;
+                tree_edges(budget, owner, item, location, edges)?;
             }
         }
         N::Record(fields) => {
             for (_, value) in fields {
                 if let Some(value) = value {
-                    tree_edges(owner, value, location, edges)?;
+                    tree_edges(budget, owner, value, location, edges)?;
                 }
             }
         }
-        N::Variant { payload, .. } => tree_edges(owner, payload, location, edges)?,
+        N::Variant { payload, .. } => tree_edges(budget, owner, payload, location, edges)?,
         N::Input(_) | N::Bound { .. } => {}
     }
     Ok(())
 }
 /// Records canonical supplied/null/omitted occurrences at checked original source coordinates.
 fn materialized_origins(
+    budget: &mut Budget<'_>,
     owner: &ModuleSymbolIdentity,
     value: &V,
     path: &mut Vec<P>,
     location: SourceLocation,
     origins: &mut Vec<CompositionOrigin>,
 ) -> Result<(), E> {
+    budget.charge(1)?;
+    budget.retain::<CompositionOrigin>(1)?;
+    charge_path(budget, path)?;
     grow(origins, 1)?;
     origins.push(CompositionOrigin {
-        binding: alloc(owner.try_clone())?,
+        binding: budget.copy_symbol(owner)?,
         path: alloc(path.try_clone())?,
         kind: if matches!(value, V::Null) {
             K::ExplicitNull
@@ -631,22 +833,26 @@ fn materialized_origins(
     match value {
         V::List(items) => {
             for (i, item) in items.iter().enumerate() {
+                budget.retain::<P>(1)?;
                 grow(path, 1)?;
                 path.push(P::Element(i as u64));
-                materialized_origins(owner, item, path, location, origins)?;
+                materialized_origins(budget, owner, item, path, location, origins)?;
                 path.pop();
             }
         }
         V::Record(fields) => {
             for (name, item) in fields {
+                budget.retain::<P>(1)?;
                 grow(path, 1)?;
-                path.push(P::Field(alloc(name.try_clone())?));
+                path.push(P::Field(budget.copy_text(name)?));
                 if let Some(item) = item {
-                    materialized_origins(owner, item, path, location, origins)?;
+                    materialized_origins(budget, owner, item, path, location, origins)?;
                 } else {
+                    budget.retain::<CompositionOrigin>(1)?;
+                    charge_path(budget, path)?;
                     grow(origins, 1)?;
                     origins.push(CompositionOrigin {
-                        binding: alloc(owner.try_clone())?,
+                        binding: budget.copy_symbol(owner)?,
                         path: alloc(path.try_clone())?,
                         kind: K::OmittedOptional,
                         attribution: Some(CompositionAttribution::Source(location)),
@@ -656,12 +862,24 @@ fn materialized_origins(
             }
         }
         V::Variant { payload, .. } => {
+            budget.retain::<P>(1)?;
             grow(path, 1)?;
             path.push(P::Payload);
-            materialized_origins(owner, payload, path, location, origins)?;
+            materialized_origins(budget, owner, payload, path, location, origins)?;
             path.pop();
         }
         _ => {}
+    }
+    Ok(())
+}
+
+/// Path copies retain each owned field spelling before allocating a companion.
+fn charge_path(budget: &mut Budget<'_>, path: &[P]) -> Result<(), E> {
+    budget.retain::<P>(path.len())?;
+    for segment in path {
+        if let P::Field(name) = segment {
+            budget.bytes(name.len() as u64)?;
+        }
     }
     Ok(())
 }

@@ -205,20 +205,12 @@ struct Inspection<'a> {
     shape: ExpressionShape,
 }
 impl Inspection<'_> {
-    /// Charges traversal and both inspection/copy byte work before retention.
+    /// Charges one structural visit; model layout bytes belong to the independent storage limit.
     fn charge(&mut self, bytes: u64) -> Result<(), E> {
         if self.cancellation.is_cancelled() {
             return Err(E::Cancelled);
         }
-        self.work = self
-            .work
-            .checked_sub(
-                bytes
-                    .checked_mul(2)
-                    .and_then(|n| n.checked_add(1))
-                    .ok_or(E::Limit)?,
-            )
-            .ok_or(E::Limit)?;
+        self.work = self.work.checked_sub(1).ok_or(E::Limit)?;
         self.bytes = self.bytes.checked_sub(bytes).ok_or(E::Limit)?;
         Ok(())
     }
@@ -232,6 +224,7 @@ impl Inspection<'_> {
     }
     /// Counts exact owned slots with checked multiplication.
     fn storage<T>(&mut self, count: usize) -> Result<(), E> {
+        self.work = self.work.checked_sub(count as u64).ok_or(E::Limit)?;
         self.charge(
             (count as u64)
                 .checked_mul(std::mem::size_of::<T>() as u64)
@@ -240,6 +233,11 @@ impl Inspection<'_> {
     }
     /// Counts exact UTF-8 storage; no normalization or string allocation.
     fn text(&mut self, text: &str) -> Result<(), E> {
+        // UTF-8 traversal and copying scale with bytes, unlike a fixed-size enum slot.
+        self.work = self
+            .work
+            .checked_sub((text.len() as u64).checked_mul(2).ok_or(E::Limit)?)
+            .ok_or(E::Limit)?;
         self.charge(text.len() as u64)
     }
     /// Counts the complete stable owner without a source alias or host path.

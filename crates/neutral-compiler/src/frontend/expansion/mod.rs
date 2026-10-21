@@ -5,8 +5,8 @@
 use super::{
     BindingSyntax, ByteSpan, E, ExpansionAttribution, Expression, ExpressionBody, Frame, Lex,
     Local, MatrixSyntax, ModuleSymbolIdentity, N, ParameterPhase, PublicTemplate, RetainCapacity,
-    Root, SourceLocation, State, T, TemplateParameter, TryClone, V, alloc, composition_error,
-    copy_slice, error, grow, parser, symbol, text,
+    Root, SourceLocation, State, T, TemplateParameter, V, alloc, composition_error, copy_slice,
+    error, grow, parser, symbol,
 };
 use crate::frontend::expression_codes as ec;
 
@@ -47,10 +47,20 @@ impl<'a> State<'a, '_> {
 
     /// Types every definition, including unused/private definitions and recursive skipped paths.
     pub(super) fn template(&mut self, owner: &ModuleSymbolIdentity) -> Result<(), E> {
+        self.in_expansion(|state| state.template_inner(owner))
+    }
+
+    /// Definition typing runs inside the caller's persistent expansion counters.
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+    fn template_inner(&mut self, owner: &ModuleSymbolIdentity) -> Result<(), E> {
         if self.typed_templates.contains_key(owner) {
             return Ok(());
         }
-        if !alloc(self.active_templates.insert(alloc(owner.try_clone())?))? {
+        self.budget.retain::<ModuleSymbolIdentity>(1)?;
+        if !alloc(
+            self.active_templates
+                .insert(self.budget.copy_symbol(owner)?),
+        )? {
             return Err(error(ec::TPL_RECURSION, None));
         }
         if self.active_templates.len() as u64 > self.budget.expansion.depth {
@@ -59,16 +69,20 @@ impl<'a> State<'a, '_> {
         let Some(syntax) = self.templates.get(owner) else {
             return Err(error(ec::TPL_NAME, None));
         };
-        let root = alloc(syntax.root.try_clone())?;
-        let body_tokens = alloc(copy_slice(&syntax.body))?;
+        let root = self.budget.copy_root(&syntax.root)?;
+        let body_tokens = self.budget.copy_tokens(&syntax.body)?;
         let mut parameter_syntax = Vec::new();
+        self.budget
+            .retain::<(&str, ParameterPhase, super::super::TypeExpr, Vec<Lex<'_>>)>(
+                syntax.parameters.len(),
+            )?;
         grow(&mut parameter_syntax, syntax.parameters.len())?;
         for p in &syntax.parameters {
             parameter_syntax.push((
                 p.name,
                 p.phase,
-                alloc(p.ty.try_clone())?,
-                alloc(copy_slice(&p.default))?,
+                self.budget.copy_syntax_type(&p.ty)?,
+                self.budget.copy_tokens(&p.default)?,
             ));
         }
         let result_type = self
@@ -83,6 +97,7 @@ impl<'a> State<'a, '_> {
             .map_err(composition_error)?;
         let mut parameters = Vec::new();
         let mut frames = Vec::new();
+        self.budget.retain::<Frame<'_>>(1)?;
         grow(&mut frames, 1)?;
         frames.push(Vec::new());
         let previous = self.typing_template;
@@ -97,11 +112,13 @@ impl<'a> State<'a, '_> {
             } else {
                 Some(self.expression(&root, &default_tokens, Some(&ty), &mut frames, 1)?)
             };
+            self.budget.retain::<Local<'_>>(1)?;
             grow(&mut frames[0], 1)?;
-            frames[0].push(Local::Bound(name, alloc(ty.try_clone())?, phase));
+            frames[0].push(Local::Bound(name, self.budget.copy_type(&ty)?, phase));
+            self.budget.retain::<TemplateParameter>(1)?;
             grow(&mut parameters, 1)?;
             parameters.push(TemplateParameter {
-                name: alloc(text(name))?,
+                name: self.budget.copy_text(name)?,
                 phase,
                 ty,
                 default,
@@ -110,10 +127,11 @@ impl<'a> State<'a, '_> {
         let body = self.expression(&root, &body_tokens, Some(&result_type), &mut frames, 1)?;
         self.typing_template = previous;
         self.active_templates.remove(owner);
+        self.budget.retain::<PublicTemplate>(1)?;
         alloc(self.typed_templates.insert(
-            alloc(owner.try_clone())?,
+            self.budget.copy_symbol(owner)?,
             PublicTemplate {
-                identity: alloc(owner.try_clone())?,
+                identity: self.budget.copy_symbol(owner)?,
                 parameters,
                 result_type,
                 body,
@@ -153,6 +171,31 @@ impl<'a> State<'a, '_> {
         depth: u64,
         axis_indices: Option<&[u64]>,
     ) -> Result<Expression, E> {
+        self.in_expansion(|state| {
+            state.application_inner(
+                caller,
+                owner,
+                args,
+                expected,
+                caller_frames,
+                depth,
+                axis_indices,
+            )
+        })
+    }
+
+    /// Substitution and queued static checks retain the same expansion authority.
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+    fn application_inner(
+        &mut self,
+        caller: &Root,
+        owner: &ModuleSymbolIdentity,
+        args: &[Lex<'a>],
+        expected: Option<&T>,
+        caller_frames: &mut Vec<Frame<'a>>,
+        depth: u64,
+        axis_indices: Option<&[u64]>,
+    ) -> Result<Expression, E> {
         self.budget.applications = match self.budget.applications.checked_add(1) {
             Some(count) => count,
             None => return Err(error(ec::TPL_LIMIT, Some(caller.location))),
@@ -167,25 +210,37 @@ impl<'a> State<'a, '_> {
         let Some(syntax) = self.templates.get(owner) else {
             return Err(error(ec::TPL_NAME, Some(caller.location)));
         };
-        let definition = alloc(syntax.root.try_clone())?;
-        let body_tokens = alloc(copy_slice(&syntax.body))?;
+        let definition = self.budget.copy_root(&syntax.root)?;
+        let body_tokens = self.budget.copy_tokens(&syntax.body)?;
         let mut parameters = Vec::new();
+        self.budget.retain::<(
+            &str,
+            ParameterPhase,
+            super::super::TypeExpr,
+            Vec<Lex<'_>>,
+            SourceLocation,
+        )>(syntax.parameters.len())?;
         grow(&mut parameters, syntax.parameters.len())?;
         for p in &syntax.parameters {
             parameters.push((
                 p.name,
                 p.phase,
-                alloc(p.ty.try_clone())?,
-                alloc(copy_slice(&p.default))?,
+                self.budget.copy_syntax_type(&p.ty)?,
+                self.budget.copy_tokens(&p.default)?,
                 p.location,
             ));
         }
-        let result_type = alloc(self.typed_templates[owner].result_type.try_clone())?;
+        let result_type = self
+            .budget
+            .copy_type(&self.typed_templates[owner].result_type)?;
         if expected.is_some_and(|t| *t != result_type) {
             return Err(error(ec::TPL_TYPE, Some(caller.location)));
         }
         let mut arguments = Vec::new();
+        self.budget.retain::<&[Lex<'_>]>(args.len())?;
         for arg in parser::split(args)? {
+            self.budget
+                .charge((parameters.len() + arguments.len()) as u64 + 1)?;
             if arg.len() < 3
                 || arg[1].spelling != ":"
                 || !parameters.iter().any(|p| p.0 == arg[0].spelling)
@@ -195,17 +250,19 @@ impl<'a> State<'a, '_> {
             {
                 return Err(error(ec::TPL_NAME, Some(caller.location)));
             }
+            self.budget.retain::<(&str, &[Lex<'_>])>(1)?;
             grow(&mut arguments, 1)?;
             arguments.push((arg[0].spelling, &arg[2..]));
         }
         let previous_root = self.application_root.take();
         self.application_root = Some(if let Some(root) = &previous_root {
-            alloc(root.try_clone())?
+            self.budget.copy_root(root)?
         } else {
-            alloc(caller.try_clone())?
+            self.budget.copy_root(caller)?
         });
         let mut bound = Vec::new();
         let mut locations = Vec::new();
+        self.budget.retain::<Frame<'_>>(1)?;
         grow(&mut bound, 1)?;
         bound.push(Vec::new());
         for (name, phase, syntax, default_tokens, parameter_location) in parameters {
@@ -259,14 +316,14 @@ impl<'a> State<'a, '_> {
                     }
                     value
                 } else {
-                    let root = alloc(
-                        match self.application_root.as_ref() {
+                    let root = self
+                        .budget
+                        .copy_root(match self.application_root.as_ref() {
                             Some(root) => root,
                             None => return Err(error(ec::TPL_NAME, Some(location))),
-                        }
-                        .try_clone(),
-                    )?;
+                        })?;
                     let copy = self.clone_expression(&value)?;
+                    self.budget.retain::<(Root, Expression)>(1)?;
                     grow(&mut self.pending_static, 1)?;
                     self.pending_static.push((root, copy));
                     value
@@ -274,8 +331,10 @@ impl<'a> State<'a, '_> {
             } else {
                 value
             };
+            self.budget.retain::<SourceLocation>(1)?;
             grow(&mut locations, 1)?;
             locations.push(location);
+            self.budget.retain::<Local<'_>>(1)?;
             grow(&mut bound[0], 1)?;
             bound[0].push(Local::Value(name, value));
         }
@@ -288,15 +347,17 @@ impl<'a> State<'a, '_> {
             depth + 1,
         )?;
         if !self.typing_template {
+            self.budget.retain::<ExpansionAttribution>(1)?;
+            self.budget
+                .retain::<u64>(axis_indices.map_or(0, <[u64]>::len))?;
             grow(&mut self.expansions, 1)?;
             self.expansions.push(ExpansionAttribution {
-                owner: alloc(
-                    match self.application_root.as_ref() {
+                owner: self
+                    .budget
+                    .copy_symbol(match self.application_root.as_ref() {
                         Some(root) => &root.owner,
                         None => return Err(error(ec::TPL_NAME, Some(caller.location))),
-                    }
-                    .try_clone(),
-                )?,
+                    })?,
                 application: caller.location,
                 definition: definition.location,
                 arguments: locations,
@@ -305,13 +366,14 @@ impl<'a> State<'a, '_> {
                     .transpose()?
                     .unwrap_or_default(),
             });
-            let count = neutral_ir::expression::inspect_expression_shape(
+            let inspected = neutral_ir::expression::inspect_expression_retention(
                 &result,
-                self.budget.expression,
+                self.budget.remaining(),
                 self.budget.cancel,
             )
-            .map_err(|_| error(ec::TPL_LIMIT, Some(caller.location)))?
-            .nodes;
+            .map_err(|_| error(ec::TPL_LIMIT, Some(caller.location)))?;
+            self.budget.charge(inspected.work)?;
+            let count = inspected.shape.nodes;
             self.budget.expanded_nodes = match self.budget.expanded_nodes.checked_add(count) {
                 Some(count) => count,
                 None => return Err(error(ec::TPL_LIMIT, Some(caller.location))),
@@ -319,13 +381,7 @@ impl<'a> State<'a, '_> {
             if self.budget.expanded_nodes > self.budget.expansion.expanded_nodes {
                 return Err(error(ec::TPL_LIMIT, Some(caller.location)));
             }
-            self.budget.expansion(
-                count,
-                match count.checked_mul(std::mem::size_of::<Expression>() as u64) {
-                    Some(bytes) => bytes,
-                    None => return Err(error(ec::TPL_LIMIT, Some(caller.location))),
-                },
-            )?;
+            self.budget.expansion(count, inspected.retained_bytes)?;
         }
         self.application_root = previous_root;
         Ok(result)
@@ -334,11 +390,19 @@ impl<'a> State<'a, '_> {
     /// Preflights full static cardinality, then visits original tuples in source axis order.
     #[allow(clippy::too_many_lines)] // Cardinality, filters and original-index publication form one atomic expansion.
     pub(super) fn expand_matrices(&mut self) -> Result<(), E> {
+        self.in_expansion(Self::expand_matrices_inner)
+    }
+
+    /// Filters and excluded tuples consume work even when they produce no binding.
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+    fn expand_matrices_inner(&mut self) -> Result<(), E> {
         let matrices = std::mem::take(&mut self.matrices);
         for matrix in matrices {
             let owner = self.template_owner(&matrix.root, &matrix.template)?;
             self.template(&owner)?;
-            let result_type = alloc(self.typed_templates[&owner].result_type.try_clone())?;
+            let result_type = self
+                .budget
+                .copy_type(&self.typed_templates[&owner].result_type)?;
             let mut axes = Vec::new();
             // Full unfiltered cardinality is checked before allocating or visiting tuples.
             for (name, tokens) in &matrix.axes {
@@ -346,13 +410,14 @@ impl<'a> State<'a, '_> {
                 let T::List(inner) = &value.ty else {
                     return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
                 };
-                let inner = alloc(inner.try_clone())?;
+                let inner = self.budget.copy_type(inner)?;
                 let Some(V::List(items)) = self.static_value(&matrix.root, &value)? else {
                     return Err(error(ec::TPL_TYPE, Some(matrix.root.location)));
                 };
                 if items.len() as u64 > self.budget.expansion.axis_items {
                     return Err(error(ec::TPL_LIMIT, Some(matrix.root.location)));
                 }
+                self.budget.retain::<(&str, T, Vec<V>)>(1)?;
                 grow(&mut axes, 1)?;
                 axes.push((*name, inner, items));
             }
@@ -373,13 +438,15 @@ impl<'a> State<'a, '_> {
             let exclusions = self.exclusions(&matrix, &axes)?;
             // Shape validation is independent of retained tuple count, including empty axes.
             let mut axis_frames = Vec::new();
+            self.budget.retain::<Frame<'_>>(1)?;
             grow(&mut axis_frames, 1)?;
             axis_frames.push(Vec::new());
             for (name, ty, _) in &axes {
+                self.budget.retain::<Local<'_>>(1)?;
                 grow(&mut axis_frames[0], 1)?;
                 axis_frames[0].push(Local::Bound(
                     name,
-                    alloc(ty.as_ref().try_clone())?,
+                    self.budget.copy_type(ty)?,
                     ParameterPhase::Static,
                 ));
             }
@@ -408,17 +475,20 @@ impl<'a> State<'a, '_> {
             )?;
             self.typing_template = before;
             let mut indices = Vec::new();
+            self.budget.retain::<u64>(axes.len())?;
             grow(&mut indices, axes.len())?;
             indices.resize(axes.len(), 0_u64);
             for _ in 0..product {
                 self.budget.expansion(1, 0)?;
                 let mut frames = Vec::new();
+                self.budget.retain::<Frame<'_>>(1)?;
                 grow(&mut frames, 1)?;
                 frames.push(Vec::new());
                 let mut tuple = Vec::new();
+                self.budget.retain::<V>(axes.len())?;
                 grow(&mut tuple, axes.len())?;
                 for ((name, ty, values), index) in axes.iter().zip(&indices) {
-                    let value = neutral_ir::expression::try_clone_value_bounded(
+                    let value = self.budget.copy_value(
                         match values.get(match usize::try_from(*index) {
                             Ok(index) => index,
                             Err(_) => return Err(error(ec::TPL_LIMIT, Some(matrix.root.location))),
@@ -426,23 +496,14 @@ impl<'a> State<'a, '_> {
                             Some(value) => value,
                             None => return Err(error(ec::TPL_LIMIT, Some(matrix.root.location))),
                         },
-                        self.budget.expression,
-                        self.budget.cancel,
-                    )
-                    .map_err(|_| error(ec::TPL_LIMIT, Some(matrix.root.location)))?;
-                    tuple.push(
-                        neutral_ir::expression::try_clone_value_bounded(
-                            &value,
-                            self.budget.expression,
-                            self.budget.cancel,
-                        )
-                        .map_err(|_| error(ec::TPL_LIMIT, Some(matrix.root.location)))?,
-                    );
+                    )?;
+                    tuple.push(self.budget.copy_value(&value)?);
+                    self.budget.retain::<Local<'_>>(1)?;
                     grow(&mut frames[0], 1)?;
                     frames[0].push(Local::Value(
                         name,
                         Expression {
-                            ty: alloc(ty.as_ref().try_clone())?,
+                            ty: self.budget.copy_type(ty)?,
                             node: N::Value(value),
                         },
                     ));
@@ -472,7 +533,9 @@ impl<'a> State<'a, '_> {
                     if self.budget.expanded > self.budget.expansion.expanded_bindings {
                         return Err(error(ec::TPL_LIMIT, Some(matrix.root.location)));
                     }
-                    let mut name = alloc(text(matrix.root.owner.declaration_name()))?;
+                    let mut name = self
+                        .budget
+                        .copy_text(matrix.root.owner.declaration_name())?;
                     let Some(extra) = (indices.len() as u64).checked_mul(22) else {
                         return Err(error(ec::TPL_LIMIT, Some(matrix.root.location)));
                     };
@@ -483,6 +546,7 @@ impl<'a> State<'a, '_> {
                     {
                         return Err(error(ec::TPL_LIMIT, Some(matrix.root.location)));
                     }
+                    self.budget.bytes(extra)?;
                     alloc(name.try_retain(match usize::try_from(extra) {
                         Ok(extra) => extra,
                         Err(_) => return Err(error(ec::TPL_LIMIT, Some(matrix.root.location))),
@@ -495,22 +559,22 @@ impl<'a> State<'a, '_> {
                     }
                     let generated = symbol(matrix.root.owner.module().module_name(), &name)?;
                     self.check_name(&generated)?;
-                    let mut root = alloc(matrix.root.try_clone())?;
-                    root.owner = alloc(generated.try_clone())?;
+                    let mut root = self.budget.copy_root(&matrix.root)?;
+                    root.owner = self.budget.copy_symbol(&generated)?;
                     root.ty = self.templates[&owner]
                         .root
                         .ty
                         .as_ref()
-                        .map(|ty| alloc(ty.try_clone()))
+                        .map(|ty| self.budget.copy_syntax_type(ty))
                         .transpose()?;
                     // The resolved definition-scope result type is retained directly; no alias rebinding.
                     alloc(self.resolver.types.insert(
-                        alloc(generated.try_clone())?,
-                        alloc(result_type.try_clone())?,
+                        self.budget.copy_symbol(&generated)?,
+                        self.budget.copy_type(&result_type)?,
                     ))?;
                     self.insert_root(root)?;
-                    let mut binding_root = alloc(matrix.root.try_clone())?;
-                    binding_root.owner = alloc(generated.try_clone())?;
+                    let mut binding_root = self.budget.copy_root(&matrix.root)?;
+                    binding_root.owner = self.budget.copy_symbol(&generated)?;
                     let expression = self.application(
                         &binding_root,
                         &owner,
@@ -521,7 +585,7 @@ impl<'a> State<'a, '_> {
                         Some(&indices),
                     )?;
                     alloc(self.bodies.insert(
-                        alloc(generated.try_clone())?,
+                        self.budget.copy_symbol(&generated)?,
                         ExpressionBody::Expression(expression),
                     ))?;
                     alloc(self.bindings.insert(
@@ -549,40 +613,41 @@ impl<'a> State<'a, '_> {
     fn exclusions(
         &mut self,
         matrix: &MatrixSyntax<'a>,
-        axes: &[(&'a str, Box<T>, Vec<V>)],
+        axes: &[(&'a str, T, Vec<V>)],
     ) -> Result<Vec<Vec<V>>, E> {
         let mut exclusions = Vec::new();
         if matrix.exclusions.is_empty() {
             return Ok(exclusions);
         }
         let mut cursor = 0;
+        self.budget.retain::<&[Lex<'_>]>(matrix.exclusions.len())?;
         let records = parser::group(&matrix.exclusions, &mut cursor, "[", "]")?;
         if cursor != matrix.exclusions.len() {
             return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
         }
         for record in parser::split(records)? {
+            self.budget.retain::<&[Lex<'_>]>(record.len())?;
             let mut cursor = 0;
             let fields = parser::split(parser::group(record, &mut cursor, "{", "}")?)?;
             if cursor != record.len() || fields.len() != axes.len() {
                 return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
             }
             let mut tuple = Vec::new();
+            self.budget.retain::<V>(axes.len())?;
             grow(&mut tuple, axes.len())?;
             for (name, ty, values) in axes {
-                let members: Vec<_> = fields
+                self.budget.charge(fields.len() as u64 + 1)?;
+                let mut members = fields
                     .iter()
-                    .filter(|f| f.first().is_some_and(|t| t.spelling == *name))
-                    .collect();
-                if members.len() != 1 || members[0].len() < 3 || members[0][1].spelling != ":" {
+                    .filter(|f| f.first().is_some_and(|t| t.spelling == *name));
+                let Some(member) = members.next() else {
+                    return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
+                };
+                if members.next().is_some() || member.len() < 3 || member[1].spelling != ":" {
                     return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
                 }
-                let expression = self.expression(
-                    &matrix.root,
-                    &members[0][2..],
-                    Some(ty.as_ref()),
-                    &mut Vec::new(),
-                    1,
-                )?;
+                let expression =
+                    self.expression(&matrix.root, &member[2..], Some(ty), &mut Vec::new(), 1)?;
                 let value = self
                     .static_value(&matrix.root, &expression)?
                     .ok_or_else(|| error(ec::TPL_AXIS, Some(matrix.root.location)))?;
@@ -594,6 +659,7 @@ impl<'a> State<'a, '_> {
             if exclusions.contains(&tuple) {
                 return Err(error(ec::TPL_AXIS, Some(matrix.root.location)));
             }
+            self.budget.retain::<Vec<V>>(1)?;
             grow(&mut exclusions, 1)?;
             exclusions.push(tuple);
         }

@@ -39,6 +39,8 @@ fn budget(cancel: &CancellationToken) -> Budget<'_> {
         expanded_nodes: 0,
         expansion_work: 0,
         expansion_bytes: 0,
+        expansion_retained: 0,
+        expanding: false,
     }
 }
 

@@ -71,8 +71,72 @@ pub fn derive_expression_resources(
     inspect_model(ir, &caller, cancel).map(|checked| checked.facts)
 }
 
+/// Prepares producer-owned data and recomputes facts in one all-branch validation pass.
+///
+/// This is not an untrusted reader entry: claimed expression facts are replaced,
+/// not accepted. Successful work/storage debit the caller's shared budget; readers
+/// must still independently validate complete companions and identities.
+///
+/// # Errors
+/// Rejects semantic, policy, allocation or cancellation failure atomically.
+pub fn prepare_expression_model(
+    mut ir: ExpressionProjectIr,
+    mut caller: SemanticLimits,
+    remaining: &mut ExpressionLimits,
+    cancel: &CancellationToken,
+) -> Result<ValidatedExpressionModel, E> {
+    caller.expression = caller.expression.intersect(*remaining);
+    let mut checked = inspect_model(&ir, &caller, cancel)?;
+    checked.consumed.0 = checked
+        .consumed
+        .0
+        .checked_add(1)
+        .filter(|n| *n <= checked.limits.expression.work)
+        .ok_or(E::Limit)?;
+    checked.consumed.1 = checked
+        .consumed
+        .1
+        .checked_add(std::mem::size_of::<ExpressionProjectIr>() as u64)
+        .filter(|n| *n <= checked.limits.expression.retained_bytes)
+        .ok_or(E::Limit)?;
+    ir.expression_resources = checked.facts;
+    let ir = Shared::try_new(ir).map_err(|_| E::Limit)?;
+    if cancel.is_cancelled() {
+        return Err(E::Cancelled);
+    }
+    remaining.work -= checked.consumed.0;
+    remaining.retained_bytes -= checked.consumed.1;
+    Ok(ValidatedExpressionModel {
+        ir,
+        scope: checked.scope,
+        limits: checked.limits,
+        facts: checked.facts,
+        availability: checked.availability,
+        restrictions: checked.restrictions,
+    })
+}
+
+/// Derives final producer facts with the same aggregate budget as nested preparations.
+///
+/// # Errors
+/// Returns semantic/resource/cancellation failure without debiting a failed attempt.
+pub fn derive_expression_resources_with_budget(
+    ir: &ExpressionProjectIr,
+    mut caller: SemanticLimits,
+    remaining: &mut ExpressionLimits,
+    cancel: &CancellationToken,
+) -> Result<ExpressionResourceFacts, E> {
+    caller.expression = caller.expression.intersect(*remaining);
+    let checked = inspect_model(ir, &caller, cancel)?;
+    remaining.work -= checked.consumed.0;
+    remaining.retained_bytes -= checked.consumed.1;
+    Ok(checked.facts)
+}
+
 /// Checked semantic components, unpublished until raw claimed facts also match.
 struct CheckedModel {
+    /// Actual checked charges, independent of unused headroom narrowed by template limits.
+    consumed: (u64, u64),
     /// Independent immutable nominal contract scope.
     scope: Shared<ValidatedCompositionScope>,
     /// Intersected caller/producer policies.
@@ -131,6 +195,7 @@ fn inspect_model(
         work: limits.expression.work.min(limits.composition.work),
         bytes: limits.expression.retained_bytes,
         cancel,
+        consumed: (0, 0),
     };
     budget.step(1)?;
     if ir.declarations.len() as u64 > limits.project.declarations.min(limits.expression.bindings)
@@ -150,6 +215,7 @@ fn inspect_model(
     let availability = state.availability;
     let restrictions = state.restrictions;
     Ok(CheckedModel {
+        consumed: state.budget.consumed,
         scope,
         limits,
         facts,
@@ -174,6 +240,7 @@ pub(crate) fn check_materialized_value(
         work: controls.work,
         bytes: controls.retained_bytes,
         cancel,
+        consumed: (0, 0),
     };
     let mut state = State::new(&model.ir, &model.scope, &limits, budget);
     state.ty(ty, public, owner, 0)?;
@@ -271,6 +338,8 @@ fn owners(ir: &ExpressionProjectIr, import_limit: u64, budget: &mut Budget<'_>) 
 
 /// Aggregate request work and owned expression/obligation storage.
 struct Budget<'a> {
+    /// Total successful charges, including nested template validation.
+    consumed: (u64, u64),
     /// Remaining checked work shared by every root.
     work: u64,
     /// Remaining retained expression and obligation bytes.
@@ -293,6 +362,7 @@ impl Budget<'_> {
             return Err(E::Cancelled);
         }
         self.work = self.work.checked_sub(n).ok_or(E::Limit)?;
+        self.consumed.0 = self.consumed.0.checked_add(n).ok_or(E::Limit)?;
         Ok(())
     }
     /// Bounds keys before proportional comparison or retention.
@@ -307,8 +377,9 @@ impl Budget<'_> {
     }
     /// Charges retained output before fallible reservation/copy.
     fn storage(&mut self, n: u64) -> Result<(), E> {
-        self.step(n + 1)?;
+        self.step(1)?;
         self.bytes = self.bytes.checked_sub(n).ok_or(E::Limit)?;
+        self.consumed.1 = self.consumed.1.checked_add(n).ok_or(E::Limit)?;
         Ok(())
     }
 }

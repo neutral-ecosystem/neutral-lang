@@ -4,7 +4,7 @@
 
 use super::{
     E, Edge, ExpressionBody, ModuleSymbolIdentity, ProjectProvenance, Root, SourceLocation, State,
-    TryClone, V, alloc, composition_error, copy_slice, error, lowering::edge,
+    V, alloc, composition_error, copy_slice, error, lowering::edge,
 };
 use crate::frontend::expression_codes as ec;
 
@@ -25,7 +25,7 @@ impl State<'_, '_> {
         }
         self.budget.retain::<super::Lex<'_>>(syntax.tokens.len())?;
         let tokens = alloc(copy_slice(&syntax.tokens))?;
-        let root = alloc(self.resolver.roots[owner].try_clone())?;
+        let root = self.budget.copy_root(&self.resolver.roots[owner])?;
         self.reuse_occurrences(&root, &tokens, value, edges, 1)
     }
 
@@ -68,6 +68,7 @@ impl State<'_, '_> {
                     )?;
                 }
                 edge(
+                    &mut self.budget,
                     &root.owner,
                     &target,
                     Edge::Value,

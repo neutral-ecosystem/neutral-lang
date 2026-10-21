@@ -14,6 +14,8 @@ use neutral_vocabulary::{VocabularyLimits, composition::CompositionLimits};
 
 /// Source-level regression cases for complete expression and expansion boundaries.
 mod boundaries;
+/// Aggregate validation, complete assembly and retained-copy accounting.
+mod budget_checks;
 /// Exact captured expression request facts and rejection boundaries.
 mod capture;
 /// Template resolution, static checking and finite matrix expansion.

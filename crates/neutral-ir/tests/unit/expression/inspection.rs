@@ -18,7 +18,22 @@ fn inspection_exposes_aggregate_retention_cost_without_allocation() {
         cost.retained_bytes,
         std::mem::size_of::<Expression>() as u64
     );
-    assert!(cost.work >= cost.retained_bytes);
+    assert!(cost.work >= cost.shape.nodes);
+    let inspect_work = |work| {
+        inspect_expression_retention(
+            &tree,
+            ExpressionLimits {
+                work,
+                ..ExpressionLimits::hard()
+            },
+            &CancellationToken::new(),
+        )
+    };
+    assert!(inspect_work(cost.work).is_ok());
+    assert_eq!(
+        inspect_work(cost.work - 1),
+        Err(ExpressionShapeError::Limit)
+    );
     assert_eq!(allocations, 0);
 }
 

@@ -16,7 +16,7 @@ use super::{
     ProjectResourceFacts, ProjectSourceMap, RetainCapacity, Root, S, SemanticDigest,
     SourceLocation, T, Token, TokenKind, TryClone, TypeExpr, V, V1_SOURCE_PROFILE, boxed, codes,
     copy_slice, is_protected_name, is_snake_name, is_upper_name, lexer,
-    parse_complete_type_fallible, text, validate_composition_scope,
+    parse_complete_type_fallible, text,
 };
 use crate::CapturedExpressionProject;
 use crate::frontend::expression_codes as ec;
@@ -29,8 +29,8 @@ use neutral_ir::expression::{
     templates::{ExpansionLimits, ParameterPhase, PublicTemplate, TemplateParameter},
 };
 use neutral_semantics::{
-    NormalizedBinding, SemanticLimits, derive_expression_resources, normalize_binding_with_budget,
-    validate_expression_model,
+    NormalizedBinding, SemanticLimits, derive_expression_resources_with_budget,
+    normalize_binding_with_budget, prepare_expression_model,
 };
 #[path = "../expansion/mod.rs"]
 /// Definition-scoped templates and finite matrices.
@@ -41,6 +41,8 @@ mod lowering;
 mod parser;
 /// Exact all-branch expression typing and stable names.
 mod resolution;
+/// Shared preflight/debit for typed subtree copies and stable keys.
+mod retention;
 /// Bounded original immutable-copy evidence after static normalization.
 mod source_reuse;
 use parser::{BindingSyntax, Lex, MatrixSyntax, TemplateSyntax};
@@ -136,13 +138,35 @@ struct Budget<'a> {
     expansion_work: u64,
     /// Expansion-only model retention.
     expansion_bytes: u64,
+    /// Expansion-only cumulative scratch/model retention, independent of generated output.
+    expansion_retained: u64,
+    /// Nested template/matrix operations debit expression and expansion controls together.
+    expanding: bool,
 }
 impl Budget<'_> {
     /// Nested work must fit the unspent request budget, not a fresh full policy.
     fn remaining(&self) -> ExpressionLimits {
         ExpressionLimits {
-            work: self.expression.work - self.work,
-            retained_bytes: self.expression.retained_bytes - self.bytes,
+            work: self
+                .expression
+                .work
+                .saturating_sub(self.work)
+                .min(if self.expanding {
+                    self.expansion.work.saturating_sub(self.expansion_work)
+                } else {
+                    u64::MAX
+                }),
+            retained_bytes: self
+                .expression
+                .retained_bytes
+                .saturating_sub(self.bytes)
+                .min(if self.expanding {
+                    self.expansion
+                        .retained_bytes
+                        .saturating_sub(self.expansion_retained)
+                } else {
+                    u64::MAX
+                }),
             ..self.expression
         }
     }
@@ -163,6 +187,13 @@ impl Budget<'_> {
         if self.work > self.expression.work {
             return Err(error(ec::EXP_LIMIT, None));
         }
+        if self.expanding {
+            self.expansion_work = self
+                .expansion_work
+                .checked_add(count)
+                .filter(|n| *n <= self.expansion.work)
+                .ok_or_else(|| error(ec::TPL_LIMIT, None))?;
+        }
         Ok(())
     }
     /// Charges retained storage independently from decoded result output bytes.
@@ -181,6 +212,13 @@ impl Budget<'_> {
         self.bytes = bytes;
         if self.bytes > self.expression.retained_bytes {
             return Err(error(ec::EXP_LIMIT, None));
+        }
+        if self.expanding {
+            self.expansion_retained = self
+                .expansion_retained
+                .checked_add(count)
+                .filter(|n| *n <= self.expansion.retained_bytes)
+                .ok_or_else(|| error(ec::TPL_LIMIT, None))?;
         }
         Ok(())
     }
@@ -211,16 +249,19 @@ impl Budget<'_> {
     /// Charges finite expansion work and retention without borrowing expression counters.
     fn expansion(&mut self, work: u64, bytes: u64) -> Result<(), E> {
         self.charge(work)?;
-        let Some(expansion_work) = self.expansion_work.checked_add(work) else {
-            return Err(error(ec::TPL_LIMIT, None));
-        };
-        self.expansion_work = expansion_work;
+        if !self.expanding {
+            self.expansion_work = self
+                .expansion_work
+                .checked_add(work)
+                .ok_or_else(|| error(ec::TPL_LIMIT, None))?;
+        }
         let Some(expansion_bytes) = self.expansion_bytes.checked_add(bytes) else {
             return Err(error(ec::TPL_LIMIT, None));
         };
         self.expansion_bytes = expansion_bytes;
         if self.expansion_work > self.expansion.work
             || self.expansion_bytes > self.expansion.retained_bytes
+            || self.expansion_bytes > self.expansion.output_bytes
         {
             return Err(error(ec::TPL_LIMIT, None));
         }
@@ -273,6 +314,7 @@ struct State<'a, 'c> {
 /// # Errors
 /// Rejects graph, complete all-branch typing, cycles, expansion/shape, selected arithmetic,
 /// independent bounds, allocation and cancellation without publishing a partial project.
+#[allow(clippy::too_many_lines)] // Atomic phase orchestration keeps one request budget through publication.
 pub fn compile_expression_project(
     captured: &CapturedExpressionProject,
     cancel: &CancellationToken,
@@ -281,53 +323,53 @@ pub fn compile_expression_project(
     for source in captured.sources() {
         parser::parse_source(source, &mut state)?;
     }
-    let roots = state.resolver.retained_roots().map_err(composition_error)?;
+    state.budget.retain::<Root>(state.resolver.roots.len())?;
+    let mut roots = Vec::new();
+    grow(&mut roots, state.resolver.roots.len())?;
+    for root in state.resolver.roots.values() {
+        roots.push(state.budget.copy_root(root)?);
+    }
     state
         .resolver
         .signatures(&roots)
         .map_err(composition_error)?;
-    validate_composition_scope(
-        captured.catalogue(),
-        alloc(state.resolver.definitions.try_clone())?,
-        captured.composition_limits(),
-        cancel,
-    )
-    .map_err(|e| error(e.diagnostic_code(), None))?;
+    state.source_scope()?;
     state
         .resolver
         .source_defaults(&roots)
         .map_err(composition_error)?;
-    let scope = validate_composition_scope(
-        captured.catalogue(),
-        alloc(state.resolver.definitions.try_clone())?,
-        captured.composition_limits(),
-        cancel,
-    )
-    .map_err(|e| error(e.diagnostic_code(), None))?;
-    state.resolver.definitions = alloc(copy_slice(scope.sources()))?;
-    let owners: Vec<_> = state
-        .templates
-        .keys()
-        .map(|o| alloc(o.try_clone()))
-        .collect::<Result<_, _>>()?;
+    let scope = state.source_scope()?;
+    state.resolver.definitions = scope.into_sources();
+    state
+        .budget
+        .retain::<ModuleSymbolIdentity>(state.templates.len())?;
+    let mut owners = Vec::new();
+    grow(&mut owners, state.templates.len())?;
+    for owner in state.templates.keys() {
+        owners.push(state.budget.copy_symbol(owner)?);
+    }
     for owner in owners {
         state.template(&owner)?;
     }
     state.expand_matrices()?;
-    let owners: Vec<_> = state
-        .bindings
-        .keys()
-        .map(|o| alloc(o.try_clone()))
-        .collect::<Result<_, _>>()?;
+    state
+        .budget
+        .retain::<ModuleSymbolIdentity>(state.bindings.len())?;
+    let mut owners = Vec::new();
+    grow(&mut owners, state.bindings.len())?;
+    for owner in state.bindings.keys() {
+        owners.push(state.budget.copy_symbol(owner)?);
+    }
     for owner in &owners {
         state.ensure_binding(owner)?;
     }
     let ir = state.assemble(false, None)?;
-    let model =
-        validate_expression_model(alloc(Arc::try_new(ir))?, state.semantic_limits(), cancel)
-            .map_err(|e| error(e.code(), None))?;
+    let model = state.prepare_model(ir)?;
     for (root, argument) in std::mem::take(&mut state.pending_static) {
-        if state.static_value(&root, &argument)?.is_none() {
+        if state
+            .in_expansion(|state| state.static_value(&root, &argument))?
+            .is_none()
+        {
             return Err(error(ec::TPL_TYPE, Some(root.location)));
         }
     }
@@ -343,6 +385,16 @@ pub fn compile_expression_project(
     }
     state.bodies = normalized;
     let mut ir = state.assemble(false, None)?;
+    let mut remaining = state.budget.remaining();
+    let before = remaining;
+    ir.expression_resources = derive_expression_resources_with_budget(
+        &ir,
+        state.semantic_limits(),
+        &mut remaining,
+        cancel,
+    )
+    .map_err(|e| error(e.code(), None))?;
+    state.budget.debit(before, remaining)?;
     ir.interface_digest = SemanticDigest::from_raw_bytes(
         neutral_ir::project_identity::expression_interface(
             &ir,
@@ -365,9 +417,8 @@ pub fn compile_expression_project(
         .identity()
         .as_bytes(),
     );
+    state.budget.retain::<ExpressionProjectIr>(1)?;
     let authority = alloc(Arc::try_new(ir))?;
-    validate_expression_model(authority.clone(), state.semantic_limits(), cancel)
-        .map_err(|e| error(e.code(), None))?;
     state.budget.charge(1)?;
     Ok(authority)
 }
@@ -420,12 +471,25 @@ fn initial_state<'a>(
             expanded_nodes: 0,
             expansion_work: 0,
             expansion_bytes: 0,
+            expansion_retained: 0,
+            expanding: false,
         },
         typing_template: false,
     })
 }
 
 impl State<'_, '_> {
+    /// Nested calls cannot reset independent expansion work or retention.
+    fn in_expansion<R>(
+        &mut self,
+        operation: impl FnOnce(&mut Self) -> Result<R, E>,
+    ) -> Result<R, E> {
+        let previous = self.budget.expanding;
+        self.budget.expanding = true;
+        let result = operation(self);
+        self.budget.expanding = previous;
+        result
+    }
     /// Checks all source/generated declarations share one collision namespace.
     fn check_name(&mut self, owner: &ModuleSymbolIdentity) -> Result<(), E> {
         self.budget
@@ -479,24 +543,7 @@ impl State<'_, '_> {
     }
     /// Preflights and charges every retained subtree copy.
     fn clone_expression(&mut self, e: &Expression) -> Result<Expression, E> {
-        let cost = neutral_ir::expression::inspect_expression_retention(
-            e,
-            self.budget.expression,
-            self.budget.cancel,
-        )
-        .map_err(|e| {
-            error(
-                match e {
-                    neutral_ir::expression::ExpressionShapeError::Cancelled => ec::EXP_CANCELLED,
-                    _ => ec::EXP_LIMIT,
-                },
-                None,
-            )
-        })?;
-        self.budget.charge(cost.work)?;
-        self.budget.storage(cost.retained_bytes)?;
-        e.try_clone_bounded(self.budget.expression, self.budget.cancel)
-            .map_err(|_| error(ec::EXP_LIMIT, None))
+        self.budget.copy_expression(e)
     }
 }
 

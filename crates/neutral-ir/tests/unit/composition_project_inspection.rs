@@ -23,6 +23,7 @@ fn expression_reference_values_charge_their_identity() {
         ))),
     };
     let mut inspector = Inspector {
+        bytes: 0,
         limits: ProjectLimits {
             modules: 1,
             declarations: 1,

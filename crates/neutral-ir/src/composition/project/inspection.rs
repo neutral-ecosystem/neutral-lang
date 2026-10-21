@@ -25,6 +25,8 @@ pub enum CompositionShapeError {
 
 /// Request-local retained-data inspection counters shared by all declarations and companions.
 struct Inspector<'a> {
+    /// Conservative owned-slot/text retention for callers that subsequently copy contracts.
+    bytes: u64,
     /// Explicit project retention policy.
     limits: ProjectLimits,
     /// Explicit composition controls.
@@ -50,6 +52,7 @@ pub fn inspect_composition_bodies<'a>(
     cancellation: &CancellationToken,
 ) -> Result<CompositionBodyInspection, CompositionShapeError> {
     let mut inspector = Inspector {
+        bytes: 0,
         limits,
         policy,
         cancellation,
@@ -64,12 +67,46 @@ pub fn inspect_composition_bodies<'a>(
     Ok(CompositionBodyInspection {
         facts: inspector.facts,
         work: inspector.work,
+        retained_bytes: inspector.bytes,
+    })
+}
+
+/// Inspects captured contracts before an owned catalogue copy or nested validation.
+///
+/// # Errors
+/// Rejects structural/resource/cancellation failures without granting contract authority.
+pub fn inspect_composition_catalogue(
+    bundles: &[crate::composition::CompositionBundle],
+    limits: ProjectLimits,
+    policy: CompositionPolicy,
+    cancellation: &CancellationToken,
+) -> Result<CompositionBodyInspection, CompositionShapeError> {
+    let mut inspector = Inspector {
+        bytes: 0,
+        limits,
+        policy,
+        cancellation,
+        work: 0,
+        text: 0,
+        facts: CompositionResourceFacts::from_values([0; 7]),
+    };
+    inspector.count(bundles.len(), policy.bundles)?;
+    inspector.catalogue(bundles)?;
+    for bundle in bundles {
+        inspector.step(bundle.identity.encoding_version().len() as u64)?;
+    }
+    Ok(CompositionBodyInspection {
+        facts: inspector.facts,
+        work: inspector.work,
+        retained_bytes: inspector.bytes,
     })
 }
 
 /// Borrowed contract facts and comparison/copy work, not validated contract authority.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CompositionBodyInspection {
+    /// Owned slots and UTF-8 text, independent of serialized size or allocator overhead.
+    pub retained_bytes: u64,
     /// Independently counted raw body occurrences.
     pub facts: CompositionResourceFacts,
     /// Checked traversal and key work available for aggregate caller accounting.
@@ -77,6 +114,60 @@ pub struct CompositionBodyInspection {
 }
 
 impl Inspector<'_> {
+    /// Shared catalogue copy projection; dependency metadata remains inert text.
+    fn catalogue(
+        &mut self,
+        bundles: &[crate::composition::CompositionBundle],
+    ) -> Result<(), CompositionShapeError> {
+        self.storage::<crate::composition::CompositionBundle>(bundles.len())?;
+        for bundle in bundles {
+            self.storage::<String>(bundle.identity.required_features().len())?;
+            self.storage::<crate::composition::CompositionDependency>(bundle.dependencies.len())?;
+            self.storage::<crate::composition::CompositionDefinition>(bundle.definitions.len())?;
+            self.text(bundle.identity.identity())?;
+            self.text(bundle.identity.version())?;
+            self.text(bundle.identity.schema_version())?;
+            self.storage::<u8>(bundle.identity.encoding_version().len())?;
+            for feature in bundle.identity.required_features() {
+                self.text(feature)?;
+            }
+            self.count(
+                bundle.dependencies.len(),
+                self.policy.dependencies_per_bundle,
+            )?;
+            self.facts.dependency_edges = self
+                .facts
+                .dependency_edges
+                .checked_add(bundle.dependencies.len() as u64)
+                .ok_or(CompositionShapeError::Limit)?;
+            if self.facts.dependency_edges > self.policy.dependency_edges {
+                return Err(CompositionShapeError::Limit);
+            }
+            for dependency in &bundle.dependencies {
+                self.text(&dependency.identity)?;
+                self.text(&dependency.version)?;
+            }
+            self.count(bundle.definitions.len(), self.policy.total_types)?;
+            for definition in &bundle.definitions {
+                self.text(&definition.name)?;
+                self.body(&definition.body)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Checked model storage projection; never allocates or changes historical acceptance policy.
+    fn storage<U>(&mut self, count: usize) -> Result<(), CompositionShapeError> {
+        self.bytes = self
+            .bytes
+            .checked_add(
+                (count as u64)
+                    .checked_mul(std::mem::size_of::<U>() as u64)
+                    .ok_or(CompositionShapeError::Limit)?,
+            )
+            .ok_or(CompositionShapeError::Limit)?;
+        Ok(())
+    }
     /// Charges checked inspection work before proportional traversal or allocation.
     fn step(&mut self, n: u64) -> Result<(), CompositionShapeError> {
         if self.cancellation.is_cancelled() {
@@ -94,6 +185,7 @@ impl Inspector<'_> {
 
     /// Charges aggregate retained key/text bytes before cloning or comparing them.
     fn text(&mut self, text: &str) -> Result<(), CompositionShapeError> {
+        self.storage::<u8>(text.len())?;
         self.step(text.len() as u64 + 1)?;
         self.text = self
             .text
@@ -125,6 +217,7 @@ impl Inspector<'_> {
     fn ty(&mut self, mut ty: &T) -> Result<(), CompositionShapeError> {
         let mut depth = 0;
         loop {
+            self.storage::<T>(1)?;
             self.step(1)?;
             if depth > self.policy.type_depth.min(PROJECT_MAX_DEPTH as u64) {
                 return Err(CompositionShapeError::Limit);
@@ -162,6 +255,7 @@ impl Inspector<'_> {
             .map_err(|_| CompositionShapeError::Limit)?;
         stack.push((value, 0_u64));
         while let Some((value, depth)) = stack.pop() {
+            self.storage::<CompositionValue<R>>(1)?;
             self.step(1)?;
             if depth > self.policy.value_depth.min(PROJECT_MAX_DEPTH as u64) {
                 return Err(CompositionShapeError::Limit);
@@ -192,6 +286,7 @@ impl Inspector<'_> {
                     stack.extend(items.iter().map(|value| (value, depth + 1)));
                 }
                 CompositionValue::Record(fields) => {
+                    self.storage::<(String, Option<CompositionValue<R>>)>(fields.len())?;
                     self.count(fields.len(), self.policy.total_fields)?;
                     stack
                         .try_retain(fields.len())
@@ -239,6 +334,7 @@ impl Inspector<'_> {
         }
         match body {
             CompositionBody::Record(fields) => {
+                self.storage::<crate::composition::CompositionField>(fields.len())?;
                 self.count(fields.len(), self.policy.total_fields)?;
                 self.facts.fields = self
                     .facts
@@ -278,6 +374,7 @@ impl Inspector<'_> {
                 }
             }
             CompositionBody::Variant(alternatives) => {
+                self.storage::<crate::composition::CompositionAlternative>(alternatives.len())?;
                 self.count(alternatives.len(), self.policy.alternatives_per_type)?;
                 self.facts.alternatives = self
                     .facts
@@ -330,6 +427,7 @@ pub fn inspect_composition_ir(
         cancellation,
         &[],
     )
+    .map(|inspection| inspection.facts)
 }
 
 /// Borrowed historical companion roles, shared without a fabricated project envelope.
@@ -369,8 +467,9 @@ fn inspect_retained<'a>(
     policy: CompositionPolicy,
     cancellation: &CancellationToken,
     expressions: &[&crate::expression::Expression],
-) -> Result<CompositionResourceFacts, CompositionShapeError> {
+) -> Result<CompositionBodyInspection, CompositionShapeError> {
     let mut inspector = Inspector {
+        bytes: 0,
         limits,
         policy,
         cancellation,
@@ -410,38 +509,17 @@ fn inspect_retained<'a>(
             inspector.value(value, |target| Some(target))?;
         }
     }
-    for bundle in ir.vocabularies {
-        inspector.text(bundle.identity.identity())?;
-        inspector.text(bundle.identity.version())?;
-        inspector.text(bundle.identity.schema_version())?;
-        for feature in bundle.identity.required_features() {
-            inspector.text(feature)?;
-        }
-        inspector.count(bundle.dependencies.len(), policy.dependencies_per_bundle)?;
-        inspector.facts.dependency_edges = inspector
-            .facts
-            .dependency_edges
-            .checked_add(bundle.dependencies.len() as u64)
-            .ok_or(CompositionShapeError::Limit)?;
-        if inspector.facts.dependency_edges > policy.dependency_edges {
-            return Err(CompositionShapeError::Limit);
-        }
-        for dependency in &bundle.dependencies {
-            inspector.text(&dependency.identity)?;
-            inspector.text(&dependency.version)?;
-        }
-        inspector.count(bundle.definitions.len(), policy.total_types)?;
-        for definition in &bundle.definitions {
-            inspector.text(&definition.name)?;
-            inspector.body(&definition.body)?;
-        }
-    }
+    inspector.catalogue(ir.vocabularies)?;
     for expression in expressions {
         inspector.expression(expression)?;
     }
     inspect_companions(&ir, &mut inspector)?;
     inspector.facts.bundles = ir.vocabularies.len() as u64;
-    Ok(inspector.facts)
+    Ok(CompositionBodyInspection {
+        facts: inspector.facts,
+        work: inspector.work,
+        retained_bytes: inspector.bytes,
+    })
 }
 
 /// Checks retained companion collection/path text before independent provenance validation.
@@ -590,6 +668,20 @@ pub fn inspect_expression_project_resources(
     policy: CompositionPolicy,
     cancellation: &CancellationToken,
 ) -> Result<CompositionResourceFacts, CompositionShapeError> {
+    inspect_expression_project_resources_with_work(ir, limits, policy, cancellation)
+        .map(|inspection| inspection.facts)
+}
+
+/// Reports whole-project inspection work so nested producers can debit an aggregate allowance.
+///
+/// # Errors
+/// Same structural/count/allocation/cancellation failures as the facts-only entry point.
+pub fn inspect_expression_project_resources_with_work(
+    ir: &crate::expression::project::ExpressionProjectIr,
+    limits: ProjectLimits,
+    policy: CompositionPolicy,
+    cancellation: &CancellationToken,
+) -> Result<CompositionBodyInspection, CompositionShapeError> {
     use crate::expression::ExpressionBody;
     if ir.declarations.len() as u64 > limits.declarations
         || ir.public_templates.len() as u64

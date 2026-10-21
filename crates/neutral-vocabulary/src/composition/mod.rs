@@ -15,8 +15,10 @@ mod values;
 pub use bindings::{
     ValidatedCompositionBinding, ValidatedCompositionBindings, validate_composition_bindings,
 };
-pub use model::validate_composition_model;
-pub use scope::{ValidatedCompositionScope, validate_composition_scope};
+pub use model::{validate_composition_model, validate_composition_model_with_budget};
+pub use scope::{
+    ValidatedCompositionScope, validate_composition_scope, validate_composition_scope_with_budget,
+};
 pub use supplied::{ValidatedCompositionValue, materialize_composition_value};
 pub use values::{
     check_composition_field_restrictions, check_composition_field_restrictions_budgeted,

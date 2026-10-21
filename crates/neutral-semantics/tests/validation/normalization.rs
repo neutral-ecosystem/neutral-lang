@@ -6,6 +6,92 @@ use super::*;
 use neutral_ir::composition::BindingValue as V;
 use neutral_semantics::{NormalizedBinding, normalize_binding};
 
+/// Successive producer preparations must not obtain a fresh all-branch validation allowance.
+#[test]
+fn producer_model_preparation_shares_validation_budget() {
+    use neutral_semantics::prepare_expression_model;
+    let raw = || project(vec![binding("result", T::Bool, ExpressionBody::Input)]);
+    let signal = CancellationToken::new();
+    let initial = ExpressionLimits::hard();
+    let mut remaining = initial;
+    let model = prepare_expression_model(raw(), controls(), &mut remaining, &signal).unwrap();
+    assert_eq!(model.ir().expression_resources.input_declarations, 1);
+    let work = initial.work - remaining.work;
+    assert!(work > 1);
+    assert!(remaining.retained_bytes < initial.retained_bytes);
+    let bytes = initial.retained_bytes - remaining.retained_bytes;
+    let mut exact_storage = ExpressionLimits {
+        retained_bytes: bytes,
+        ..initial
+    };
+    assert!(prepare_expression_model(raw(), controls(), &mut exact_storage, &signal).is_ok());
+    assert_eq!(exact_storage.retained_bytes, 0);
+    let mut short_storage = ExpressionLimits {
+        retained_bytes: bytes - 1,
+        ..initial
+    };
+    let before_storage = short_storage;
+    assert_eq!(
+        prepare_expression_model(raw(), controls(), &mut short_storage, &signal).unwrap_err(),
+        E::Limit
+    );
+    assert_eq!(short_storage, before_storage);
+    let mut exact = ExpressionLimits { work, ..initial };
+    assert!(prepare_expression_model(raw(), controls(), &mut exact, &signal).is_ok());
+    assert_eq!(exact.work, 0);
+    assert_eq!(
+        prepare_expression_model(raw(), controls(), &mut exact, &signal).unwrap_err(),
+        E::Limit
+    );
+    let mut short = ExpressionLimits {
+        work: work - 1,
+        ..initial
+    };
+    let before = short;
+    assert_eq!(
+        prepare_expression_model(raw(), controls(), &mut short, &signal).unwrap_err(),
+        E::Limit
+    );
+    assert_eq!(short, before);
+    assert!(prepare_expression_model(raw(), controls(), &mut remaining, &signal).is_ok());
+}
+
+/// Every observed producer reservation rejects atomically and leaves subsequent requests usable.
+#[test]
+fn producer_model_preparation_allocation_and_cancellation_recover() {
+    use neutral_core::allocation::testing::{observe, observe_cancellation};
+    use neutral_semantics::prepare_expression_model;
+    let raw = || project(vec![binding("result", T::Bool, ExpressionBody::Input)]);
+    let signal = CancellationToken::new();
+    let initial = ExpressionLimits::hard();
+    let input = raw();
+    let mut remaining = initial;
+    let (accepted, count) = observe(None, || {
+        prepare_expression_model(input, controls(), &mut remaining, &signal)
+    });
+    assert!(accepted.is_ok());
+    assert_ne!(count, 0);
+    for index in 0..count {
+        let input = raw();
+        let mut remaining = initial;
+        let (failed, _) = observe(Some(index), || {
+            prepare_expression_model(input, controls(), &mut remaining, &signal)
+        });
+        assert_eq!(failed.unwrap_err(), E::Limit);
+        assert_eq!(remaining, initial);
+        let cancelled = CancellationToken::new();
+        let input = raw();
+        let (failed, _) = observe_cancellation(index, &cancelled, || {
+            prepare_expression_model(input, controls(), &mut remaining, &cancelled)
+        });
+        assert_eq!(failed.unwrap_err(), E::Cancelled);
+        assert_eq!(remaining, initial);
+        let recovered =
+            prepare_expression_model(raw(), controls(), &mut remaining, &signal).unwrap();
+        assert_eq!(recovered.ir().expression_resources.input_declarations, 1);
+    }
+}
+
 /// Producer roots debit actual shared work/storage; rejected requests publish no budget update.
 #[test]
 fn producer_normalization_debits_shared_budget_and_recovers_after_exhaustion() {
