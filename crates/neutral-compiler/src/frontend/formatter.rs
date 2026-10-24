@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Stable source rendering from the compiler-private parsed representation.
+//! Source rendering from private parsed types using centralized language/style spellings.
 
 use super::{
     ParsedDeclaration, ParsedRecord, ParsedType, ParsedUnit, ParsedValue, Trivia, TriviaKind,
@@ -31,20 +31,27 @@ pub(super) fn format_source(source: &[u8], unit: &ParsedUnit) -> Vec<u8> {
     formatter.push_root(
         unit.language_header_span.end(),
         &format!(
-            "{}{}{}",
-            style::LANGUAGE_HEADER_PREFIX,
+            "{}{}{}{}{}",
+            names::NEU,
+            style::WORD_SEPARATOR,
+            style::STRING_DELIMITER,
             names::SOURCE_LANGUAGE_VERSION,
-            style::LANGUAGE_HEADER_SUFFIX
+            style::STRING_DELIMITER
         ),
     );
     formatter.push_root(
         unit.module.span.end(),
-        &format!("{}{}", style::MODULE_PREFIX, unit.module.name),
+        &format!(
+            "{}{}{}",
+            names::MODULE,
+            style::WORD_SEPARATOR,
+            unit.module.name
+        ),
     );
     if let Some(vocabulary) = &unit.vocabulary_use {
         formatter.push_root(
             vocabulary.span.end(),
-            &format!("{}{}", style::USE_PREFIX, vocabulary.name),
+            &format!("{}{}{}", names::USE, style::WORD_SEPARATOR, vocabulary.name),
         );
     }
     for declaration in &unit.declarations {
@@ -128,7 +135,9 @@ fn append_comment(output: &mut String, source: &[u8], comment: &Trivia) {
 
 /// Converts every supported physical newline spelling to one line feed.
 fn normalize_newlines(value: &str) -> String {
-    value.replace("\r\n", "\n").replace('\r', "\n")
+    value
+        .replace(style::CARRIAGE_RETURN_LINE_FEED, style::NEWLINE_TEXT)
+        .replace(style::CARRIAGE_RETURN, style::NEWLINE_TEXT)
 }
 
 /// Returns the complete original end offset of one root declaration.
@@ -146,7 +155,7 @@ fn render_declaration(declaration: &ParsedDeclaration) -> String {
         ParsedDeclaration::Record(record) => write_record_declaration(&mut output, record),
         ParsedDeclaration::Binding(binding) => {
             write_type(&mut output, &binding.declared_type);
-            output.push(style::TYPE_NAME_SEPARATOR);
+            output.push(style::WORD_SEPARATOR);
             output.push_str(&binding.name);
             output.push_str(style::INITIALIZER_SEPARATOR);
             write_value(&mut output, &binding.value, 0);
@@ -157,14 +166,16 @@ fn render_declaration(declaration: &ParsedDeclaration) -> String {
 
 /// Renders one nominal record declaration with one trailing-comma field per line.
 fn write_record_declaration(output: &mut String, record: &ParsedRecord) {
-    output.push_str(style::RECORD_PREFIX);
+    output.push_str(names::RECORD);
+    output.push(style::WORD_SEPARATOR);
     output.push_str(&record.name);
-    output.push_str(" {");
+    output.push(style::WORD_SEPARATOR);
+    output.push(style::RECORD_OPEN);
     output.push(style::NEWLINE);
     for field in &record.fields {
         write_indent(output, 1);
         write_type(output, &field.declared_type);
-        output.push(style::TYPE_NAME_SEPARATOR);
+        output.push(style::WORD_SEPARATOR);
         output.push_str(&field.name);
         if let Some(default) = &field.default_value {
             output.push_str(style::INITIALIZER_SEPARATOR);
@@ -173,7 +184,7 @@ fn write_record_declaration(output: &mut String, record: &ParsedRecord) {
         output.push(style::MEMBER_SUFFIX);
         output.push(style::NEWLINE);
     }
-    output.push('}');
+    output.push(style::RECORD_CLOSE);
 }
 
 /// Renders one parsed type without exposing it as a public syntax model.
@@ -190,19 +201,19 @@ fn write_type(output: &mut String, parsed_type: &ParsedType) {
         }
         ParsedType::Nullable(inner) => {
             write_type(output, inner);
-            output.push('?');
+            output.push(style::NULLABLE_SUFFIX);
         }
         ParsedType::List(inner) => {
             output.push_str(names::LIST);
-            output.push('<');
+            output.push(style::TYPE_ARGUMENT_OPEN);
             write_type(output, inner);
-            output.push('>');
+            output.push(style::TYPE_ARGUMENT_CLOSE);
         }
         ParsedType::Ref(inner) => {
             output.push_str(names::REF_TYPE);
-            output.push('<');
+            output.push(style::TYPE_ARGUMENT_OPEN);
             write_type(output, inner);
-            output.push('>');
+            output.push(style::TYPE_ARGUMENT_CLOSE);
         }
     }
 }
@@ -218,12 +229,12 @@ fn write_value(output: &mut String, value: &ParsedValue, depth: usize) {
         ParsedValue::Null => output.push_str(names::NULL),
         ParsedValue::Reference { target, .. } => {
             output.push_str(names::REF);
-            output.push('(');
+            output.push(style::REFERENCE_OPEN);
             output.push_str(target);
-            output.push(')');
+            output.push(style::REFERENCE_CLOSE);
         }
         ParsedValue::Record(fields) => {
-            output.push('{');
+            output.push(style::RECORD_OPEN);
             output.push(style::NEWLINE);
             for field in fields {
                 write_indent(output, depth + 1);
@@ -234,11 +245,14 @@ fn write_value(output: &mut String, value: &ParsedValue, depth: usize) {
                 output.push(style::NEWLINE);
             }
             write_indent(output, depth);
-            output.push('}');
+            output.push(style::RECORD_CLOSE);
         }
-        ParsedValue::List(items) if items.is_empty() => output.push_str("[]"),
+        ParsedValue::List(items) if items.is_empty() => {
+            output.push(style::LIST_OPEN);
+            output.push(style::LIST_CLOSE);
+        }
         ParsedValue::List(items) => {
-            output.push('[');
+            output.push(style::LIST_OPEN);
             output.push(style::NEWLINE);
             for item in items {
                 write_indent(output, depth + 1);
@@ -247,30 +261,32 @@ fn write_value(output: &mut String, value: &ParsedValue, depth: usize) {
                 output.push(style::NEWLINE);
             }
             write_indent(output, depth);
-            output.push(']');
+            output.push(style::LIST_CLOSE);
         }
     }
 }
 
 /// Renders one decoded string with the frozen canonical escape spellings.
 fn write_string(output: &mut String, value: &str) {
-    output.push('"');
+    output.push(style::STRING_DELIMITER);
     for character in value.chars() {
         match character {
-            '"' => output.push_str("\\\""),
-            '\\' => output.push_str("\\\\"),
-            '\n' => output.push_str("\\n"),
-            '\r' => output.push_str("\\r"),
-            '\t' => output.push_str("\\t"),
-            '\0' => output.push_str("\\0"),
+            style::STRING_DELIMITER => output.push_str(style::ESCAPED_QUOTE),
+            style::ESCAPE_MARKER => output.push_str(style::ESCAPED_BACKSLASH),
+            style::NEWLINE => output.push_str(style::ESCAPED_NEWLINE),
+            style::CARRIAGE_RETURN => output.push_str(style::ESCAPED_CARRIAGE_RETURN),
+            style::TAB => output.push_str(style::ESCAPED_TAB),
+            style::NULL_CHARACTER => output.push_str(style::ESCAPED_NULL),
             character if character.is_control() => {
-                write!(output, "\\u{{{:x}}}", u32::from(character))
+                output.push_str(style::UNICODE_ESCAPE_PREFIX);
+                write!(output, "{:x}", u32::from(character))
                     .expect("writing to a string must be infallible");
+                output.push(style::UNICODE_ESCAPE_SUFFIX);
             }
             character => output.push(character),
         }
     }
-    output.push('"');
+    output.push(style::STRING_DELIMITER);
 }
 
 /// Writes a checked number of canonical four-space indentation levels.

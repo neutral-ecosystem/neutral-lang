@@ -13,6 +13,19 @@ fn conformance_formatter_emits_canonical_layout() {
 }
 
 #[test]
+/// Canonical escapes and comment newlines preserve decoded values and remain idempotent.
+fn conformance_formatter_normalizes_escapes_and_mixed_comment_newlines() {
+    let source = b"/* first\r\nsecond\rthird */\r\nneu \"0.1\"\r\nmodule escapes\r\nstring value=\"quote:\\\" slash:\\\\ newline:\\n carriage:\\r tab:\\t nul:\\0 control:\\u{1F} emoji:\\u{1F642}\"\r\n";
+    let expected = "/* first\nsecond\nthird */\nneu \"0.1\"\nmodule escapes\n\nstring value = \"quote:\\\" slash:\\\\ newline:\\n carriage:\\r tab:\\t nul:\\0 control:\\u{1f} emoji:🙂\"\n";
+    let formatted = format_fixture(source, false);
+    assert_eq!(formatted, expected.as_bytes());
+    assert_eq!(format_fixture(&formatted, false), formatted);
+    assert!(
+        compile_fixture(source, false).logically_equivalent(&compile_fixture(&formatted, false))
+    );
+}
+
+#[test]
 /// Verifies the published complete language example compiles with its captured bundle.
 fn conformance_documentation_showcase_compiles() {
     let source = LANGUAGE_SHOWCASE
