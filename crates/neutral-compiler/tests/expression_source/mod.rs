@@ -16,6 +16,8 @@ use neutral_vocabulary::{VocabularyLimits, composition::CompositionLimits};
 mod boundaries;
 /// Aggregate validation, complete assembly and retained-copy accounting.
 mod budget_checks;
+/// Real syntax generations rebuild semantic and source authority on every request.
+mod cache;
 /// Exact captured expression request facts and rejection boundaries.
 mod capture;
 /// Template resolution, static checking and finite matrix expansion.

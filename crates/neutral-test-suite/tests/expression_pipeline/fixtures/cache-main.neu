@@ -1,0 +1,6 @@
+neu "1.0"
+module pipeline
+import pipeline::types as types
+
+public types::Item entry = instantiate types::Make(value: 7)
+public expand items = types::Make(value: axis) for (axis in [1, 2])

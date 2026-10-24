@@ -32,6 +32,9 @@ use neutral_semantics::{
     NormalizedBinding, SemanticLimits, derive_expression_resources_with_budget,
     normalize_binding_with_budget, prepare_expression_model,
 };
+/// Same caller-owned cache generations, with successor-only retained syntax.
+#[path = "../expression_cache.rs"]
+pub(super) mod cache;
 #[path = "../expansion/mod.rs"]
 /// Definition-scoped templates and finite matrices.
 mod expansion;
@@ -319,9 +322,19 @@ pub fn compile_expression_project(
     captured: &CapturedExpressionProject,
     cancel: &CancellationToken,
 ) -> Result<Arc<ExpressionProjectIr>, E> {
+    compile_with_parser(captured, cancel, &mut parser::parse_source)
+}
+
+/// Cache hits replace syntax extraction only; every semantic/publication phase still runs.
+#[allow(clippy::too_many_lines)]
+fn compile_with_parser<'a>(
+    captured: &'a CapturedExpressionProject,
+    cancel: &'a CancellationToken,
+    parse: &mut impl FnMut(&'a crate::CapturedProjectSource, &mut State<'a, 'a>) -> Result<(), E>,
+) -> Result<Arc<ExpressionProjectIr>, E> {
     let mut state = initial_state(captured, cancel)?;
     for source in captured.sources() {
-        parser::parse_source(source, &mut state)?;
+        parse(source, &mut state)?;
     }
     state.budget.retain::<Root>(state.resolver.roots.len())?;
     let mut roots = Vec::new();

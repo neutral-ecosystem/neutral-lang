@@ -660,7 +660,14 @@ Slice 1 — consumer contract foundation:
   one-over, pre-allocation rejection and allocation/cancellation recovery tests pass;
   final CI passes 1,335 tests (zero skipped), doctests and all seven quality steps.
   Frozen controls and historical wire/identity vectors remain unchanged.
-  Remaining: consumer/authoring corpus gates, actual `/3` cache execution and final
+  Task 10 now qualifies real `/3` clean/cold/warm/changed-unit execution through
+  the existing caller-owned syntax cache, including current vocabulary locks,
+  defaults/restrictions, source evidence and parser policies. Failed/cancelled
+  candidates preserve prior generations; dropped captures and grammar changes
+  cannot leak stale syntax. Independent probe contracts, guarded ports and literal
+  consumer reports agree after wire decoding; roots and binding revisions do not
+  rewrite complete identities. CI PR passes 1,346 tests (zero skipped) and doctests.
+  Remaining: consumer/authoring corpus gates and final
   unchanged-input campaigns. Integration
   examples do not replace these requirements or complete later plan tasks.
   This gate remains open and `/3` is not activated.

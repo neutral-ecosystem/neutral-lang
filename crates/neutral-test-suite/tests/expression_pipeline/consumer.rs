@@ -15,6 +15,93 @@ use neutral_semantics::{
 
 mod generations;
 
+/// Syntax reuse must not capture external bindings or consumer revision context.
+#[test]
+fn integration_cached_expression_artifact_has_literal_reports_and_immutable_identity() {
+    use neutral_compiler::{CompositionCompilationCache, ProjectCacheLimits};
+    let captured = capture(include_bytes!("fixtures/guarded.neu"));
+    let cancel = CancellationToken::new();
+    let mut cache = CompositionCompilationCache::new(ProjectCacheLimits {
+        source_units: 8,
+        source_bytes: 1_048_576,
+    })
+    .unwrap();
+    cache.compile_expression(&captured, &cancel).unwrap();
+    let (ir, stats) = cache.compile_expression(&captured, &cancel).unwrap();
+    assert_eq!(stats.reused_units, 1);
+    let project = super::cache::checked(ir);
+    let report = T::Nominal(symbol("Report"));
+    let plan = T::Nominal(symbol("Plan"));
+    let producer = symbol("producer");
+    let result = T::Nominal(symbol("Result"));
+    let associations = [OutputAssociation {
+        target: &producer,
+        result_type: &result,
+    }];
+    let boundary = boundary(&project, &report, &associations);
+    let before = captured
+        .identity_transcript(
+            neutral_reader::IdentityLimits {
+                bytes: 1_048_576,
+                nodes: 1_048_576,
+            },
+            &cancel,
+        )
+        .unwrap()
+        .identity();
+    let selected = symbol("entry");
+    let input = symbol("enabled");
+    for (flag, revision) in [(false, "first"), (true, "second"), (false, "recovered")] {
+        let value = V::Bool(flag);
+        let bindings = [Binding {
+            key: BindingKey::Input(&input),
+            ty: &T::Bool,
+            state: BindingState::Value(&value),
+        }];
+        let request = EvaluationRequest {
+            selected: &selected,
+            profiles: &project.ir().semantic_profiles,
+            bindings: &bindings,
+            associations: &[],
+            limits: ExpressionLimits::hard(),
+        };
+        let outcome = boundary
+            .evaluate(&request, context(revision), &cancel)
+            .unwrap();
+        assert_eq!(outcome.project_identity, boundary.project_identity());
+        assert_eq!(outcome.context.input_revision, revision);
+        if flag {
+            assert!(
+                matches!(outcome.outcome, R::RequiredBindings(ref keys) if keys.len() == 1 && matches!(keys[0], BindingKey::Output { .. }))
+            );
+        } else {
+            assert_eq!(
+                outcome.outcome,
+                R::Value {
+                    ty: &plan,
+                    value: plan_value("0.125")
+                }
+            );
+        }
+        assert_eq!(
+            captured
+                .identity_transcript(
+                    neutral_reader::IdentityLimits {
+                        bytes: 1_048_576,
+                        nodes: 1_048_576
+                    },
+                    &cancel
+                )
+                .unwrap()
+                .identity(),
+            before
+        );
+    }
+    let (again, stats) = cache.compile_expression(&captured, &cancel).unwrap();
+    assert_eq!(stats.reused_units, 1);
+    assert_eq!(again.as_ref(), project.ir());
+}
+
 /// Registers explicit public result associations, not an executor or backend callback.
 fn boundary<'p, 'a>(
     project: &'p ValidatedExpressionProject,

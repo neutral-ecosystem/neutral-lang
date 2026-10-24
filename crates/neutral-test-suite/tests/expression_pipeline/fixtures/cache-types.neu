@@ -1,0 +1,10 @@
+neu "1.0"
+module pipeline::types
+
+public record Item {
+    num count = 2,
+}
+
+public template Make(static num value) -> Item {
+    { count: value + 1 }
+}

@@ -16,7 +16,12 @@ No ambient bindings, execution, backend adapters or acquisition are involved.
   associations, malformed skipped generations, null/absence/unavailable/failure,
   explicit unavailable attribution and adapter/target/input revision invariance.
 - `inspection.rs`: independently decoded probe/entry selection, root-invariant
-  identity and exact feature rejection without evaluation.
+  identity, complete public-contract parity and exact tuple/feature/missing-contract
+  rejection without evaluation.
+- `cache.rs`: real clean/warm/changed-unit syntax generations, imported templates,
+  matrices, changed vocabulary defaults/restrictions and refreshed source evidence,
+  each crossing independent encoding/reading. Consumer tests also check reports
+  from cached artifacts without retaining binding context.
 - `projection.rs`: literal nested if/match/short-circuit guard paths, repeated
   output-key occurrences, retained vocabulary obligations and private-origin
   redaction through the public accessors after independent decoding.
@@ -30,5 +35,5 @@ Run `cargo xtask test integration` for these and other integration tests, or
 `cargo xtask test all` for the whole suite. A direct focused run is
 `cargo test --package neutral-test-suite expression_pipeline::`.
 
-These tests do not establish actual expression-cache equivalence or replace the
+These tests exercise actual expression-cache equivalence; they do not replace the
 registered source corpus, independent vectors, fuzz, mutation or soak campaigns.

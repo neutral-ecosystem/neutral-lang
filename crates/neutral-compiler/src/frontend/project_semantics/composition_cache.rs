@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Explicit successor syntax generations; values, contracts and evidence are never cached.
+//! Explicit composition/expression syntax generations; semantic authority is never cached.
 
 use super::{
     E, Ir, Phase, Root, codes, compile_observed as compile_pipeline, fail, parse, profile,
@@ -12,15 +12,17 @@ use neutral_core::{CancellationToken, SourceContentDigest};
 
 /// Private exact-input parse entry, never accepted from callers or deserialized.
 #[derive(Clone)]
-struct Entry {
+pub(super) struct Entry {
     /// Selected capture grammar and immutable feature context.
-    features: Arc<Vec<String>>,
+    pub(super) features: Arc<Vec<String>>,
     /// Exact-byte hash is only a fast filter; bytes must also match.
-    digest: SourceContentDigest,
+    pub(super) digest: SourceContentDigest,
     /// Original bytes reject stale entries and digest collisions.
-    bytes: Arc<Vec<u8>>,
+    pub(super) bytes: Arc<Vec<u8>>,
     /// Private parsed declarations with original byte spans.
-    roots: Vec<Root>,
+    pub(super) roots: Vec<Root>,
+    /// Distinct /3 source syntax; never confused with historical roots.
+    pub(super) expression: Option<Arc<super::expressions::cache::Syntax>>,
 }
 
 #[cfg(test)]
@@ -30,14 +32,15 @@ mod tests;
 /// Caller-owned, bounded successor syntax cache with atomic successful generations.
 ///
 /// Separate from the old-profile cache: no API accepts external entries or stores
-/// graph, vocabulary, source IDs, controls, materialized values or identity results.
+/// graph, vocabulary, source IDs, materialized values or identity results. Expression
+/// entries retain parser controls only as acceptance-context keys, never as authority.
 pub struct CompositionCompilationCache {
     /// Independent retained original-byte/unit controls.
-    limits: ProjectCacheLimits,
+    pub(super) limits: ProjectCacheLimits,
     /// Previous successful generation in canonical logical-module order.
-    entries: BTreeMap<String, Entry>,
+    pub(super) entries: BTreeMap<String, Entry>,
     /// Exact total original source bytes retained.
-    source_bytes: u64,
+    pub(super) source_bytes: u64,
 }
 impl CompositionCompilationCache {
     /// Creates an empty cache with positive independent retention budgets.
@@ -99,7 +102,8 @@ impl CompositionCompilationCache {
             &mut |source| {
                 let previous = self.entries.get(source.module_id());
                 let reusable = previous.filter(|entry| {
-                    entry.features.as_slice() == captured.required_features()
+                    entry.expression.is_none()
+                        && entry.features.as_slice() == captured.required_features()
                         && entry.digest == source.digest()
                         && entry.bytes.as_ref() == source.bytes()
                         && entry.roots.iter().all(|root| {
@@ -145,6 +149,7 @@ impl CompositionCompilationCache {
                                 digest: source.digest(),
                                 bytes: source.shared_bytes(),
                                 roots: retained_roots,
+                                expression: None,
                             },
                         )
                         .map_err(|_| fail(codes::LIMIT, None))?;

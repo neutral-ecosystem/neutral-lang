@@ -30,6 +30,7 @@ use neutral_reader::{
 use neutral_vocabulary::{VocabularyLimits, composition::CompositionLimits};
 
 mod bounds;
+mod cache;
 mod consumer;
 mod inspection;
 mod projection;

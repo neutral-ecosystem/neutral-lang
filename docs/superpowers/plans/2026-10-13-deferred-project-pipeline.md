@@ -278,15 +278,31 @@ unchanged. No `/3` availability advertisement or activation is implied.
 
 **Interfaces:** `inspect_expression_encoded(bytes, wire_limits, semantic_limits, entry_request, cancel)` returns safe counts, complete typed identities, public contracts/ports/obligations/guarded dependencies and a redacted view. It never evaluates. Reuse the existing cache generation/publication pattern with `/3` captured/semantic keys; no second persistent cache is required.
 
-- [ ] Verify probe dependency graph is compiler-free. Compare complete independently decoded public contracts and literal consumer reports with source-produced artifacts; no source reparse or registry acquisition.
-- [ ] Compare actual clean, warm-cache and changed-unit compilation, including changed vocabulary/default/restriction, source evidence and semantic tuple. Failed/cancelled attempts preserve the prior successful generation; a later valid request succeeds without cross-request leakage.
-- [ ] Confirm binding context and selected roots cannot alter complete captured/logical identity. Test unsupported tuple/feature and missing contract rejection before public summary publication.
+- [x] Verify probe dependency graph is compiler-free. Compare complete independently decoded public contracts and literal consumer reports with source-produced artifacts; no source reparse or registry acquisition.
+- [x] Compare actual clean, warm-cache and changed-unit compilation, including changed vocabulary/default/restriction, source evidence and semantic tuple. Failed/cancelled attempts preserve the prior successful generation; a later valid request succeeds without cross-request leakage.
+- [x] Confirm binding context and selected roots cannot alter complete captured/logical identity. Test unsupported tuple/feature and missing contract rejection before public summary publication.
 
 Continuation evidence (17-10-2026): independent encoded entry probing now compares
 unique and explicit-empty roots on source-produced artifacts, preserves complete
 logical identity, and rejects unsupported features/truncation before a summary.
-Actual expression-cache execution is still required; captured replay and these
-reader/probe tests are not cache equivalence evidence.
+Those reader/probe tests alone were not cache equivalence evidence.
+
+Qualification (24-10-2026): `CompositionCompilationCache::compile_expression`
+uses the existing caller-owned generation map, retaining only owned source syntax
+and byte spans under exact module/bytes/profile/parser-policy keys. Every request
+rebuilds graph, vocabulary/default/restriction semantics, normalized values,
+companions and identities. File-backed imported template/matrix cases compare
+clean, cold, warm and changed-unit results through independent wire validation;
+changed locks/defaults/restrictions and source IDs never reuse semantic evidence.
+Grammar transitions, destroyed captures, inclusive cache admission, failed candidate
+and warm allocation/cancellation sweeps preserve the prior successful generation.
+Source-ordered restoration preserves clean limit-error occurrences.
+
+Standalone dependency checks remain compiler-free. Probe/public-view contract,
+obligation and guarded-port comparisons, literal consumer generations and complete
+identity/root invariance pass; unsupported request/wire tuples/features and absent
+contracts fail before a summary. CI PR passes 1,346 tests (zero skipped), doctests
+and all seven quality steps. Task 11 campaigns and `/3` activation remain separate.
 
 ## Task 11: Qualification, scope registration and honest gate closure
 

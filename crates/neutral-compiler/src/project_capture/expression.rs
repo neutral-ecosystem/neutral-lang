@@ -95,6 +95,10 @@ impl CapturedExpressionProject {
     pub fn semantic_profiles(&self) -> &SemanticProfiles {
         &self.profiles
     }
+    /// Shares immutable grammar context with private in-process syntax generations.
+    pub(crate) fn shared_profiles(&self) -> Shared<SemanticProfiles> {
+        self.profiles.clone()
+    }
     /// Borrows the exact sorted required capability set.
     #[must_use]
     pub fn required_features(&self) -> &[String] {

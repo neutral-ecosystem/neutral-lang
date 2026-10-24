@@ -90,6 +90,15 @@ identities and source companions under current controls. Failed or cancelled run
 leave the previous successful generation intact; removed/over-budget units are
 not retained. It never persists semantic authority or accepts external entries.
 
+Its `compile_expression(&captured, &cancel)` method uses the same cache instance
+for explicitly captured expression projects. Entries retain source syntax as owned
+byte spans, not borrowed captures or evaluated results. Reuse requires exact bytes,
+module, semantic tuple and parser-affecting policies; grammar changes force a miss.
+Current vocabularies, source IDs, restrictions and all identities are rebuilt even
+on a hit. Cache storage/copy costs remain bounded and may exhaust reduced policies;
+retention limits count original bytes, not total heap usage. No disk cache or second
+persistent expression cache is involved.
+
 Within one clean project compilation, semantic analysis hands its private parsed
 units to lowering instead of parsing them again. This request-local handoff does
 not expose syntax internals or retain data between requests; the explicit cache
