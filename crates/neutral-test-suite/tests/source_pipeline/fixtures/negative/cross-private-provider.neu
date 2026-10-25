@@ -1,0 +1,9 @@
+neu "1.0"
+module leak::provider
+
+record Hidden {
+    num count,
+}
+public record Envelope {
+    Hidden item,
+}

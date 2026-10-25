@@ -1,0 +1,7 @@
+neu "1.0"
+module leak::consumer
+
+import leak::provider as provider
+public provider::Envelope exposed = {
+    item: { count: 7 },
+}

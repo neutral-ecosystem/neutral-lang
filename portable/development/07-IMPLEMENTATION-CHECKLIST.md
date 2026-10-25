@@ -28,6 +28,14 @@ records, and five registered current-parser checks replace disconnected legacy
 test code. The 882-test suite, CI, locked fuzz-target build, oracle verification
 and benchmark smoke pass. This refactor does not renew long-campaign evidence.
 
+File-backed corpus follow-up (25-10-2026): all 59 source-pipeline `.neu` inputs
+are explicitly selected. Literal decoded values, nominal reference targets,
+import SCCs/diamonds, public closure, changed-source cache results and CLI/probe
+results are checked independently of producer round-trip equality. Rejected
+sources require the expected compilation phase/code; cross-module private
+reference rejection pins its consuming declaration span. All 924 tests and the
+70-case integration selection pass; long-campaign qualification remains separate.
+
 Developers choose and review the next unchecked item. `cargo xtask dev` and
 `cargo xtask ci pr` retain the toolchain, commit, commands, and results in
 ignored workflow logs. This checklist is the routine completion authority;

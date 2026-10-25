@@ -1,5 +1,7 @@
 neu "1.0"
 module api
 
-public num target = 42
-public Ref<string> pointer = ref(target)
+public record Target { string value, }
+public record Other { string value, }
+public Target target = { value: "target" }
+public Ref<Other> pointer = ref(target)

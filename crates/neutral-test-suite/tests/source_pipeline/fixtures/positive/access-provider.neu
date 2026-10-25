@@ -1,0 +1,12 @@
+neu "1.0"
+module access::provider
+
+public record Item {
+    num count,
+}
+Item hidden = {
+    count: 7
+}
+public Item visible = {
+    count: 8
+}

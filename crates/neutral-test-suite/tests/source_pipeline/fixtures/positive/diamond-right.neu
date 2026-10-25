@@ -1,0 +1,7 @@
+neu "1.0"
+module diamond::right
+
+import diamond::base as foundation
+public foundation::Item reused = foundation::seed
+public Ref<foundation::Item> pointer = ref(foundation::seed)
+public num answer = 41 + foundation::offset

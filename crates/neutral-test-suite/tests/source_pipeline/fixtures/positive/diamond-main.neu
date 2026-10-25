@@ -1,0 +1,6 @@
+neu "1.0"
+module diamond::main
+
+import diamond::left as left
+import diamond::right as right
+public num total = left::answer + right::answer

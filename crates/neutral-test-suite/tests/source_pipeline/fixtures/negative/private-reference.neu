@@ -1,5 +1,6 @@
 neu "1.0"
 module api
 
-num hidden = 42
-public Ref<num> pointer = ref(hidden)
+public record Hidden { string value, }
+Hidden hidden = { value: "private" }
+public Ref<Hidden> pointer = ref(hidden)

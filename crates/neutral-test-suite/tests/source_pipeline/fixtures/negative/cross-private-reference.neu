@@ -1,0 +1,5 @@
+neu "1.0"
+module access::consumer
+
+import access::provider as provider
+public Ref<provider::Item> pointer = ref(provider::hidden)

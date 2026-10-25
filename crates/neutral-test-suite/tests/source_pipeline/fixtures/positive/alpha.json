@@ -1,0 +1,19 @@
+{
+  "format": "neutral-vocabulary-bundle",
+  "encoding_version": "1.0",
+  "schema_version": "2.0",
+  "identity": "Alpha",
+  "version": "1.0.0",
+  "required_features": ["vocabulary-composition-v2"],
+  "dependencies": [],
+  "types": [
+    {
+      "kind": "record",
+      "name": "Visible",
+      "public": true,
+      "fields": [
+        {"name": "label", "type": {"kind": "string"}, "presence": "required", "restrictions": {}}
+      ]
+    }
+  ]
+}

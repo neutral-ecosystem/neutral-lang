@@ -77,6 +77,14 @@ fn system_cli_current_source_artifact_and_probe() {
     .unwrap();
     assert_eq!(reader.ir().declarations.len(), 2);
     assert_eq!(
+        super::materialized(&reader, "service", "answer"),
+        &super::number("42")
+    );
+    assert_eq!(
+        super::materialized(&reader, "service", "label"),
+        &neutral_ir::composition::BindingValue::String("web".into())
+    );
+    assert_eq!(
         reader.ir().declarations[0].identity.declaration_name(),
         "answer"
     );
@@ -88,7 +96,15 @@ fn system_cli_current_source_artifact_and_probe() {
             .arg(&artifact),
     );
     assert_eq!(output.stderr, [] as [u8; 0]);
-    assert!(String::from_utf8(output.stdout).unwrap().contains("answer"));
+    let summary: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        summary["encoding"],
+        neutral_ir::expression::profile::ENCODING
+    );
+    assert_eq!(
+        summary["public_roots"],
+        serde_json::json!(["service::answer"])
+    );
     fs::write(&source, include_bytes!("fixtures/cli/invalid.neu")).unwrap();
     let failed = Command::new(&cli)
         .arg("compile")

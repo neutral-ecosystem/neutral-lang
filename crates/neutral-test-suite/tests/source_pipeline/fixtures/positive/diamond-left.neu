@@ -1,0 +1,7 @@
+neu "1.0"
+module diamond::left
+
+import diamond::base as common
+public common::Item reused = common::seed
+public Ref<common::Item> pointer = ref(common::seed)
+public num answer = 40 + common::offset

@@ -9,8 +9,24 @@ assertions come from the compiler and reader contracts; wire round trips are not
 used as semantic oracles. Fixtures remain mutable regression coverage, separate
 from the frozen conformance corpus.
 
-Run `cargo test --package neutral-test-suite source_pipeline::`. The executable
-case builds the reader-only probe offline through Cargo's JSON artifact discovery
+The accepted corpus has literal expectations for scalar/record/list/default
+values, Unicode, inert locations, vocabulary aliases and canonical reference
+targets. `negative.rs` registers each rejected fixture separately, requiring
+capture success and the exact compilation diagnostic code. Reported locations
+must belong to captured bytes and stay in bounds; the cross-module private
+reference case additionally pins the exact consuming declaration span.
+
+`cross_module.rs` checks valid import SCCs independently of rejected value cycles,
+diamond imports, public closure, private target/type rejection and alias/order
+invariance. It checks independently decoded values and owners, not just equality
+with a producer that could contain the same mistake. The reference-privacy
+fixtures use public nominal types to isolate private target rejection from an
+unrelated invalid reference-type error.
+
+Use `cargo xtask test all` for the complete repository, or `cargo xtask test
+integration` for registered integration cases. For this entire module only, run
+`cargo test --package neutral-test-suite source_pipeline::`. The executable
+case builds the reader-only probe through Cargo's JSON artifact discovery
 and inspects artifacts produced from these sources in an isolated temporary root.
 No language runtime exists: execution here means the probe executable.
 

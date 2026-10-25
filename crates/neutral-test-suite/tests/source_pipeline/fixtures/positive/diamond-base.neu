@@ -1,0 +1,9 @@
+neu "1.0"
+module diamond::base
+
+public record Item {
+    num count = 40,
+}
+public Item seed = {
+}
+public num offset = 2
