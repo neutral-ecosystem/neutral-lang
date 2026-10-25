@@ -1,109 +1,34 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Composition contract oracle
+# Composition contract tests
+
+This directory tests the raw composition and vocabulary catalogue contracts
+used by current expression-project capture and independent reading. These
+contracts do not create a separate complete `/2` project artifact.
 
 ```text
 composition_contract/
-├── mod.rs                  shared inputs and independent oracle comparisons
-├── capture.rs              catalogue/capture boundary tests
-├── reference.py            frozen independent complete-identity oracle
-├── interface_reference.py  independent public projection
-├── fixtures/
-│   ├── requests/           positive, negative, boundary and migration captures
-│   ├── identity/           literal vectors and outcome/digest inventory
-│   └── source/             readable source regression programs
-└── pipeline/
-    ├── mod.rs              shared pipeline helpers and round-trip tests
-    ├── allocation.rs       failure/cancellation sweeps
-    ├── consumer.rs         closed description/report envelopes
-    ├── selectors.rs        public member traversal and safe origin projection
-    ├── graphs.rs           module and vocabulary graph families
-    ├── hardening.rs        cache, hostile input and independent bounds
-    ├── reader_probe.rs     public views, source evidence and standalone probe
-    └── identity/           identity comparisons and literal-fact test builders
+├── capture.rs              current compiler capture and reader catalogue checks
+├── reference.py            retained independent historical identity oracle
+├── interface_reference.py  independent public projection oracle
+└── fixtures/
+    ├── requests/            reviewed capture and catalogue inputs
+    ├── identity/            immutable historical transcript vectors
+    └── source/              source cases used by catalogue capture tests
 ```
 
-The Python oracle files deliberately retain their frozen locations and bytes:
-the complete oracle imports the sibling historical identity oracle, and its hash
-and path are pinned by the contract freeze. Test modules keep their original Rust
-names, so existing Nextest/Cargo filters still work. Source fixture paths are
-declared once in `mod.rs::sources`, not repeated in pipeline modules.
+The historical `/2` identity vectors, Python oracle bytes, and reviewed fixture
+inputs remain immutable compatibility evidence. They are not producers or
+decoders for current runtime artifacts. The current transport is the complete
+expression-project `/3` format, and no decoder fallback accepts historical
+project magic.
 
-`pipeline/consumer.rs` and `fixtures/source/consumer.neu` exercise the closed typed description/report
-boundary over compiled and independently decoded projects: exact nominal payloads,
-feature/code registration, complete identity and external context, explicit decision
-statuses, canonical diagnostics, checked public evidence/private reuse redaction,
-independent limits, cancellation and allocation-failure recovery. These do not
-implement consumer graph execution, entry discovery or deferred evaluation.
+The executable tests verify literal transcript framing and digests, pinned
+capture inputs, registered raw catalogue cases, reader visibility/reference
+paths, exact restrictions, permutation determinism, cancellation, and bounded
+capture controls. Catalogue-only cases use explicit synthetic source inputs;
+they are not source-compilation expectations. Python 3 is required for the
+independent frozen oracle and a missing interpreter fails the test.
 
-Runtime-owned copies of reviewed inputs live here so tests do not depend on the
-portable plan. `reference.py` is a test-only Python encoder of the frozen /2
-transcript grammar. It reuses only unchanged /1 framing primitives from the
-independent test oracle, never compiler, codec or production identity code.
-`mod.rs` verifies literal bytes/digests, input integrity and adversarial partitions.
-Production comparisons use the same immutable expectations. Ordinary tests run
-with `cargo xtask test all`; focused runs use `cargo test -p neutral-test-suite
-composition_contract`. Python 3 is required; missing tools fail, not skip.
-
-`capture.rs` additionally runs all registered catalogue cases through the explicit
-compiler capture boundary, then inspects accepted catalogues through the independent
-reader. It checks aliases, transitive locks, restrictions, public reference paths,
-optional origins, old-schema adaptation, replay, permutations and concurrency.
-The production captured-identity transcript is compared with literal bytes/digest
-and exact/one-over framing budgets. Catalogue-only cases get an explicit test
-source declaring their reviewed roots; those are not source-compilation tests.
-`pipeline/mod.rs` additionally runs the actual successor compiler, complete reader
-and binary round trip for accepted source families, boundary cases and legacy-leaf
-adaptation. It checks frozen source diagnostic codes, both nominal variant origins,
-nested closed defaults, ordinary reuse versus reference cycles, heterogeneous
-lists, independent bounds, hostile frames, shuffled captures and concurrency.
-The complete production logical transcript is compared byte-for-byte and
-digest-for-digest with the frozen second implementation.
-`pipeline/reader_probe.rs` checks public field/alternative/reference closure and cyclic
-reference worklists, private reuse redaction, precise source-default/reuse spans,
-invalid companion rejection, safe vocabulary owners, selection-invariant complete
-identity, and the real compiler-free probe executable on successor artifacts.
-`pipeline/hardening.rs` exercises real successor syntax-cache hits and changed units,
-vocabularies/defaults, host IDs, policies, failed generations and concurrent
-caller isolation. Complete IR/companions and encoded bytes must equal clean
-compilation. It also sweeps every independent composition and wire consumer
-control, composition producer policy and JSON/scalar/shape capture controls at
-their acceptance threshold and one below/above, and mutates every
-artifact byte before independent validation. These sweeps complement the literal
-catalogue/dependency boundary expectations; they do not prove all allocation
-failure paths; those are exercised separately below.
-
-`pipeline/allocation.rs` uses the core's non-default, thread-local `allocation-testing`
-feature to reject every observed reservation independently in accepted capture
-families, the adapted leaf embedding graph, source resolution/SCCs, complete
-companions, reader validation, views, logical identity, wire encoding/decoding
-and probe inspection. Defaults, references and vocabulary-backed values exercise
-additional branches. Warm and changed-unit cache sweeps verify the previous
-successful generation survives each failure and subsequent compilation recovers.
-Real token cancellation is injected at each observed processing reservation;
-eight capture controls are tested independently below/at/above the boundary.
-Fixture/request setup happens outside observation. These tests simulate checked
-reservation failures, not physical whole-process memory exhaustion.
-Replay copying and JSON presentation are also included: every observed growth
-failure and reservation-boundary cancellation must reject publication. Replay
-preserves exact bytes, locks, features and policies; renderer tests additionally
-cover empty views, Unicode and JSON control-character escaping.
-
-`pipeline/graphs.rs` supplements the immutable literals with transitive vocabulary graph
-families and source import chains, diamonds and valid reference-type SCCs. Source
-topology is compared with the existing graph API, then independently decoded and
-inspected; shuffled captures must produce identical wire bytes.
-
-`pipeline/identity/mod.rs` compares all five frozen /2 baseline partitions, twelve semantic/
-evidence variations and eight rejection vectors against production boundaries.
-`pipeline/identity/facts.rs` constructs raw test models from literal facts without sorting
-or normalizing them; these models are framing inputs, not reader authority.
-`interface_reference.py` independently projects public declarations/contracts
-before using the pinned Python grammar. The original `reference.py`, vectors and
-fixture/oracle bytes remain unchanged. Tests additionally cover real default versus
-supplied values, omission versus null, decoded origin evidence, every explicit
-derivation control, byte/frame boundaries, allocation/cancellation recovery and
-root invariance. Missing/private/wrong-profile/duplicate roots cannot acquire
-artifact identity through the reader. All 26 registered request cases now reach
-their applicable capture/compiler/independent wire boundaries; catalogue-only
-cases retain explicit test sources rather than invented literal source outcomes.
+Run `cargo test -p neutral-test-suite composition_contract` for this module, or
+`cargo xtask test all` for complete cross-package and doctest validation.

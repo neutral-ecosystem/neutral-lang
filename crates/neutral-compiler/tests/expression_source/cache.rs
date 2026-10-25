@@ -3,11 +3,11 @@
 //! Clean compilation and actual caller-owned cache generations must agree.
 
 use super::*;
-use crate::{CompositionCompilationCache, ProjectCacheLimits};
+use crate::{ExpressionCompilationCache, ProjectCacheLimits};
 
 /// Changing an earlier unit must not change which source occurrence exceeds a limit.
 #[test]
-fn expression_cache_preserves_source_order_for_limit_diagnostics() {
+fn property_expression_cache_preserves_source_order_for_limit_diagnostics() {
     let make = |extra: &str| {
         capture_expression_project(request_with_inputs(
             vec![
@@ -42,7 +42,7 @@ fn expression_cache_preserves_source_order_for_limit_diagnostics() {
     let first = make("");
     let changed = make("num earlier = 0");
     let signal = CancellationToken::new();
-    let mut cache = CompositionCompilationCache::new(ProjectCacheLimits {
+    let mut cache = ExpressionCompilationCache::new(ProjectCacheLimits {
         source_units: 8,
         source_bytes: 1_048_576,
     })
@@ -51,69 +51,6 @@ fn expression_cache_preserves_source_order_for_limit_diagnostics() {
     assert_eq!(
         cache.compile_expression(&changed, &signal).unwrap_err(),
         compile_expression_project(&changed, &signal).unwrap_err()
-    );
-}
-
-/// One cache can change grammars without interpreting historical roots as successor syntax.
-#[test]
-fn expression_cache_profile_transitions_and_dropped_capture_do_not_leak() {
-    let old = crate::tests::project_cache_support::capture_source("public num answer = 42");
-    let mut cache = CompositionCompilationCache::new(ProjectCacheLimits {
-        source_units: 8,
-        source_bytes: 1_048_576,
-    })
-    .unwrap();
-    let signal = CancellationToken::new();
-    cache.compile(&old, &signal).unwrap();
-    {
-        let captured = capture_expression_project(request_with_inputs(
-            vec![CapturedSourceInput::new(
-                "source:example",
-                "example",
-                old.sources()[0].bytes().to_vec(),
-            )],
-            vec![],
-            expression_profile::CAPTURE_REQUEST_VERSION,
-            expression_profile::SemanticProfiles::try_frozen().unwrap(),
-            old.composition_limits(),
-            (ExpressionLimits::hard(), ExpansionLimits::hard()),
-            CancellationToken::new(),
-        ))
-        .unwrap();
-        let (_, stats) = cache.compile_expression(&captured, &signal).unwrap();
-        assert_eq!(
-            (
-                stats.parsed_units,
-                stats.reused_units,
-                stats.rejected_entries
-            ),
-            (1, 0, 1)
-        );
-    }
-    let (actual, stats) = cache.compile(&old, &signal).unwrap();
-    assert_eq!(
-        (
-            stats.parsed_units,
-            stats.reused_units,
-            stats.rejected_entries
-        ),
-        (1, 0, 1)
-    );
-    assert_eq!(
-        actual,
-        crate::compile_composition_project(&old, &signal).unwrap()
-    );
-    let source = "neu \"1.0\"\nmodule example::expressions\ntemplate Item(static num value = 2) -> num { value }\npublic expand items = Item(value: axis) for (axis in [1, 2])\n";
-    {
-        let captured = capture(source, ExpressionLimits::hard(), ExpansionLimits::hard());
-        cache.compile_expression(&captured, &signal).unwrap();
-    }
-    let recaptured = capture(source, ExpressionLimits::hard(), ExpansionLimits::hard());
-    let (actual, stats) = cache.compile_expression(&recaptured, &signal).unwrap();
-    assert_eq!(stats.reused_units, 1);
-    assert_eq!(
-        actual,
-        compile_expression_project(&recaptured, &signal).unwrap()
     );
 }
 
@@ -132,7 +69,7 @@ fn expression_cache_candidate_retention_faults_are_atomic() {
         ExpansionLimits::hard(),
     );
     let signal = CancellationToken::new();
-    let mut cache = CompositionCompilationCache::new(ProjectCacheLimits {
+    let mut cache = ExpressionCompilationCache::new(ProjectCacheLimits {
         source_units: 8,
         source_bytes: 1_048_576,
     })
@@ -178,7 +115,7 @@ fn expression_cache_failures_preserve_previous_generation() {
         ExpansionLimits::hard(),
     );
     let signal = CancellationToken::new();
-    let mut cache = CompositionCompilationCache::new(ProjectCacheLimits {
+    let mut cache = ExpressionCompilationCache::new(ProjectCacheLimits {
         source_units: 8,
         source_bytes: 1_048_576,
     })
@@ -220,7 +157,7 @@ fn expression_cache_admission_bounds_are_inclusive() {
     let signal = CancellationToken::new();
     let expected = compile_expression_project(&captured, &signal).unwrap();
     for bound in [size - 1, size] {
-        let mut cache = CompositionCompilationCache::new(ProjectCacheLimits {
+        let mut cache = ExpressionCompilationCache::new(ProjectCacheLimits {
             source_units: 1,
             source_bytes: bound,
         })
@@ -253,7 +190,7 @@ fn expression_cache_rechecks_changed_private_template_controls() {
         },
     );
     let signal = CancellationToken::new();
-    let mut cache = CompositionCompilationCache::new(ProjectCacheLimits {
+    let mut cache = ExpressionCompilationCache::new(ProjectCacheLimits {
         source_units: 8,
         source_bytes: 1_048_576,
     })
@@ -277,7 +214,7 @@ fn expression_cache_reuses_syntax_and_rebuilds_changed_units() {
         ExpressionLimits::hard(),
         ExpansionLimits::hard(),
     );
-    let mut cache = CompositionCompilationCache::new(ProjectCacheLimits {
+    let mut cache = ExpressionCompilationCache::new(ProjectCacheLimits {
         source_units: 8,
         source_bytes: 1_048_576,
     })

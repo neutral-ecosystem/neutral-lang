@@ -2,30 +2,13 @@
 
 # neutral-bench
 
-`neutral-bench` owns benchmark harnesses and immutable benchmark-corpus
-identities for Neutral.
+`neutral-bench` owns benchmark harnesses and immutable current-language corpora.
+It is non-published evaluation infrastructure and does not define language
+semantics or alter compiler output. The harness measures expression-project
+capture, graph construction, compilation, independent reader/wire work,
+identities, cache reuse, growth and concurrency.
 
-It is non-published evaluation infrastructure, separate from production and
-conformance dependencies. It measures approved behavior and resource limits;
-it does not define language semantics, make acceptance decisions, or alter
-compiler output.
-
-`cargo xtask test performance --profile pr|release|soak` runs the controlled
-performance profiles. PR measurements are informational; release thresholds
-require a recorded dedicated runner and reviewed baseline.
-
-The harness keeps compatibility document measurements separate from current
-composition capture, graph, compilation, reader/wire, view, identity, cache,
-growth and concurrency phases. A smoke test executes those same operations;
-changed-unit cache results and decoded artifacts must match clean compilation.
-
-## Command
-
-Run the controlled local performance profile with:
-
-```sh
-cargo xtask test performance --profile pr
-```
-
-Use the `release` or `soak` profile only when performing the corresponding
-reviewed quality activity.
+`cargo xtask test performance --profile pr` runs the informational PR profile.
+Use `release` or `soak` only for the corresponding reviewed quality activity.
+Source-bound measurements describe these exact current inputs and need fresh
+qualification after the corpus or implementation changes.

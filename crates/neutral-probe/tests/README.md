@@ -2,17 +2,8 @@
 
 # Standalone probe tests
 
-This directory proves the `neutral-probe` executable can inspect encoded
-Neutral artifacts through the public encoding and reader contracts. The tests
-deliberately construct the artifact without `neutral-compiler`, execute the
-installed-style binary boundary, and verify its stable categorized output.
-The public-IR fixture also proves exact library/decoder/binary summary parity,
-original-source diagnostic mapping, and enforcement of hostile traversal limits.
-
-Within the ecosystem, these are consumer-boundary tests: they protect the
-independent inspection path and prevent compiler linkage from becoming a hidden
-runtime requirement.
-
-`encoded_project.rs` separately proves complete project inspection, cross-module
-public values/references, selection closure, private-provenance redaction, empty
-views, and fail-closed executable/JSON behavior without a compiler dependency.
+The expression tests construct current `/3` artifacts without linking the
+compiler into the probe executable. They check public root selection,
+redaction, current identities, bounded rendering, cancellation, allocation
+failure, and rejection of historical or unknown artifact magic. The command
+tests keep help, version, and argument handling stable.

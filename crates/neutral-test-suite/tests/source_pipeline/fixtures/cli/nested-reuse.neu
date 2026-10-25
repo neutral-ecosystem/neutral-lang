@@ -1,23 +1,14 @@
-neu "0.1"
-module pipeline_reuse
-
-record Item {
-    num count = 42,
-    string label = "closed",
+neu "1.0"
+module service
+public record Item {
+    num id
 }
-record Container {
-    Item item,
-    List<Item> items,
+public record Holder {
+    Item item
 }
-
-Item original = {
+public Holder original = {
+    item: {
+        id: 1
+    }
 }
-Item copied = original
-List<Item> items = [original, copied]
-List<Item> reused_items = items
-Container holder = {
-    item: copied,
-    items: reused_items,
-}
-Container copied_holder = holder
-Item? widened = original
+public Holder copied = original

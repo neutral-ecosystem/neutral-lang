@@ -41,7 +41,7 @@ fn composition_numeric_comparison_does_not_expand_extreme_scales() {
 
 /// The comparator is antisymmetric/transitive across a mixed signed exact-decimal catalogue.
 #[test]
-fn composition_numeric_order_is_total_for_normalized_values() {
+fn property_composition_numeric_order_is_total_for_normalized_values() {
     let numbers = [
         "-1000", "-1", "-0.2", "0", "0.0001", "0.2", "1", "1.001", "1000",
     ]

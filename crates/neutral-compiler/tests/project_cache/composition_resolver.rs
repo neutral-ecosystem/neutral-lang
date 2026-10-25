@@ -1,93 +1,54 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Resolver diagnostics and bounded copies at their private semantic boundaries.
+//! Shared `/3` nominal resolver boundaries against current captured inputs.
 
-use super::super::{CapturedCompositionProject, parse};
 use super::*;
-use crate::{
-    CapturedCompositionProjectRequest, CapturedProjectRequest, CapturedSourceInput,
-    ProjectCaptureControls, ProjectCaptureLimitValues, ProjectCaptureLimits,
-    capture_composition_project,
-};
-use neutral_core::{StructuralLimits, profile::LanguageProfile};
-use neutral_vocabulary::{VocabularyLimits, composition::CompositionLimits};
-
-fn capture(body: &str) -> CapturedCompositionProject {
-    let bounds = ProjectCaptureLimitValues {
-        total_source_bytes: 4096,
-        source_bytes_per_unit: 4096,
-        source_units: 4,
-        source_id_bytes: 64,
-        module_id_bytes: 64,
-        vocabulary_units: 4,
-        vocabulary_bytes_per_unit: 4096,
-        total_vocabulary_bytes: 4096,
-        imports_per_module: 4,
-        import_edges: 4,
-        scc_units: 4,
-        declarations: 16,
-        diagnostics: 16,
-        output_bytes: 16_384,
-    };
-    capture_composition_project(CapturedCompositionProjectRequest::new(
-        CapturedProjectRequest::new(
-            profile::CAPTURE_REQUEST_VERSION,
-            LanguageProfile::V1_0,
-            vec![CapturedSourceInput::new(
-                "unit",
-                "example",
-                format!("neu \"1.0\"\nmodule example\n{body}\n").into_bytes(),
-            )],
-            Vec::new(),
-            ProjectCaptureControls::new(
-                ProjectCaptureLimits::new(bounds),
-                CancellationToken::new(),
-            ),
-        ),
-        profile::REQUIRED_FEATURES
-            .iter()
-            .map(|s| (*s).to_owned())
-            .collect(),
-        CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(
-            StructuralLimits::new(4096, 16).unwrap(),
-        )),
-    ))
-    .unwrap()
-}
+use crate::project_cache_support::capture_expression_source;
+use neutral_ir::composition::{CompositionBody as B, CompositionDefinition, CompositionField};
 
 fn resolver<'a>(
-    captured: &'a CapturedCompositionProject,
+    captured: &'a crate::CapturedExpressionProject,
     cancel: &'a CancellationToken,
 ) -> Resolver<'a> {
-    let mut resolver = Resolver {
-        captured,
-        graph: graph::build(captured, cancel).unwrap(),
+    let context = &captured.composition;
+    Resolver {
+        captured: context,
+        graph: graph::build_expression(context, cancel).unwrap(),
         roots: BTreeMap::new(),
         types: BTreeMap::new(),
         definitions: Vec::new(),
-        values: BTreeMap::new(),
-        active: super::super::BTreeSet::new(),
-        provenance: Vec::new(),
         work: 0,
         cancel,
-    };
-    for source in captured.sources() {
-        for root in parse(source, captured, cancel).unwrap() {
-            resolver.roots.insert(root.owner.clone(), root).unwrap();
-        }
     }
-    let roots = resolver.retained_roots().unwrap();
-    resolver.signatures(&roots).unwrap();
-    resolver
+}
+
+fn root(captured: &crate::CapturedExpressionProject, name: &str, ty: Option<TypeExpr>) -> Root {
+    let source = &captured.sources()[0];
+    Root {
+        owner: ModuleSymbolIdentity::new(
+            LogicalModuleIdentity::new(V1_SOURCE_PROFILE.to_owned(), source.module_id().to_owned()),
+            name.to_owned(),
+        ),
+        public: true,
+        location: SourceLocation::new(source.digest(), ByteSpan::new(0, 1).unwrap()),
+        ty,
+        fields: Vec::new(),
+        tokens: Vec::new(),
+        variant: false,
+    }
 }
 
 #[test]
-fn missing_import_alias_reports_the_original_occurrence() {
-    let captured = capture("public num answer = 42");
+fn current_nominal_lookup_reports_the_original_missing_alias_occurrence() {
+    let captured = capture_expression_source("num answer = 42");
     let cancel = CancellationToken::new();
     let mut resolver = resolver(&captured, &cancel);
-    let root = resolver.retained_roots().unwrap().pop().unwrap();
-    let span = root.tokens[0].span;
+    let root = root(&captured, "answer", Some(TypeExpr::Num));
+    let span = ByteSpan::new(12, 19).unwrap();
+    resolver
+        .roots
+        .insert(root.owner.clone(), root.clone())
+        .unwrap();
     assert_eq!(
         resolver.name(&root, Some("missing"), "answer", span, false),
         Err(fail(
@@ -98,36 +59,43 @@ fn missing_import_alias_reports_the_original_occurrence() {
 }
 
 #[test]
-fn unknown_record_field_reports_the_object_location() {
-    let captured =
-        capture("public record Item { num amount }\npublic Item answer = { amount: 1, extra: 2 }");
+fn current_nominal_record_lookup_reports_unknown_member_at_the_object() {
+    let captured = capture_expression_source("public record Item { num amount }");
     let cancel = CancellationToken::new();
     let mut resolver = resolver(&captured, &cancel);
-    let root = resolver
-        .retained_roots()
-        .unwrap()
-        .into_iter()
-        .find(|root| root.ty.is_some())
-        .unwrap();
-    let ty = resolver.types[&root.owner].clone();
+    let item = root(&captured, "Item", None);
+    let ty = T::Nominal(item.owner.clone());
+    resolver.definitions.push(SourceCompositionDefinition {
+        owner: item.owner.clone(),
+        definition: CompositionDefinition {
+            name: "Item".to_owned(),
+            public: true,
+            body: B::Record(vec![CompositionField {
+                name: "amount".to_owned(),
+                ty: T::Num,
+                presence: FieldPresence::Required,
+                restrictions: FieldRestrictions::default(),
+                default: None,
+            }]),
+        },
+    });
+    let mut tokens =
+        crate::frontend::lexer::lex_bounded(b"{ amount: 1, extra: 2 }", usize::MAX, None)
+            .unwrap()
+            .tokens;
+    tokens.retain(|token| !matches!(token.kind, TokenKind::EndOfFile));
     assert_eq!(
-        resolver.record_value(&root, &ty, &root.tokens, false, 0),
-        Err(fail(
-            codes::INCOMPATIBLE_VALUE,
-            Some(SourceLocation::new(
-                root.location.source(),
-                root.tokens[0].span
-            ))
-        )),
+        resolver.record_value(&item, &ty, &tokens, 0),
+        Err(fail(codes::INCOMPATIBLE_VALUE, Some(item.location))),
     );
 }
 
 #[test]
-fn overflowing_work_preserves_the_previous_total_and_diagnostic() {
-    let captured = capture("public num answer = 42");
+fn current_nominal_work_overflow_preserves_the_previous_total_and_location() {
+    let captured = capture_expression_source("num answer = 42");
     let cancel = CancellationToken::new();
     let mut resolver = resolver(&captured, &cancel);
-    let location = resolver.retained_roots().unwrap()[0].location;
+    let location = root(&captured, "answer", Some(TypeExpr::Num)).location;
     resolver.work = u64::MAX;
     assert_eq!(
         resolver.step(1, Some(location)),
@@ -137,7 +105,7 @@ fn overflowing_work_preserves_the_previous_total_and_diagnostic() {
 }
 
 #[test]
-fn clone_work_counts_nested_defaults_choices_and_numeric_bounds() {
+fn nominal_default_copy_work_counts_nested_values_restrictions_and_cancellation() {
     let cancel = CancellationToken::new();
     let number = ExactNumber::from_source("12", 16, 16).unwrap();
     let value: V = V::Record(vec![

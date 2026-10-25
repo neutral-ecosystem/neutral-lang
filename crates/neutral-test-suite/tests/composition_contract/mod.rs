@@ -18,25 +18,9 @@ use std::{
 };
 
 mod capture;
-mod pipeline;
 
 /// Runtime-owned immutable vector copy, not a generated measurement report.
 const VECTORS: &str = include_str!("fixtures/identity/vectors.json");
-/// Shared source inputs; consumers do not need to know the fixture directory layout.
-mod sources {
-    /// Runtime-owned source realization of the frozen public entry-oracle facts.
-    pub(super) const ENTRIES: &str = include_str!("fixtures/source/entries.neu");
-    /// Supplied/null/default/reuse distinctions and explicitly nullable traversal barriers.
-    pub(super) const SELECTORS: &str = include_str!("fixtures/source/selectors.neu");
-    /// Public records, bindings and a private reuse source for consumer envelopes.
-    pub(super) const CONSUMER: &str = include_str!("fixtures/source/consumer.neu");
-    /// Source defaults and immutable reuse with checked occurrence evidence.
-    pub(super) const DEFAULTS: &str = include_str!("fixtures/source/source-defaults.neu");
-    /// Valid cyclic identity references.
-    pub(super) const REFERENCE_CYCLE: &str = include_str!("fixtures/source/reference-cycle.neu");
-    /// Invalid cyclic immutable value reuse.
-    pub(super) const REUSE_CYCLE: &str = include_str!("fixtures/source/reuse-cycle.neu");
-}
 /// Runtime-owned immutable literal request families shared by oracle and production comparisons.
 const REQUESTS: &[&str] = &[
     include_str!("fixtures/requests/positive.json"),
@@ -153,11 +137,6 @@ fn vectors() -> Value {
 /// Executes the independent test oracle; missing Python is a failure, never a skip.
 fn inspect(request: &Value) -> Value {
     inspect_script(request, "reference.py")
-}
-
-/// Executes a separately maintained public projection without modifying the pinned complete oracle.
-fn inspect_interface(request: &Value) -> Value {
-    inspect_script(request, "interface_reference.py")
 }
 
 /// Shares process plumbing only; neither test adapter encodes or hashes transcript expectations.

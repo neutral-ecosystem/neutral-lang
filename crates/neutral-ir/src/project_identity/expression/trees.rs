@@ -10,9 +10,9 @@ use crate::{
     },
     project_identity::{
         IdentityError as E,
-        composition::{type_transcript, value},
+        expression::contract::symbol,
+        expression::contract::{type_transcript, value},
         framing::{Writer, ordered},
-        logical::symbol,
     },
 };
 

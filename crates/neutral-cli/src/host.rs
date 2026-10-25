@@ -7,17 +7,16 @@ use crate::{
     constants,
 };
 use neutral_compiler::{
-    CaptureError, CapturedProjectRequestBuilder, CapturedSourceInput, CapturedVocabularyInput,
-    CompilationFailure, CompilationRequest, CompilationResult, FormatError, ProjectCaptureControls,
-    ProjectCaptureError, ProjectCaptureLimitValues, ProjectCaptureLimits, ProjectHostError,
-    capture_project, compile, format as format_source,
+    CapturedExpressionProject, CapturedExpressionProjectRequest, CapturedProjectRequest,
+    CapturedSourceInput, CapturedVocabularyInput, ExpressionCaptureFailure,
+    ExpressionCompileFailure, ProjectCaptureControls, ProjectCaptureLimitValues,
+    ProjectCaptureLimits, capture_expression_project, compile_expression_project,
+    format_expression_source, source_module_name,
 };
-use neutral_core::{
-    CancellationToken, ResultClass, VocabularyContentDigest, profile::LanguageProfile,
-};
-use neutral_encoding::{ProducerInfo, encode};
-use neutral_reader::ValidatedDocument;
-use neutral_vocabulary::VocabularyLock;
+use neutral_core::{CancellationToken, VocabularyContentDigest, profile::LanguageProfile};
+use neutral_encoding::encode_expression_project;
+use neutral_reader::{SemanticLimits, ValidatedExpressionProject};
+use neutral_vocabulary::{VocabularyLimits, VocabularyLock, composition::CompositionLimits};
 use std::{
     fs::{self, File, OpenOptions},
     io::{self, Read, Write},
@@ -118,25 +117,21 @@ pub fn execute(arguments: impl IntoIterator<Item = String>) -> Result<(), CliFai
 
 /// Reports the reader-visible profile catalogue in deterministic text form.
 fn report_profiles() {
-    for descriptor in neutral_reader::language_profiles() {
-        let capabilities = descriptor
-            .capabilities()
-            .iter()
-            .map(|capability| capability.as_str())
-            .collect::<Vec<_>>()
-            .join(",");
-        eprintln!(
-            "{} profile={} status={} capabilities={}",
-            constants::INFO,
-            descriptor.profile().source_version(),
-            descriptor.availability().as_str(),
-            if capabilities.is_empty() {
-                "none"
-            } else {
-                capabilities.as_str()
-            }
-        );
+    eprint!(
+        "{} profile={} status=development capabilities=",
+        constants::INFO,
+        neutral_core::profile::V1_SOURCE_PROFILE,
+    );
+    for (index, feature) in neutral_reader::expression::profile::REQUIRED_FEATURES
+        .iter()
+        .enumerate()
+    {
+        if index != 0 {
+            eprint!(",");
+        }
+        eprint!("{feature}");
     }
+    eprintln!();
 }
 
 /// Executes one validated command policy.
@@ -146,38 +141,16 @@ fn execute_command(options: &CommandOptions) -> Result<(), CliFailure> {
     }
     let request = request_from_options(options)?;
     match options.kind {
-        CommandKind::Compile => compile_command(request, options),
-        CommandKind::Validate => validate_command(request),
-        CommandKind::Format => format_command(request, options),
+        CommandKind::Compile => compile_command(&request, options),
+        CommandKind::Validate => validate_command(&request),
+        CommandKind::Format => format_command(&request, options),
         CommandKind::CaptureProject => unreachable!("project capture returned before compilation"),
     }
 }
 
 /// Acquires explicit inputs, constructs the shared request schema, and captures it.
 fn capture_project_command(options: &CommandOptions) -> Result<(), CliFailure> {
-    let source = read_selected_input(&options.input, options.limits.source_bytes())?;
-    let cancellation = CancellationToken::new();
-    if options.cancel_before_start {
-        cancellation.cancel();
-    }
-    let controls = ProjectCaptureControls::new(project_limits(options), cancellation);
-    let mut builder = CapturedProjectRequestBuilder::new(LanguageProfile::V1_0, controls);
-    if let Some(project_key) = &options.project_key {
-        builder = builder.with_project_key(project_key.clone());
-    }
-    builder
-        .add_source(CapturedSourceInput::new(
-            required_option(options.source_id.as_ref())?,
-            required_option(options.module_id.as_ref())?,
-            source,
-        ))
-        .map_err(project_host_failure)?;
-    if let Some(vocabulary) =
-        project_vocabulary(&options.vocabulary, options.limits.source_bytes())?
-    {
-        builder.add_vocabulary(vocabulary);
-    }
-    let captured = capture_project(builder.build()).map_err(project_capture_failure)?;
+    let captured = request_from_options(options)?;
     let facts = captured.resource_facts();
     eprintln!(
         "{} capture succeeded source-units={} source-bytes={} vocabulary-units={} vocabulary-bytes={}",
@@ -207,75 +180,106 @@ fn project_limits(options: &CommandOptions) -> ProjectCaptureLimits {
         scc_units: 1,
         declarations: limits.declarations(),
         diagnostics: u64::from(limits.diagnostics()),
-        output_bytes: limits.source_bytes(),
+        output_bytes: neutral_encoding::constants::MAXIMUM_ARTIFACT_BYTES as u64,
     })
 }
 
 /// Compiles source and atomically publishes one encoded artifact.
 fn compile_command(
-    request: CompilationRequest,
+    request: &CapturedExpressionProject,
     options: &CommandOptions,
 ) -> Result<(), CliFailure> {
-    let document = successful_document(compile(request).map_err(|error| capture_failure(&error))?)?;
-    let encoded = encode(
-        &document,
-        &ProducerInfo::new(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")),
-    )
-    .map_err(|_| CliFailure::one(ExitClass::Validation, "artifact-encoding-limit"))?;
-    write_selected_output(options, encoded.as_bytes())?;
+    let cancel = CancellationToken::new();
+    let document = successful_project(request, &cancel)?;
+    let encoded = encode_expression_project(&document, &cancel)
+        .map_err(|_| CliFailure::one(ExitClass::Validation, "artifact-encoding-limit"))?;
+    write_selected_output(options, &encoded)?;
     eprintln!("{} compile succeeded", constants::PASS);
     Ok(())
 }
 
 /// Validates source without publishing authoritative output.
-fn validate_command(request: CompilationRequest) -> Result<(), CliFailure> {
-    ensure_success(compile(request).map_err(|error| capture_failure(&error))?)?;
+fn validate_command(request: &CapturedExpressionProject) -> Result<(), CliFailure> {
+    successful_project(request, &CancellationToken::new())?;
     eprintln!("{} validation succeeded", constants::PASS);
     Ok(())
 }
 
 /// Formats validated source and atomically publishes ordinary source bytes.
-fn format_command(request: CompilationRequest, options: &CommandOptions) -> Result<(), CliFailure> {
-    let formatted = format_source(request).map_err(format_failure)?;
-    write_selected_output(options, formatted.as_bytes())?;
+fn format_command(
+    request: &CapturedExpressionProject,
+    options: &CommandOptions,
+) -> Result<(), CliFailure> {
+    let formatted = format_expression_source(
+        request,
+        request.sources()[0].module_id(),
+        &CancellationToken::new(),
+    )
+    .map_err(|error| compilation_failure(&error))?;
+    if formatted.len() as u64 > options.limits.source_bytes() {
+        return Err(CliFailure::one(
+            ExitClass::Validation,
+            "formatted-output-limit-exceeded",
+        ));
+    }
+    write_selected_output(options, &formatted)?;
     eprintln!("{} format succeeded", constants::PASS);
     Ok(())
 }
 
 /// Builds one captured-input request from explicit source, limits, and vocabulary facts.
-fn request_from_options(options: &CommandOptions) -> Result<CompilationRequest, CliFailure> {
+fn request_from_options(options: &CommandOptions) -> Result<CapturedExpressionProject, CliFailure> {
     let source = read_selected_input(&options.input, options.limits.source_bytes())?;
     let cancellation = CancellationToken::new();
     if options.cancel_before_start {
         cancellation.cancel();
     }
-    let request = CompilationRequest::new(source, options.limits, cancellation);
-    captured_vocabulary(request, &options.vocabulary, options.limits.source_bytes())
-}
-
-/// Attaches an exact explicitly acquired vocabulary bundle and immutable lock.
-fn captured_vocabulary(
-    request: CompilationRequest,
-    options: &VocabularyOptions,
-    byte_limit: u64,
-) -> Result<CompilationRequest, CliFailure> {
-    if options.is_empty() {
-        return Ok(request);
+    let module = source_module_name(&source, project_limits(options), &cancellation)
+        .map_err(|error| capture_failure(&error))?;
+    if options
+        .module_id
+        .as_ref()
+        .is_some_and(|expected| expected != &module)
+    {
+        return Err(CliFailure::one(
+            ExitClass::Validation,
+            "module-header-mismatch",
+        ));
     }
-    let bundle_path = required_option(options.bundle.as_ref())?;
-    let bytes = read_selected_input(bundle_path, byte_limit)?;
-    let digest = VocabularyContentDigest::parse_text(required_option(options.digest.as_ref())?)
-        .map_err(|_| CliFailure::one(ExitClass::Usage, "invalid-vocabulary-digest"))?;
-    let lock = VocabularyLock::new(
-        required_option(options.identity.as_ref())?,
-        required_option(options.version.as_ref())?,
-        required_option(options.encoding_version.as_ref())?,
-        required_option(options.schema_version.as_ref())?,
-        digest,
-        options.features.clone(),
-    )
-    .map_err(|_| CliFailure::one(ExitClass::Usage, "invalid-vocabulary-lock"))?;
-    Ok(request.with_captured_vocabulary(bytes, lock))
+    let vocabulary = project_vocabulary(&options.vocabulary, options.limits.source_bytes())?;
+    let mut envelope = CapturedProjectRequest::new(
+        neutral_reader::expression::profile::CAPTURE_REQUEST_VERSION,
+        LanguageProfile::V1_0,
+        vec![CapturedSourceInput::new(
+            options.source_id.as_deref().unwrap_or("source:cli"),
+            module,
+            source,
+        )],
+        vocabulary.into_iter().collect(),
+        ProjectCaptureControls::new(project_limits(options), cancellation),
+    );
+    if let Some(key) = &options.project_key {
+        envelope = envelope.with_project_key(key.clone());
+    }
+    let hard = neutral_reader::expression::profile::ExpressionLimits::hard();
+    let expressions = neutral_reader::expression::profile::ExpressionLimits {
+        nodes: hard.nodes.min(options.limits.traversal_nodes()),
+        syntax_depth: hard.syntax_depth.min(options.limits.nesting_depth()),
+        evaluation_depth: hard.evaluation_depth.min(options.limits.nesting_depth()),
+        bindings: hard.bindings.min(options.limits.declarations()),
+        coefficient_digits: hard.coefficient_digits.min(options.limits.numeric_digits()),
+        absolute_scale: hard.absolute_scale.min(options.limits.numeric_scale()),
+        ..hard
+    };
+    capture_expression_project(CapturedExpressionProjectRequest::new(
+        envelope,
+        neutral_reader::expression::profile::SemanticProfiles::try_frozen()
+            .map_err(|_| CliFailure::one(ExitClass::Validation, "capture-limit-exceeded"))?,
+        CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(options.limits)),
+        expressions,
+        neutral_reader::expression::ExpansionLimits::hard(),
+    ))
+    .map_err(|error| capture_failure(&error))
 }
 
 /// Constructs one optional vocabulary input for the shared project schema.
@@ -300,23 +304,6 @@ fn project_vocabulary(
     )
     .map_err(|_| CliFailure::one(ExitClass::Usage, "invalid-vocabulary-lock"))?;
     Ok(Some(CapturedVocabularyInput::new(bytes, lock)))
-}
-
-/// Maps one host mapping failure without exposing host location data.
-fn project_host_failure(error: ProjectHostError) -> CliFailure {
-    CliFailure::one(ExitClass::Validation, error.code())
-}
-
-/// Maps one project-capture failure to stable CLI output.
-fn project_capture_failure(error: ProjectCaptureError) -> CliFailure {
-    CliFailure::one(
-        if error == ProjectCaptureError::Cancelled {
-            ExitClass::Cancelled
-        } else {
-            ExitClass::Validation
-        },
-        error.code(),
-    )
 }
 
 /// Borrows one parser-validated required option or reports an internal defect.
@@ -357,80 +344,61 @@ fn read_bounded(reader: Box<dyn Read>, byte_limit: u64) -> Result<Vec<u8>, CliFa
     }
 }
 
-/// Opens authoritative artifacts as a validated document or maps their failure.
-fn successful_document(result: CompilationResult) -> Result<ValidatedDocument, CliFailure> {
-    match result {
-        CompilationResult::Success(artifacts) => ValidatedDocument::from_compiler_output(artifacts)
-            .map_err(|_| CliFailure::one(ExitClass::Internal, "reader-validation-defect")),
-        CompilationResult::Failure(failure) => Err(compilation_failure(&failure)),
-    }
+/// Compiles through current semantics and checks complete reader authority before publishing bytes.
+fn successful_project(
+    request: &CapturedExpressionProject,
+    cancel: &CancellationToken,
+) -> Result<ValidatedExpressionProject, CliFailure> {
+    let ir =
+        compile_expression_project(request, cancel).map_err(|error| compilation_failure(&error))?;
+    let limits = SemanticLimits {
+        project: ir.limits,
+        composition: request.composition_limits(),
+        expression: request.expression_limits(),
+        expansion: request.expansion_limits(),
+    };
+    ValidatedExpressionProject::from_ir(ir, limits, cancel).map_err(|error| {
+        CliFailure::one(
+            if error == neutral_reader::ExpressionReadError::Cancelled {
+                ExitClass::Cancelled
+            } else {
+                ExitClass::Internal
+            },
+            "reader-validation-defect",
+        )
+    })
 }
 
-/// Requires successful compilation when a command publishes no artifact.
-fn ensure_success(result: CompilationResult) -> Result<(), CliFailure> {
-    match result {
-        CompilationResult::Success(_) => Ok(()),
-        CompilationResult::Failure(failure) => Err(compilation_failure(&failure)),
-    }
+/// Capture errors expose only safe classifications, never the selected host path.
+fn capture_failure(error: &ExpressionCaptureFailure) -> CliFailure {
+    CliFailure::one(
+        if error.is_cancelled() {
+            ExitClass::Cancelled
+        } else {
+            ExitClass::Validation
+        },
+        error.code(),
+    )
 }
 
-/// Maps one capture failure to its stable CLI class without path disclosure.
-fn capture_failure(error: &CaptureError) -> CliFailure {
-    match error {
-        CaptureError::Cancelled => CliFailure::one(ExitClass::Cancelled, "cancelled"),
-        CaptureError::MissingSource => CliFailure::one(ExitClass::Validation, "missing-source"),
-        CaptureError::SourceLimitExceeded { .. } => {
-            CliFailure::one(ExitClass::Validation, "source-limit-exceeded")
-        }
-        CaptureError::SourceDigestMismatch { .. } => {
-            CliFailure::one(ExitClass::Validation, "source-digest-mismatch")
-        }
-    }
-}
-
-/// Maps a compilation failure to safe diagnostic code and byte-span lines.
-fn compilation_failure(failure: &CompilationFailure) -> CliFailure {
-    let class = if failure.class() == ResultClass::Cancellation {
+/// Current source diagnostics retain checked byte ranges without source identities.
+fn compilation_failure(failure: &ExpressionCompileFailure) -> CliFailure {
+    let class = if failure.is_cancelled() {
         ExitClass::Cancelled
     } else {
         ExitClass::Validation
     };
-    let messages = if failure.diagnostics().is_empty() {
-        vec![if class == ExitClass::Cancelled {
-            "cancelled".to_owned()
-        } else {
-            "source-rejected".to_owned()
-        }]
+    let message = if let Some(location) = failure.location {
+        format!(
+            "{} bytes {}..{}",
+            failure.code,
+            location.span().start(),
+            location.span().end()
+        )
     } else {
-        failure
-            .diagnostics()
-            .iter()
-            .map(|diagnostic| {
-                let span = diagnostic.primary().span();
-                format!(
-                    "{} bytes {}..{}",
-                    diagnostic.code().as_str(),
-                    span.start(),
-                    span.end()
-                )
-            })
-            .collect()
+        failure.code.to_owned()
     };
-    CliFailure { class, messages }
-}
-
-/// Maps reference formatter failure classes to stable CLI outcomes.
-fn format_failure(error: FormatError) -> CliFailure {
-    match error {
-        FormatError::Capture(error) => capture_failure(&error),
-        FormatError::Compilation(failure) => compilation_failure(&failure),
-        FormatError::OutputLimitExceeded => {
-            CliFailure::one(ExitClass::Validation, "formatted-output-limit-exceeded")
-        }
-        FormatError::InternalDefect => {
-            CliFailure::one(ExitClass::Internal, "formatter-internal-defect")
-        }
-    }
+    CliFailure::one(class, message)
 }
 
 /// Publishes bytes to the explicitly selected standard stream or file destination.

@@ -2,14 +2,77 @@
 
 //! Owned syntax spans share the existing atomic cache; semantics and companions are never cached.
 
-use super::super::cache::{CompositionCompilationCache, Entry};
 use super::{
     Budget, ByteSpan, E, Lex, MatrixSyntax, ModuleSymbolIdentity, ParameterPhase, Root,
     SourceLocation, State, TemplateSyntax, TypeExpr, alloc, compile_with_parser, ec, error,
     expression_profile::SemanticProfiles, grow, parser,
 };
-use crate::{CapturedExpressionProject, CapturedProjectSource, ProjectCacheStats};
-use neutral_core::{CancellationToken, allocation::Shared};
+use crate::{CapturedExpressionProject, CapturedProjectSource};
+use neutral_core::ordered::OrderedMap;
+use neutral_core::{CancellationToken, SourceContentDigest, allocation::Shared};
+
+/// Independent retained-unit and exact-byte budgets for one caller-owned cache.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ProjectCacheLimits {
+    /// Maximum retained parsed source units.
+    pub source_units: u64,
+    /// Maximum aggregate retained original source bytes.
+    pub source_bytes: u64,
+}
+
+/// Observed unit parser execution, not captured replay or inferred equivalence.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct ProjectCacheStats {
+    /// Units actually sent through the lexer and declaration parser this run.
+    pub parsed_units: u64,
+    /// Units reused from the previous successful cache generation.
+    pub reused_units: u64,
+    /// Existing module entries rejected for changed bytes or identity context.
+    pub rejected_entries: u64,
+}
+
+/// Private exact-input syntax entry, never accepted from callers or deserialized.
+pub(super) struct Entry {
+    /// Immutable feature context used by the parser.
+    features: Shared<Vec<String>>,
+    /// Exact-byte hash is only a fast filter; bytes must also match.
+    digest: SourceContentDigest,
+    /// Original bytes reject stale entries and digest collisions.
+    bytes: Shared<Vec<u8>>,
+    /// Current `/3` expression syntax; semantic authority is never cached.
+    syntax: Shared<Syntax>,
+}
+
+/// Caller-owned, bounded syntax cache with atomic successful generations.
+pub struct ExpressionCompilationCache {
+    /// Independent retained original-byte/unit controls.
+    limits: ProjectCacheLimits,
+    /// Previous successful generation in canonical logical-module order.
+    entries: OrderedMap<String, Entry>,
+    /// Exact total original source bytes retained.
+    source_bytes: u64,
+}
+impl ExpressionCompilationCache {
+    /// Creates an empty cache with positive independent retention budgets.
+    #[must_use]
+    pub fn new(limits: ProjectCacheLimits) -> Option<Self> {
+        (limits.source_units != 0 && limits.source_bytes != 0).then(|| Self {
+            limits,
+            entries: OrderedMap::new(),
+            source_bytes: 0,
+        })
+    }
+    /// Returns retained units, not request or semantic-result counts.
+    #[must_use]
+    pub fn retained_units(&self) -> usize {
+        self.entries.len()
+    }
+    /// Returns exact retained original bytes, not a promise about total heap usage.
+    #[must_use]
+    pub const fn retained_source_bytes(&self) -> u64 {
+        self.source_bytes
+    }
+}
 
 /// A token keeps only its original byte range; no cached borrow can outlive a capture.
 type Tokens = Vec<ByteSpan>;
@@ -359,7 +422,7 @@ impl Syntax {
     }
 }
 
-impl CompositionCompilationCache {
+impl ExpressionCompilationCache {
     /// Reuses exact `/3` source syntax, rebuilding every semantic/evidence/identity phase.
     ///
     /// # Errors
@@ -375,7 +438,7 @@ impl CompositionCompilationCache {
         ),
         E,
     > {
-        let mut pending = neutral_core::ordered::OrderedMap::new();
+        let mut pending = OrderedMap::new();
         let mut stats = ProjectCacheStats::default();
         let mut bytes = 0_u64;
         let result = compile_with_parser(captured, cancel, &mut |source, state| {
@@ -386,7 +449,7 @@ impl CompositionCompilationCache {
                         && entry.bytes.as_ref() == source.bytes()
                         && entry.features.as_slice() == captured.required_features()
                 })
-                .and_then(|entry| entry.expression.as_ref())
+                .map(|entry| &entry.syntax)
                 .filter(|syntax| {
                     syntax.profiles.as_ref() == captured.semantic_profiles()
                         && syntax.capture_limits == captured.limits()
@@ -430,8 +493,7 @@ impl CompositionCompilationCache {
                         features: captured.composition.shared_features(),
                         digest: source.digest(),
                         bytes: source.shared_bytes(),
-                        roots: Vec::new(),
-                        expression: syntax,
+                        syntax: syntax.ok_or_else(|| error(ec::EXP_LIMIT, None))?,
                     },
                 ))?;
                 bytes += source.bytes().len() as u64;

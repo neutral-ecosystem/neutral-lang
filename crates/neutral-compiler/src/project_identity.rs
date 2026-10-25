@@ -2,38 +2,15 @@
 
 //! Borrowed identity projections from successfully frozen capture, without recapture or I/O.
 
-use crate::{CapturedProject, CapturedProjectSource, CapturedProjectVocabulary};
+use crate::{CapturedInputs, CapturedProjectSource, CapturedProjectVocabulary};
 use neutral_core::CancellationToken;
 use neutral_core::allocation::RetainCapacity;
 use neutral_ir::project_identity::{
-    CapturedClosureIdentity, CapturedIdentityInput, CapturedIdentitySource,
-    CapturedIdentityVocabulary, IdentityError, IdentityLimits, IdentityTranscript,
-    MAX_TRANSCRIPT_NODES, captured_closure,
+    CapturedIdentitySource, CapturedIdentityVocabulary, IdentityError, IdentityLimits,
+    MAX_TRANSCRIPT_NODES,
 };
 
-impl CapturedProject {
-    /// Returns the exact captured-closure transcript using caller-supplied independent bounds.
-    ///
-    /// # Errors
-    /// Rejects identity bounds, allocation failures, or cancellation; capture meaning is unchanged.
-    pub fn identity_transcript(
-        &self,
-        limits: IdentityLimits,
-        cancellation: &CancellationToken,
-    ) -> Result<IdentityTranscript<CapturedClosureIdentity>, IdentityError> {
-        let (sources, vocabularies) =
-            capture_facts(self.sources(), self.vocabularies(), limits, cancellation)?;
-        captured_closure(
-            &CapturedIdentityInput {
-                profile: self.profile().source_version(),
-                sources: &sources,
-                vocabularies: &vocabularies,
-            },
-            limits,
-            cancellation,
-        )
-    }
-
+impl CapturedInputs {
     /// Projects all explicit acceptance controls into the frozen derivation transcript order.
     #[must_use]
     pub fn identity_capture_limits(

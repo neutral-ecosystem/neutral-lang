@@ -20,6 +20,10 @@ mod budget_checks;
 mod cache;
 /// Exact captured expression request facts and rejection boundaries.
 mod capture;
+/// Current capture retention dimensions stay independent after removal of old entry points.
+mod capture_limits;
+/// Current grammar formatting preserves source meaning and lexical bytes.
+mod current_formatter;
 /// Template resolution, static checking and finite matrix expansion.
 mod expansion;
 /// Request-local allocation and cancellation checks across complete source lowering.

@@ -54,6 +54,7 @@ pub(crate) struct GraphSyntaxError {
 }
 
 /// Scans one captured unit without consulting host locations or resolvers.
+#[cfg(test)]
 pub(crate) fn scan_graph_source(
     bytes: &[u8],
     expected_module: &str,

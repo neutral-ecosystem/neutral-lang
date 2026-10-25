@@ -8,12 +8,37 @@ use super::{
     ProjectCaptureError, ProjectCaptureLimits, ProjectCaptureResourceFacts,
 };
 use crate::frontend::expression_codes as ec;
-use neutral_core::{CancellationToken, allocation::Shared};
+use neutral_core::{
+    CancellationToken,
+    allocation::{RetainCapacity, Shared},
+};
 use neutral_ir::expression::{
     profile::{self, ExpressionLimits, SemanticProfiles},
     templates::ExpansionLimits,
 };
 use neutral_vocabulary::composition::{CompositionLimits, ValidatedComposition};
+
+/// Reads the explicit current module header under capture bounds, without acquiring imports.
+///
+/// # Errors
+/// Rejects obsolete/malformed headers, source bounds, allocation or cancellation.
+pub fn source_module_name(
+    bytes: &[u8],
+    limits: ProjectCaptureLimits,
+    cancel: &CancellationToken,
+) -> Result<String, ExpressionCaptureFailure> {
+    if cancel.is_cancelled() {
+        return Err(super::ProjectCaptureError::Cancelled.into());
+    }
+    if bytes.len() as u64 > limits.values().source_bytes_per_unit {
+        return Err(ExpressionCaptureFailure::Limit);
+    }
+    let header = super::scan_headers(bytes, Some(cancel))?;
+    if header.profile != neutral_core::profile::V1_SOURCE_PROFILE {
+        return Err(ExpressionCaptureFailure::Unsupported);
+    }
+    neutral_core::allocation::text(header.module_id).map_err(|_| ExpressionCaptureFailure::Limit)
+}
 
 /// Exact successor selection and independent source/semantic/finite-expansion policies.
 pub struct CapturedExpressionProjectRequest {
@@ -114,6 +139,50 @@ impl CapturedExpressionProject {
     pub fn resource_facts(&self) -> ProjectCaptureResourceFacts {
         self.composition.resource_facts()
     }
+    /// Reconstructs the exact current capture under fresh caller cancellation.
+    ///
+    /// # Errors
+    /// Rejects fallible retention or cancellation without publishing a partial request.
+    pub fn replay_request(
+        &self,
+        cancellation: CancellationToken,
+    ) -> Result<CapturedExpressionProjectRequest, ExpressionCaptureFailure> {
+        let envelope = self
+            .composition
+            .replay_envelope(profile::CAPTURE_REQUEST_VERSION, cancellation)?;
+        let profiles =
+            SemanticProfiles::try_frozen().map_err(|_| ExpressionCaptureFailure::Limit)?;
+        Ok(CapturedExpressionProjectRequest::new(
+            envelope,
+            profiles,
+            self.composition_limits(),
+            self.expression_limits,
+            self.expansion_limits,
+        ))
+    }
+    /// Replays all explicit inputs while replacing one module for formatter revalidation.
+    pub(crate) fn replay_with_source(
+        &self,
+        module: &str,
+        bytes: &[u8],
+        cancellation: CancellationToken,
+    ) -> Result<CapturedExpressionProjectRequest, ExpressionCaptureFailure> {
+        let mut request = self.replay_request(cancellation)?;
+        let source = request
+            .envelope
+            .sources
+            .iter_mut()
+            .find(|source| source.module_id == module)
+            .ok_or(ExpressionCaptureFailure::Unsupported)?;
+        source.bytes.clear();
+        source
+            .bytes
+            .try_retain_exact(bytes.len())
+            .map_err(|_| ExpressionCaptureFailure::Limit)?;
+        source.bytes.extend_from_slice(bytes);
+        source.expected_digest = None;
+        Ok(request)
+    }
     /// Returns captured derivation policy in frozen order.
     #[must_use]
     pub fn identity_capture_limits(
@@ -134,6 +203,19 @@ pub enum ExpressionCaptureFailure {
     Limit,
 }
 impl ExpressionCaptureFailure {
+    /// Preserves cancellation classification across header and catalogue capture boundaries.
+    #[must_use]
+    pub fn is_cancelled(&self) -> bool {
+        matches!(
+            self,
+            Self::Capture(
+                CompositionCaptureFailure::Capture(super::ProjectCaptureError::Cancelled)
+                    | CompositionCaptureFailure::Catalogue(
+                        neutral_vocabulary::composition::CompositionError::Cancelled
+                    )
+            )
+        )
+    }
     /// Returns the frozen source-phase diagnostic classification.
     #[must_use]
     pub fn code(&self) -> &'static str {
@@ -152,6 +234,14 @@ impl ExpressionCaptureFailure {
 /// integrity, original headers and nominal catalogue failures atomically.
 pub fn capture_expression_project(
     request: CapturedExpressionProjectRequest,
+) -> Result<CapturedExpressionProject, ExpressionCaptureFailure> {
+    capture_expression_observed(request, |_| {})
+}
+
+/// Shares the current capture phases with deterministic cancellation tests.
+pub(crate) fn capture_expression_observed(
+    request: CapturedExpressionProjectRequest,
+    checkpoint: impl FnMut(super::ProjectCaptureCheckpoint),
 ) -> Result<CapturedExpressionProject, ExpressionCaptureFailure> {
     if request.envelope.request_version != profile::CAPTURE_REQUEST_VERSION
         || !request.profiles.matches_frozen()
@@ -175,7 +265,7 @@ pub fn capture_expression_project(
         ),
         profile::CAPTURE_REQUEST_VERSION,
         profile::REQUIRED_FEATURES,
-        |_| {},
+        checkpoint,
     )
     .map_err(ExpressionCaptureFailure::Capture)?;
     let profiles = Shared::try_new(profiles).map_err(|_| ExpressionCaptureFailure::Limit)?;

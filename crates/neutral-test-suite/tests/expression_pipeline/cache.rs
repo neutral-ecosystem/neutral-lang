@@ -3,7 +3,7 @@
 //! Real source-cache generations cross transport and independent public inspection.
 
 use super::*;
-use neutral_compiler::{CompositionCompilationCache, ProjectCacheLimits};
+use neutral_compiler::{ExpressionCompilationCache, ProjectCacheLimits};
 use neutral_core::{VocabularyContentDigest, allocation::Shared};
 use neutral_ir::expression::project::ExpressionProjectIr;
 use neutral_ir::project_identity::{IdentityLimits, canonical_expression_project};
@@ -42,7 +42,7 @@ fn integration_expression_cache_clean_warm_changed_units_and_source_evidence_agr
     };
     let captured = make(types, "source:types");
     let signal = CancellationToken::new();
-    let mut cache = CompositionCompilationCache::new(ProjectCacheLimits {
+    let mut cache = ExpressionCompilationCache::new(ProjectCacheLimits {
         source_units: 8,
         source_bytes: 1_048_576,
     })
@@ -159,7 +159,7 @@ fn integration_expression_cache_refreshes_vocabulary_defaults_and_restrictions()
             )],
         )
     };
-    let mut cache = CompositionCompilationCache::new(ProjectCacheLimits {
+    let mut cache = ExpressionCompilationCache::new(ProjectCacheLimits {
         source_units: 8,
         source_bytes: 1_048_576,
     })

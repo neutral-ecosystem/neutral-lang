@@ -47,7 +47,10 @@ rewrite previous commits or remove files from Git history.
 
 ## Portable development plans
 
-`portable/` contains the reviewed future-version plan currently active for
-development. Install, verify, or archive plans through `cargo xtask portable`;
-a plan is a development input and never changes an already released
-conformance bundle.
+`portable/` contains the implementation checklist, contract specifications,
+and retained release evidence. The approved latest-only amendment in
+[`docs/compatibility-policy.md`](compatibility-policy.md) supersedes retired
+profile/artifact acceptance requirements for current development; cutover
+progress is tracked in `docs/superpowers/plans/`. Install, verify, or archive
+portable plans through `cargo xtask portable`; they do not change released
+conformance bundles.

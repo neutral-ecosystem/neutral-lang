@@ -1,46 +1,42 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! External encoding and hostile decoding of validated Neutral documents.
-//!
-//! This codec implements Neutral IR Framed CBOR 0.1. The encoder accepts only
-//! trusted reader views; the bounds-first decoder returns one only after full
-//! validation. Deterministic emitted field order is an implementation property:
-//! encoded bytes are not logical identity, and producer/build facts remain
-//! confined to the envelope.
+//! Bounded transport codecs for complete Neutral project artifacts.
 
 mod cbor;
-/// Explicit successor composition transport, distinct from frozen project /1.
-pub mod composition;
 pub mod constants;
-mod decode;
+mod contracts;
 mod decoder;
 pub mod diagnostics;
 /// Complete explicit expression transport, distinct from historical codecs.
 pub mod expression;
-/// Complete project transport and independent bounded decoding.
-pub mod project;
+mod primitives;
 
-mod encoder;
-use encoder::capabilities::{TraversalBudget, capability, derive_capabilities};
-pub use encoder::encode;
-use std::ops::Range;
+use neutral_ir::project::ProjectLimits;
 
-pub use decode::decode;
 pub use expression::{decode_expression_project, encode_expression_project};
+
+/// Returns shared transport-derived hard project limits; producer limits still apply.
+#[must_use]
+pub const fn hard_project_limits() -> ProjectLimits {
+    ProjectLimits {
+        modules: constants::MAXIMUM_CONTAINER_ITEMS as u64,
+        declarations: constants::MAXIMUM_CONTAINER_ITEMS as u64,
+        import_edges: constants::MAXIMUM_TRAVERSAL_NODES as u64,
+        nodes: constants::MAXIMUM_TRAVERSAL_NODES as u64,
+        text_bytes: constants::MAXIMUM_ARTIFACT_BYTES as u64,
+        artifact_bytes: constants::MAXIMUM_ARTIFACT_BYTES as u64,
+    }
+}
 
 /// Complete bounded result class for hostile external artifact decoding.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DecodeErrorClass {
     /// An artifact, section, string, container, depth, or traversal limit failed.
     EncodedSizeLimit,
-    /// Fixed framing or directory structure was malformed.
+    /// The selected artifact framing was malformed.
     MalformedFrame,
-    /// A fixed framing, section, or contract version is unsupported.
+    /// An artifact profile or contract version is unsupported.
     UnsupportedVersion,
-    /// Capability declarations are unsupported or inconsistent with content.
-    UnsupportedCapability,
-    /// Exact section integrity verification failed.
-    IntegrityMismatch,
     /// Restricted-CBOR lexical/container validation failed.
     MalformedCbor,
     /// A closed encoded schema was malformed.
@@ -67,8 +63,6 @@ impl DecodeErrorClass {
             Self::EncodedSizeLimit => diagnostics::ENCODED_SIZE_LIMIT,
             Self::MalformedFrame => diagnostics::MALFORMED_FRAME,
             Self::UnsupportedVersion => diagnostics::UNSUPPORTED_VERSION,
-            Self::UnsupportedCapability => diagnostics::UNSUPPORTED_CAPABILITY,
-            Self::IntegrityMismatch => diagnostics::INTEGRITY_MISMATCH,
             Self::MalformedCbor => diagnostics::MALFORMED_CBOR,
             Self::InvalidEncodedSchema => diagnostics::INVALID_ENCODED_SCHEMA,
             Self::InvalidLogicalIr => diagnostics::INVALID_LOGICAL_IR,
@@ -233,106 +227,6 @@ const fn min_usize(left: usize, right: usize) -> usize {
     if left < right { left } else { right }
 }
 
-/// Envelope-only facts describing the implementation that produced an artifact.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ProducerInfo {
-    /// Producer name.
-    name: String,
-    /// Producer version.
-    version: String,
-    /// Optional producer build identity.
-    build: Option<String>,
-}
-
-impl ProducerInfo {
-    /// Creates producer facts without a build identity.
-    #[must_use]
-    pub fn new(name: impl Into<String>, version: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-            version: version.into(),
-            build: None,
-        }
-    }
-
-    /// Attaches an envelope-only build identity.
-    #[must_use]
-    pub fn with_build(mut self, build: impl Into<String>) -> Self {
-        self.build = Some(build.into());
-        self
-    }
-
-    /// Returns the producer name.
-    #[must_use]
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    /// Returns the producer version.
-    #[must_use]
-    pub fn version(&self) -> &str {
-        &self.version
-    }
-
-    /// Returns the optional producer build identity.
-    #[must_use]
-    pub fn build(&self) -> Option<&str> {
-        self.build.as_deref()
-    }
-}
-
-/// One fixed external section kind.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[repr(u16)]
-pub enum SectionKind {
-    /// Encoding and producer envelope.
-    Envelope = 1,
-    /// Authoritative logical payload.
-    LogicalPayload = 2,
-    /// Original-byte source map.
-    SourceMap = 3,
-    /// Complete provenance companions.
-    Provenance = 4,
-    /// Complete derivation companions.
-    Derivation = 5,
-}
-
-impl SectionKind {
-    /// Returns the zero-based section position in the fixed directory.
-    const fn index(self) -> usize {
-        self as usize - 1
-    }
-}
-
-/// Complete immutable encoded Neutral artifact.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct EncodedArtifact {
-    /// Complete framed bytes.
-    bytes: Vec<u8>,
-    /// Exact byte range for each fixed section kind.
-    sections: [Range<usize>; constants::SECTION_COUNT],
-}
-
-impl EncodedArtifact {
-    /// Returns the complete framed artifact bytes.
-    #[must_use]
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.bytes
-    }
-
-    /// Returns the exact restricted-CBOR bytes for one section.
-    #[must_use]
-    pub fn section_bytes(&self, kind: SectionKind) -> &[u8] {
-        &self.bytes[self.sections[kind.index()].clone()]
-    }
-
-    /// Consumes the wrapper and returns the complete frame.
-    #[must_use]
-    pub fn into_bytes(self) -> Vec<u8> {
-        self.bytes
-    }
-}
-
 /// A bounded failure while projecting validated memory into external bytes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum EncodingError {
@@ -345,5 +239,5 @@ pub enum EncodingError {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit/mod.rs"]
+#[path = "../tests/current/mod.rs"]
 mod tests;

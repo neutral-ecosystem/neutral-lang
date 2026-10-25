@@ -82,39 +82,178 @@ fn integration_registered_source_inputs_match_reviewed_pins() {
     }
 }
 
-/// Compares every registered core case with the approved current oracle revision.
-#[test]
-fn integration_registered_source_cases_match_independent_literal_oracles() {
+/// Runs one registered source case against the approved current oracle revision.
+fn run_registered_case(id: &str) {
     let registry: J = serde_json::from_str(&input("cases.json")).unwrap();
     let oracles: J = serde_json::from_str(&input("results-v2.json")).unwrap();
-    let mut failures = Vec::new();
-    for case in registry["cases"].as_array().unwrap() {
-        // Authoring is a separately gated service, not source compilation or artifact reading.
-        if case.get("authoring_profile").is_some() {
-            continue;
-        }
-        let expected = oracles["cases"]
+    let case = registry["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|case| case["id"] == id)
+        .unwrap_or_else(|| panic!("unregistered case: {id}"));
+    let expected = oracles["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|result| result["id"] == id)
+        .unwrap_or_else(|| panic!("missing literal oracle: {id}"));
+    check(case, expected, &registry);
+}
+
+macro_rules! registered_cases {
+    ($($test_name:ident => $case_id:literal),+ $(,)?) => {
+        const ACTIVE_CASE_IDS: &[&str] = &[$($case_id),+];
+
+        $(
+            #[test]
+            fn $test_name() {
+                run_registered_case($case_id);
+            }
+        )+
+    };
+}
+
+// Each active literal source case is a separately named conformance test. The two retired
+// implementation cases remain frozen records and are asserted as historical below.
+registered_cases! {
+    conformance_registered_arithmetic => "arithmetic",
+    conformance_registered_selected_guards => "selected-guards",
+    conformance_registered_typed_construction => "typed-construction",
+    conformance_registered_exhaustive_match => "exhaustive-match",
+    conformance_registered_template_default => "template-default",
+    conformance_registered_template_deferred_guard => "template-deferred-guard",
+    conformance_registered_matrix_order_filter => "matrix-order-filter",
+    conformance_registered_matrix_explicit_equivalence => "matrix-explicit-equivalence",
+    conformance_registered_duplicate_axis_positions => "duplicate-axis-positions",
+    conformance_registered_empty_axis => "empty-axis",
+    conformance_registered_vocabulary_computed_restrictions => "vocabulary-computed-restrictions",
+    conformance_registered_definition_scope_hygiene => "definition-scope-hygiene",
+    conformance_registered_missing_guard => "missing-guard",
+    conformance_registered_missing_selected_value => "missing-selected-value",
+    conformance_registered_skipped_missing_value => "skipped-missing-value",
+    conformance_registered_supplied_selected_value => "supplied-selected-value",
+    conformance_registered_selected_unavailable => "selected-unavailable",
+    conformance_registered_selected_failed => "selected-failed",
+    conformance_registered_skipped_unavailable => "skipped-unavailable",
+    conformance_registered_skipped_failed => "skipped-failed",
+    conformance_registered_skipped_malformed => "skipped-malformed",
+    conformance_registered_duplicate_binding => "duplicate-binding",
+    conformance_registered_unknown_binding => "unknown-binding",
+    conformance_registered_explicit_null => "explicit-null",
+    conformance_registered_null_not_missing => "null-not-missing",
+    conformance_registered_skipped_output => "skipped-output",
+    conformance_registered_missing_output => "missing-output",
+    conformance_registered_branch_type => "branch-type",
+    conformance_registered_branch_name => "branch-name",
+    conformance_registered_division_zero => "division-zero",
+    conformance_registered_comparison_chain => "comparison-chain",
+    conformance_registered_match_missing => "match-missing",
+    conformance_registered_match_duplicate => "match-duplicate",
+    conformance_registered_template_recursion => "template-recursion",
+    conformance_registered_template_arguments => "template-arguments",
+    conformance_registered_template_static => "template-static",
+    conformance_registered_matrix_shape => "matrix-shape",
+    conformance_registered_matrix_collision => "matrix-collision",
+    conformance_registered_matrix_exclusion => "matrix-exclusion",
+    conformance_registered_restrictions => "restrictions",
+    conformance_registered_value_cycle => "value-cycle",
+    conformance_registered_imperative => "imperative",
+    conformance_registered_interpolation_type => "interpolation-type",
+    conformance_registered_template_null => "template-null",
+    conformance_registered_template_unused_static => "template-unused-static",
+    conformance_registered_filtered_product_exact => "filtered-product-exact",
+    conformance_registered_filtered_product_one_over => "filtered-product-one-over",
+    conformance_registered_aggregate_tuples_exact => "aggregate-tuples-exact",
+    conformance_registered_aggregate_tuples_one_over => "aggregate-tuples-one-over",
+    conformance_registered_numeric_growth_exact => "numeric-growth-exact",
+    conformance_registered_numeric_growth_one_over => "numeric-growth-one-over",
+    conformance_registered_utf8_output_exact => "utf8-output-exact",
+    conformance_registered_utf8_output_one_over => "utf8-output-one-over",
+    conformance_registered_residual_depth_exact => "residual-depth-exact",
+    conformance_registered_residual_depth_one_over => "residual-depth-one-over",
+    conformance_registered_residual_nodes_exact => "residual-nodes-exact",
+    conformance_registered_residual_nodes_one_over => "residual-nodes-one-over",
+    conformance_registered_already_cancelled => "already-cancelled",
+    conformance_registered_evaluator_cancelled => "evaluator-cancelled",
+    conformance_registered_zero_control => "zero-control",
+    conformance_registered_old_capture => "old-capture",
+    conformance_registered_missing_feature => "missing-feature",
+    conformance_registered_unknown_feature => "unknown-feature",
+    conformance_registered_header_only => "header-only",
+    conformance_registered_static_literal_equivalence => "static-literal-equivalence",
+    conformance_registered_public_template_contract => "public-template-contract",
+}
+
+/// Keeps the individually named active tests in exact one-to-one correspondence with the corpus.
+#[test]
+fn integration_registered_source_inventory_has_no_omissions_or_duplicates() {
+    let registry: J = serde_json::from_str(&input("cases.json")).unwrap();
+    let active: Vec<_> = registry["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|case| case.get("reader_profile").is_none())
+        .filter(|case| case.get("authoring_profile").is_none())
+        .map(|case| case["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(active.len(), ACTIVE_CASE_IDS.len());
+    let mut listed = ACTIVE_CASE_IDS.to_vec();
+    listed.sort_unstable();
+    listed.dedup();
+    assert_eq!(
+        listed.len(),
+        ACTIVE_CASE_IDS.len(),
+        "duplicate active case ID"
+    );
+    let mut active = active;
+    active.sort_unstable();
+    assert_eq!(listed, active);
+}
+
+/// Retains frozen evidence for retired reader/authoring implementations without executing them.
+#[test]
+fn integration_registered_retired_implementation_cases_remain_historical_records() {
+    let registry: J = serde_json::from_str(&input("cases.json")).unwrap();
+    let oracles: J = serde_json::from_str(&input("results-v2.json")).unwrap();
+    for (id, profile, phase, code) in [
+        (
+            "old-reader",
+            "neutral.project-ir/2",
+            "reader",
+            "Unsupported",
+        ),
+        (
+            "old-authoring",
+            "neutral.authoring/1",
+            "authoring",
+            "NEU-AUTH-001",
+        ),
+    ] {
+        let case = registry["cases"]
             .as_array()
             .unwrap()
             .iter()
-            .find(|r| r["id"] == case["id"])
+            .find(|case| case["id"] == id)
             .unwrap();
-        let observed = std::panic::catch_unwind(|| check(case, expected, &registry));
-        if let Err(failure) = observed {
-            let message = failure.downcast_ref::<String>().map_or_else(
-                || {
-                    failure
-                        .downcast_ref::<&str>()
-                        .copied()
-                        .unwrap_or("unknown failure")
-                        .to_owned()
-                },
-                Clone::clone,
-            );
-            failures.push(format!("{}: {message}", case["id"]));
-        }
+        let result = oracles["cases"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|result| result["id"] == id)
+            .unwrap();
+        assert_eq!(case["id"], id);
+        assert_eq!(
+            case["reader_profile"]
+                .as_str()
+                .or(case["authoring_profile"].as_str()),
+            Some(profile)
+        );
+        assert_eq!(result["status"], "failure");
+        assert_eq!(result["phase"], phase);
+        assert_eq!(result["code"], code);
+        assert_eq!(result["partial_result"], false);
     }
-    assert_eq!(failures, [] as [String; 0], "{}", failures.join("\n"));
 }
 
 /// The approved revision changes only the misclassified codes, not old snapshot bytes or values.
@@ -175,20 +314,6 @@ fn check(case: &J, expected: &J, registry: &J) {
     let cancel = CancellationToken::new();
     let project = ValidatedExpressionProject::from_ir(produced, limits, &cancel).unwrap();
     let bytes = encode_expression_project(&project, &cancel).unwrap();
-    if case.get("reader_profile").is_some() {
-        assert!(
-            neutral_encoding::composition::decode_composition_project(
-                &bytes,
-                DecodeLimits::hard(),
-                project.ir().limits,
-                composition_limits(),
-                &cancel
-            )
-            .is_err()
-        );
-        assert_eq!(expected["code"], "Unsupported");
-        return;
-    }
     let project = decode_expression_project(&bytes, DecodeLimits::hard(), limits, &cancel).unwrap();
     if evaluator {
         evaluation::check(&project, case, expected, registry);

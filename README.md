@@ -58,22 +58,23 @@ flowchart LR
 
 Neutral is a compiler and artifact toolchain rather than a graphical runtime,
 so the repository does not publish runtime screenshots. The canonical
-[language showcase](conformance/releases/v0.1.0/specs/examples/LANGUAGE-SHOWCASE.md)
-demonstrates the supported source features.
+[current example](examples/minimal.neu) demonstrates typed source data. The
+[published language showcase](conformance/releases/v0.1.0/specs/examples/LANGUAGE-SHOWCASE.md)
+records an earlier release, rather than the development parser's accepted profile.
 
 <details>
 <summary><strong>View the Neutral source example</strong></summary>
 
 ```neu
-neu "0.1"
+neu "1.0"
 module example
 
-record Service {
+public record Service {
     string image,
     List<string> labels = [],
 }
 
-Service api = {
+public Service api = {
     image: "example.invalid/api:1",
     labels: ["portable", "typed"],
 }
@@ -103,7 +104,7 @@ Bootstrap the repository with the adapter for your host:
 .\scripts\win\bootstrap.ps1
 ```
 
-Compile the canonical minimal fixture and inspect its encoded artifact:
+Compile the current minimal example and inspect its encoded artifact:
 
 Check profile availability first with `cargo run --package neutral-cli -- profiles`.
 
@@ -111,7 +112,7 @@ Check profile availability first with `cargo run --package neutral-cli -- profil
 <summary><strong>View the compile and inspect commands</strong></summary>
 
 ```sh
-cargo run --package neutral-cli -- compile --output target/minimal.nir conformance/releases/v0.1.0/specs/fixtures/positive/syntax/minimal-core.neu
+cargo run --package neutral-cli -- compile --output target/minimal.nir examples/minimal.neu
 cargo run --package neutral-probe -- target/minimal.nir
 cargo run --package neutral-probe -- --json target/minimal.nir
 ```

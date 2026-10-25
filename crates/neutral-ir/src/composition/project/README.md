@@ -1,23 +1,15 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Successor project structure
+# Shared composition policy and inspection
 
-This module owns raw complete composition-project data and bounded retained-data
-inspection. Logical declarations and vocabulary contracts stay separate from
-source maps, provenance, origins, limits and accounting. Inspection bounds raw
-structures before recursive consumers or clones; it is not semantic validation.
-The compiler produces these contracts, the independent reader validates them,
-and the codec transports only independently validated complete artifacts.
+This module defines the common composition resource tuple and shared binding
+signature, origin and attribution contracts used by current expression
+projects. Its bounded inspectors preflight nominal bodies, vocabulary
+catalogues and retained expression-project data before copying or recursive
+consumption. They are structural accounting, not semantic validation or
+reader authority.
 
-[`mod.rs`](mod.rs) owns signatures, complete envelopes, origin paths and named
-policy/resource tuples. `values`/`from_values` preserve frozen tuple order;
-`intersect` takes the smaller bound independently for each dimension, without
-validating positivity or producer claims.
-
-[`inspection.rs`](inspection.rs) performs bounded borrowed traversal before
-recursive copying. `inspect_composition_bodies` handles nominal bodies without
-fabricating a project; its work projection supports aggregate caller accounting.
-Neither inspection function resolves names, grants visibility or checks identities.
-
-Run `cargo xtask test all` for producer/reader coverage. Focused raw preflight tests
-are in [the IR expression tests](../../../tests/unit/expression/README.md).
+`inspect_composition_bodies` and `inspect_composition_catalogue` support raw
+vocabulary compilation. `inspect_expression_project_resources` is used by the
+current expression producer and reader. Neither inspector constructs a
+complete composition-project model.

@@ -254,10 +254,10 @@ fn each_producer_control_rejects_zero_without_publishing_a_prefix() {
     let bytes = vectors().remove(2);
     let ir = raw(&bytes);
     let parsed = parse_written_ir(&ir);
-    let sections = crate::project::array(&parsed).unwrap();
+    let sections = crate::primitives::array(&parsed).unwrap();
     let cancel = CancellationToken::new();
     for section in [9, 14, 18, 19] {
-        for (index, value) in crate::project::array(&sections[section])
+        for (index, value) in crate::primitives::array(&sections[section])
             .unwrap()
             .iter()
             .enumerate()

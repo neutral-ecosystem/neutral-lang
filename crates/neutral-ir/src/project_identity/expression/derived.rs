@@ -14,7 +14,7 @@ use crate::{
         ArtifactIdentityInput, CAPTURE_LIMIT_TAGS, ExpressionArtifactIdentity,
         ExpressionCapturedClosureIdentity, ExpressionDerivationIdentity, ExpressionLogicalIdentity,
         IdentityError as E, IdentityLimits, IdentityTranscript,
-        derived::{artifact_body, derivation_body},
+        derived::{artifact_body, base_derivation_body},
         framing::Writer,
         transcript_profile,
     },
@@ -59,7 +59,7 @@ pub fn expression_derivation_identity(
         limits,
         cancellation,
         |w| {
-            derivation_body(
+            base_derivation_body(
                 w,
                 &logical.as_bytes(),
                 &context.captured.as_bytes(),

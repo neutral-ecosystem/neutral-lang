@@ -351,7 +351,7 @@ fn integration_forged_output_association_is_rejected() {
 
 /// Adapter/target/input revisions distinguish reports, never the complete immutable project identity.
 #[test]
-fn integration_binding_revisions_do_not_rewrite_project_identity() {
+fn property_binding_revisions_do_not_rewrite_project_identity() {
     let project = project();
     let cancel = CancellationToken::new();
     let report = contract("Report");

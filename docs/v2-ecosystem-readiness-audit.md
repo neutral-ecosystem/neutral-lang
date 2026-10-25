@@ -655,10 +655,12 @@ second implementations, using the acceptance corpus below.
 **If we skip it:** V2 becomes an architectural claim that fails when the second
 real project or provider arrives.
 
-Owner: Neutral integration tests plus each consumer/domain maintainer. Existing
-[composition tests](../crates/neutral-test-suite/tests/composition_contract/pipeline/mod.rs)
-and independent identity oracles are useful foundations, not evidence of effectful
-adapter correctness. A language suite must not need a connected MCU or cloud
+Owner: Neutral integration tests plus each consumer/domain maintainer. Current
+[expression-pipeline consumer tests](../crates/neutral-test-suite/tests/expression_pipeline/consumer.rs)
+and retained independent identity oracles are useful foundations, not evidence
+of effectful adapter correctness. This audit's former `/2` composition-test
+pipeline is historical baseline material, not current runtime support. A language
+suite must not need a connected MCU or cloud
 account; integration/HIL suites are explicitly separate.
 
 Use two proof axes: two different domains expose accidental shared-framework
@@ -1191,10 +1193,11 @@ evidence and must be reassessed as the implementation and consumer scope evolve.
   [consumer APIs](../crates/neutral-reader/src/consumer/README.md),
   [CLI](../crates/neutral-cli/README.md) and
   [probe](../crates/neutral-probe/README.md): actual integration surfaces and limits.
-- [Consumer/selectors tests](../crates/neutral-test-suite/tests/composition_contract/pipeline/selectors.rs),
-  [consumer envelope tests](../crates/neutral-test-suite/tests/composition_contract/pipeline/consumer.rs)
-  and [quality policy](../config/quality-gates.toml): existing validation coverage
-  and configured measurements, not fresh results from this audit.
+- [Current consumer tests](../crates/neutral-test-suite/tests/expression_pipeline/consumer.rs),
+  [projection tests](../crates/neutral-test-suite/tests/expression_pipeline/projection.rs)
+  and [quality policy](../config/quality-gates.toml): current `/3` validation
+  coverage and configured measurements, not fresh results from this audit. The
+  former `/2` selector and consumer-envelope tests are historical baseline only.
 
 Links into the active portable plan are evidence locators, not production runtime
 dependencies. When that plan is archived, preserve or update these documentation

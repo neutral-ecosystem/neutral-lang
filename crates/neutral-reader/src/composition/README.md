@@ -1,15 +1,13 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Composition reader traversal
+# Composition catalogue inspection
 
-The parent composition API inspects separately validated vocabulary catalogues.
-This module owns bounded public type/reference and binding inspection without
-compiler linkage, source reparsing or target acquisition. `project` independently
-validates complete successor contracts, materialized values, origins, companions,
-resource counts and interface identity before the codec can publish authority.
-Complete private data is available only through that explicitly complete API.
-`view` derives a bounded public interpretation closure using iterative source/type
-worklists, preserving all fields/alternatives and actual reference targets while
-redacting source and private implementation evidence. The standalone probe uses
-this checked projection after independent decoding. Contracts and reference
-targets are data, not execution permissions.
+This module exposes independently validated vocabulary and resolved-scope
+catalogues. It supports exact public contract lookup, safe closed-value
+materialization, declared reference-type inspection, and public binding/value
+reference inspection. These APIs do not accept complete captured projects,
+derive project views, or confer execution authority.
+
+The current complete-project reader is `ValidatedExpressionProject` in the
+parent crate API. It retains expression and composition meaning together and
+supports public projection through the current expression APIs.

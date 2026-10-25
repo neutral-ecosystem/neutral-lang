@@ -6,7 +6,7 @@ use super::*;
 
 /// Ordered insertion preserves exact uniqueness and borrowed lookup semantics.
 #[test]
-fn ordered_map_preserves_canonical_membership_and_entry_updates() {
+fn property_ordered_map_preserves_canonical_membership_and_entry_updates() {
     let mut index = OrderedMap::new();
     assert!(index.is_empty());
     assert_eq!(index.insert("z".to_owned(), 3_u64).unwrap(), None);
@@ -31,7 +31,7 @@ fn ordered_map_preserves_canonical_membership_and_entry_updates() {
 
 /// Set insertion rejects duplicates without allocating additional membership.
 #[test]
-fn ordered_set_preserves_unique_sorted_keys() {
+fn property_ordered_set_preserves_unique_sorted_keys() {
     let mut set = OrderedSet::new();
     assert!(set.is_empty());
     assert!(set.insert(2).unwrap());

@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Shared capture fixture for compiler cache and incomplete-assembly checks.
+//! Shared current `/3` capture fixture for private nominal resolver tests.
 
 use crate::{
-    CapturedCompositionProject, CapturedCompositionProjectRequest, CapturedProjectRequest,
+    CapturedExpressionProject, CapturedExpressionProjectRequest, CapturedProjectRequest,
     CapturedSourceInput, ProjectCaptureControls, ProjectCaptureLimitValues, ProjectCaptureLimits,
-    capture_composition_project,
+    capture_expression_project,
 };
 use neutral_core::{CancellationToken, StructuralLimits, profile::LanguageProfile};
-use neutral_ir::composition::profile;
+use neutral_ir::expression::{profile, templates::ExpansionLimits};
 use neutral_vocabulary::{VocabularyLimits, composition::CompositionLimits};
 
-/// Creates a tiny whole-project request, independent of package versions and portable files.
-pub(crate) fn capture_source(body: &str) -> CapturedCompositionProject {
+/// Creates a tiny `/3` capture with an accessible private composition context.
+pub(crate) fn capture_expression_source(body: &str) -> CapturedExpressionProject {
     let bounds = ProjectCaptureLimitValues {
         total_source_bytes: 4096,
         source_bytes_per_unit: 4096,
@@ -29,25 +29,28 @@ pub(crate) fn capture_source(body: &str) -> CapturedCompositionProject {
         diagnostics: 16,
         output_bytes: 16_384,
     };
-    let bytes = format!("neu \"1.0\"\nmodule example\n{body}\n").into_bytes();
-    capture_composition_project(CapturedCompositionProjectRequest::new(
+    let source = format!("neu \"1.0\"\nmodule example\n{body}\n");
+    capture_expression_project(CapturedExpressionProjectRequest::new(
         CapturedProjectRequest::new(
             profile::CAPTURE_REQUEST_VERSION,
             LanguageProfile::V1_0,
-            vec![CapturedSourceInput::new("unit", "example", bytes)],
+            vec![CapturedSourceInput::new(
+                "unit",
+                "example",
+                source.into_bytes(),
+            )],
             Vec::new(),
             ProjectCaptureControls::new(
                 ProjectCaptureLimits::new(bounds),
                 CancellationToken::new(),
             ),
         ),
-        profile::REQUIRED_FEATURES
-            .iter()
-            .map(|s| (*s).to_owned())
-            .collect(),
+        profile::SemanticProfiles::try_frozen().unwrap(),
         CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(
             StructuralLimits::new(4096, 16).unwrap(),
         )),
+        profile::ExpressionLimits::hard(),
+        ExpansionLimits::hard(),
     ))
     .unwrap()
 }

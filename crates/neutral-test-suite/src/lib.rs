@@ -15,26 +15,6 @@ mod tests;
 mod hardening;
 
 #[cfg(test)]
-#[path = "../tests/project_capture/mod.rs"]
-mod project_capture;
-
-#[cfg(test)]
-#[path = "../tests/module_graph/mod.rs"]
-mod module_graph;
-
-#[cfg(test)]
-#[path = "../tests/public_semantics/mod.rs"]
-mod public_semantics;
-
-#[cfg(test)]
-#[path = "../tests/project_ir/mod.rs"]
-mod project_ir;
-
-#[cfg(test)]
-#[path = "../tests/project_identity/mod.rs"]
-mod project_identity;
-
-#[cfg(test)]
 #[path = "../tests/source_pipeline/mod.rs"]
 mod source_pipeline;
 

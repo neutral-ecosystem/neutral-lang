@@ -11,9 +11,8 @@ use crate::{
     expression::{ExpressionBody, profile, project::ExpressionProjectIr},
     project_identity::{
         ExpressionLogicalIdentity, IdentityError as E, IdentityLimits, IdentityTranscript,
-        composition::{self, type_transcript},
+        expression::contract::{self, symbol, type_transcript},
         framing::{Writer, ordered},
-        logical::symbol,
         transcript_profile,
     },
     project_interface::ProjectPublicEdgeKind,
@@ -66,7 +65,7 @@ pub(super) fn build<I>(
             preflight(w, ir)?;
             w.leaf("schema", ir.schema.as_bytes())?;
             w.leaf("profile", V1_SOURCE_PROFILE.as_bytes())?;
-            composition::modules(w, &ir.modules)?;
+            contract::modules(w, &ir.modules)?;
             w.frame("declarations", |w| {
                 for declaration in ir.declarations.iter().filter(|d| !public || d.public) {
                     declaration
@@ -77,11 +76,11 @@ pub(super) fn build<I>(
                         w.leaf("public", &[u8::from(declaration.public)])?;
                         w.frame("signature", |w| match &declaration.signature {
                             S::Binding(ty) => w.frame("binding", |w| type_transcript(w, ty, 0)),
-                            S::Definition(body) => composition::body(w, body),
+                            S::Definition(body) => contract::body(w, body),
                         })?;
                         w.frame("value", |w| match &declaration.body {
                             Some(ExpressionBody::Value(value)) => {
-                                w.frame("constant", |w| composition::value(w, value, 0))
+                                w.frame("constant", |w| contract::value(w, value, 0))
                             }
                             Some(ExpressionBody::Input) => w.leaf("external-input", &[]),
                             Some(ExpressionBody::Expression(expression)) => {
@@ -93,9 +92,9 @@ pub(super) fn build<I>(
                 }
                 Ok(())
             })?;
-            composition::vocabulary_types(w, &ir.vocabularies, public)?;
-            composition::catalogues(w, &ir.vocabularies)?;
-            composition::dependencies(w, &ir.vocabularies)?;
+            contract::vocabulary_types(w, &ir.vocabularies, public)?;
+            contract::catalogues(w, &ir.vocabularies)?;
+            contract::dependencies(w, &ir.vocabularies)?;
             public_edges(w, ir)?;
             semantic_profiles(w, &ir.semantic_profiles)?;
             features(w, "required-features", &ir.semantic_profiles)?;

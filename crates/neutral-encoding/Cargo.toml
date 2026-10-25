@@ -2,7 +2,7 @@
 
 [package]
 name = "neutral-encoding"
-description = "Validated-document encoder for Neutral IR Framed CBOR"
+description = "Bounded transport codecs for complete Neutral project artifacts"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -19,7 +19,6 @@ neutral-vocabulary = { path = "../neutral-vocabulary" }
 
 [dev-dependencies]
 neutral-test-support = { path = "../neutral-test-support" }
-neutral-compiler = { path = "../neutral-compiler" }
 neutral-core = { path = "../neutral-core", features = ["allocation-testing"] }
 
 [lints]

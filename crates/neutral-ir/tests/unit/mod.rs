@@ -7,126 +7,13 @@ use super::language::{
     is_snake_name, is_upper_name,
 };
 use super::{
-    Declaration, DeclarationFingerprint, ElementId, ExactNumber, IdentityReference,
-    LogicalDocument, LogicalModuleIdentity, LogicalValue, ModuleSymbolIdentity,
-    NominalTypeIdentity, RecordFieldSchema, RecordTypeDefinition, RecordValue, RecordValueField,
+    DeclarationFingerprint, ElementId, ExactNumber, IdentityReference, LogicalModuleIdentity,
+    LogicalValue, ModuleSymbolIdentity, NominalTypeIdentity, RecordValue, RecordValueField,
     ResolvedType, VocabularyContract, VocabularyFieldContract, VocabularyIdentity,
     VocabularyTypeContract, VocabularyTypeIdentity,
 };
 use neutral_core::VocabularyContentDigest;
-
-/// Wraps a valid logical graph in independent, non-semantic companion records.
-fn comparison_artifacts(document: LogicalDocument, source: &[u8]) -> super::CompilationArtifacts {
-    let digest = neutral_core::SourceContentDigest::from_bytes(source);
-    let length = source.len() as u64;
-    super::CompilationArtifacts::new(
-        document,
-        super::SourceMap::new(
-            digest,
-            length,
-            neutral_core::ByteSpan::new(0, length).unwrap(),
-            vec![],
-        ),
-        vec![],
-        super::DerivationManifest::new(
-            super::LANGUAGE_BEHAVIOR_VERSION,
-            digest,
-            super::AcceptancePartition::from_limits(
-                neutral_core::StructuralLimits::new(4096, 16).unwrap(),
-            ),
-            super::ResourceFacts::new(length, 4, 0, 0),
-        ),
-    )
-}
-
-#[test]
-/// Artifact meaning ignores companions and alpha-renaming, but not changed logical content.
-fn artifact_equivalence_compares_the_logical_payload_only() {
-    let left = comparison_artifacts(reference_document([1, 2, 3, 4]), b"first capture");
-    let right = comparison_artifacts(reference_document([10, 20, 30, 40]), b"second capture");
-    assert_ne!(left, right);
-    assert!(left.logically_equivalent(&right));
-    assert!(right.logically_equivalent(&left));
-    let different = comparison_artifacts(
-        LogicalDocument::new(
-            LogicalModuleIdentity::new(super::LANGUAGE_BEHAVIOR_VERSION, "empty"),
-            vec![],
-        ),
-        b"first capture",
-    );
-    assert!(!left.logically_equivalent(&different));
-    assert!(!different.logically_equivalent(&left));
-}
-
-/// Frozen language behavior version used by standalone IR test graphs.
 const TEST_LANGUAGE_BEHAVIOR_VERSION: &str = super::LANGUAGE_BEHAVIOR_VERSION;
-
-/// Builds one complete reference graph with caller-selected local ID spellings.
-fn reference_document(ids: [u64; 4]) -> LogicalDocument {
-    let module = LogicalModuleIdentity::new(TEST_LANGUAGE_BEHAVIOR_VERSION, "alpha_graph");
-    let record_identity = NominalTypeIdentity::new(module.clone(), "Container");
-    let record_fields = vec![RecordFieldSchema::new("name", ResolvedType::String)];
-    let record_fingerprint = DeclarationFingerprint::for_record(&record_fields)
-        .expect("bounded record should fingerprint");
-    let record = RecordTypeDefinition::new(
-        ElementId::new(ids[0]),
-        ModuleSymbolIdentity::new(module.clone(), "Container"),
-        record_fingerprint,
-        record_identity,
-        record_fields,
-    );
-    let target_value = LogicalValue::String("target".to_owned());
-    let alternate_value = LogicalValue::String("alternate".to_owned());
-    let target_symbol = ModuleSymbolIdentity::new(module.clone(), "target");
-    let target = Declaration::new(
-        ElementId::new(ids[1]),
-        target_symbol.clone(),
-        DeclarationFingerprint::for_binding(&ResolvedType::String, &target_value)
-            .expect("target should fingerprint"),
-        "target",
-        ResolvedType::String,
-        target_value,
-    );
-    let alternate = Declaration::new(
-        ElementId::new(ids[2]),
-        ModuleSymbolIdentity::new(module.clone(), "alternate"),
-        DeclarationFingerprint::for_binding(&ResolvedType::String, &alternate_value)
-            .expect("alternate should fingerprint"),
-        "alternate",
-        ResolvedType::String,
-        alternate_value,
-    );
-    let reference_type = ResolvedType::reference(ResolvedType::String);
-    let reference_value = LogicalValue::Reference(IdentityReference::new(
-        ElementId::new(ids[1]),
-        target_symbol,
-        ResolvedType::String,
-    ));
-    let selected = Declaration::new(
-        ElementId::new(ids[3]),
-        ModuleSymbolIdentity::new(module.clone(), "selected"),
-        DeclarationFingerprint::for_binding(&reference_type, &reference_value)
-            .expect("reference should fingerprint"),
-        "selected",
-        reference_type,
-        reference_value,
-    );
-    LogicalDocument::with_record_types(module, vec![record], vec![target, alternate, selected])
-}
-
-/// Produces one deterministic pseudo-random permutation for property coverage.
-fn permuted_ids(seed: u64) -> [u64; 4] {
-    let mut values = [101, 211, 307, 401];
-    let mut state = seed.wrapping_add(0x9e37_79b9_7f4a_7c15);
-    for index in (1..values.len()).rev() {
-        state ^= state << 13;
-        state ^= state >> 7;
-        state ^= state << 17;
-        let swap = usize::try_from(state % u64::try_from(index + 1).unwrap_or(1)).unwrap_or(0);
-        values.swap(index, swap);
-    }
-    values
-}
 
 #[test]
 /// Verifies minimal integer normalization does not use host numeric types.
@@ -228,7 +115,7 @@ fn exact_number_source_accepts_the_exact_normalized_scale_limit() {
 
 #[test]
 /// Verifies vocabulary equality compares every meaning field but ignores captured bytes.
-fn vocabulary_equivalence_checks_each_meaning_partition() {
+fn property_vocabulary_equivalence_checks_each_meaning_partition() {
     let identity = VocabularyIdentity::new(
         "Fixture",
         "1.0.0",
@@ -261,14 +148,8 @@ fn vocabulary_equivalence_checks_each_meaning_partition() {
         Vec::new(),
     ));
     variants.push(value);
-    let document = reference_document([1, 2, 3, 4]).with_vocabulary(baseline.clone());
-    assert!(document.logically_equivalent(&document));
     for value in variants {
         assert!(!baseline.logically_equivalent(&value));
-        assert!(
-            !document
-                .logically_equivalent(&reference_document([1, 2, 3, 4]).with_vocabulary(value))
-        );
     }
 }
 
@@ -458,74 +339,6 @@ fn reference_fingerprints_ignore_graph_local_element_ids() {
 }
 
 #[test]
-/// Verifies reflexivity, symmetry, transitivity, and generated ID-renaming cases.
-fn property_graph_alpha_equivalence_obeys_equivalence_laws() {
-    let canonical = reference_document([0, 1, 2, 3]);
-    assert!(canonical.logically_equivalent(&canonical));
-    for seed in 0..64 {
-        let renamed = reference_document(permuted_ids(seed));
-        let third = reference_document(permuted_ids(seed.wrapping_add(97)));
-        assert!(canonical.logically_equivalent(&renamed));
-        assert!(renamed.logically_equivalent(&canonical));
-        assert!(renamed.logically_equivalent(&third));
-        assert!(canonical.logically_equivalent(&third));
-    }
-}
-
-#[test]
-/// Verifies values, types, fingerprints, and reference targets remain semantic.
-fn property_graph_alpha_equivalence_rejects_payload_changes() {
-    let canonical = reference_document([0, 1, 2, 3]);
-
-    let mut changed_value = canonical.clone();
-    changed_value.declarations[0].value = LogicalValue::String("changed".to_owned());
-    assert!(!canonical.logically_equivalent(&changed_value));
-
-    let mut changed_type = canonical.clone();
-    changed_type.declarations[0].resolved_type = ResolvedType::Bool;
-    assert!(!canonical.logically_equivalent(&changed_type));
-
-    let mut changed_fingerprint = canonical.clone();
-    changed_fingerprint.declarations[0].fingerprint =
-        changed_fingerprint.declarations[1].fingerprint;
-    assert!(!canonical.logically_equivalent(&changed_fingerprint));
-
-    let mut changed_edge = canonical.clone();
-    let alternate = changed_edge.declarations[1].clone();
-    let reference = IdentityReference::new(
-        alternate.element_id(),
-        alternate.symbol_identity().clone(),
-        alternate.resolved_type().clone(),
-    );
-    changed_edge.declarations[2].value = LogicalValue::Reference(reference);
-    changed_edge.declarations[2].fingerprint = DeclarationFingerprint::for_binding(
-        changed_edge.declarations[2].resolved_type(),
-        changed_edge.declarations[2].value(),
-    )
-    .expect("changed edge should fingerprint");
-    assert!(!canonical.logically_equivalent(&changed_edge));
-}
-
-#[test]
-/// Verifies duplicate and dangling graph IDs cannot compare as valid payloads.
-fn property_graph_alpha_equivalence_rejects_invalid_graphs() {
-    let canonical = reference_document([0, 1, 2, 3]);
-
-    let mut duplicate = canonical.clone();
-    duplicate.declarations[1].element_id = duplicate.declarations[0].element_id;
-    assert!(!duplicate.logically_equivalent(&duplicate));
-    assert!(!canonical.logically_equivalent(&duplicate));
-
-    let mut dangling = canonical.clone();
-    let LogicalValue::Reference(reference) = &mut dangling.declarations[2].value else {
-        panic!("test graph must contain a reference")
-    };
-    reference.element_id = ElementId::new(999);
-    assert!(!dangling.logically_equivalent(&dangling));
-    assert!(!canonical.logically_equivalent(&dangling));
-}
-
-#[test]
 /// Exhaustively distinguishes the protected vocabulary from ordinary names.
 fn unit_language_protected_names_are_exact() {
     for protected in PROTECTED_CORE_NAMES {
@@ -570,48 +383,4 @@ fn unit_language_release_and_feature_spellings_are_exact() {
     for rejected in ["", "A", "0a", "_a", "a+b", "é"] {
         assert!(!is_feature_id(rejected));
     }
-}
-
-#[test]
-/// Verifies the public logical graph exposes all retained record and binding facts.
-fn logical_document_accessors_preserve_complete_graph_facts() {
-    let document = reference_document([10, 20, 30, 40]);
-    assert_eq!(document.module().module_name(), "alpha_graph");
-    assert_eq!(document.record_types().len(), 1);
-    assert!(document.vocabulary().is_none());
-
-    let record = document
-        .record_type_by_name("Container")
-        .expect("record should exist");
-    assert_eq!(record.element_id().get(), 10);
-    assert_eq!(record.name(), "Container");
-    assert_eq!(record.nominal_identity().name(), "Container");
-    assert_eq!(record.symbol_identity().declaration_name(), "Container");
-    assert_ne!(record.fingerprint().digest().as_bytes(), [0_u8; 32]);
-    assert_eq!(record.fields().len(), 1);
-    let field = &record.fields()[0];
-    assert_eq!(field.name(), "name");
-    assert_eq!(field.resolved_type(), &ResolvedType::String);
-    assert_eq!(field.default_value(), None);
-    assert!(field.is_required());
-
-    assert_eq!(document.declarations().len(), 3);
-    let declaration = &document.declarations()[0];
-    assert_eq!(declaration.element_id().get(), 20);
-    assert_eq!(declaration.name(), "target");
-    assert_eq!(declaration.resolved_type(), &ResolvedType::String);
-    assert_eq!(
-        declaration.value(),
-        &LogicalValue::String("target".to_owned())
-    );
-    assert_eq!(declaration.symbol_identity().declaration_name(), "target");
-    assert_ne!(declaration.fingerprint().digest().as_bytes(), [0_u8; 32]);
-
-    let defaulted = RecordFieldSchema::new("label", ResolvedType::String)
-        .with_default(LogicalValue::String("default".to_owned()));
-    assert!(!defaulted.is_required());
-    assert_eq!(
-        defaulted.default_value(),
-        Some(&LogicalValue::String("default".to_owned()))
-    );
 }

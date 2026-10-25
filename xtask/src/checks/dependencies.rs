@@ -207,10 +207,7 @@ pub(crate) fn direct_dependency_policy() -> BTreeMap<&'static str, BTreeSet<&'st
             ]),
         ),
         (constants::NEUTRAL_TEST_SUITE, set([])),
-        (
-            constants::NEUTRAL_TEST_SUPPORT,
-            set([constants::NEUTRAL_CORE, constants::NEUTRAL_IR]),
-        ),
+        (constants::NEUTRAL_TEST_SUPPORT, set([])),
         (
             constants::NEUTRAL_VOCABULARY,
             set([constants::NEUTRAL_CORE, constants::NEUTRAL_IR]),

@@ -5,49 +5,22 @@
 use crate::{EncodingError, constants};
 use neutral_core::{CancellationToken, allocation::RetainCapacity};
 
-#[cfg(test)]
-use std::cell::Cell;
-
-#[cfg(test)]
-std::thread_local! {
-    static TEST_SECTION_LIMIT: Cell<usize> = const { Cell::new(constants::MAXIMUM_SECTION_BYTES) };
-}
-
 /// One bounded restricted-CBOR section writer.
 pub(crate) struct CborWriter {
     /// Accumulated section bytes.
     bytes: Vec<u8>,
     /// Optional shared signal used by cancellable complete-project encoding.
     cancellation: Option<CancellationToken>,
-    /// Small per-test ceiling for exercising encoder failure propagation.
-    #[cfg(test)]
-    section_limit: usize,
 }
 
 impl CborWriter {
     /// Creates an empty section writer.
+    #[cfg(test)]
     pub(crate) fn new() -> Self {
         Self {
             bytes: Vec::new(),
             cancellation: None,
-            #[cfg(test)]
-            section_limit: TEST_SECTION_LIMIT.with(Cell::get),
         }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn with_test_section_limit<R>(limit: usize, operation: impl FnOnce() -> R) -> R {
-        struct RestoreLimit(usize);
-
-        impl Drop for RestoreLimit {
-            fn drop(&mut self) {
-                TEST_SECTION_LIMIT.with(|current| current.set(self.0));
-            }
-        }
-
-        let previous = TEST_SECTION_LIMIT.with(|current| current.replace(limit));
-        let _restore = RestoreLimit(previous);
-        operation()
     }
 
     /// Creates a writer that polls the caller signal before every emitted primitive.
@@ -55,23 +28,16 @@ impl CborWriter {
         Self {
             bytes: Vec::new(),
             cancellation: Some(cancellation.clone()),
-            #[cfg(test)]
-            section_limit: TEST_SECTION_LIMIT.with(Cell::get),
         }
     }
 
     /// Finishes the nonempty bounded section.
     pub(crate) fn finish(self) -> Result<Vec<u8>, EncodingError> {
         self.check_size()?;
-        if self.bytes.is_empty() || self.bytes.len() > self.section_limit() {
+        if self.bytes.is_empty() || self.bytes.len() > constants::MAXIMUM_SECTION_BYTES {
             return Err(EncodingError::EncodedSizeLimit);
         }
         Ok(self.bytes)
-    }
-
-    /// Writes a definite map header.
-    pub(crate) fn map(&mut self, length: usize) -> Result<(), EncodingError> {
-        self.container(5, length)
     }
 
     /// Writes a definite array header.
@@ -169,7 +135,7 @@ impl CborWriter {
     /// Appends one byte under the section ceiling.
     fn push(&mut self, value: u8) -> Result<(), EncodingError> {
         self.check_size()?;
-        if self.bytes.len() >= self.section_limit() {
+        if self.bytes.len() >= constants::MAXIMUM_SECTION_BYTES {
             return Err(EncodingError::EncodedSizeLimit);
         }
         self.bytes
@@ -187,7 +153,7 @@ impl CborWriter {
             .len()
             .checked_add(value.len())
             .ok_or(EncodingError::EncodedSizeLimit)?;
-        if new_length > self.section_limit() {
+        if new_length > constants::MAXIMUM_SECTION_BYTES {
             return Err(EncodingError::EncodedSizeLimit);
         }
         self.bytes
@@ -205,23 +171,10 @@ impl CborWriter {
             .is_some_and(CancellationToken::is_cancelled)
         {
             Err(EncodingError::Cancelled)
-        } else if self.bytes.len() > self.section_limit() {
+        } else if self.bytes.len() > constants::MAXIMUM_SECTION_BYTES {
             Err(EncodingError::EncodedSizeLimit)
         } else {
             Ok(())
-        }
-    }
-
-    /// Returns the production ceiling or the per-writer test ceiling.
-    #[cfg_attr(not(test), allow(clippy::unused_self))]
-    fn section_limit(&self) -> usize {
-        #[cfg(test)]
-        {
-            self.section_limit
-        }
-        #[cfg(not(test))]
-        {
-            constants::MAXIMUM_SECTION_BYTES
         }
     }
 }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Explicit composition capture, separate from the frozen compiler/project /1 boundary.
+//! Private current-source integrity and closed nominal catalogue capture.
 //!
 //! Sources are captured and their headers checked, not semantically compiled.
 //! Publication requires the entire locked vocabulary closure to pass schema,
@@ -8,22 +8,17 @@
 //! path, URL, environment or failed old-schema retry participates in capture.
 
 use super::{
-    CapturedProject, CapturedProjectRequest, CapturedProjectSource, CapturedProjectVocabulary,
+    CapturedInputs, CapturedProjectRequest, CapturedProjectSource, CapturedProjectVocabulary,
     ProjectCaptureCheckpoint, ProjectCaptureError, ProjectCaptureLimits,
     ProjectCaptureResourceFacts, capture_cancelled, freeze_project,
     scan_vocabulary_requirements_policy, validate_envelope_version, validate_headers_policy,
     validate_sources_cancellable, validate_vocabularies_cancellable,
 };
-use crate::module_graph::{ModuleGraph, ModuleGraphFailure};
 use neutral_core::allocation::Shared as Arc;
 use neutral_core::allocation::{RetainCapacity, TryClone, text};
 use neutral_core::ordered::OrderedMap;
 use neutral_core::{CancellationToken, profile::LanguageProfile};
-use neutral_ir::project_identity::{
-    CapturedIdentityInput, CompositionCapturedClosureIdentity, IdentityError, IdentityLimits,
-    IdentityTranscript, captured_composition_closure,
-};
-use neutral_ir::{VocabularyIdentity, composition::profile};
+use neutral_ir::VocabularyIdentity;
 use neutral_vocabulary::composition::{
     CapturedCompositionBundle, CompositionError, CompositionLimits, MAX_CAPTURED_BYTES, MAX_WORK,
     ValidatedComposition, validate_composition_closure,
@@ -31,11 +26,10 @@ use neutral_vocabulary::composition::{
 
 /// Closed successor request with explicit feature selection and independent policy.
 ///
-/// The inner envelope must use [`profile::CAPTURE_REQUEST_VERSION`]. Keeping
-/// this separate type prevents passing composition capture to `compile_project`
-/// or treating successful header/catalogue validation as successful compilation.
+/// This is a private current capture phase. A validated catalogue is not a
+/// compiled project or independently checked artifact.
 #[derive(Clone)]
-pub struct CapturedCompositionProjectRequest {
+pub(crate) struct CapturedCompositionProjectRequest {
     /// Exact bytes, locks and existing capture policy, never acquisition instructions.
     envelope: CapturedProjectRequest,
     /// Caller-supplied feature set; validated exactly, never sorted or inferred.
@@ -72,18 +66,11 @@ impl std::fmt::Debug for CapturedCompositionProjectRequest {
     }
 }
 
-/// Complete immutable capture plus validated catalogue, **not** a compiled project /2 artifact.
-///
-/// The old compiler cannot silently reinterpret this successor capture:
-///
-/// ```compile_fail,E0308
-/// # let captured: &neutral_compiler::CapturedCompositionProject = todo!();
-/// neutral_compiler::compile_project(captured, &neutral_core::CancellationToken::new());
-/// ```
+/// Private captured bytes and checked nominal catalogue shared by current compilation.
 #[derive(Clone)]
-pub struct CapturedCompositionProject {
+pub(crate) struct CapturedCompositionProject {
     /// Reuses exact byte ownership only; never exposes a downcast to the /1 compiler.
-    captured: CapturedProject,
+    pub(super) captured: CapturedInputs,
     /// Fully checked transitive vocabulary contracts shared with independent consumers.
     catalogue: Arc<ValidatedComposition>,
     /// Independent policy preserved for replay and later compilation.
@@ -137,43 +124,9 @@ impl CapturedCompositionProject {
         self.composition_limits
     }
 
-    /// Returns the exact validated capability set; a source header never infers it.
-    #[must_use]
-    pub fn required_features(&self) -> &[String] {
-        &self.required_features
-    }
-
     /// Shares the already retained exact feature set without copying host strings.
     pub(crate) fn shared_features(&self) -> Arc<Vec<String>> {
         self.required_features.clone()
-    }
-
-    /// Projects verified input facts into the frozen captured identity /2 transcript.
-    ///
-    /// # Errors
-    /// Rejects independent identity bounds, allocation failure or cancellation.
-    /// This is not logical/project/artifact identity or semantic compilation evidence.
-    pub fn identity_transcript(
-        &self,
-        limits: IdentityLimits,
-        cancellation: &CancellationToken,
-    ) -> Result<IdentityTranscript<CompositionCapturedClosureIdentity>, IdentityError> {
-        let (sources, vocabularies) = crate::project_identity::capture_facts(
-            self.sources(),
-            self.vocabularies(),
-            limits,
-            cancellation,
-        )?;
-        captured_composition_closure(
-            &CapturedIdentityInput {
-                profile: self.captured.profile().source_version(),
-                sources: &sources,
-                vocabularies: &vocabularies,
-            },
-            self.required_features(),
-            limits,
-            cancellation,
-        )
     }
 
     /// Returns exact accepted source and complete-closure byte/count facts.
@@ -202,25 +155,12 @@ impl CapturedCompositionProject {
         Some(&bundles[index].identity)
     }
 
-    /// Builds the bounded import graph only; this does not validate source variant/value semantics.
-    ///
-    /// # Errors
-    /// Rejects invalid imports, graph bounds or cancellation without publishing a partial graph.
-    pub fn module_graph(
+    /// Shares the same fallible exact-input reconstruction with current expression replay.
+    pub(super) fn replay_envelope(
         &self,
-        cancellation: &CancellationToken,
-    ) -> Result<ModuleGraph, ModuleGraphFailure> {
-        self.captured.module_graph(cancellation)
-    }
-
-    /// Reconstructs exact bytes, locks, features and policies under the explicit successor envelope.
-    ///
-    /// # Errors
-    /// Rejects allocation failure or cancellation without publishing a partial request.
-    pub fn replay_request(
-        &self,
+        request_version: &str,
         cancellation: CancellationToken,
-    ) -> Result<CapturedCompositionProjectRequest, ProjectCaptureError> {
+    ) -> Result<CapturedProjectRequest, ProjectCaptureError> {
         capture_cancelled(Some(&cancellation))?;
         let mut sources = Vec::new();
         sources
@@ -251,24 +191,14 @@ impl CapturedCompositionProject {
                     .map_err(|_| ProjectCaptureError::LimitExceeded)?,
             ));
         }
-        let version = text(profile::CAPTURE_REQUEST_VERSION)
-            .map_err(|_| ProjectCaptureError::LimitExceeded)?;
-        let features = self
-            .required_features
-            .try_clone()
-            .map_err(|_| ProjectCaptureError::LimitExceeded)?;
+        let version = text(request_version).map_err(|_| ProjectCaptureError::LimitExceeded)?;
         capture_cancelled(Some(&cancellation))?;
-        let envelope = CapturedProjectRequest::new(
+        Ok(CapturedProjectRequest::new(
             version,
             self.captured.profile,
             sources,
             vocabularies,
             super::ProjectCaptureControls::new(self.limits(), cancellation),
-        );
-        Ok(CapturedCompositionProjectRequest::new(
-            envelope,
-            features,
-            self.composition_limits,
         ))
     }
 }
@@ -319,33 +249,6 @@ impl From<CompositionError> for CompositionCaptureFailure {
     }
 }
 
-/// Captures an explicitly selected /2 request and validates its complete vocabulary closure.
-///
-/// This is the no-I/O capture boundary, not source compilation or a binary decoder.
-/// The existing /1 API remains strict and cannot accept this output type.
-///
-/// # Errors
-/// Rejects unsupported features/envelopes, invalid budgets, cancellation, integrity,
-/// malformed headers or any invalid/extra/missing transitive catalogue input.
-pub fn capture_composition_project(
-    request: CapturedCompositionProjectRequest,
-) -> Result<CapturedCompositionProject, CompositionCaptureFailure> {
-    capture_with_checkpoints(request, |_| {})
-}
-
-/// Validates ordered phases with private deterministic cancellation handoffs for tests.
-fn capture_with_checkpoints(
-    request: CapturedCompositionProjectRequest,
-    checkpoint: impl FnMut(ProjectCaptureCheckpoint),
-) -> Result<CapturedCompositionProject, CompositionCaptureFailure> {
-    capture_selected(
-        request,
-        profile::CAPTURE_REQUEST_VERSION,
-        profile::REQUIRED_FEATURES,
-        checkpoint,
-    )
-}
-
 /// Shared integrity/header/catalogue phases, after an exact boundary-specific selection.
 pub(super) fn capture_selected(
     request: CapturedCompositionProjectRequest,
@@ -383,8 +286,7 @@ pub(super) fn capture_selected(
     validate_vocabularies_cancellable(&envelope.vocabularies, values, Some(cancellation))?;
     checkpoint(ProjectCaptureCheckpoint::Integrity);
     capture_cancelled(Some(cancellation))?;
-    let requirements =
-        validate_headers_policy(&sources, envelope.profile, true, Some(cancellation))?;
+    let requirements = validate_headers_policy(&sources, envelope.profile, Some(cancellation))?;
     checkpoint(ProjectCaptureCheckpoint::Headers);
     capture_cancelled(Some(cancellation))?;
 
@@ -455,9 +357,7 @@ fn capture_aliases<'a>(
         let text =
             std::str::from_utf8(&source.bytes).map_err(|_| ProjectCaptureError::InvalidHeader)?;
         let mut local = OrderedMap::new();
-        for (identity, alias) in
-            scan_vocabulary_requirements_policy(text, true, Some(cancellation))?
-        {
+        for (identity, alias) in scan_vocabulary_requirements_policy(text, Some(cancellation))? {
             capture_cancelled(Some(cancellation))?;
             work = work
                 .checked_sub(local.len() as u64 + 1)
@@ -500,7 +400,3 @@ fn validate_catalogue_capture_bounds(
     }
     Ok(())
 }
-
-#[cfg(test)]
-#[path = "../../tests/project_capture/composition.rs"]
-mod tests;

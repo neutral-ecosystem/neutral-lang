@@ -245,7 +245,7 @@ fn composition_scope_source_defaults_embed_vocabulary_variants() {
 
 /// Definition, field and tag order cannot influence shared resolved-scope semantics.
 #[test]
-fn composition_scope_canonical_order_is_nonsemantic() {
+fn property_composition_scope_canonical_order_is_nonsemantic() {
     let sources = vec![
         outcome("zeta", "Outcome", true),
         source(

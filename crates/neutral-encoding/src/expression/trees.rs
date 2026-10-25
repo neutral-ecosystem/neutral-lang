@@ -6,9 +6,9 @@ use super::{check_cancelled, read_list};
 use crate::{
     DecodeError as D, DecodeErrorClass as C, EncodingError as E,
     cbor::CborWriter,
-    composition::{read_value, write_value},
+    contracts::{read_value, write_value},
     decoder::{CborValue, LocatedValue},
-    project::{
+    primitives::{
         array, failure, owned_text, read_symbol, read_type, schema, text, tuple, unsigned,
         write_list, write_symbol, write_type,
     },

@@ -13,6 +13,7 @@ API documentation locally with `cargo xtask docs`, or browse the live
 | Set up a workstation and use the development loop | [Development workflow](development.md) |
 | Optimize human DX and eliminate manual bookkeeping | [Workflow optimization](workflow-optimization.md) |
 | Advance from one version to the next | [Development lifecycle](development-lifecycle.md) |
+| Distinguish development cleanup from stable compatibility | [Compatibility policy](compatibility-policy.md) |
 | Assess completed v1 against real consumer needs and proposed v2 requirements | [Ecosystem-readiness audit](v2-ecosystem-readiness-audit.md) |
 | Design post-v2 packages, the runtime host, dynamic editor and self-hosted CI | [Runtime and package architecture](v2-runtime-and-package-architecture.md) |
 | Review a readable TOML-inspired `.neu` surface and optional typed TOML capture | [Source syntax proposal](source-syntax-proposal.md) |

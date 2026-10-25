@@ -1,20 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Complete successor logical data and independent companions, not validated authority.
+//! Shared retained-data policy and preflight helpers for current expression projects.
 
-use super::{BindingValue, CompositionBody, CompositionBundle, ValueOriginKind, ValuePathSegment};
-use crate::{
-    ModuleSymbolIdentity,
-    project::{
-        ProjectLimits, ProjectModule, ProjectProvenance, ProjectResourceFacts, ProjectSource,
-        ProjectSourceMap, ProjectVocabularySource,
-    },
-};
-use neutral_core::{ByteSpan, SemanticDigest, SourceLocation};
+use super::{CompositionBody, ValueOriginKind, ValuePathSegment};
+use crate::ModuleSymbolIdentity;
+use neutral_core::{ByteSpan, SourceLocation};
 mod inspection;
 pub use inspection::{
     CompositionBodyInspection, CompositionShapeError, inspect_composition_bodies,
-    inspect_composition_catalogue, inspect_composition_ir, inspect_expression_project_resources,
+    inspect_composition_catalogue, inspect_expression_project_resources,
     inspect_expression_project_resources_with_work,
 };
 
@@ -107,26 +101,13 @@ impl CompositionPolicy {
     }
 }
 
-/// Complete resolved source signature, including all unused default/restriction facts.
+/// Shared exact binding/nominal-definition signature for current expression declarations.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompositionSignature {
     /// Immutable binding's invariant expected type.
     Binding(crate::project_interface::ProjectPublicType),
     /// Source record/variant using the exact shared vocabulary body model.
     Definition(CompositionBody),
-}
-
-/// One private or public declaration; type declarations never carry a binding value.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CompositionDeclaration {
-    /// Exact source module-symbol identity.
-    pub identity: ModuleSymbolIdentity,
-    /// Explicit source visibility.
-    pub public: bool,
-    /// Complete canonical signature.
-    pub signature: CompositionSignature,
-    /// Fully materialized meaning, absent exactly for nominal definitions.
-    pub value: Option<BindingValue>,
 }
 
 /// Attribution evidence, not authentication or a host acquisition hint.
@@ -209,37 +190,4 @@ impl CompositionResourceFacts {
             retained_value_nodes: v[6],
         }
     }
-}
-
-/// Complete successor producer data; construction does not confer independent reader validity.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CompositionProjectIr {
-    /// Exact successor selector; no implicit old-profile conversion.
-    pub schema: String,
-    /// Complete modules and logical imports, including disconnected/private-only units.
-    pub modules: Vec<ProjectModule>,
-    /// All source declarations, in exact module-symbol order.
-    pub declarations: Vec<CompositionDeclaration>,
-    /// Complete canonical vocabulary contracts; capture digests remain separate from meaning.
-    pub vocabularies: Vec<CompositionBundle>,
-    /// Declared public interface /2 digest, independently recomputed by the reader.
-    pub interface_digest: SemanticDigest,
-    /// Original source accounting, in module order.
-    pub sources: Vec<ProjectSource>,
-    /// Complete declaration source maps.
-    pub source_maps: Vec<ProjectSourceMap>,
-    /// Actual source type/value/reference dependency occurrences.
-    pub provenance: Vec<ProjectProvenance>,
-    /// Independent retained/output processing controls.
-    pub limits: ProjectLimits,
-    /// Independently recomputable complete source/project facts.
-    pub resources: ProjectResourceFacts,
-    /// Exact captured vocabulary source accounting.
-    pub vocabulary_sources: Vec<ProjectVocabularySource>,
-    /// Canonical binding occurrence facts, separately attributed from logical meaning.
-    pub origins: Vec<CompositionOrigin>,
-    /// Frozen independent composition acceptance controls.
-    pub composition_limits: CompositionPolicy,
-    /// Independently recomputable complete contract/value facts.
-    pub composition_resources: CompositionResourceFacts,
 }

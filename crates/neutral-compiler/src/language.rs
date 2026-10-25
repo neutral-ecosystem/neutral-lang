@@ -9,8 +9,8 @@
 /// Frozen language-word constants grouped by source-language responsibility.
 pub(crate) mod names {
     pub(crate) use neutral_ir::language::{
-        BOOL, FALSE, LIST, MODULE, NEU, NULL, NUM, RECORD, REF, REF_TYPE, SOURCE_LANGUAGE_VERSION,
-        STRING, TRUE, USE, is_protected_name,
+        BOOL, FALSE, LIST, MODULE, NEU, NULL, NUM, RECORD, REF, REF_TYPE, STRING, TRUE, USE,
+        is_protected_name,
     };
 }
 

@@ -6,8 +6,8 @@ use crate::{
     BTreeMap, Component, Path, PathBuf, PortableAction, check_portable_traceability_at,
     collect_regular_files, configuration_section, configuration_value, constants,
     ensure_no_portable_archive_dependencies, fs, is_sha256, json_string, line_spdx_marker,
-    markdown_link_targets, project_license, read_workspace_text, result_root, sha256_hex,
-    unique_generated_directory, workspace_root,
+    markdown_link_exists, markdown_link_targets, project_license, read_workspace_text, result_root,
+    sha256_hex, unique_generated_directory, workspace_root,
 };
 use std::fmt::Write as _;
 
@@ -344,9 +344,7 @@ pub(crate) fn verify_portable_links(root: &Path) -> Result<(), String> {
         let content = fs::read_to_string(file)
             .map_err(|error| format!("could not read {}: {error}", file.display()))?;
         for target in markdown_link_targets(&content) {
-            let candidate = file.parent().unwrap_or(&portable_root).join(&target);
-            let valid = fs::canonicalize(&candidate)
-                .is_ok_and(|candidate| candidate.starts_with(&canonical_root));
+            let valid = markdown_link_exists(root, &canonical_root, file, &target)?;
             if !valid {
                 missing.push(format!(
                     "{} -> {target}",

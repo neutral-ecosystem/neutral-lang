@@ -20,6 +20,7 @@ pub use dependencies::{
 pub use entries::{ExpressionEntryError, SelectedExpressionEntries};
 use neutral_core::{CancellationToken, allocation::Shared};
 use neutral_ir::expression::project::ExpressionProjectIr;
+pub use neutral_ir::expression::templates::ExpansionLimits;
 pub use neutral_ir::expression::{profile, project::ExpressionResourceFacts};
 pub use neutral_ir::project_identity::{
     ExpressionInterfaceIdentity, ExpressionLogicalIdentity, canonical_expression_project,

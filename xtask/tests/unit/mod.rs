@@ -380,12 +380,50 @@ fn automation_renders_release_evidence_scaffold() {
 /// Contract-version sections stay separate from package release versions.
 fn automation_reads_all_contract_version_domains() {
     let values = super::configuration_section(
-        "[contract_versions]\nlanguage_behavior = \"0.1.0\"\nexternal_ir_encoding = \"NIR-CBOR/0.1\"\n",
+        "[contract_versions]\nlanguage_behavior = \"0.1.0\"\nexternal_ir_encoding = \"NIR-PROJECT-CBOR/3\"\n",
         "contract_versions",
     )
     .expect("contract version section should parse");
     assert_eq!(values.len(), 2);
-    assert!(values.contains(&("external_ir_encoding".to_owned(), "NIR-CBOR/0.1".to_owned())));
+    assert!(values.contains(&(
+        "external_ir_encoding".to_owned(),
+        "NIR-PROJECT-CBOR/3".to_owned()
+    )));
+}
+
+#[test]
+/// Active encoding policy describes the exact current expression artifact tuple.
+fn active_ir_encoding_policy_selects_only_expression_project_three() {
+    let policy = include_str!("../../../config/ir-encoding.toml");
+    let document: toml::Value = toml::from_str(policy).expect("encoding policy should parse");
+    let table = document
+        .as_table()
+        .expect("encoding policy should be a table");
+    assert_eq!(table["contract"].as_str(), Some("NIR-PROJECT-CBOR/3"));
+    assert_eq!(table["magic_hex"].as_str(), Some("4e455550330d0a1a"));
+    assert_eq!(table["schema"].as_str(), Some("neutral.project-ir/3"));
+    assert_eq!(table["tuple_fields"].as_integer(), Some(22));
+    assert!(table.get("framing_revision").is_none());
+
+    let profiles = table["profiles"].as_table().expect("profile table");
+    assert_eq!(
+        profiles["expression"].as_str(),
+        Some("neutral.expression/1")
+    );
+    assert_eq!(profiles["evaluator"].as_str(), Some("neutral.evaluator/1"));
+    assert_eq!(profiles["expansion"].as_str(), Some("neutral.expansion/1"));
+    assert_eq!(profiles["decimal"].as_str(), Some("neutral.decimal/1"));
+    assert_eq!(
+        profiles["required_features"].as_array().unwrap(),
+        &[
+            toml::Value::String("decimal-division-v1".to_owned()),
+            toml::Value::String("finite-expansion-v1".to_owned()),
+            toml::Value::String("pure-evaluator-v1".to_owned()),
+            toml::Value::String("pure-expressions-v1".to_owned()),
+            toml::Value::String("tagged-variants-v1".to_owned()),
+            toml::Value::String("vocabulary-composition-v2".to_owned()),
+        ]
+    );
 }
 
 #[test]
@@ -788,6 +826,28 @@ fn semantics_policy_rejects_compiler_and_host_dependencies() {
     assert!(validate_direct_dependencies("neutral-semantics", &actual, allowed).is_ok());
     actual.insert(constants::NEUTRAL_COMPILER.to_owned());
     assert!(validate_direct_dependencies("neutral-semantics", &actual, allowed).is_err());
+}
+
+#[test]
+/// Dependency-free shared test builders stay outside production crates.
+fn test_support_policy_does_not_retain_unused_runtime_dependencies() {
+    let policy = crate::checks::dependencies::direct_dependency_policy();
+    let allowed = policy
+        .get(constants::NEUTRAL_TEST_SUPPORT)
+        .expect("test support boundary is required");
+    assert!(allowed.is_empty());
+    assert!(
+        validate_direct_dependencies(constants::NEUTRAL_TEST_SUPPORT, &BTreeSet::new(), allowed,)
+            .is_ok()
+    );
+    assert!(
+        validate_direct_dependencies(
+            constants::NEUTRAL_TEST_SUPPORT,
+            &BTreeSet::from([constants::NEUTRAL_CORE.to_owned()]),
+            allowed,
+        )
+        .is_err()
+    );
 }
 
 #[test]

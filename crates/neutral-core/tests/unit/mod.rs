@@ -15,10 +15,7 @@ use super::{
 #[test]
 /// Verifies exact profile selection, availability, and stable capabilities.
 fn profile_catalogue_is_explicit_complete_and_deterministic() {
-    assert_eq!(
-        LanguageProfile::from_source_version("0.1"),
-        Some(LanguageProfile::V0_1)
-    );
+    assert_eq!(LanguageProfile::from_source_version("0.1"), None);
     assert_eq!(
         LanguageProfile::from_source_version("1.0"),
         Some(LanguageProfile::V1_0)
@@ -26,21 +23,16 @@ fn profile_catalogue_is_explicit_complete_and_deterministic() {
     for lookalike in ["01.0", "1.00", "1", "v1.0", "1.0 "] {
         assert_eq!(LanguageProfile::from_source_version(lookalike), None);
     }
-    assert_eq!(language_profiles().len(), 2);
-    assert_eq!(
-        language_profile(LanguageProfile::V0_1).availability(),
-        ProfileAvailability::Available
-    );
+    assert_eq!(language_profiles().len(), 1);
     assert!(
-        language_profile(LanguageProfile::V0_1)
+        language_profile(LanguageProfile::V1_0)
             .capabilities()
             .contains(&LanguageCapability::ImmutableData)
     );
     assert_eq!(
         language_profile(LanguageProfile::V1_0).availability(),
-        ProfileAvailability::Unavailable
+        ProfileAvailability::Available
     );
-    assert_eq!(language_profile(LanguageProfile::V1_0).capabilities(), &[]);
     assert!(PROFILE_UNAVAILABLE_DIAGNOSTIC.starts_with(PROFILE_DIAGNOSTIC_FAMILY));
 }
 
@@ -259,7 +251,7 @@ fn structural_limits_capture_collection_budgets() {
 
 #[test]
 /// Exercises typed digest reconstruction and raw-byte access contracts.
-fn typed_digests_round_trip_validated_raw_bytes() {
+fn property_typed_digests_round_trip_validated_raw_bytes() {
     let source_bytes = [1_u8; 32];
     let source = SourceContentDigest::from_raw_bytes(source_bytes);
     assert_eq!(source.as_bytes(), source_bytes);

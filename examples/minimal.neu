@@ -1,0 +1,12 @@
+neu "1.0"
+module example
+
+public record Service {
+    string image,
+    List<string> labels = [],
+}
+
+public Service api = {
+    image: "example.invalid/api:1",
+    labels: ["portable", "typed"],
+}

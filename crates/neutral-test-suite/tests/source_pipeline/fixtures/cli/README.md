@@ -1,8 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Available CLI source profile
+# Current CLI source inputs
 
-The CLI compilation profile supports these programs. They protect real file
-input, formatting, validation, atomic compilation, encoded IR, and executable
-probe output. Project features are tested separately through the project API
-until the public profile catalogue activates them.
+These local `neu "1.0"` fixtures exercise current source validation,
+formatting, atomic `/3` compilation and standalone probe output. They are owned
+by the test suite and do not borrow historical release fixtures.

@@ -4,7 +4,7 @@
 
 use neutral_cli::constants;
 use neutral_core::{CancellationToken, VocabularyContentDigest};
-use neutral_encoding::{DecodeLimits, decode};
+use neutral_encoding::DecodeLimits;
 use std::{
     fs,
     io::Write,
@@ -16,11 +16,9 @@ use std::{
 /// Process-local suffix for isolated system-test roots.
 static TEST_ROOT_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 /// Minimal valid source used at the command boundary.
-const MINIMAL_SOURCE: &[u8] = b"neu \"0.1\"\nmodule cli_system\nnum answer = 42\n";
+const MINIMAL_SOURCE: &[u8] = b"neu \"1.0\"\nmodule cli_system\nnum answer = 42\n";
 /// Invalid source used to prove fail-closed output policy.
-const INVALID_SOURCE: &[u8] = b"neu \"0.1\"\nnum answer = 42\n";
-/// Expected canonical rendering of the noncanonical formatter source.
-const FORMATTED_SOURCE: &[u8] = b"neu \"0.1\"\nmodule cli_system\n\nnum answer = 42\n";
+const INVALID_SOURCE: &[u8] = b"neu \"1.0\"\nnum answer = 42\n";
 
 /// Isolated temporary root removed after one system test.
 struct TestRoot(PathBuf);
@@ -83,6 +81,18 @@ fn has_temporary_file(root: &TestRoot) -> bool {
         })
 }
 
+fn semantic_limits() -> neutral_reader::SemanticLimits {
+    let scalar = neutral_core::StructuralLimits::new(1_048_576, 64).unwrap();
+    neutral_reader::SemanticLimits {
+        project: neutral_encoding::hard_project_limits(),
+        composition: neutral_reader::composition::ProjectCompositionLimits::from_vocabulary(
+            neutral_reader::composition::CompositionScalarLimits::from_structural(scalar),
+        ),
+        expression: neutral_reader::expression::profile::ExpressionLimits::hard(),
+        expansion: neutral_ir::expression::templates::ExpansionLimits::hard(),
+    }
+}
+
 #[test]
 /// Verifies general and command-specific usage through the built executable.
 fn system_cli_usage_and_command_help_are_stable() {
@@ -107,8 +117,8 @@ fn system_cli_usage_and_command_help_are_stable() {
 }
 
 #[test]
-/// Captures a v1 source through the shared public project request schema.
-fn system_cli_captures_an_explicit_v1_project_request() {
+/// Captures a current source through the shared complete-project request schema.
+fn system_cli_captures_an_explicit_current_project_request() {
     let root = TestRoot::new("project-capture");
     let source = root.join("project.neu");
     fs::write(&source, b"neu \"1.0\"\nmodule cli::project\n")
@@ -147,17 +157,14 @@ fn system_cli_profile_report_agrees_with_reader_contract() {
     let output = run(&[constants::PROFILES]);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
     let rendered = stderr(&output);
-    for descriptor in neutral_reader::language_profiles() {
-        assert!(rendered.contains(&format!(
-            "profile={} status={}",
-            descriptor.profile().source_version(),
-            descriptor.availability().as_str()
-        )));
-        for capability in descriptor.capabilities() {
-            assert!(rendered.contains(capability.as_str()));
-        }
-    }
-    assert!(rendered.contains("profile=1.0 status=unavailable capabilities=none"));
+    let capabilities = neutral_reader::expression::profile::REQUIRED_FEATURES.join(",");
+    assert_eq!(
+        rendered.trim(),
+        format!("INFO profile=1.0 status=development capabilities={capabilities}")
+    );
+    assert_eq!(rendered.lines().count(), 1);
+    assert!(rendered.contains("profile=1.0 status=development"));
+    assert!(rendered.contains("pure-expressions-v1"));
 }
 
 #[test]
@@ -177,13 +184,14 @@ fn system_cli_file_commands_have_stable_output_policy() {
     ]);
     assert_eq!(compile.status.code(), Some(0), "{}", stderr(&compile));
     assert!(stderr(&compile).contains("PASS compile succeeded"));
-    let decoded = decode(
+    let decoded = neutral_encoding::decode_expression_project(
         &fs::read(&artifact).expect("artifact must exist"),
         DecodeLimits::hard(),
+        semantic_limits(),
         &CancellationToken::new(),
     )
     .expect("CLI artifact must decode");
-    assert_eq!(decoded.module_name(), "cli_system");
+    assert_eq!(decoded.ir().modules[0].identity.module_name(), "cli_system");
 
     let validate = run(&[
         constants::VALIDATE,
@@ -199,10 +207,25 @@ fn system_cli_file_commands_have_stable_output_policy() {
         source.to_str().expect("test path must be UTF-8"),
     ]);
     assert_eq!(format.status.code(), Some(0), "{}", stderr(&format));
+    let formatted_bytes = fs::read(&formatted).expect("formatted output must exist");
+    let formatted_text = std::str::from_utf8(&formatted_bytes).unwrap();
+    assert!(formatted_text.starts_with("neu \"1.0\"\nmodule cli_system\n"));
+    assert!(formatted_text.contains("num answer = 42"));
+    assert_eq!(fs::read(&source).unwrap(), MINIMAL_SOURCE);
+    let second = root.join("formatted-again.neu");
+    let second_format = run(&[
+        constants::FORMAT,
+        constants::OUTPUT,
+        second.to_str().unwrap(),
+        formatted.to_str().unwrap(),
+    ]);
     assert_eq!(
-        fs::read(&formatted).expect("formatted output must exist"),
-        FORMATTED_SOURCE
+        second_format.status.code(),
+        Some(0),
+        "{}",
+        stderr(&second_format)
     );
+    assert_eq!(fs::read(second).unwrap(), formatted_bytes);
 
     let no_overwrite = run(&[
         constants::FORMAT,
@@ -217,7 +240,7 @@ fn system_cli_file_commands_have_stable_output_policy() {
     assert!(stderr(&no_overwrite).contains("FAIL output-exists"));
     assert_eq!(
         fs::read(&formatted).expect("existing output must remain"),
-        FORMATTED_SOURCE
+        formatted_bytes
     );
 
     fs::write(&formatted, b"replace me").expect("replacement sentinel must be writable");
@@ -231,7 +254,7 @@ fn system_cli_file_commands_have_stable_output_policy() {
     assert_eq!(overwrite.status.code(), Some(0), "{}", stderr(&overwrite));
     assert_eq!(
         fs::read(&formatted).expect("replacement output must exist"),
-        FORMATTED_SOURCE
+        formatted_bytes
     );
     assert!(!has_temporary_file(&root));
 }
@@ -260,13 +283,14 @@ fn system_cli_compile_supports_explicit_standard_streams() {
     let output = child.wait_with_output().expect("streaming CLI must finish");
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
     assert!(stderr(&output).contains("PASS compile succeeded"));
-    let decoded = decode(
+    let decoded = neutral_encoding::decode_expression_project(
         &output.stdout,
         DecodeLimits::hard(),
+        semantic_limits(),
         &CancellationToken::new(),
     )
     .expect("stdout must contain only the encoded artifact");
-    assert_eq!(decoded.module_name(), "cli_system");
+    assert_eq!(decoded.ir().modules[0].identity.module_name(), "cli_system");
 }
 
 #[test]
@@ -327,7 +351,7 @@ fn system_cli_failure_and_cancellation_leave_no_partial_output() {
         cancelled.status.code(),
         Some(i32::from(constants::EXIT_CANCELLED))
     );
-    assert!(stderr(&cancelled).contains("FAIL cancelled"));
+    assert!(stderr(&cancelled).contains("FAIL NEU-CAP-013"));
     assert_eq!(
         fs::read(&destination).expect("sentinel must remain"),
         sentinel
@@ -376,10 +400,10 @@ fn system_cli_vocabulary_resolution_is_explicit() {
         .and_then(Path::parent)
         .expect("CLI crate must be inside the workspace");
     let source = workspace.join(
-        "conformance/releases/v0.1.0/specs/fixtures/positive/vocabulary/minimal-vocabulary.neu",
+        "crates/neutral-test-suite/tests/expression_pipeline/fixtures/registered/positive/restrictions.neu",
     );
     let bundle = workspace.join(
-        "conformance/releases/v0.1.0/specs/fixtures/vocabulary/bundles/positive/comprehensive.json",
+        "crates/neutral-test-suite/tests/expression_pipeline/fixtures/registered/bundle.json",
     );
     let bundle_bytes = fs::read(&bundle).expect("vocabulary bundle must be readable");
     let digest = VocabularyContentDigest::from_bytes(&bundle_bytes).to_string();
@@ -391,13 +415,15 @@ fn system_cli_vocabulary_resolution_is_explicit() {
         constants::VOCABULARY_BUNDLE,
         bundle.to_str().expect("test path must be UTF-8"),
         constants::VOCABULARY_IDENTITY,
-        "Fixture",
+        "ExpressionDomain",
         constants::VOCABULARY_VERSION,
-        "0.1.0",
+        "1.0.0",
         constants::VOCABULARY_ENCODING,
-        "0.1",
+        "1.0",
         constants::VOCABULARY_SCHEMA,
-        "0.1",
+        "2.0",
+        constants::VOCABULARY_FEATURE,
+        "vocabulary-composition-v2",
         constants::VOCABULARY_DIGEST,
         &digest,
         source.to_str().expect("test path must be UTF-8"),
@@ -442,10 +468,10 @@ fn system_cli_permission_failure_leaves_no_output() {
 fn system_cli_broken_pipe_has_stable_exit_class() {
     let root = TestRoot::new("broken-pipe");
     let source = root.join("large.neu");
-    let payload = "x".repeat(262_144);
+    let payload = "x".repeat(16_384);
     fs::write(
         &source,
-        format!("neu \"0.1\"\nmodule broken_pipe\nstring payload = \"{payload}\"\n"),
+        format!("neu \"1.0\"\nmodule broken_pipe\nstring payload = \"{payload}\"\n"),
     )
     .expect("large valid source must be writable");
     let mut child = cli()

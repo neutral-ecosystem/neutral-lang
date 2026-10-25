@@ -16,10 +16,10 @@ cargo install cargo-nextest --locked
 cargo fetch --locked
 ```
 
-Install Python 3 through your platform package manager as well. Project identity
-conformance runs a retained independent standard-library encoder; it is a real
-test prerequisite, not an optional skipped check. Discovery tries `python3`, then
-`python`; `NEUTRAL_IDENTITY_REFERENCE_PYTHON` selects another interpreter path.
+Install Python 3 through your platform package manager as well. The retained
+frozen composition-identity oracle is a real test prerequisite, not an optional
+skipped check. Discovery tries `python3`, then `python`;
+`NEUTRAL_IDENTITY_REFERENCE_PYTHON` selects another interpreter path.
 No Python packages or virtual environment are required.
 
 Run the platform bootstrap adapter after cloning or when the toolchain changes:
@@ -78,18 +78,21 @@ the same selection; the explicit Cargo backend applies equivalent exclusions.
 The runner/config/profile selection lives in `config/automation.toml`; a missing
 runner produces installation guidance rather than silently skipping tests.
 
-For project IR and public-view changes, run the focused boundaries first:
+For current expression-project, public-view, or identity changes, run the focused
+boundaries first:
 
 ```sh
-cargo test --package neutral-test-suite project_ir
-cargo test --package neutral-test-suite project_identity
+cargo test --package neutral-test-suite expression_pipeline
+cargo test --package neutral-test-suite source_pipeline
+cargo test --package neutral-probe
 cargo xtask test all
 cargo xtask fixtures check
 cargo xtask ci pr
 ```
 
-The standalone probe supports both document and complete project artifacts;
-see its [commands and selection rules](../crates/neutral-probe/README.md).
+The standalone probe accepts complete expression-project `/3` artifacts only;
+historical and unknown profiles fail closed. See its
+[commands and selection rules](../crates/neutral-probe/README.md).
 
 ## Documentation
 

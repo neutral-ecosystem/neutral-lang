@@ -2,12 +2,12 @@
 
 # Unit test ownership
 
-[`mod.rs`](mod.rs) covers logical equality, source accounting, names, exact values
-and fingerprints through the library test module. [`project_identity_framing.rs`](project_identity_framing.rs)
-tests private bounded framing. [Expression tests](expression/README.md) use the
-public raw-tree API through their integration-test entry point.
+`mod.rs` keeps shared scalar, vocabulary, type/value, nominal and language
+primitive tests. `project_identity_framing.rs` tests the private bounded writer.
+`expression_retention_inspection.rs` covers the common composition inspector
+used by current expression projects. Expression raw-model and frozen identity
+tests live in the top-level test files.
 
-Use shared production selectors to construct ordinary test data. Keep literal
-expected transcript/wire bytes and historical compatibility oracles independent
-of the code being tested; otherwise a protocol regression can change both sides.
-Run `cargo nextest run --config-file config/nextest.toml --package neutral-ir`.
+The former complete-document graph equality/accessor tests were removed with
+those models; current `/3` identity partitions and frozen bytes are mapped in
+the [IR test guide](../README.md). Run `cargo test -p neutral-ir`.

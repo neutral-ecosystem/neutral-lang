@@ -1,0 +1,5 @@
+neu "1.0"
+module app::consumer
+
+import app::shared as shared
+public num answer = missing

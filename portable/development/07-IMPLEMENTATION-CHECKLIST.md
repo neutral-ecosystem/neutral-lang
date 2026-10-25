@@ -8,6 +8,18 @@ This is the operational tracking file for the complete journey from `v0.1.0`
 to `v1.0.0`. Check an item only when its linked implementation and retained
 validation evidence exist. Design acceptance alone does not complete an item.
 
+Development policy amendment (24-10-2026): the approved
+[latest-only cutover](../../docs/compatibility-policy.md) supersedes historical
+source/profile and complete-artifact acceptance requirements before stable 1.0.
+Earlier checked items below remain historical evidence; they do not require
+shipping obsolete pipelines. Current `/3` vectors and all unrelated safety and
+qualification requirements remain binding. Cutover progress is tracked in the
+[implementation plan](../../docs/superpowers/plans/2026-10-24-latest-only-development.md).
+The cutover is implemented and fast-validated on 25-10-2026: current CLI,
+formatter, cache, independent reader/probe and tool harnesses use `/3` only;
+877 tests and CI pass. Fresh coverage/mutation/fuzz/controlled-performance
+qualification and unrelated Stage 8–9 gates remain open.
+
 Developers choose and review the next unchecked item. `cargo xtask dev` and
 `cargo xtask ci pr` retain the toolchain, commit, commands, and results in
 ignored workflow logs. This checklist is the routine completion authority;
@@ -409,7 +421,7 @@ project companions, codec/probe support, public views or new identity profiles.
   verification and all 64 fixture/oracle checks pass without changing frozen inputs.
 
 Evidence: [capture and captured-identity integration](evidence/stage7-contract-core.md#composition-capture-and-captured-identity-integration-06-10-2026),
-[capture tests](../../crates/neutral-compiler/tests/project_capture/composition.rs)
+[current capture tests](../../crates/neutral-compiler/tests/expression_source/capture.rs)
 and [cross-package tests](../../crates/neutral-test-suite/tests/composition_contract/capture.rs).
 This is capture/catalogue integration, not source compilation, new project IR,
 wire/probe/view support, or complete logical/derivation/artifact identity.
@@ -809,7 +821,8 @@ and all source-bound measurements invalidated by the changed inputs.
 - [ ] Confirm all approved v1 features are implemented; close qualification
   defects and remove temporary gates not part of the public profile contract.
   Return missing semantic features to Stage 8; do not expand release scope here.
-- [ ] Complete migration tooling/documentation without altering v0.1 meaning.
+- [ ] Document the current-only development boundary and the first stable
+  compatibility baseline without altering historical release records.
 - [ ] Revalidate affected contracts/oracles and regenerate invalidated evidence
   after fixes; rerun final public integration against the corrected inputs.
 
@@ -829,7 +842,8 @@ and all source-bound measurements invalidated by the changed inputs.
 
 ### `v0.9.4` — release validation gate
 
-- [ ] Pass inherited v0.1 and complete v1 conformance suites.
+- [ ] Pass the complete current v1 conformance suites; preserve historical
+  fixture/vector bytes without requiring obsolete production implementations.
 - [ ] Pass formatter/linter/docs, unit/integration/system/property/fuzz,
   malformed/hostile input, limits, determinism, concurrency, soak, performance,
   security, dependency, and license gates.

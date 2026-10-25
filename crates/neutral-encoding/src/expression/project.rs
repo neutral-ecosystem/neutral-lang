@@ -9,12 +9,12 @@ use super::{
 use crate::{
     DecodeError as D, DecodeErrorClass as C, EncodingError as E,
     cbor::CborWriter,
-    composition::{
+    contracts::{
         read_body, read_companions, read_numbers, read_option, read_origin, read_value,
         read_vocabularies, write_body, write_companions, write_option, write_origin, write_value,
     },
     decoder::LocatedValue,
-    project::{
+    primitives::{
         array, boolean, digest, failure, owned_text, read_module, read_symbol, read_type, schema,
         text, tuple, write_list, write_module, write_numbers, write_symbol, write_type,
     },

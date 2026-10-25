@@ -3,97 +3,30 @@
 # neutral-probe
 
 `neutral-probe` is the reader-only inspection library and standalone probe
-binary for Neutral artifacts.
+binary for complete Neutral expression-project artifacts (`NEUP3`). It depends
+on the public `neutral-core`, `neutral-encoding`, and `neutral-reader` contracts;
+its tests use public `neutral-ir` constructors. It does not link the compiler or
+resolve source files.
 
-Its runtime path depends only on public `neutral-core`, `neutral-encoding`, and
-`neutral-reader` contracts. Its test-only artifact builder uses public
-`neutral-ir` constructors. Its purpose is to prove that encoded artifacts can be
-decoded and inspected without linking `neutral-compiler`; it must not import
-private parser/semantic models, capture logic, or a filesystem resolver. It
-reports observations, not application-specific meaning.
-
-The active probe implements deterministic logical/identity metadata, source-map,
-derivation, resource, binding, nominal-record, exact vocabulary-contract,
-qualified-schema, final-value, and provenance summaries plus one consumer-owned
-diagnostic mapped through the public reader source map. Its traversal remains
-generic and contains no fixture-specific interpretation. The standalone binary
-accepts one encoded artifact path, validates it under the hard decoder limits,
-and emits shared-renderer observations prefixed with `INFO`, or one bounded
-`FAIL` diagnostic on stderr. Help and version text have no prefix.
-With `--json`, stdout is a JSON document
-without log prefixes so it can be parsed by other tools.
-The binary also detects complete `NIR-PROJECT-CBOR/1` and successor
-`NIR-PROJECT-CBOR/2` artifacts. It validates all
-modules, private declarations, and companions before exposing complete counts
-and a redacted public view. No private identities, source IDs, spans, or raw
-provenance appear in that projection. An omitted selection includes all public
-exports; `--root` can be repeated to select a smaller public dependency closure.
-Selection never changes complete IR. Artifact file reads obey the hard byte cap.
-Project summaries also expose the frozen identity profile and typed complete
-logical digest, computed through the validated reader without compiler linkage.
-This digest includes private/disconnected meaning but publishes no transcript or
-private provenance; it is distinct from the public-interface fingerprint and
-remains unchanged for omitted, empty, or explicit public-root selections.
-
-```console
-cargo run --package neutral-probe -- path/to/artifact.nir
-```
-
-For a formatted JSON inspection view of the decoded artifact, run:
-
-```console
-cargo run --package neutral-probe -- --json path/to/artifact.nir
-```
-
-For a complete project artifact produced by `neutral_encoding::project`, run:
+The standalone command validates the complete artifact before exposing counts,
+typed logical/interface identities, exact semantic profiles and features, and
+public root names. Source IDs, spans, private declaration names, and raw private
+values are omitted. Without `--root`, it lists every public declaration and
+template owner. Repeated `--root module::name` selects public owners, and roots
+are validated before output is written. Historical and unknown magic fail
+closed without a decoder fallback. Artifact reads obey the hard byte cap.
 
 ```console
 cargo run --package neutral-probe -- --json --root example::api target/project.nir
 ```
 
-The single-file compiler CLI does not yet produce complete-project artifacts.
-The library's `inspect_project_encoded` accepts explicit consumer limits and
-optional selections; `Some(&[])` yields an empty view, while `None` selects all
-public exports. Its typed failure contains either a bounded decode error or a
-reader view or identity-construction error and no partial summary.
-
-`composition::inspect_composition_encoded` provides the same explicit consumer
-limits and root selection for successor artifacts. Its public projection exposes
-both-origin record/variant contracts, defaults/restrictions, reference paths and
-targets, and safe occurrence facts. All alternative types and transitive
-vocabulary dependencies are retained, not just the selected payload. Source IDs,
-spans and private implementation provenance are redacted; canonical public
-vocabulary default owners remain without captured-byte spans. Complete logical
-identity is independent of selection. The same `--json`/`--root` commands above
-work for these library-produced artifacts without compiler linkage.
-
-`composition::inspect_composition_entries_encoded` accepts a
-`CompositionEntryProbeRequest`: exact consumer/artifact compatibility selection,
-typed `EntryRequest` and independent `ConsumerLimits`. It negotiates features,
-independently decodes bytes, checks actual retained profile/bundle facts, then
-discovers/selects entries and derives complete redacted public closure. Unknown
-profiles/features, ambiguous/missing unique entries, private/wrong-type roots,
-allocation failures and cancellation return no partial summary. Empty explicit
-selection stays empty; complete logical identity is selection-independent.
-This is a reader-only library API, not a new CLI flag or JSON request decoder.
-
-`composition::render_composition_summary_json(&summary, &cancellation)` returns
-`Result<String, CompositionProbeError>`. It writes escaped JSON directly into
-fallible private output; allocation failure or cancellation returns an error,
-never a partial document. Formatting and JSON field shapes are unchanged.
-
-The JSON view is a readable, versioned projection of the probe summary. The
-single-artifact field names, value shapes, and text labels are shared through
-`neutral_probe::inspection_schema`. Successor JSON keeps the same inspection
-schema version and escaping/layout rules while streaming borrowed facts.
-Successor contract/value text lists are inspection presentation,
-not a JSON IR transport. The `.nir` file remains the canonical binary NIR-CBOR artifact;
-JSON whitespace does not change its encoding or identity.
+The library's `inspect_expression_encoded` is the typed consumer API. It
+requires exact public entry contracts and features; the standalone catalogue
+does not invent an entry contract. `render_standalone_expression` returns a
+fallible, cancellation-aware JSON document without exposing partial output.
 
 Verify the reader-only library and binary boundary with:
 
 ```sh
 cargo test --package neutral-probe
 ```
-
-Use `cargo xtask test all` for complete repository validation, including doctests.

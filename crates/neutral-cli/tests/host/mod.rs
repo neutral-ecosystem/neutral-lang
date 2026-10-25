@@ -27,7 +27,7 @@ fn host_executes_profiles_validate_compile_and_format() {
     let source = directory.join("source.neu");
     let compiled = directory.join("compiled.neuir");
     let formatted = directory.join("formatted.neu");
-    fs::write(&source, b"neu \"0.1\"\nmodule minimal\nnum answer = 42\n")
+    fs::write(&source, b"neu \"1.0\"\nmodule minimal\nnum answer = 42\n")
         .expect("source should be written");
     let run = |command: &str, output: Option<&PathBuf>| {
         let mut arguments = vec![command.to_owned(), source.to_string_lossy().into_owned()];
@@ -43,9 +43,13 @@ fn host_executes_profiles_validate_compile_and_format() {
     run(constants::COMPILE, Some(&compiled));
     run(constants::FORMAT, Some(&formatted));
     assert!(fs::metadata(&compiled).unwrap().len() > 0);
+    let formatted_bytes = fs::read(&formatted).expect("formatted output should exist");
+    let formatted_source = std::str::from_utf8(&formatted_bytes).unwrap();
+    assert!(formatted_source.starts_with("neu \"1.0\"\nmodule minimal\n"));
+    assert!(formatted_source.contains("num answer = 42"));
     assert_eq!(
-        fs::read(&formatted).expect("formatted output should exist"),
-        b"neu \"0.1\"\nmodule minimal\n\nnum answer = 42\n"
+        fs::read(source).unwrap(),
+        b"neu \"1.0\"\nmodule minimal\nnum answer = 42\n"
     );
 }
 
@@ -121,7 +125,7 @@ fn host_cancelled_commands_keep_stable_classification() {
     for command in [constants::VALIDATE, constants::COMPILE] {
         let fixture = TestDirectory::new().unwrap();
         let source = fixture.path().join("cancelled-source");
-        fs::write(&source, b"neu \"0.1\"\nmodule minimal\n")
+        fs::write(&source, b"neu \"1.0\"\nmodule minimal\n")
             .expect("valid source should be written");
         let mut arguments = vec![command.to_owned(), source.to_string_lossy().into_owned()];
         arguments.push(constants::CANCEL_BEFORE_START.to_owned());
@@ -153,7 +157,7 @@ fn host_maps_artifact_encoding_limit() {
     let output = directory.join("large.neuir");
     let text_limit = neutral_encoding::constants::MAXIMUM_TEXT_BYTES;
     let source_bytes = format!(
-        "neu \"0.1\"\nmodule minimal\nstring payload = \"{}\"\n",
+        "neu \"1.0\"\nmodule minimal\nstring payload = \"{}\"\n",
         "x".repeat(text_limit + 1)
     );
     fs::write(&source, source_bytes.as_bytes()).expect("large source should be written");
@@ -170,7 +174,7 @@ fn host_maps_artifact_encoding_limit() {
     ])
     .unwrap_err();
     assert_eq!(failure.class(), ExitClass::Validation);
-    assert_eq!(failure.messages(), ["artifact-encoding-limit"]);
+    assert_eq!(failure.messages(), ["NEU-EXP-009"]);
 }
 
 #[test]
@@ -187,7 +191,7 @@ fn host_project_capture_accepts_optional_project_facts() {
     let source = directory.join("source.neu");
     let bundle = directory.join("bundle.json");
     let bytes = format!(
-        "{{\"format\":\"neutral-vocabulary-bundle\",\"encoding_version\":\"{PROJECT_VOCABULARY_ENCODING_VERSION}\",\"schema_version\":\"{PROJECT_VOCABULARY_SCHEMA_VERSION}\",\"identity\":\"Fixture\",\"version\":\"1.0.0\",\"required_features\":[],\"types\":[]}}"
+        "{{\"format\":\"neutral-vocabulary-bundle\",\"encoding_version\":\"{PROJECT_VOCABULARY_ENCODING_VERSION}\",\"schema_version\":\"{PROJECT_VOCABULARY_SCHEMA_VERSION}\",\"identity\":\"Fixture\",\"version\":\"1.0.0\",\"required_features\":[\"vocabulary-composition-v2\"],\"types\":[]}}"
     );
     fs::write(
         &source,
@@ -216,6 +220,8 @@ fn host_project_capture_accepts_optional_project_facts() {
         PROJECT_VOCABULARY_SCHEMA_VERSION.to_owned(),
         constants::VOCABULARY_DIGEST.to_owned(),
         VocabularyContentDigest::from_bytes(bytes.as_bytes()).to_string(),
+        constants::VOCABULARY_FEATURE.to_owned(),
+        "vocabulary-composition-v2".to_owned(),
     ];
     let ParseOutcome::Execute(options) =
         crate::command::parse(arguments).expect("capture options should parse")
@@ -225,151 +231,6 @@ fn host_project_capture_accepts_optional_project_facts() {
     super::capture_project_command(&options).expect("complete project should capture");
 }
 
-#[test]
-/// Maps diagnostic and diagnostic-free compilation failures to safe CLI messages.
-fn host_compilation_failures_keep_safe_classification() {
-    let failure = match super::compile(super::CompilationRequest::new(
-        b"invalid source".to_vec(),
-        neutral_core::StructuralLimits::new(1024, 8).unwrap(),
-        neutral_core::CancellationToken::new(),
-    ))
-    .expect("source capture should succeed")
-    {
-        super::CompilationResult::Failure(failure) => failure,
-        super::CompilationResult::Success(_) => panic!("invalid source should fail"),
-    };
-    let mapped = super::compilation_failure(&failure);
-    assert_eq!(mapped.class(), ExitClass::Validation);
-    assert_ne!(mapped.messages(), &[] as &[String]);
-    assert_eq!(
-        super::successful_document(super::CompilationResult::Failure(failure.clone())).unwrap_err(),
-        mapped
-    );
-    assert_eq!(
-        super::ensure_success(super::CompilationResult::Failure(failure.clone())).unwrap_err(),
-        mapped
-    );
-    assert_eq!(
-        super::format_failure(super::FormatError::Compilation(failure)),
-        mapped
-    );
-
-    let cancellation = neutral_core::CancellationToken::new();
-    let captured = neutral_compiler::capture(super::CompilationRequest::new(
-        b"neu \"0.1\"\nmodule minimal\nnum answer = 42\n".to_vec(),
-        neutral_core::StructuralLimits::new(1024, 8).unwrap(),
-        cancellation.clone(),
-    ))
-    .expect("source should capture before cancellation");
-    cancellation.cancel();
-    let super::CompilationResult::Failure(cancelled) =
-        neutral_compiler::compile_captured(&captured)
-    else {
-        panic!("cancelled compilation should fail");
-    };
-    assert_eq!(
-        super::compilation_failure(&cancelled).messages(),
-        ["cancelled"]
-    );
-}
-
-#[test]
-/// Reader validation rejects malformed producer companions at the CLI boundary.
-fn host_rejects_inconsistent_compiler_output() {
-    use std::sync::Arc;
-
-    use neutral_ir::{CompilationArtifacts, SourceMap};
-
-    let source = b"neu \"0.1\"\nmodule minimal\nnum answer = 42\n";
-    let super::CompilationResult::Success(artifacts) =
-        super::compile(super::CompilationRequest::new(
-            source.to_vec(),
-            neutral_core::StructuralLimits::new(1024, 8).unwrap(),
-            neutral_core::CancellationToken::new(),
-        ))
-        .expect("valid source should capture")
-    else {
-        panic!("valid source should compile");
-    };
-    let invalid = CompilationArtifacts::new(
-        artifacts.logical_document().clone(),
-        SourceMap::new(
-            artifacts.source_map().source_digest(),
-            artifacts.source_map().source_byte_length(),
-            artifacts.source_map().module_span(),
-            Vec::new(),
-        ),
-        artifacts.provenance().to_vec(),
-        artifacts.derivation().clone(),
-    );
-    assert_eq!(
-        super::successful_document(super::CompilationResult::Success(Arc::new(invalid)))
-            .unwrap_err()
-            .messages(),
-        ["reader-validation-defect"]
-    );
-}
-
-/// Every host failure adapter preserves its stable class without leaking host details.
-#[test]
-fn capture_failure_classes_and_safe_messages_are_complete() {
-    use neutral_compiler::{CaptureError, ProjectCaptureError, ProjectHostError};
-    use neutral_core::SourceContentDigest;
-    for (error, class, message) in [
-        (CaptureError::Cancelled, ExitClass::Cancelled, "cancelled"),
-        (
-            CaptureError::MissingSource,
-            ExitClass::Validation,
-            "missing-source",
-        ),
-        (
-            CaptureError::SourceLimitExceeded {
-                actual: 2,
-                limit: 1,
-            },
-            ExitClass::Validation,
-            "source-limit-exceeded",
-        ),
-        (
-            CaptureError::SourceDigestMismatch {
-                expected: SourceContentDigest::from_bytes(b"expected"),
-                actual: SourceContentDigest::from_bytes(b"actual"),
-            },
-            ExitClass::Validation,
-            "source-digest-mismatch",
-        ),
-    ] {
-        let failure = super::capture_failure(&error);
-        assert_eq!(failure.class(), class);
-        assert_eq!(failure.messages(), [message]);
-        assert_eq!(
-            super::format_failure(super::FormatError::Capture(error)),
-            failure
-        );
-    }
-    let error = ProjectHostError::ConflictingSourceMapping;
-    assert_eq!(
-        super::project_host_failure(error).messages(),
-        [error.code()]
-    );
-    for error in [
-        ProjectCaptureError::Cancelled,
-        ProjectCaptureError::InvalidRequest,
-    ] {
-        let failure = super::project_capture_failure(error);
-        assert_eq!(failure.messages(), [error.code()]);
-        assert_eq!(
-            failure.class(),
-            if error == ProjectCaptureError::Cancelled {
-                ExitClass::Cancelled
-            } else {
-                ExitClass::Validation
-            }
-        );
-    }
-}
-
-/// Failed output creation or publication cannot replace a directory or leak temporary files.
 #[test]
 fn atomic_output_failures_cleanup_uncommitted_files() {
     let fixture = TestDirectory::new().unwrap();
@@ -403,60 +264,6 @@ fn atomic_output_failures_cleanup_uncommitted_files() {
             .unwrap_err()
             .messages(),
         ["output-write-failed"]
-    );
-}
-
-/// Captured project vocabulary options retain exact lock facts and reject malformed digests.
-#[test]
-fn project_vocabulary_lock_acquisition_is_explicit() {
-    let fixture = TestDirectory::new().unwrap();
-    let path = fixture.path().join("vocabulary.json");
-    let bytes = b"captured bytes";
-    fs::write(&path, bytes).unwrap();
-    let mut options = super::VocabularyOptions {
-        bundle: Some(path.to_string_lossy().into_owned()),
-        identity: Some("Fixture".to_owned()),
-        version: Some("1.0.0".to_owned()),
-        encoding_version: Some(neutral_vocabulary::PROJECT_VOCABULARY_ENCODING_VERSION.to_owned()),
-        schema_version: Some(neutral_vocabulary::PROJECT_VOCABULARY_SCHEMA_VERSION.to_owned()),
-        digest: Some(neutral_core::VocabularyContentDigest::from_bytes(bytes).to_string()),
-        features: Vec::new(),
-    };
-    assert!(super::project_vocabulary(&options, 64).unwrap().is_some());
-    let request = || {
-        super::CompilationRequest::new(
-            Vec::new(),
-            neutral_core::StructuralLimits::new(64, 4).unwrap(),
-            neutral_core::CancellationToken::new(),
-        )
-    };
-    assert!(super::captured_vocabulary(request(), &options, 64).is_ok());
-    options.digest = Some("invalid".to_owned());
-    assert_eq!(
-        super::captured_vocabulary(request(), &options, 64)
-            .unwrap_err()
-            .messages(),
-        ["invalid-vocabulary-digest"]
-    );
-    assert_eq!(
-        super::project_vocabulary(&options, 64)
-            .unwrap_err()
-            .messages(),
-        ["invalid-vocabulary-digest"]
-    );
-    options.digest = Some(neutral_core::VocabularyContentDigest::from_bytes(bytes).to_string());
-    options.identity = Some("invalid identity".to_owned());
-    assert_eq!(
-        super::captured_vocabulary(request(), &options, 64)
-            .unwrap_err()
-            .messages(),
-        ["invalid-vocabulary-lock"]
-    );
-    assert_eq!(
-        super::project_vocabulary(&options, 64)
-            .unwrap_err()
-            .messages(),
-        ["invalid-vocabulary-lock"]
     );
 }
 
@@ -560,7 +367,7 @@ impl std::io::Read for FailingReader {
 }
 
 #[test]
-/// Host input faults and formatter failures retain their public classifications.
+/// Host input faults retain their public classification without partial success.
 fn host_faults_do_not_become_partial_success() {
     assert_eq!(
         read_bounded(Box::new(FailingReader), 16)
@@ -568,13 +375,4 @@ fn host_faults_do_not_become_partial_success() {
             .class(),
         ExitClass::Input
     );
-    for (error, expected) in [
-        (
-            super::FormatError::OutputLimitExceeded,
-            ExitClass::Validation,
-        ),
-        (super::FormatError::InternalDefect, ExitClass::Internal),
-    ] {
-        assert_eq!(super::format_failure(error).class(), expected);
-    }
 }

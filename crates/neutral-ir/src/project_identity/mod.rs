@@ -1,48 +1,27 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Bounded, explicitly partitioned project identity transcripts, not attestations.
+//! Bounded, explicitly partitioned current `/3` identity transcripts, not attestations.
 
 mod captured;
-mod composition;
 mod derived;
-mod expression;
+pub mod expression;
 mod framing;
-mod logical;
-pub use composition::{canonical_composition_project, composition_interface};
 
-pub use captured::{
-    CapturedIdentityInput, CapturedIdentitySource, CapturedIdentityVocabulary, captured_closure,
-    captured_composition_closure,
-};
-pub use derived::{
-    ArtifactIdentityInput, ArtifactKind, CompositionDerivationContext, DerivationContext,
-    artifact_identity, composition_artifact_identity, composition_derivation_identity,
-    derivation_identity,
-};
+pub use captured::{CapturedIdentityInput, CapturedIdentitySource, CapturedIdentityVocabulary};
+pub use derived::{ArtifactIdentityInput, ArtifactKind};
 pub use expression::{
     ExpressionDerivationContext, canonical_expression_project, captured_expression_closure,
     expression_artifact_identity, expression_derivation_identity, expression_interface,
 };
-pub use logical::canonical_logical_project;
 use neutral_core::{CancellationToken, SemanticDigest};
 
-/// Independent identity schema; package versions never select hash semantics.
-pub const IDENTITY_PROFILE: &str = "neutral.project-identity/1";
-/// Frozen NHT envelope shared with the existing core framing contract.
+/// Frozen NHT envelope shared with the core framing contract.
 pub use neutral_core::HASH_TRANSCRIPT_ENVELOPE as NHT_ENVELOPE;
-/// Exact captured closure domain.
-pub const CAPTURED_DOMAIN: &str = "neutral/project-captured/v1";
-/// Complete logical project domain, distinct from public-interface fingerprints.
-pub const LOGICAL_DOMAIN: &str = "neutral/project-logical/v1";
-/// Processing derivation domain.
-pub const DERIVATION_DOMAIN: &str = "neutral/project-derivation/v1";
-/// Artifact kind/format/selection domain.
-pub const ARTIFACT_DOMAIN: &str = "neutral/project-artifact/v1";
 /// Independent hard transcript byte ceiling.
 pub const MAX_TRANSCRIPT_BYTES: u64 = 64 * 1024 * 1024;
 /// Independent hard framed-node ceiling.
 pub const MAX_TRANSCRIPT_NODES: u64 = 1_000_000;
-/// Capture control order in the frozen derivation schema.
+/// Capture control order shared by the current derivation transcript.
 pub const CAPTURE_LIMIT_TAGS: [&str; 14] = [
     "total-source-bytes",
     "source-bytes-per-unit",
@@ -124,28 +103,8 @@ macro_rules! identity {
     };
 }
 identity!(
-    CapturedClosureIdentity,
-    "Exact supplied source and vocabulary closure identity."
-);
-identity!(
-    CompositionCapturedClosureIdentity,
-    "Exact composition-profile capture identity; not interchangeable with captured identity /1."
-);
-identity!(
-    CompositionLogicalIdentity,
-    "Complete successor logical meaning, separate from identity /1."
-);
-identity!(
-    CompositionDerivationIdentity,
-    "Successor logical and captured identities plus explicit processing policy; distinct from /1."
-);
-identity!(
-    CompositionArtifactIdentity,
-    "Successor derivation plus artifact kind, format and public selection; distinct from /1."
-);
-identity!(
     ExpressionCapturedClosureIdentity,
-    "Exact expression-profile capture identity, distinct from historical captures."
+    "Exact expression-profile capture identity."
 );
 identity!(
     ExpressionLogicalIdentity,
@@ -163,33 +122,10 @@ identity!(
     ExpressionArtifactIdentity,
     "Expression derivation plus selected representation and public roots."
 );
-identity!(
-    LogicalProjectIdentity,
-    "Complete logical meaning, excluding capture and processing evidence."
-);
-identity!(
-    ProjectDerivationIdentity,
-    "Logical meaning plus exact capture and explicit producer/processing context."
-);
-identity!(
-    ProjectArtifactIdentity,
-    "Derivation plus artifact kind, format, and post-compilation selection/options."
-);
 
-/// Builds and hashes one bounded domain-separated transcript atomically.
-fn transcript<I>(
-    domain: &str,
-    limits: IdentityLimits,
-    cancellation: &CancellationToken,
-    body: impl FnOnce(&mut framing::Writer<'_>) -> Result<(), IdentityError>,
-    wrap: impl FnOnce(SemanticDigest) -> I,
-) -> Result<IdentityTranscript<I>, IdentityError> {
-    transcript_profile(domain, IDENTITY_PROFILE, limits, cancellation, body, wrap)
-}
-
-/// Shares unchanged NHT framing while callers explicitly select frozen profile/domain pairs.
+/// Shares bounded NHT framing while the `/3` identity module selects frozen profile/domain pairs.
 ///
-/// This helper is private: public callers cannot invent or override protocol selectors.
+/// Private so callers cannot invent or override protocol selectors.
 fn transcript_profile<I>(
     domain: &str,
     profile: &str,

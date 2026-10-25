@@ -50,7 +50,7 @@ fn scalar_text_is_finite_decimal_not_ir_display_or_host_formatting() {
 }
 
 #[test]
-fn utf8_ordering_and_concatenation_do_not_normalize_or_coerce() {
+fn property_utf8_ordering_and_concatenation_do_not_normalize_or_coerce() {
     let cancel = CancellationToken::new();
     let mut budget = Budget::new(ExpressionLimits::hard(), &cancel).unwrap();
     assert_eq!(
@@ -114,7 +114,7 @@ fn text_growth_is_rejected_before_reservation_and_keeps_exact_precision() {
 }
 
 #[test]
-fn structural_equality_preserves_order_presence_tags_and_reference_identity() {
+fn property_structural_equality_preserves_order_presence_tags_and_reference_identity() {
     use neutral_ir::{LogicalModuleIdentity, ModuleSymbolIdentity};
     let reference = |name| {
         V::Reference(ModuleSymbolIdentity::new(

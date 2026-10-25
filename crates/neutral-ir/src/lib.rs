@@ -1,25 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Public logical representation contracts for Neutral artifacts.
+//! Shared scalar, nominal, source and raw `/3` expression IR contracts.
 //!
-//! This crate owns the logical IR, source maps, provenance, and derivation
-//! records. It must not acquire source input, expose compiler-private models, or
-//! perform host I/O.
-//!
-//! # Reading the model
-//! Scalar/document contracts are re-exported here from focused private modules;
-//! [`project`] retains complete multi-unit meaning and its separate
-//! source/processing companions. [`project_interface`]
-//! describes only the public signature surface, while [`project_identity`]
-//! defines content-sensitive identity layers. Do not substitute an interface
-//! fingerprint or graph-local label for a complete project identity.
-//! [`composition`] shares nominal contracts and closed defaults; [`expression`]
-//! retains raw typed deferred structure without evaluation or profile activation.
-//! [`profile`] owns document selectors, not the Cargo package release version.
-//!
-//! Public data structures let producers construct values; construction alone
-//! does not establish validity. The independent reader boundary is responsible
-//! for checking hostile artifacts before exposing authoritative traversal.
+//! Producers may construct these data structures; construction alone does not
+//! establish validity. The independent reader checks hostile complete artifacts
+//! before exposing authoritative traversal. This crate owns no acquisition,
+//! compiler parser state, host I/O or evaluation effects.
 
 mod symbol;
 pub use symbol::{
@@ -36,8 +22,6 @@ pub use value::{
 };
 mod fingerprint;
 pub use fingerprint::DeclarationFingerprint;
-mod document;
-pub use document::LogicalDocument;
 mod source_map;
 pub use source_map::{SourceMap, SourceMapEntry};
 mod provenance;
@@ -49,9 +33,6 @@ mod derivation;
 pub use derivation::{
     AcceptancePartition, DerivationManifest, DiagnosticPartition, MeaningPartition, ResourceFacts,
 };
-mod artifacts;
-pub use artifacts::CompilationArtifacts;
-
 pub mod composition;
 pub mod expression;
 pub mod language;

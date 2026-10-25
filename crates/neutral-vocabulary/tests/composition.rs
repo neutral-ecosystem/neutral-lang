@@ -632,7 +632,7 @@ fn external_records(targets: &[&str]) -> String {
 
 /// Diamond closure shares a leaf but accounts for every edge and the longest dependency path.
 #[test]
-fn composition_diamond_dependency_limits_are_independent_and_order_invariant() {
+fn property_composition_diamond_dependency_limits_are_independent_and_order_invariant() {
     let root = bundle(
         "Root",
         &format!("{},{}", dependency("Left"), dependency("Right")),
@@ -895,7 +895,7 @@ fn security_composition_json_object_work_has_a_hard_schema_bound() {
 
 /// Repeated/concurrent requests retain identical immutable facts with no cross-request counters.
 #[test]
-fn composition_catalogues_are_deterministic_across_concurrent_requests() {
+fn property_composition_catalogues_are_deterministic_across_concurrent_requests() {
     let expected = single(&external_records(&[])).unwrap();
     let workers = (0..8)
         .map(|_| std::thread::spawn(|| single(&external_records(&[])).unwrap()))

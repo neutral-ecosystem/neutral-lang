@@ -53,15 +53,15 @@ fn unit_cli_parses_complete_compile_policy() {
         constants::VOCABULARY_IDENTITY,
         "Fixture",
         constants::VOCABULARY_VERSION,
-        "0.1.0",
+        "1.0.0",
         constants::VOCABULARY_ENCODING,
-        "0.1",
+        "1.0",
         constants::VOCABULARY_SCHEMA,
-        "0.1",
+        "2.0",
         constants::VOCABULARY_DIGEST,
         &digest,
         constants::VOCABULARY_FEATURE,
-        "neutral.feature/records@1",
+        "vocabulary-composition-v2",
         constants::MAX_SOURCE_BYTES,
         TEST_LIMIT,
         constants::MAX_DIAGNOSTICS,
@@ -102,7 +102,7 @@ fn unit_cli_parses_complete_compile_policy() {
     assert_eq!(options.limits.nesting_depth(), 7);
     assert_eq!(options.limits.list_items(), 7);
     assert_eq!(options.limits.traversal_nodes(), 7);
-    assert_eq!(options.vocabulary.features, ["neutral.feature/records@1"]);
+    assert_eq!(options.vocabulary.features, ["vocabulary-composition-v2"]);
 }
 
 #[test]
@@ -246,11 +246,11 @@ fn unit_cli_rejects_malformed_argument_combinations() {
             constants::VOCABULARY_IDENTITY.to_owned(),
             "Fixture".to_owned(),
             constants::VOCABULARY_VERSION.to_owned(),
-            "0.1.0".to_owned(),
+            "1.0.0".to_owned(),
             constants::VOCABULARY_ENCODING.to_owned(),
-            "0.1".to_owned(),
+            "1.0".to_owned(),
             constants::VOCABULARY_SCHEMA.to_owned(),
-            "0.1".to_owned(),
+            "2.0".to_owned(),
             constants::VOCABULARY_DIGEST.to_owned(),
             neutral_core::VocabularyContentDigest::from_bytes(b"bundle").to_string(),
         ],

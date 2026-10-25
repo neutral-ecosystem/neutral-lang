@@ -6,9 +6,7 @@ use neutral_core::{
     ByteSpan, CancellationToken, SemanticDigest, SourceContentDigest, SourceLocation,
     StructuralLimits, allocation::Shared, profile::V1_SOURCE_PROFILE,
 };
-use neutral_encoding::{
-    DecodeLimits, expression::encode_expression_project, project::hard_project_limits,
-};
+use neutral_encoding::{DecodeLimits, expression::encode_expression_project, hard_project_limits};
 use neutral_ir::{
     LogicalModuleIdentity, ModuleSymbolIdentity,
     composition::{
@@ -32,6 +30,7 @@ use neutral_ir::{
 };
 use neutral_probe::expression::{
     ExpressionEntryProbeRequest, ExpressionProbeError, inspect_expression_encoded,
+    render_standalone_expression,
 };
 use neutral_reader::{
     SemanticLimits, ValidatedExpressionProject,
@@ -39,6 +38,7 @@ use neutral_reader::{
     consumer::{ENTRY_REQUEST_SCHEMA, EntryRequest, EntrySelection},
     expression::{ExpressionEntryError, ExpressionViewLimits},
 };
+use std::{fs, process::Command};
 
 /// Uses logical identities, never a filesystem path, for independently authored probe inputs.
 fn symbol(name: &str) -> ModuleSymbolIdentity {
@@ -175,6 +175,116 @@ fn encoded(mut ir: ExpressionProjectIr, semantic: &SemanticLimits) -> Vec<u8> {
     encode_expression_project(&project, &cancel).unwrap()
 }
 
+#[test]
+fn system_standalone_probe_accepts_current_expression_artifact() {
+    let (bytes, _) = fixture();
+    let directory = neutral_test_support::TestDirectory::new().unwrap();
+    let path = directory.path().join("current.nir");
+    fs::write(&path, bytes).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_neutral-probe"))
+        .arg("--json")
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("neutral.project-identity/3"));
+    assert!(stdout.contains("neutral.project-ir/3"));
+    assert!(stdout.contains("probe::first"));
+    assert!(!stdout.contains("source:probe"));
+    let invalid = Command::new(env!("CARGO_BIN_EXE_neutral-probe"))
+        .arg("--json")
+        .arg("--root")
+        .arg("probe::private")
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert!(!invalid.status.success());
+    assert_eq!(invalid.stdout, []);
+    let selected = Command::new(env!("CARGO_BIN_EXE_neutral-probe"))
+        .arg("--json")
+        .arg("--root")
+        .arg("probe::first")
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert!(selected.status.success());
+    let selected = String::from_utf8(selected.stdout).unwrap();
+    assert!(selected.contains("probe::first"));
+    assert!(!selected.contains("probe::second"));
+}
+
+/// Unsupported complete frames reject at the process boundary without stdout publication.
+fn reject_standalone_magic(bytes: &[u8]) {
+    let directory = neutral_test_support::TestDirectory::new().unwrap();
+    let path = directory.path().join("unsupported.nir");
+    fs::write(&path, bytes).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_neutral-probe"))
+        .arg("--json")
+        .arg(path)
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert_eq!(output.stdout, []);
+    assert!(String::from_utf8_lossy(&output.stderr).contains("NIR-PROJECT-CBOR/3"));
+}
+
+/// Each historical or unknown frame is a separately discovered process regression.
+macro_rules! unsupported_frames {
+    ($($name:ident => $bytes:expr),* $(,)?) => {$(
+        #[test]
+        fn $name() { reject_standalone_magic($bytes); }
+    )*};
+}
+unsupported_frames! {
+    system_probe_rejects_document_magic => b"NEUIR\r\n\x1a",
+    system_probe_rejects_project_one_magic => b"NEUPR\r\n\x1a",
+    system_probe_rejects_project_two_magic => b"NEUP2\r\n\x1a",
+    system_probe_rejects_future_project_magic => b"NEUP4\r\n\x1a",
+    system_probe_rejects_unknown_magic => b"NOPE\r\n\x1a",
+}
+
+#[test]
+fn standalone_renderer_is_bounded_fallible_and_recovers_after_failure() {
+    use neutral_core::allocation::testing;
+    let (bytes, _) = fixture();
+    let cancel = CancellationToken::new();
+    let render = |cancel: &CancellationToken| render_standalone_expression(&bytes, None, cancel);
+    let (accepted, count) = testing::observe(None, || render(&cancel));
+    let accepted = accepted.unwrap();
+    assert!(accepted.starts_with(&format!(
+        "{{\n  \"encoding\": \"{}\",\n  \"identity_profile\": \"{}\",\n",
+        neutral_ir::expression::profile::ENCODING,
+        neutral_ir::expression::profile::IDENTITY_PROFILE,
+    )));
+    assert!(accepted.contains("\"public_roots\": ["));
+    assert!(accepted.contains("probe::first"));
+    assert!(!accepted.contains("source:probe"));
+    assert_ne!(count, 0);
+    for index in 0..count {
+        let (failed, _) = testing::observe(Some(index), || render(&cancel));
+        assert!(failed.is_err(), "reservation {index}");
+        let signal = CancellationToken::new();
+        let (failed, _) = testing::observe_cancellation(index, &signal, || render(&signal));
+        assert!(failed.is_err(), "cancellation {index}");
+    }
+    let recovered = render(&cancel).unwrap();
+    assert_eq!(recovered, accepted);
+    for roots in [
+        vec!["probe::first".to_owned(), "probe::first".to_owned()],
+        vec!["probe::private".to_owned()],
+    ] {
+        assert_eq!(
+            render_standalone_expression(&bytes, Some(&roots), &cancel).unwrap_err(),
+            ExpressionProbeError::Entry(ExpressionEntryError::InvalidInput)
+        );
+    }
+}
+
 /// Builds an exact request whose selection remains independent from complete artifact identity.
 fn request<'a>(
     profiles: &'a SemanticProfiles,
@@ -194,7 +304,7 @@ fn request<'a>(
 
 #[test]
 /// Public entry roots change projection, never complete logical/interface identity or counts.
-fn independent_probe_selects_entries_without_rewriting_complete_identity() {
+fn property_independent_probe_selects_entries_without_rewriting_complete_identity() {
     let (bytes, semantic) = fixture();
     let profiles = SemanticProfiles::try_frozen().unwrap();
     let contract = ProjectPublicType::Nominal(symbol("Entry"));

@@ -6,9 +6,9 @@ use super::read_list;
 use crate::{
     DecodeError as D, EncodingError as E,
     cbor::CborWriter,
-    composition::{read_option, write_option},
+    contracts::{read_option, write_option},
     decoder::LocatedValue,
-    project::{
+    primitives::{
         read_location, read_symbol, tuple, unsigned, write_list, write_location, write_numbers,
         write_symbol,
     },

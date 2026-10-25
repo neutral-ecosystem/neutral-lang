@@ -2,151 +2,59 @@
 
 # neutral-compiler
 
-`neutral-compiler` owns the captured-input compilation pipeline: private
-frontend processing, semantic analysis, and lowering to public logical IR.
+This crate owns effect-free capture, source parsing, semantic resolution, finite
+expansion and lowering to complete project IR. It uses core, IR, shared pure
+semantics and vocabulary contracts. Hosts acquire bytes and exact locks explicitly;
+the compiler cannot consult filesystems, networks, environment, processes or clocks.
 
-It depends on core, IR, and vocabulary contracts only. The CLI supplies any
-host-facing capture work before this crate runs; `neutral-compiler` must remain
-deterministic and free of filesystem, environment, network, command, locale,
-and clock access. Its parser and semantic internals are intentionally private.
-For code orientation, follow [capture](src/project_capture.rs),
-[graph construction](src/module_graph.rs),
-[semantic resolution](src/frontend/project_semantics.rs), and
-[contextual lowering](src/frontend/project_lowering.rs). Their function comments
-explain phase ordering, validation responsibilities, and publication boundaries;
-the [cache](src/frontend/project_cache.rs) documents the narrow reuse seam.
+The supported library path is `capture_expression_project` →
+`compile_expression_project`. A host constructs a closed
+`CapturedExpressionProjectRequest` with explicit capture, vocabulary, expression
+and expansion policies. `CapturedProjectRequestBuilder` helps assemble its byte
+envelope without retaining editor locations or host paths.
 
-The semantic entry point coordinates private
-[syntax extraction](src/frontend/project_semantics/syntax.rs),
-[resolution](src/frontend/project_semantics/resolution.rs), and
-[public signature projection](src/frontend/project_semantics/interface.rs).
-The [composition internals](src/frontend/project_semantics/composition/README.md)
-similarly separate parsing, resolution and complete artifact assembly. These
-file boundaries do not introduce new public APIs or change phase ordering.
+Capture retains the complete supplied closure, checks source identities and
+headers, exact transitive locks, public contracts, defaults and restrictions.
+`CapturedExpressionProject::replay_request` copies those inputs fallibly with
+fresh caller cancellation; it does not acquire missing inputs or infer a profile.
+Captured identity and acceptance controls are distinct from logical project meaning.
 
-The public boundary captures exact bytes immutably. The v1 project-capture
-boundary accepts only a closed, versioned, data-only request with explicit
-independent limits. It retains the complete supplied source set, validates
-request/header agreement and exact vocabulary-lock coverage, and exposes no
-resolver, callback, path, URL, root, or ambient acquisition hook.
-The public `CapturedProjectRequestBuilder` is the shared host adapter boundary:
-CLI, Editor-style hosts, and test harnesses supply the same logical source and
-vocabulary facts while retaining locations outside core. Successful capture
-exposes exact immutable sources, vocabularies, aggregate resource facts,
-meaning equivalence, and replay through a newly supplied cancellation token.
-`CapturedProject::identity_transcript` projects verified exact source/vocabulary
-facts into the shared bounded captured-closure identity contract without
-recapture or I/O. `identity_capture_limits` exposes the explicit control order
-used for derivation identity; it never adds these controls to logical meaning.
-The pure `CapturedProject::module_graph` API scans those already-captured bytes
-for logical module imports, validates the complete supplied closure, and
-returns a deterministic, bounded SCC graph. Modules, edges, and diagnostics
-retain exact source IDs and typed original-byte locations. Graph construction
-cannot acquire source units or resolve paths and URLs.
-The project analyzer resolves public/private roots and cross-module
-type, value, and reference edges over that graph. It can produce a narrow
-public-only interface snapshot with a signature fingerprint. The separate
-`compile_project` boundary validates all contextual values and closed defaults
-before publishing complete `neutral-ir::project::ProjectIr`, including private
-and disconnected modules, materialized reuse, identity-only references, exact
-source/vocabulary companions, and resource facts. Failures never publish partial
-IR. This library API does not activate the standalone v1 compiler profile.
+Compilation checks every branch and resolves names/types before folding selected
+static paths with the shared pure evaluator. Deferred bodies retain their typed
+inputs, guarded dependencies and obligations. Templates and finite matrices expand
+only at compile time; no scheduler or executor is provided. Successful raw IR must
+still pass `neutral_reader::ValidatedExpressionProject::from_ir` before encoding.
+That independent reader checks semantics, companions, resource facts and identities.
 
-The separate [composition capture](src/project_capture/composition.rs) API,
-`capture_composition_project`, requires an explicit successor envelope and exact
-features. It validates complete transitive locks, schemas, public type closure,
-defaults and restrictions, then shares immutable contracts with independent
-readers. Repeated local aliases refer to one canonical lock; dependencies never
-become implicit source aliases. Replay preserves exact bytes and both policies.
-`CapturedCompositionProject::replay_request(cancellation)` returns a `Result`:
-allocation failure or cancellation rejects the entire copy without partial output.
-Its separately typed captured identity matches the frozen successor transcript.
-This output cannot enter the old `compile_project` boundary. Instead,
-`compile_composition_project` explicitly resolves imports, both source/vocabulary
-nominal origins, source records and tagged variants, closed defaults, immutable
-reuse and typed references. It publishes complete `CompositionProjectIr` only
-after shared contract/value validation. Missing fields, incompatible payloads,
-private exposure, embedded/reuse cycles, constraints and exhausted budgets fail
-atomically. Record/variant members may omit their final comma.
+For code orientation, follow [capture](src/project_capture/expression.rs),
+[bounded graph construction](src/frontend/project_semantics/composition_graph.rs),
+[source expression semantics](src/frontend/expressions/mod.rs),
+[lowering](src/frontend/expressions/lowering.rs), and
+[finite expansion](src/frontend/expansion/mod.rs). Shared nominal resolution remains
+under [composition internals](src/frontend/project_semantics/composition/README.md);
+that directory name does not imply a second supported project pipeline.
 
-The library pipeline is `capture_composition_project` →
-`compile_composition_project` →
-`neutral_reader::composition::ValidatedCompositionProject::from_ir` →
-`neutral_encoding::composition::encode_composition_project`. The independent
-reader must revalidate producer data before it becomes encoding authority.
-Origin paths retain supplied/null/omitted/default classifications and original-byte
-subexpression/default spans, including ordinary source reuse. Vocabulary defaults
-retain exact canonical identity/revision/type/field owners, without fabricated
-bundle spans. Attribution unavailable after materialized vocabulary reuse remains
-explicitly absent. The independent reader checks these companions; its public
-view removes source/private implementation evidence. The standalone probe reads
-successor artifacts, but this API does not activate CLI compilation.
+`ExpressionCompilationCache` is the only caller-owned syntax cache.
+`compile_expression` checks exact bytes, module, semantic tuple and parser policy;
+current vocabularies, defaults, restrictions, graph facts, source evidence and
+identities are rebuilt on every call. Independent `ProjectCacheLimits` bound retained
+units/bytes and `ProjectCacheStats` record actual reuse. Failed or cancelled requests
+preserve the prior successful generation. There is no persistent or externally
+supplied cache and no memoized semantic authority.
 
-`CompositionCompilationCache` is a separate caller-owned syntax cache with explicit
-`ProjectCacheLimits` retention bounds and observable `ProjectCacheStats`. It reuses
-only exact bytes/module/feature context, checking bytes even when digests match.
-Every request rebuilds vocabulary/default resolution, graph, semantics, values,
-identities and source companions under current controls. Failed or cancelled runs
-leave the previous successful generation intact; removed/over-budget units are
-not retained. It never persists semantic authority or accepts external entries.
+`format_expression_source` validates the entire captured project, formats one
+explicit module and recompiles the resulting source before returning it. It keeps
+comments and string/interpolation spellings, uses LF and four-space indentation,
+and enforces bounded fallible output with cancellation. Formatting changes source
+bytes and source evidence; it does not produce canonical artifact bytes.
 
-Its `compile_expression(&captured, &cancel)` method uses the same cache instance
-for explicitly captured expression projects. Entries retain source syntax as owned
-byte spans, not borrowed captures or evaluated results. Reuse requires exact bytes,
-module, semantic tuple and parser-affecting policies; grammar changes force a miss.
-Current vocabularies, source IDs, restrictions and all identities are rebuilt even
-on a hit. Cache storage/copy costs remain bounded and may exhaust reduced policies;
-retention limits count original bytes, not total heap usage. No disk cache or second
-persistent expression cache is involved.
+Development accepts only the current complete source/artifact pipeline. Historical
+release fixtures remain records; see the [compatibility policy](../../docs/compatibility-policy.md).
 
-Within one clean project compilation, semantic analysis hands its private parsed
-units to lowering instead of parsing them again. This request-local handoff does
-not expose syntax internals or retain data between requests; the explicit cache
-API remains a separate, caller-owned optimization.
-For captured projects, it validates every supplied vocabulary bundle as
-one exact canonical set, resolves module-local `use` aliases to locked public
-types, and retains direct `url`/`path` scalar bindings as distinct inert values.
-The independently validated reader derives public views only after complete
-compilation; selected roots never prune input or change complete logical meaning.
-`neutral-encoding` owns external project transport; the standalone probe
-validates it through reader-only dependencies and reports the typed complete
-logical identity independently of selected roots.
+## Commands
 
-`ProjectCompilationCache` is an optional caller-owned, bounded in-process syntax
-cache. Its explicit retention budgets limit units and original source bytes;
-statistics distinguish actual parser execution from reused units. Keys check
-module, language profile, exact source digest, and exact bytes, not public or
-logical fingerprints. Every run reconstructs the graph and revalidates vocabulary,
-semantics, values, source maps, provenance, resource facts, and current controls.
-Failures do not publish a new cache generation. There is no persistent/importable
-cache, global state, host acquisition, or final-artifact memoization.
-Its private frontend recognizes the supported source, identifier, comment, exact-number,
-bounded-string, Boolean, nullable-scalar, null, nominal-record, and
-contextual-record behavior.
-It collects the complete root scope before nominal type resolution and rejects
-embedded record cycles. It accepts one exact host-captured vocabulary bundle and
-lock, validates it before source payloads, and resolves optional `use` plus
-qualified nominal types without performing acquisition. Exact trivia stays
-private for the reference formatter and is never lowered into authoritative
-logical IR.
-
-The reference formatter accepts only captured source that completes the compiler
-validation path. It emits canonical header order, LF newlines,
-four-space record/list indentation, one field or item per line with a trailing
-comma, normalized delimiter spacing, and no semicolons. Comments retain their
-text and source order with LF-normalized line endings, and are deterministically
-lifted to standalone top-level positions before the root construct that
-contained or followed them; comments
-after the final construct remain at end of file. Formatter output is ordinary
-source bytes with a new source digest when recaptured—not logical IR, canonical
-artifact encoding, or signing material.
-
-## Command
-
-Use `cargo xtask test all` for complete repository validation, including doctests.
-The focused Cargo command below runs this crate's test binaries only.
-
-This is a library crate. Verify its compilation pipeline with:
+Run `cargo xtask test all` for the repository suite, including doctests. To check
+this library directly:
 
 ```sh
 cargo test --package neutral-compiler

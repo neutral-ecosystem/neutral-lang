@@ -1,4 +1,3 @@
-neu "0.1"
-module pipeline_service
-
-num answer = "wrong"
+neu "1.0"
+module service
+public num answer =

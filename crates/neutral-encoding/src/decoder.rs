@@ -31,6 +31,8 @@ pub(crate) enum CborValue {
     /// Definite array.
     Array(Vec<LocatedValue>),
     /// Definite map retaining member order and duplicates.
+    #[allow(dead_code)]
+    // Current tuples are arrays; retain members for duplicate-key parser checks.
     Map(Vec<(String, LocatedValue)>),
     /// Boolean simple value.
     Boolean(bool),
@@ -39,6 +41,7 @@ pub(crate) enum CborValue {
 }
 
 /// Parses exactly one bounded restricted-CBOR section.
+#[cfg(test)]
 pub(crate) fn parse_section(
     bytes: &[u8],
     base_offset: usize,

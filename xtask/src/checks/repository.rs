@@ -5,8 +5,8 @@
 use crate::{
     BTreeSet, Command, Path, ReleasedBundle, collect_regular_files, configuration,
     configuration_value, constants, fs, git_hygiene, html_spdx_marker, interface,
-    is_safe_relative_path, markdown_link_targets, project_license, read_workspace_text,
-    repository_directories, workspace_package_manifests, workspace_root,
+    is_safe_relative_path, markdown_link_exists, markdown_link_targets, project_license,
+    read_workspace_text, repository_directories, workspace_package_manifests, workspace_root,
 };
 
 /// Verifies every tracked repository-local Markdown link stays within the workspace.
@@ -26,9 +26,7 @@ pub(crate) fn verify_repository_markdown_links() -> Result<(), String> {
         let content = fs::read_to_string(file)
             .map_err(|error| format!("could not read {}: {error}", file.display()))?;
         for target in markdown_link_targets(&content) {
-            let candidate = file.parent().unwrap_or(&root).join(&target);
-            let valid = fs::canonicalize(&candidate)
-                .is_ok_and(|resolved| resolved.starts_with(&canonical_root));
+            let valid = markdown_link_exists(&root, &canonical_root, file, &target)?;
             if !valid {
                 failures.push(format!(
                     "{} -> {target}",

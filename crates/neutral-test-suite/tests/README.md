@@ -2,21 +2,20 @@
 
 # Cross-package test modules
 
-This directory owns executable smoke, integration, system, conformance,
-property, security, deterministic fuzz-style, and hardening evidence.
+The non-published `neutral-test-suite` crate owns cross-package integration,
+system, conformance, property, security, and deterministic hardening tests. Its
+test modules are wired from `src/lib.rs` and remain filterable by module name.
 
-`module_graph/` validates the captured module/import graph against its pinned corpus
-and runs adversarial graph-order, limit, and exclusion checks.
+| Module | Current coverage |
+| --- | --- |
+| `source_pipeline/` | Current source capture, compilation, cache recovery, and CLI behavior. |
+| `expression_pipeline/` | Complete `/3` reader, identity, consumer, projection, and transport behavior. |
+| `composition_contract/` | Raw composition/vocabulary catalogue capture and reader contracts, plus immutable historical identity vectors. |
+| `hardening/` | Fixed-seed source, formatter, vocabulary, `/3` decoder/probe campaigns and bounded metamorphic checks. |
+| `suite/` | Current wire round trips and hostile decoder rejection tests. |
 
-`project_identity/` owns literal transcript/digest vectors and identity-layer
-equivalence, exclusion, context, cancellation, and boundary regressions.
-
-`composition_contract/` owns frozen successor-profile input/vector copies and a
-test-only independent oracle. It tests byte integrity, literal NHT framing,
-identity partitions/rejections and existing catalogue validation, not activation
-of future compiler/codec support. Runtime tests never read the portable plan.
-
-`source_pipeline/` adds real `.neu` programs with explicit value and rejection
-oracles, complete project artifacts, independent reader/probe results, changed-file
-cache checks, and actual CLI/probe executable tests. Run
-`cargo test --package neutral-test-suite source_pipeline::` for this corpus.
+Run the focused current pipeline checks with
+`cargo test -p neutral-test-suite expression_pipeline` or
+`cargo test -p neutral-test-suite source_pipeline`. Run
+`cargo test -p neutral-test-suite` for all cross-package tests, or
+`cargo xtask test all` for the complete repository suite including doctests.

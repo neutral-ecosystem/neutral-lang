@@ -488,7 +488,7 @@ fn security_composition_supplied_cancellation_is_atomic() {
 
 /// Source-local aliases, capture order and request counters cannot alter standalone materialization.
 #[test]
-fn composition_supplied_order_and_concurrency_preserve_meaning_and_origins() {
+fn property_composition_supplied_order_and_concurrency_preserve_meaning_and_origins() {
     let first = V::Record(vec![
         ("label".into(), Some(V::Null)),
         ("count".into(), Some(number("1"))),

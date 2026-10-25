@@ -24,6 +24,9 @@ Optional per-invocation environment overrides are
 documented in the [developer command guide](../docs/workflow-optimization.md).
 Repository layout, quality thresholds, and the active conformance corpus stay
 in their own policy files rather than being duplicated in xtask constants.
+`ir-encoding.toml` selects the active `NIR-PROJECT-CBOR/3` expression artifact
+and records its profile tuple and bounded decoder ceilings; historical wire
+contracts remain in immutable release bundles.
 The test-level inventory validates each name/command/owner entry together, including
 duplicate and missing purposes. Quality checks and measurements use the same typed
 policy validation: positive percentage thresholds, safe report paths, nightly-only

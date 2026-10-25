@@ -3,14 +3,11 @@
 //! Exact capture facts; source contents are represented by verified byte digests.
 
 use super::{
-    CAPTURED_DOMAIN, CapturedClosureIdentity, CompositionCapturedClosureIdentity, IdentityError,
-    IdentityLimits, IdentityTranscript,
+    IdentityError,
     framing::{Writer, ordered},
-    transcript, transcript_profile,
 };
-use crate::composition::profile;
 use neutral_core::allocation::RetainCapacity;
-use neutral_core::{CancellationToken, SourceContentDigest, VocabularyContentDigest};
+use neutral_core::{SourceContentDigest, VocabularyContentDigest};
 
 /// Borrowed source facts from a successfully frozen capture, never host paths.
 pub struct CapturedIdentitySource<'a> {
@@ -52,66 +49,7 @@ pub struct CapturedIdentityInput<'a> {
     pub vocabularies: &'a [CapturedIdentityVocabulary<'a>],
 }
 
-/// Hashes verified capture facts without source normalization or host acquisition.
-///
-/// # Errors
-/// Rejects malformed ordering, zero/overrun bounds, or cancellation; this does not validate source semantics.
-pub fn captured_closure(
-    input: &CapturedIdentityInput<'_>,
-    limits: IdentityLimits,
-    cancellation: &CancellationToken,
-) -> Result<IdentityTranscript<CapturedClosureIdentity>, IdentityError> {
-    transcript(
-        CAPTURED_DOMAIN,
-        limits,
-        cancellation,
-        |writer| capture_body(writer, input),
-        CapturedClosureIdentity,
-    )
-}
-
-/// Hashes verified successor capture facts in the frozen /2 profile and domain.
-///
-/// Features are required explicitly, in exact canonical order. This only projects
-/// capture facts; it neither validates source semantics nor constructs logical,
-/// derivation, interface or artifact identities. Old /1 framing is unchanged.
-///
-/// # Errors
-/// Rejects unsupported profile/features, noncanonical input, independent bounds or cancellation.
-pub fn captured_composition_closure(
-    input: &CapturedIdentityInput<'_>,
-    required_features: &[String],
-    limits: IdentityLimits,
-    cancellation: &CancellationToken,
-) -> Result<IdentityTranscript<CompositionCapturedClosureIdentity>, IdentityError> {
-    if input.profile != neutral_core::profile::V1_SOURCE_PROFILE
-        || !required_features
-            .iter()
-            .map(String::as_str)
-            .eq(profile::REQUIRED_FEATURES.iter().copied())
-    {
-        return Err(IdentityError::InvalidInput);
-    }
-    transcript_profile(
-        profile::CAPTURED_DOMAIN,
-        profile::IDENTITY_PROFILE,
-        limits,
-        cancellation,
-        |writer| {
-            capture_body(writer, input)?;
-            writer.items(required_features.len())?;
-            writer.frame("features", |writer| {
-                for feature in required_features {
-                    writer.leaf("feature", feature.as_bytes())?;
-                }
-                Ok(())
-            })
-        },
-        CompositionCapturedClosureIdentity,
-    )
-}
-
-/// Frames unchanged exact capture fields once for both explicitly selected identity profiles.
+/// Frames unchanged exact capture facts for the current `/3` transcript.
 pub(super) fn capture_body(
     writer: &mut Writer<'_>,
     input: &CapturedIdentityInput<'_>,

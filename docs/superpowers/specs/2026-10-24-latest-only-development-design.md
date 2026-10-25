@@ -2,7 +2,7 @@
 
 # Latest-only development pipeline
 
-Status: approach approved on 24-10-2026; implementation design awaiting approval.
+Status: approved for implementation on 24-10-2026.
 
 ## Intent and compatibility policy
 
@@ -45,7 +45,7 @@ These numbers identify separate contracts. Vocabulary schema `2.0` and evaluator
 Keep exact framing/profile/feature checks; unknown and old selectors fail closed.
 Never retry an old artifact under the current decoder or relabel historical bytes.
 
-The checkout currently exports older compiler and codec entry points alongside
+At design review, the checkout exported older compiler and codec entry points alongside
 the current pipeline. The CLI still compiles through the earlier single-document
 path, while the standalone probe dispatches older formats. Current expression
 code also imports scalar, type, graph, contract and companion helpers from modules

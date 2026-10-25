@@ -4,7 +4,7 @@
 
 /// Exercises current compilation, independent consumers, identity layers and real cache changes.
 #[test]
-fn composition_benchmark_exercises_current_pipeline() {
+fn expression_benchmark_exercises_current_pipeline() {
     let mut phases = Vec::new();
     super::run(1, |name, iterations, _elapsed| {
         assert!(iterations > 0);
@@ -13,18 +13,18 @@ fn composition_benchmark_exercises_current_pipeline() {
     assert_eq!(
         phases,
         [
-            "composition-capture",
-            "composition-graph",
-            "composition-compile",
-            "composition-reader",
-            "composition-encode",
-            "composition-decode",
-            "composition-view",
-            "composition-identities",
-            "composition-cache-warm",
-            "composition-cache-changed",
-            "composition-growth",
-            "composition-concurrent",
+            "expression-capture",
+            "expression-compile",
+            "expression-reader",
+            "expression-encode",
+            "expression-decode",
+            "expression-identities",
+            "expression-view",
+            "expression-probe",
+            "expression-cache-warm",
+            "expression-cache-changed",
+            "expression-growth",
+            "expression-concurrent",
         ]
     );
 }

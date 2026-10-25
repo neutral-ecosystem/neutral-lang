@@ -1,70 +1,47 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Successor composition source syntax diagnostics.
+//! Shared `/3` nominal syntax helpers against a current capture context.
 
 use super::*;
-use crate::{
-    CapturedCompositionProjectRequest, CapturedProjectRequest, CapturedSourceInput,
-    ProjectCaptureControls, ProjectCaptureLimitValues, ProjectCaptureLimits,
-    capture_composition_project,
-};
-use neutral_core::{StructuralLimits, profile::LanguageProfile};
-use neutral_vocabulary::{VocabularyLimits, composition::CompositionLimits};
+use crate::project_cache_support::capture_expression_source;
 
-fn capture(body: &str) -> CapturedCompositionProject {
-    let bounds = ProjectCaptureLimitValues {
-        total_source_bytes: 4096,
-        source_bytes_per_unit: 4096,
-        source_units: 4,
-        source_id_bytes: 64,
-        module_id_bytes: 64,
-        vocabulary_units: 4,
-        vocabulary_bytes_per_unit: 4096,
-        total_vocabulary_bytes: 4096,
-        imports_per_module: 4,
-        import_edges: 4,
-        scc_units: 4,
-        declarations: 16,
-        diagnostics: 16,
-        output_bytes: 16_384,
-    };
-    capture_composition_project(CapturedCompositionProjectRequest::new(
-        CapturedProjectRequest::new(
-            profile::CAPTURE_REQUEST_VERSION,
-            LanguageProfile::V1_0,
-            vec![CapturedSourceInput::new(
-                "unit",
-                "example",
-                format!("neu \"1.0\"\nmodule example\n{body}\n").into_bytes(),
-            )],
-            Vec::new(),
-            ProjectCaptureControls::new(
-                ProjectCaptureLimits::new(bounds),
-                CancellationToken::new(),
-            ),
-        ),
-        profile::REQUIRED_FEATURES
-            .iter()
-            .map(|feature| (*feature).to_owned())
-            .collect(),
-        CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(
-            StructuralLimits::new(4096, 16).unwrap(),
-        )),
-    ))
-    .unwrap()
+fn declaration_tokens(captured: &crate::CapturedExpressionProject, body: &str) -> Vec<Token> {
+    let context = &captured.composition;
+    let source = &context.sources()[0];
+    let start = source
+        .bytes()
+        .windows(body.len())
+        .position(|window| window == body.as_bytes())
+        .expect("fixture body appears in captured source") as u64;
+    crate::frontend::lexer::lex_bounded(source.bytes(), usize::MAX, None)
+        .unwrap()
+        .tokens
+        .into_iter()
+        .filter(|token| {
+            token.span.start() >= start
+                && token.span.end() <= start + body.len() as u64
+                && !matches!(
+                    token.kind,
+                    TokenKind::EndOfFile | TokenKind::PhysicalLineEnd(_)
+                )
+        })
+        .collect()
 }
 
 #[test]
-fn malformed_declarations_and_members_return_syntax_diagnostics() {
+fn current_capture_nominal_declarations_retain_syntax_diagnostics() {
     for (body, has_location) in [
         ("public num answer", true),
         ("public List answer = 1", true),
         ("public record Item { List field }", false),
     ] {
-        let captured = capture(body);
-        let Err(failure) = parse(&captured.sources()[0], &captured, &CancellationToken::new())
+        let captured = capture_expression_source(body);
+        let context = &captured.composition;
+        let tokens = declaration_tokens(&captured, body);
+        let Err(failure) =
+            parse_declaration(&context.sources()[0], &tokens, context.composition_limits())
         else {
-            panic!("accepted malformed composition source: {body}");
+            panic!("accepted malformed current nominal source: {body}");
         };
         assert_eq!(failure.code, codes::INVALID_SOURCE, "{body}");
         assert_eq!(failure.location.is_some(), has_location, "{body}");
@@ -72,8 +49,9 @@ fn malformed_declarations_and_members_return_syntax_diagnostics() {
 }
 
 #[test]
-fn inverted_declaration_spans_fail_as_invalid_source() {
-    let captured = capture("public num answer = 1");
+fn inverted_current_declaration_spans_fail_as_invalid_source() {
+    let captured = capture_expression_source("public num answer = 1");
+    let context = &captured.composition;
     let tokens = [
         Token {
             kind: TokenKind::Num,
@@ -84,11 +62,9 @@ fn inverted_declaration_spans_fail_as_invalid_source() {
             span: ByteSpan::new(0, 1).unwrap(),
         },
     ];
-    let Err(failure) = parse_declaration(
-        &captured.sources()[0],
-        &tokens,
-        captured.composition_limits(),
-    ) else {
+    let Err(failure) =
+        parse_declaration(&context.sources()[0], &tokens, context.composition_limits())
+    else {
         panic!("accepted inverted declaration span");
     };
     assert_eq!(failure.code, codes::INVALID_SOURCE);

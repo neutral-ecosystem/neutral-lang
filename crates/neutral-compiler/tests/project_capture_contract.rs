@@ -3,13 +3,46 @@
 //! Public project-capture integration contract.
 
 use neutral_compiler::{
-    CapturedProject, CapturedProjectRequestBuilder, CapturedProjectSource,
-    CapturedProjectVocabulary, CapturedSourceInput, CapturedVocabularyInput,
-    ProjectCaptureControls, ProjectCaptureLimitValues, ProjectCaptureLimits, ProjectHostError,
-    capture_project,
+    CapturedExpressionProject, CapturedExpressionProjectRequest, CapturedProjectRequest,
+    CapturedProjectRequestBuilder, CapturedProjectSource, CapturedProjectVocabulary,
+    CapturedSourceInput, CapturedVocabularyInput, ProjectCaptureControls,
+    ProjectCaptureLimitValues, ProjectCaptureLimits, ProjectHostError, capture_expression_project,
 };
+use neutral_core::StructuralLimits;
 use neutral_core::{CancellationToken, VocabularyContentDigest, profile::LanguageProfile};
-use neutral_vocabulary::{VOCABULARY_ENCODING_VERSION, VOCABULARY_SCHEMA_VERSION, VocabularyLock};
+use neutral_ir::{
+    composition::profile::{VOCABULARY_COMPOSITION_FEATURE, VOCABULARY_SCHEMA_VERSION},
+    expression::{
+        profile::{ExpressionLimits, SemanticProfiles},
+        templates::ExpansionLimits,
+    },
+};
+use neutral_vocabulary::{
+    VocabularyLimits, VocabularyLock,
+    composition::{CompositionLimits, ENCODING_VERSION},
+};
+
+/// Supplies explicit current semantic policies alongside a host's current byte envelope.
+fn capture_request(
+    envelope: CapturedProjectRequest,
+) -> Result<CapturedExpressionProject, neutral_compiler::ExpressionCaptureFailure> {
+    capture_expression_project(CapturedExpressionProjectRequest::new(
+        envelope,
+        SemanticProfiles::try_frozen().unwrap(),
+        CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(
+            StructuralLimits::new(4096, 16).unwrap(),
+        )),
+        ExpressionLimits::hard(),
+        ExpansionLimits::hard(),
+    ))
+}
+
+/// Host correlation and input ordering cannot change the complete captured input facts.
+fn same_inputs(left: &CapturedExpressionProject, right: &CapturedExpressionProject) -> bool {
+    left.sources() == right.sources()
+        && left.vocabularies() == right.vocabularies()
+        && left.semantic_profiles() == right.semantic_profiles()
+}
 
 /// One Editor-owned location mapped to logical captured facts before capture.
 struct EditorSource<'a> {
@@ -53,21 +86,33 @@ fn builder(source_units: u64) -> CapturedProjectRequestBuilder {
 
 /// Constructs one exact data-only vocabulary input.
 fn vocabulary(identity: &str) -> CapturedVocabularyInput {
-    let bytes = b"{}\n".to_vec();
+    let bytes = format!(
+        r#"{{
+        "format": "neutral-vocabulary-bundle",
+        "encoding_version": "{ENCODING_VERSION}",
+        "schema_version": "{VOCABULARY_SCHEMA_VERSION}",
+        "identity": "{identity}", "version": "1.0.0",
+        "required_features": ["{VOCABULARY_COMPOSITION_FEATURE}"],
+        "dependencies": [], "types": []
+    }}"#
+    )
+    .into_bytes();
     let lock = VocabularyLock::new(
         identity,
         "1.0.0",
-        VOCABULARY_ENCODING_VERSION,
+        ENCODING_VERSION,
         VOCABULARY_SCHEMA_VERSION,
         VocabularyContentDigest::from_bytes(&bytes),
-        Vec::new(),
+        vec![VOCABULARY_COMPOSITION_FEATURE.to_owned()],
     )
     .expect("public test lock must be valid");
     CapturedVocabularyInput::new(bytes, lock)
 }
 
 /// Models Editor request construction without adding Editor state to core.
-fn editor_request(sources: &[EditorSource<'_>]) -> Result<CapturedProject, ProjectHostError> {
+fn editor_request(
+    sources: &[EditorSource<'_>],
+) -> Result<CapturedExpressionProject, ProjectHostError> {
     let mut request = builder(u64::try_from(sources.len()).expect("test source count must fit"))
         .with_project_key("editor-session");
     for source in sources {
@@ -78,7 +123,7 @@ fn editor_request(sources: &[EditorSource<'_>]) -> Result<CapturedProject, Proje
             source.bytes.to_vec(),
         ))?;
     }
-    Ok(capture_project(request.build()).expect("Editor request must capture"))
+    Ok(capture_request(request.build()).expect("Editor request must capture"))
 }
 
 #[test]
@@ -98,9 +143,9 @@ fn editor_and_cli_style_hosts_construct_the_same_closed_request_meaning() {
         sources[0].bytes.to_vec(),
     ))
     .expect("CLI mapping must be coherent");
-    let cli = capture_project(cli.build()).expect("CLI-style request must capture");
+    let cli = capture_request(cli.build()).expect("CLI-style request must capture");
 
-    assert!(editor.meaning_equivalent(&cli));
+    assert!(same_inputs(&editor, &cli));
     assert_eq!(editor.resource_facts().source_units(), 1);
     assert_eq!(
         editor.resource_facts().total_source_bytes(),
@@ -123,7 +168,7 @@ fn host_builder_coalesces_equivalent_mappings_and_rejects_conflicts() {
         .add_source(source)
         .expect("equivalent host mapping must coalesce");
     assert_eq!(
-        capture_project(request.build())
+        capture_request(request.build())
             .expect("coalesced request must capture")
             .sources()
             .len(),
@@ -149,7 +194,7 @@ fn host_builder_coalesces_equivalent_mappings_and_rejects_conflicts() {
 }
 
 #[test]
-fn shuffled_source_and_lock_order_has_equivalent_capture_meaning() {
+fn property_shuffled_source_and_lock_order_has_equivalent_capture_meaning() {
     let first = CapturedSourceInput::new(
         "source:zeta",
         "shuffle::zeta",
@@ -172,10 +217,9 @@ fn shuffled_source_and_lock_order_has_equivalent_capture_meaning() {
     reversed.add_vocabulary(vocabulary("AlphaDomain"));
     reversed.add_vocabulary(vocabulary("ZebraDomain"));
 
-    let forward = capture_project(forward.build()).expect("forward request must capture");
-    let reversed = capture_project(reversed.build()).expect("reversed request must capture");
-    assert_eq!(forward, reversed);
-    assert!(forward.meaning_equivalent(&reversed));
+    let forward = capture_request(forward.build()).expect("forward request must capture");
+    let reversed = capture_request(reversed.build()).expect("reversed request must capture");
+    assert!(same_inputs(&forward, &reversed));
     assert_eq!(
         forward
             .sources()
@@ -203,8 +247,8 @@ fn captured_project_replays_without_inventing_a_closure_digest() {
         bytes: b"neu \"1.0\"\nmodule capture::replay\n",
     }];
     let captured = editor_request(&sources).expect("initial capture must succeed");
-    let replayed = capture_project(captured.replay_request(CancellationToken::new()))
-        .expect("replay must succeed");
-    assert_eq!(captured, replayed);
-    assert!(captured.meaning_equivalent(&replayed));
+    let replayed =
+        capture_expression_project(captured.replay_request(CancellationToken::new()).unwrap())
+            .expect("replay must succeed");
+    assert!(same_inputs(&captured, &replayed));
 }

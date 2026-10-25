@@ -18,6 +18,7 @@ const UTF8_BOM: &[u8; 3] = b"\xef\xbb\xbf";
 /// source coordinates. Preserve comments and whitespace separately for formatting.
 /// Physical line boundaries remain tokens because the later layout pass, not the
 /// raw lexer, decides where statement boundaries are legal.
+#[cfg(test)]
 pub(super) fn lex(source: &[u8]) -> Result<LexedSource, FrontendError> {
     lex_bounded(source, usize::MAX, None)
 }

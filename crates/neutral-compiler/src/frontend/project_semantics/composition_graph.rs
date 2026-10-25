@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Successor-only graph retention. Syntax is shared; no old-profile allocating owners are constructed.
+//! Current `/3` graph retention over explicitly captured source headers.
 
 use super::{CapturedCompositionProject, E, codes, fail, reserve, retain};
 use crate::frontend::{GraphSyntaxErrorKind, scan_graph_source_bounded};
@@ -41,31 +41,14 @@ impl Import {
     }
 }
 
-/// Constructs bounded topology from captured bytes with fallible graph and worklist retention.
-pub(super) fn build(
-    captured: &CapturedCompositionProject,
-    cancel: &CancellationToken,
-) -> Result<Graph, E> {
-    build_selected(captured, cancel, false)
-}
-
-/// Shares topology algorithms without passing successor expression bodies to the historical lexer.
+/// Scans only explicit current header syntax before retaining import topology.
 pub(super) fn build_expression(
     captured: &CapturedCompositionProject,
     cancel: &CancellationToken,
 ) -> Result<Graph, E> {
-    build_selected(captured, cancel, true)
-}
-
-/// Selects only lexical header extent; import/alias/SCC validation stays shared and unchanged.
-fn build_selected(
-    captured: &CapturedCompositionProject,
-    cancel: &CancellationToken,
-    expression: bool,
-) -> Result<Graph, E> {
     let limits = captured.limits().values();
     let mut work = captured.composition_limits().work;
-    let syntax = scan(captured, &mut work, cancel, expression)?;
+    let syntax = scan(captured, &mut work, cancel)?;
     let (mut edges, positions) = imports(captured, &syntax, &mut work, cancel)?;
     scc(
         captured.sources().len(),
@@ -87,7 +70,6 @@ fn scan(
     captured: &CapturedCompositionProject,
     work: &mut u64,
     cancel: &CancellationToken,
-    expression: bool,
 ) -> Result<Vec<crate::frontend::GraphSourceSyntax>, E> {
     let limits = captured.limits().values();
     let mut result = Vec::new();
@@ -97,11 +79,7 @@ fn scan(
     for source in captured.sources() {
         charge(work, source.bytes().len() as u64 + 1, cancel)?;
         let bytes = source.bytes();
-        let bytes = if expression {
-            &bytes[..header_end(bytes)]
-        } else {
-            bytes
-        };
+        let bytes = &bytes[..header_end(bytes)];
         let syntax = scan_graph_source_bounded(
             bytes,
             source.module_id(),

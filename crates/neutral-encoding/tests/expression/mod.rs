@@ -139,7 +139,7 @@ fn expression_and_expansion_attribution_lists_roundtrip() {
         &CancellationToken::new(),
     )
     .unwrap();
-    let sections = crate::project::array(&parsed).unwrap();
+    let sections = crate::primitives::array(&parsed).unwrap();
     assert_eq!(
         companions::read_expressions(&sections[0], &CancellationToken::new()).unwrap(),
         ir.expression_attributions
@@ -182,11 +182,11 @@ fn residual_unary_tree_roundtrips_through_the_closed_tuple_codec() {
 #[test]
 fn expression_write_validation_preserves_cancellation_classification() {
     assert_eq!(
-        validation_error(crate::project::failure(C::Cancelled)),
+        validation_error(crate::primitives::failure(C::Cancelled)),
         E::Cancelled
     );
     assert_eq!(
-        validation_error(crate::project::failure(C::MalformedCbor)),
+        validation_error(crate::primitives::failure(C::MalformedCbor)),
         E::EncodedSizeLimit
     );
 }
@@ -216,7 +216,7 @@ fn residual_tree_reader_rejects_missing_tuple_fields_and_unknown_unary_tokens() 
     let mut unknown_operator = CborWriter::new();
     unknown_operator.array(4).unwrap();
     unknown_operator.text("unary").unwrap();
-    crate::project::write_type(&mut unknown_operator, &T::Bool, 0).unwrap();
+    crate::primitives::write_type(&mut unknown_operator, &T::Bool, 0).unwrap();
     unknown_operator.text("eval").unwrap();
     trees::write_tree(&mut unknown_operator, &leaf(), 1).unwrap();
     assert!(trees::read_tree(&parse(unknown_operator), 0, &CancellationToken::new()).is_err());
@@ -224,7 +224,7 @@ fn residual_tree_reader_rejects_missing_tuple_fields_and_unknown_unary_tokens() 
 
 /// Catches heuristic profile fallback, nonminimal widths and partial artifact acceptance.
 #[test]
-fn distinct_magic_exact_arity_and_canonical_framing_reject_without_fallback() {
+fn fuzz_decoder_distinct_magic_exact_arity_and_canonical_framing_reject_without_fallback() {
     let bytes = vectors().remove(0);
     let ir = raw(&bytes);
     let cancel = CancellationToken::new();
@@ -236,15 +236,7 @@ fn distinct_magic_exact_arity_and_canonical_framing_reject_without_fallback() {
         assert_eq!(decode(&wrong).unwrap_err().class(), C::MalformedFrame);
     }
     assert_eq!(
-        crate::composition::decode_composition_project(
-            &bytes,
-            DecodeLimits::hard(),
-            ir.limits,
-            limits(&ir).composition,
-            &cancel
-        )
-        .unwrap_err()
-        .class(),
+        decode(b"NIR-PROJECT-CBOR/2").unwrap_err().class(),
         C::MalformedFrame
     );
     for arity in [0x95, 0x97] {
@@ -365,8 +357,8 @@ fn every_frozen_node_and_operator_has_exact_tuple_and_roundtrip() {
             &CancellationToken::new(),
         )
         .unwrap();
-        let tuple = crate::project::array(&parsed).unwrap();
-        assert_eq!(crate::project::text(&tuple[0]).unwrap(), tag);
+        let tuple = crate::primitives::array(&parsed).unwrap();
+        assert_eq!(crate::primitives::text(&tuple[0]).unwrap(), tag);
         assert_eq!(
             trees::read_tree(&parsed, 1, &CancellationToken::new()).unwrap(),
             expression
@@ -407,9 +399,9 @@ fn tree_depth_and_selector_indexes_are_bounded() {
     let mut writer = CborWriter::new();
     writer.array(5).unwrap();
     writer.text("output").unwrap();
-    crate::project::write_type(&mut writer, &T::Bool, 0).unwrap();
-    crate::project::write_symbol(&mut writer, &symbol()).unwrap();
-    crate::project::write_type(&mut writer, &T::Bool, 0).unwrap();
+    crate::primitives::write_type(&mut writer, &T::Bool, 0).unwrap();
+    crate::primitives::write_symbol(&mut writer, &symbol()).unwrap();
+    crate::primitives::write_type(&mut writer, &T::Bool, 0).unwrap();
     writer.array(1).unwrap();
     writer.array(2).unwrap();
     writer.text("index").unwrap();
@@ -442,7 +434,7 @@ fn tree_depth_and_selector_indexes_are_bounded() {
 
 /// Catches trusting producer annotations, stale summaries or forged original-source evidence.
 #[test]
-fn forged_annotations_binders_facts_and_companions_never_publish_authority() {
+fn fuzz_decoder_forged_annotations_binders_facts_and_companions_never_publish_authority() {
     let cases = vectors();
     let cancel = CancellationToken::new();
     for mutate in 0..6 {
@@ -491,7 +483,7 @@ fn replace_token(bytes: &mut [u8], tuple_prefix: &[u8]) {
 
 /// Catches treating unknown body/node/operator/phase/profile tokens as permissive defaults.
 #[test]
-fn unknown_expression_tokens_and_invalid_body_sums_fail_closed() {
+fn fuzz_decoder_unknown_expression_tokens_and_invalid_body_sums_fail_closed() {
     let cases = vectors();
     let cancel = CancellationToken::new();
     for (case, token) in [
@@ -687,14 +679,14 @@ fn expression_module_imports_preserve_order_in_the_wire_tuple_and_raw_ir() {
     }];
 
     let parsed = parse_written_ir(&ir);
-    let tuple = crate::project::array(&parsed).unwrap();
-    let modules = crate::project::array(&tuple[1]).unwrap();
-    let module = crate::project::tuple::<2>(&modules[0]).unwrap();
-    let imports = crate::project::array(&module[1]).unwrap();
+    let tuple = crate::primitives::array(&parsed).unwrap();
+    let modules = crate::primitives::array(&tuple[1]).unwrap();
+    let module = crate::primitives::tuple::<2>(&modules[0]).unwrap();
+    let imports = crate::primitives::array(&module[1]).unwrap();
     assert_eq!(
         imports
             .iter()
-            .map(|value| crate::project::text(value).unwrap())
+            .map(|value| crate::primitives::text(value).unwrap())
             .collect::<Vec<_>>(),
         ["alpha", "beta"]
     );
@@ -742,47 +734,47 @@ fn expression_vocabulary_catalogues_preserve_features_visibility_and_dependencie
     }];
 
     let parsed = parse_written_ir(&ir);
-    let tuple = crate::project::array(&parsed).unwrap();
-    let definitions = crate::project::array(&tuple[3]).unwrap();
+    let tuple = crate::primitives::array(&parsed).unwrap();
+    let definitions = crate::primitives::array(&tuple[3]).unwrap();
     assert_eq!(definitions.len(), 2);
     for ((definition, name), public) in definitions
         .iter()
         .zip(["PrivateThing", "PublicThing"])
         .zip([false, true])
     {
-        let definition = crate::project::tuple::<5>(definition).unwrap();
-        assert_eq!(crate::project::text(&definition[2]).unwrap(), name);
-        assert_eq!(crate::project::boolean(&definition[3]).unwrap(), public);
-        let body = crate::project::tuple::<2>(&definition[4]).unwrap();
-        assert_eq!(crate::project::text(&body[0]).unwrap(), "record");
-        assert!(crate::project::array(&body[1]).unwrap().is_empty());
+        let definition = crate::primitives::tuple::<5>(definition).unwrap();
+        assert_eq!(crate::primitives::text(&definition[2]).unwrap(), name);
+        assert_eq!(crate::primitives::boolean(&definition[3]).unwrap(), public);
+        let body = crate::primitives::tuple::<2>(&definition[4]).unwrap();
+        assert_eq!(crate::primitives::text(&body[0]).unwrap(), "record");
+        assert!(crate::primitives::array(&body[1]).unwrap().is_empty());
     }
 
-    let catalogues = crate::project::array(&tuple[4]).unwrap();
-    let catalogue = crate::project::tuple::<5>(&catalogues[0]).unwrap();
+    let catalogues = crate::primitives::array(&tuple[4]).unwrap();
+    let catalogue = crate::primitives::tuple::<5>(&catalogues[0]).unwrap();
     assert_eq!(
-        crate::project::array(&catalogue[3])
+        crate::primitives::array(&catalogue[3])
             .unwrap()
             .iter()
-            .map(|feature| crate::project::text(feature).unwrap())
+            .map(|feature| crate::primitives::text(feature).unwrap())
             .collect::<Vec<_>>(),
         ["feature-alpha", "feature-zeta"]
     );
     assert_eq!(
-        crate::project::array(&catalogue[4])
+        crate::primitives::array(&catalogue[4])
             .unwrap()
             .iter()
-            .map(|name| crate::project::text(name).unwrap())
+            .map(|name| crate::primitives::text(name).unwrap())
             .collect::<Vec<_>>(),
         ["PublicThing"]
     );
 
-    let dependency_groups = crate::project::array(&tuple[12]).unwrap();
-    let group = crate::project::tuple::<3>(&dependency_groups[0]).unwrap();
-    let dependencies = crate::project::array(&group[2]).unwrap();
-    let dependency = crate::project::tuple::<2>(&dependencies[0]).unwrap();
-    assert_eq!(crate::project::text(&dependency[0]).unwrap(), "Base");
-    assert_eq!(crate::project::text(&dependency[1]).unwrap(), "2.1.0");
+    let dependency_groups = crate::primitives::array(&tuple[12]).unwrap();
+    let group = crate::primitives::tuple::<3>(&dependency_groups[0]).unwrap();
+    let dependencies = crate::primitives::array(&group[2]).unwrap();
+    let dependency = crate::primitives::tuple::<2>(&dependencies[0]).unwrap();
+    assert_eq!(crate::primitives::text(&dependency[0]).unwrap(), "Base");
+    assert_eq!(crate::primitives::text(&dependency[1]).unwrap(), "2.1.0");
 
     let roundtrip = project::read_ir(&parsed, &CancellationToken::new()).unwrap();
     assert_eq!(roundtrip.vocabularies, ir.vocabularies);

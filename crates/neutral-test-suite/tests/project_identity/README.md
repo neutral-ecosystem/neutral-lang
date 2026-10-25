@@ -1,26 +1,19 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Project identity conformance
+# Historical project identity records
 
-This suite owns executable literal transcript/SHA-256 vectors, complete logical
-meaning, layer exclusions, bounded construction, cancellation, and artifact
-selection/format separation. `vectors.json` is the execution copy of the portable
-release asset; it remains usable after the portable plan is archived.
-`reference.py` independently implements all four frozen identity layers using
-Python's standard library, explicit big-endian framing, and SHA-256. Rust tests
-project typed input facts into its data-only request; they never supply Rust
-transcripts as expectations. Both implementations must match every retained
-literal vector, accepted corpus case, and adversarial identity vector, including
-exact byte/node boundaries, tuple collision paths, and canonical root selections.
+The vectors and independent Python oracle here are immutable `/1` evidence and
+are not executed by current development tests. Current identity behavior uses
+the complete expression-project `/3` pipeline:
 
-`integration.rs` checks public reader facts, standalone reader-only probe root
-invariance, and actual caller-owned syntax cache execution versus clean builds.
-It observes parsed/reused units, changes private source bytes and source IDs,
-revalidates changed vocabulary and controls, checks failed-run recovery, and
-compares complete artifacts under concurrent schedules. Compiler-owned tests
-add misplaced-entry and simulated digest-collision rejection.
+| Current behavior | Executable regression |
+| --- | --- |
+| Capture transcript bytes, digest, bounds, allocation failure and recovery | `neutral-compiler/tests/expression_source/capture.rs`: `captured_expression_identity_matches_exact_byte_oracle`, `captured_expression_identity_rejects_bounds_and_recovers_after_faults` |
+| Complete identity and changed-source cache behavior | `neutral-test-suite/tests/expression_pipeline/cache.rs`: `integration_expression_cache_clean_warm_changed_units_and_source_evidence_agree` |
+| Vocabulary/default identity refresh | `neutral-test-suite/tests/expression_pipeline/cache.rs`: `integration_expression_cache_refreshes_vocabulary_defaults_and_restrictions` |
+| Consumer generation and binding identity | `neutral-test-suite/tests/expression_pipeline/consumer/generations.rs`: `property_binding_revisions_do_not_rewrite_project_identity`; `neutral-test-suite/tests/expression_pipeline/consumer.rs`: `integration_cached_expression_artifact_has_literal_reports_and_immutable_identity` |
+| Public roots and redacted inspection | `neutral-test-suite/tests/expression_pipeline/inspection.rs`: `integration_expression_probe_is_independent_of_roots_and_external_bindings` |
 
-Run `cargo test --package neutral-test-suite project_identity`. Python 3 is
-required (`python3`, or `python` on hosts using that name); set
-`NEUTRAL_IDENTITY_REFERENCE_PYTHON` to override interpreter discovery. Missing
-Python fails conformance rather than silently skipping independent review.
+Run `cargo test -p neutral-test-suite expression_pipeline` and
+`cargo test -p neutral-compiler expression_source::capture` for current
+regressions. Historical `/1` fixtures are not accepted by the current decoder.

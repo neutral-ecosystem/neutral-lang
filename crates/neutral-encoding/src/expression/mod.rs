@@ -4,7 +4,7 @@
 
 use crate::{
     DecodeError as D, DecodeErrorClass as C, DecodeLimits, EncodingError as E, cbor::CborWriter,
-    project::failure,
+    primitives::failure,
 };
 use neutral_core::{
     CancellationToken,
@@ -160,7 +160,7 @@ fn read_list<T>(
     mut item: impl FnMut(&crate::decoder::LocatedValue) -> Result<T, D>,
 ) -> Result<Vec<T>, D> {
     check_cancelled(cancel)?;
-    crate::project::read_list(value, |value| {
+    crate::primitives::read_list(value, |value| {
         check_cancelled(cancel)?;
         item(value)
     })

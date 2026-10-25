@@ -37,19 +37,17 @@ separate from the immutable released fixtures under `conformance/`. A confirmed
 finding is minimized first, then retained in the owning crate's deterministic
 regression suite when it represents a real defect.
 
-The vocabulary target exercises the released bundle decoder, the project-bundle
-decoder, and the separate composition closure/default/restriction boundary.
-Source, IR and probe targets also exercise the explicit successor pipeline.
+The vocabulary target exercises current captured composition contracts and their
+source/compiler/reader integration. All five targets use the current complete
+expression-project pipeline.
 `composition_support` supplies bounded capture controls and a reviewed source
 seed; wire/probe targets mutate a valid independently encoded successor frame so
 they reach contract/value/origin validation rather than only rejecting magic.
 Source fuzzing independently validates successful compilation and round trips.
-The vocabulary harness also mutates one bundle in a four-bundle diamond with
-exact locks, then drives source compilation, independent encoding/decoding and
-public probe closure. Its unmodified seed must succeed; invalid mutations may
-fail only before complete output. This bounded topology is not exhaustive
-transitive graph coverage or allocator-fault injection; deterministic tests and
-separate review still own those requirements.
+The vocabulary harness mutates a captured bundle with an exact lock, then drives
+source compilation and independent reading. Invalid mutations must fail before
+complete output. Transitive graph coverage and allocator-fault injection remain
+the responsibility of the deterministic tests and separate review.
 The campaign command supplies tracked seeds from
 `fuzz/seeds/vocabulary/` alongside the ignored mutable corpus. Run
 `cargo xtask fuzz smoke` for deterministic mutations, or select a nightly

@@ -8,7 +8,7 @@ use neutral_core::VocabularyContentDigest;
 use neutral_vocabulary::VocabularyLock;
 
 /// Builds a valid `/3` capture vocabulary whose content and lock cover its source use.
-fn expression_vocabulary() -> CapturedVocabularyInput {
+pub(super) fn expression_vocabulary() -> CapturedVocabularyInput {
     let bytes = EXPRESSION_VOCABULARY_BYTES.to_vec();
     let lock = VocabularyLock::new(
         "ExampleDomain",
@@ -22,7 +22,7 @@ fn expression_vocabulary() -> CapturedVocabularyInput {
     CapturedVocabularyInput::new(bytes, lock)
 }
 
-const EXPRESSION_VOCABULARY_BYTES: &[u8] = br#"{
+pub(super) const EXPRESSION_VOCABULARY_BYTES: &[u8] = br#"{
   "format": "neutral-vocabulary-bundle",
   "encoding_version": "1.0",
   "schema_version": "2.0",

@@ -1,0 +1,11 @@
+neu "1.0"
+module current
+
+public input num seed
+
+template Item(static num value, deferred num delta) -> num {
+    value + delta
+}
+
+public expand values = Item(value: item, delta: seed)
+for (item in [1, 2])

@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Iterative raw producer preflight before any recursive consumer or retained clone.
+//! Iterative raw preflight before any recursive consumer or retained clone.
 
-use super::{
-    CompositionPolicy, CompositionProjectIr, CompositionResourceFacts, CompositionSignature,
-};
+use super::{CompositionPolicy, CompositionResourceFacts, CompositionSignature};
 use crate::{
     ModuleSymbolIdentity,
     composition::{CompositionBody, CompositionValue, ValuePathSegment, profile},
@@ -156,7 +154,7 @@ impl Inspector<'_> {
         Ok(())
     }
 
-    /// Checked model storage projection; never allocates or changes historical acceptance policy.
+    /// Checked retained-storage projection; never allocates or changes the configured policy.
     fn storage<U>(&mut self, count: usize) -> Result<(), CompositionShapeError> {
         self.bytes = self
             .bytes
@@ -394,50 +392,14 @@ impl Inspector<'_> {
     }
 }
 
-/// Preflights every raw retained value/type/companion before consumers clone or recurse.
-///
-/// This is structural resource accounting, not semantic validation or authentication.
-/// All nominal contracts count once; binding/default/choice occurrences count independently.
-///
-/// # Errors
-/// Returns only bounded limit/allocation or cancellation failure, never partial facts.
-pub fn inspect_composition_ir(
-    ir: &CompositionProjectIr,
-    limits: ProjectLimits,
-    policy: CompositionPolicy,
-    cancellation: &CancellationToken,
-) -> Result<CompositionResourceFacts, CompositionShapeError> {
-    inspect_retained(
-        Sections {
-            modules: &ir.modules,
-            declarations: ir.declarations.len(),
-            map_limit: limits.declarations,
-            vocabularies: &ir.vocabularies,
-            source_maps: &ir.source_maps,
-            provenance: &ir.provenance,
-            origins: &ir.origins,
-            sources: &ir.sources,
-            vocabulary_sources: &ir.vocabulary_sources,
-        },
-        ir.declarations
-            .iter()
-            .map(|d| (&d.identity, &d.signature, d.value.as_ref())),
-        limits,
-        policy,
-        cancellation,
-        &[],
-    )
-    .map(|inspection| inspection.facts)
-}
-
-/// Borrowed historical companion roles, shared without a fabricated project envelope.
+/// Borrowed current expression companion roles for common retained inspection.
 #[derive(Clone, Copy)]
 struct Sections<'a> {
     /// Complete module graph.
     modules: &'a [crate::project::ProjectModule],
     /// Complete ordinary declaration count.
     declarations: usize,
-    /// Independent owner-map limit, preserving historical declaration-only controls.
+    /// Independent owner-map limit, preserving declaration-only controls.
     map_limit: u64,
     /// Complete nominal vocabulary contracts.
     vocabularies: &'a [crate::composition::CompositionBundle],
@@ -453,7 +415,7 @@ struct Sections<'a> {
     vocabulary_sources: &'a [crate::project::ProjectVocabularySource],
 }
 
-/// Shares raw collection/type/value accounting across independently selected project profiles.
+/// Shares raw collection/type/value accounting across current expression artifacts.
 fn inspect_retained<'a>(
     ir: Sections<'a>,
     declarations: impl IntoIterator<
@@ -672,7 +634,7 @@ pub fn inspect_expression_project_resources(
         .map(|inspection| inspection.facts)
 }
 
-/// Reports whole-project inspection work so nested producers can debit an aggregate allowance.
+/// Reports complete artifact inspection work so nested producers can debit an aggregate allowance.
 ///
 /// # Errors
 /// Same structural/count/allocation/cancellation failures as the facts-only entry point.
@@ -762,5 +724,5 @@ pub fn inspect_expression_project_resources_with_work(
 }
 
 #[cfg(test)]
-#[path = "../../../tests/unit/composition_project_inspection.rs"]
+#[path = "../../../tests/unit/expression_retention_inspection.rs"]
 mod tests;

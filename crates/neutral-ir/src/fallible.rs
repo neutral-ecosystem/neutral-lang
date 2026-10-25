@@ -2,10 +2,7 @@
 
 //! Fallible owned identities and exact coefficients used by independently bounded successor paths.
 
-use super::composition::{
-    CompositionBindingReference,
-    project::{CompositionDeclaration, CompositionSignature},
-};
+use super::composition::{CompositionBindingReference, project::CompositionSignature};
 use super::{ExactNumber, LogicalModuleIdentity, ModuleSymbolIdentity, VocabularyIdentity};
 use super::{
     composition::{
@@ -23,17 +20,6 @@ impl TryClone for CompositionSignature {
         Ok(match self {
             Self::Binding(t) => Self::Binding(t.try_clone()?),
             Self::Definition(b) => Self::Definition(b.try_clone()?),
-        })
-    }
-}
-impl TryClone for CompositionDeclaration {
-    /// Retains a preflighted declaration atomically, including its materialized value.
-    fn try_clone(&self) -> Result<Self, E> {
-        Ok(Self {
-            identity: self.identity.try_clone()?,
-            public: self.public,
-            signature: self.signature.try_clone()?,
-            value: self.value.try_clone()?,
         })
     }
 }

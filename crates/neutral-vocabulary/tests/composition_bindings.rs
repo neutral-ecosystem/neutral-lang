@@ -153,7 +153,7 @@ fn validate(
 
 /// Non-embedding cycles, forward references and input permutation produce canonical facts.
 #[test]
-fn composition_bindings_forward_cycles_and_canonical_order() {
+fn property_composition_bindings_forward_cycles_and_canonical_order() {
     let mut input = cycle();
     let result = validate(&input, limits()).unwrap();
     input.reverse();
@@ -521,7 +521,7 @@ fn composition_bindings_exact_and_one_under_limits() {
 
 /// Immutable catalogues and isolated request counters remain deterministic under concurrent consumers.
 #[test]
-fn composition_bindings_concurrent_isolation() {
+fn property_composition_bindings_concurrent_isolation() {
     let scope = scope();
     let input = shared(cycle());
     let expected = validate_composition_bindings(

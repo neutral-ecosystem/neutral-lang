@@ -11,8 +11,8 @@ belong to `neutral-test-suite`; this package only removes duplication between
 those test locations.
 
 `TestDirectory` owns a newly created temporary directory and cleans it up on scope
-exit. `empty_composition_ir` builds shared compiler-independent fixture input; each
-caller still validates that input through its own reader or codec boundary. Frozen
+exit. Current `/3` project fixtures stay beside their owning compiler, reader,
+codec, or cross-crate tests so each fixture expresses the model under test. Frozen
 wire and identity expectations remain with their owning tests.
 
 ## Command

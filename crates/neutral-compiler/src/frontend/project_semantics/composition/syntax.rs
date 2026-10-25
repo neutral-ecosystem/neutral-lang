@@ -1,27 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Parse composition declaration roots from already captured source bytes.
-//!
-//! Retain record/variant shapes, bindings, type expressions and source spans for
-//! later resolution. Token splitting respects nested delimiters and caller
-//! limits; allocation and cancellation failures propagate through the pipeline's
-//! failure envelope. Parsing does not resolve names or materialize defaults.
+//! Shared source-value token helpers for `/3` nominal defaults.
 
 use super::{
-    BorrowedOccurrence, ByteSpan, CancellationToken, CapturedCompositionProject, E,
-    LogicalModuleIdentity, ModuleSymbolIdentity, PROJECT_MAX_DEPTH, RetainCapacity, Root,
-    SourceLocation, Token, TokenKind, TypeExpr, V1_SOURCE_PROFILE, codes, fail, is_protected_name,
-    is_requirement_or_import, is_snake_name, is_upper_name, lexer, parse_complete_type_fallible,
-    profile,
+    ByteSpan, E, LogicalModuleIdentity, ModuleSymbolIdentity, Root, SourceLocation, TypeExpr,
+    V1_SOURCE_PROFILE, codes, fail, is_protected_name, is_snake_name, is_upper_name,
+    parse_complete_type_fallible, profile,
 };
+use crate::frontend::{Token, TokenKind};
+use neutral_core::allocation::RetainCapacity;
 
 /// Recognizes a local or qualified name without copying token storage.
-pub(super) fn parse_name(
-    tokens: &[Token],
-    index: usize,
-) -> Option<(BorrowedOccurrence<'_>, usize)> {
+pub(super) fn parse_name(tokens: &[Token], index: usize) -> Option<usize> {
     let first = tokens.get(index)?;
-    let TokenKind::Identifier(name) = &first.kind else {
+    let TokenKind::Identifier(_) = &first.kind else {
         return None;
     };
     if matches!(
@@ -29,126 +21,21 @@ pub(super) fn parse_name(
         Some(TokenKind::DoubleColon)
     ) {
         let second = tokens.get(index + 2)?;
-        let TokenKind::Identifier(target) = &second.kind else {
+        let TokenKind::Identifier(_) = &second.kind else {
             return None;
         };
-        Some((
-            BorrowedOccurrence {
-                alias: Some(name),
-                name: target,
-                span: second.span,
-            },
-            index + 3,
-        ))
+        Some(index + 3)
     } else {
-        Some((
-            BorrowedOccurrence {
-                alias: None,
-                name,
-                span: first.span,
-            },
-            index + 1,
-        ))
+        Some(index + 1)
     }
 }
 /// Recognizes a reference's borrowed target without retaining an intermediate name.
-pub(super) fn parse_reference(
-    tokens: &[Token],
-    index: usize,
-) -> Option<(BorrowedOccurrence<'_>, usize)> {
+pub(super) fn parse_reference(tokens: &[Token], index: usize) -> Option<usize> {
     if !matches!(tokens.get(index + 1)?.kind, TokenKind::OpenParen) {
         return None;
     }
-    let (name, end) = parse_name(tokens, index + 2)?;
-    matches!(tokens.get(end)?.kind, TokenKind::CloseParen).then_some((name, end + 1))
-}
-
-/// Parses declarations once while preserving physical statement and original-byte boundaries.
-pub(super) fn parse(
-    source: &crate::CapturedProjectSource,
-    captured: &CapturedCompositionProject,
-    cancel: &CancellationToken,
-) -> Result<Vec<Root>, E> {
-    let string_limit =
-        usize::try_from(captured.composition_limits().json.string_bytes()).unwrap_or(usize::MAX);
-    let tokens = lexer::lex_bounded(source.bytes(), string_limit, Some(cancel))
-        .map_err(|e| {
-            fail(
-                if cancel.is_cancelled() {
-                    codes::CANCELLED
-                } else if matches!(
-                    e.kind,
-                    crate::frontend::FrontendErrorKind::RecordLimitExceeded
-                ) {
-                    codes::LIMIT
-                } else {
-                    codes::INVALID_SOURCE
-                },
-                Some(SourceLocation::new(source.digest(), e.span)),
-            )
-        })?
-        .tokens;
-    let mut statement = Vec::new();
-    let mut roots = Vec::new();
-    let mut depth = 0;
-    let mut headers = 0;
-    for token in tokens {
-        if cancel.is_cancelled() {
-            return Err(fail(codes::CANCELLED, None));
-        }
-        if matches!(
-            token.kind,
-            TokenKind::EndOfFile | TokenKind::PhysicalLineEnd(_)
-        ) {
-            if depth == 0 && !statement.is_empty() {
-                if headers < 2 {
-                    headers += 1;
-                } else if !is_requirement_or_import(&statement) {
-                    if roots.len() as u64 >= captured.limits().values().declarations {
-                        return Err(fail(codes::LIMIT, None));
-                    }
-                    roots.try_retain(1).map_err(|_| fail(codes::LIMIT, None))?;
-                    roots.push(parse_declaration(
-                        source,
-                        &statement,
-                        captured.composition_limits(),
-                    )?);
-                }
-                statement.clear();
-            }
-            continue;
-        }
-        match token.kind {
-            TokenKind::OpenBrace | TokenKind::OpenBracket | TokenKind::OpenParen => depth += 1,
-            TokenKind::CloseBrace | TokenKind::CloseBracket | TokenKind::CloseParen => {
-                if depth == 0 {
-                    return Err(fail(
-                        codes::INVALID_SOURCE,
-                        Some(SourceLocation::new(source.digest(), token.span)),
-                    ));
-                }
-                depth -= 1;
-            }
-            _ => {}
-        }
-        if depth > PROJECT_MAX_DEPTH {
-            return Err(fail(
-                codes::LIMIT,
-                Some(SourceLocation::new(source.digest(), token.span)),
-            ));
-        }
-        statement
-            .try_retain(1)
-            .map_err(|_| fail(codes::LIMIT, None))?;
-        statement.push(token);
-    }
-    if !statement.is_empty() {
-        return Err(fail(
-            codes::INVALID_SOURCE,
-            Some(SourceLocation::new(source.digest(), statement[0].span)),
-        ));
-    }
-    Ok(roots)
+    let end = parse_name(tokens, index + 2)?;
+    matches!(tokens.get(end)?.kind, TokenKind::CloseParen).then_some(end + 1)
 }
 
 /// Adds contextual variant syntax without reserving `variant` as a binding identifier.

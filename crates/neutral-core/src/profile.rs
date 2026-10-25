@@ -2,9 +2,9 @@
 
 //! Stable language-profile, capability, and default-limit contracts.
 
-/// Frozen source header spelling for the independently selectable v0 profile.
+/// Historical source spelling retained for literal rejection and archived vectors.
 pub const V0_SOURCE_PROFILE: &str = "0.1";
-/// Frozen source header spelling reserved for the v1 profile.
+/// Exact current source header spelling, independent of package version.
 pub const V1_SOURCE_PROFILE: &str = "1.0";
 /// Stable diagnostic emitted when a recognized profile is not yet available.
 pub const PROFILE_UNAVAILABLE_DIAGNOSTIC: &str = "NEU-PRO-001";
@@ -35,9 +35,7 @@ pub const DEFAULT_TRAVERSAL_NODES: u64 = 1_000_000;
 /// One exact source-language profile recognized by this release train.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum LanguageProfile {
-    /// Frozen, implemented v0.1 source behavior.
-    V0_1,
-    /// Reserved v1.0 source behavior, recognized but unavailable to standalone compilation.
+    /// Current complete source behavior.
     V1_0,
 }
 
@@ -45,9 +43,7 @@ impl LanguageProfile {
     /// Selects a recognized profile from an exact unescaped header value.
     #[must_use]
     pub const fn from_source_version(value: &str) -> Option<Self> {
-        if const_str_eq(value, V0_SOURCE_PROFILE) {
-            Some(Self::V0_1)
-        } else if const_str_eq(value, V1_SOURCE_PROFILE) {
+        if const_str_eq(value, V1_SOURCE_PROFILE) {
             Some(Self::V1_0)
         } else {
             None
@@ -58,7 +54,6 @@ impl LanguageProfile {
     #[must_use]
     pub const fn source_version(self) -> &'static str {
         match self {
-            Self::V0_1 => V0_SOURCE_PROFILE,
             Self::V1_0 => V1_SOURCE_PROFILE,
         }
     }
@@ -144,8 +139,8 @@ impl LanguageProfileDescriptor {
     }
 }
 
-/// Frozen capability list for the implemented v0.1 profile.
-const V0_CAPABILITIES: &[LanguageCapability] = &[
+/// Implemented foundational data capabilities; exact expression features are separately versioned.
+const CURRENT_CAPABILITIES: &[LanguageCapability] = &[
     LanguageCapability::SingleSourceUnit,
     LanguageCapability::ImmutableData,
     LanguageCapability::NominalRecords,
@@ -154,18 +149,11 @@ const V0_CAPABILITIES: &[LanguageCapability] = &[
 ];
 
 /// Complete deterministic profile catalogue for public discovery.
-const LANGUAGE_PROFILES: &[LanguageProfileDescriptor] = &[
-    LanguageProfileDescriptor {
-        profile: LanguageProfile::V0_1,
-        availability: ProfileAvailability::Available,
-        capabilities: V0_CAPABILITIES,
-    },
-    LanguageProfileDescriptor {
-        profile: LanguageProfile::V1_0,
-        availability: ProfileAvailability::Unavailable,
-        capabilities: &[],
-    },
-];
+const LANGUAGE_PROFILES: &[LanguageProfileDescriptor] = &[LanguageProfileDescriptor {
+    profile: LanguageProfile::V1_0,
+    availability: ProfileAvailability::Available,
+    capabilities: CURRENT_CAPABILITIES,
+}];
 
 /// Returns the complete deterministic profile and capability catalogue.
 #[must_use]
@@ -177,8 +165,7 @@ pub const fn language_profiles() -> &'static [LanguageProfileDescriptor] {
 #[must_use]
 pub const fn language_profile(profile: LanguageProfile) -> &'static LanguageProfileDescriptor {
     match profile {
-        LanguageProfile::V0_1 => &LANGUAGE_PROFILES[0],
-        LanguageProfile::V1_0 => &LANGUAGE_PROFILES[1],
+        LanguageProfile::V1_0 => &LANGUAGE_PROFILES[0],
     }
 }
 

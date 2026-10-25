@@ -1,117 +1,69 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Public language-profile dispatch conformance tests.
+//! Current source-header selection rejects historical and lookalike profiles.
 
-use neutral_compiler::{
-    CompilationFailureDetail, CompilationRequest, CompilationResult, compile, diagnostics,
-};
-use neutral_core::{CancellationToken, StructuralLimits};
+use neutral_compiler::{ProjectCaptureLimitValues, ProjectCaptureLimits, source_module_name};
+use neutral_core::CancellationToken;
 
-/// Compiles one exact fixture under small deterministic test limits.
-fn compile_fixture(source: &[u8]) -> CompilationResult {
-    compile(CompilationRequest::new(
-        source.to_vec(),
-        StructuralLimits::new(4_096, 16).expect("test limits must be valid"),
-        CancellationToken::new(),
-    ))
-    .expect("fixture capture must succeed")
+/// Header scanning is bounded independently of subsequent source compilation.
+fn limits() -> ProjectCaptureLimits {
+    ProjectCaptureLimits::new(ProjectCaptureLimitValues {
+        total_source_bytes: 4096,
+        source_bytes_per_unit: 4096,
+        source_units: 1,
+        source_id_bytes: 128,
+        module_id_bytes: 128,
+        vocabulary_units: 1,
+        vocabulary_bytes_per_unit: 4096,
+        total_vocabulary_bytes: 4096,
+        imports_per_module: 16,
+        import_edges: 16,
+        scc_units: 1,
+        declarations: 64,
+        diagnostics: 16,
+        output_bytes: 4096,
+    })
 }
 
-/// Extracts the stable public failure detail and first diagnostic code.
-fn rejected_contract(result: CompilationResult) -> (CompilationFailureDetail, String) {
-    let CompilationResult::Failure(failure) = result else {
-        panic!("negative profile fixture must fail")
-    };
-    let code = failure
-        .diagnostics()
-        .first()
-        .expect("profile failure must retain one diagnostic")
-        .code()
-        .as_str()
-        .to_owned();
-    (failure.detail(), code)
-}
-
+/// Exact current source selection is independent of package release versions.
 #[test]
-/// Proves explicit v0 dispatch preserves authoritative inherited behavior.
-fn conformance_positive_v0_profile_remains_available() {
-    let source = include_bytes!("fixtures/profiles/v0-profile.neu");
-    assert!(matches!(
-        compile_fixture(source),
-        CompilationResult::Success(_)
-    ));
-}
-
-#[test]
-/// Proves exact v1 selection is recognized and rejected as unavailable.
-fn conformance_negative_and_boundary_v1_profiles_fail_closed() {
-    for source in [
-        include_bytes!("fixtures/profiles/v1-unavailable.neu").as_slice(),
-        include_bytes!("fixtures/profiles/exact-v1-profile.neu").as_slice(),
-    ] {
-        assert_eq!(
-            rejected_contract(compile_fixture(source)),
-            (
-                CompilationFailureDetail::FrontendUnavailable,
-                diagnostics::PROFILE_UNAVAILABLE_DIAGNOSTIC.to_owned(),
-            )
-        );
-    }
-}
-
-#[test]
-/// Proves a v1 lookalike remains an unknown version instead of being normalized.
-fn conformance_lookalike_profile_retains_unknown_version_behavior() {
-    let source = include_bytes!("fixtures/profiles/v1-leading-zero.neu");
+fn current_source_header_is_available() {
     assert_eq!(
-        rejected_contract(compile_fixture(source)),
-        (
-            CompilationFailureDetail::SyntaxRejected,
-            diagnostics::UNSUPPORTED_LANGUAGE_VERSION.to_owned(),
+        source_module_name(
+            include_bytes!("../../../examples/minimal.neu"),
+            limits(),
+            &CancellationToken::new()
         )
+        .unwrap(),
+        "example"
     );
 }
 
+/// Historical and normalized-looking version spellings never fall back to the current grammar.
 #[test]
-/// Proves repeated and concurrent unavailable-profile dispatch is deterministic.
-fn conformance_profile_rejection_is_repeatedly_and_concurrently_deterministic() {
-    let source = include_bytes!("fixtures/profiles/v1-unavailable.neu");
-    let expected = rejected_contract(compile_fixture(source));
-    for _ in 0..32 {
-        assert_eq!(rejected_contract(compile_fixture(source)), expected);
-    }
-    let workers = (0..8)
-        .map(|_| {
-            std::thread::spawn(|| {
-                rejected_contract(compile_fixture(include_bytes!(
-                    "fixtures/profiles/v1-unavailable.neu"
-                )))
-            })
-        })
-        .collect::<Vec<_>>();
-    for worker in workers {
-        assert_eq!(
-            worker.join().expect("profile worker must not panic"),
-            expected
+fn old_unknown_and_lookalike_source_profiles_fail_closed() {
+    for version in ["0.1", "01.0", "1", "1.00", "2.0"] {
+        let source = format!("neu \"{version}\"\nmodule example\npublic num answer = 42\n");
+        assert!(
+            source_module_name(source.as_bytes(), limits(), &CancellationToken::new()).is_err(),
+            "{version}"
         );
     }
 }
 
+/// Cancellation takes precedence over publishing even a checked module spelling.
 #[test]
-/// Proves excluded behavior cannot bypass the unavailable v1 profile gate.
-fn conformance_v1_exclusions_fail_before_language_interpretation() {
-    for source in [
-        include_bytes!("fixtures/profiles/excluded-functions.neu").as_slice(),
-        include_bytes!("fixtures/profiles/excluded-effects.neu").as_slice(),
-        include_bytes!("fixtures/profiles/excluded-acquisition.neu").as_slice(),
-        include_bytes!("fixtures/profiles/excluded-product-semantics.neu").as_slice(),
-    ] {
-        assert_eq!(
-            rejected_contract(compile_fixture(source)),
-            (
-                CompilationFailureDetail::FrontendUnavailable,
-                diagnostics::PROFILE_UNAVAILABLE_DIAGNOSTIC.to_owned(),
-            )
-        );
-    }
+fn header_selection_cancellation_recovers_on_the_same_bytes() {
+    let bytes = include_bytes!("../../../examples/minimal.neu");
+    let cancelled = CancellationToken::new();
+    cancelled.cancel();
+    assert!(
+        source_module_name(bytes, limits(), &cancelled)
+            .unwrap_err()
+            .is_cancelled()
+    );
+    assert_eq!(
+        source_module_name(bytes, limits(), &CancellationToken::new()).unwrap(),
+        "example"
+    );
 }

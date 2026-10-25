@@ -5,63 +5,6 @@
 use super::*;
 use neutral_ir::project_interface::ProjectPublicEdgeKind as K;
 
-/// Explicit successor syntax never widens either historical contextual parser.
-#[test]
-fn integration_expression_syntax_is_rejected_by_historical_pipelines() {
-    use neutral_compiler::{
-        CapturedCompositionProjectRequest, capture_composition_project, capture_project,
-        compile_composition_project, compile_project,
-    };
-    use neutral_ir::composition::profile as old;
-
-    for body in [
-        "public input num supplied",
-        "public num result = 1 + 2",
-        "public num result = if true { 1 } else { 2 }",
-        "template Item(static num value) -> num { value }\npublic num result = instantiate Item(value: 2)",
-        "template Item(static num value) -> num { value }\nexpand items = Item(value: axis) for (axis in [1, 2])",
-    ] {
-        let source = format!("neu \"1.0\"\nmodule pipeline\n{body}\n");
-        let sources = || {
-            vec![CapturedSourceInput::new(
-                "source:pipeline",
-                "pipeline",
-                source.as_bytes().to_vec(),
-            )]
-        };
-        if let Ok(captured) = capture_project(capture_envelope(
-            sources(),
-            vec![],
-            neutral_compiler::CAPTURE_REQUEST_VERSION,
-            CancellationToken::new(),
-        )) {
-            assert!(
-                compile_project(&captured, &CancellationToken::new()).is_err(),
-                "{body}"
-            );
-        }
-        let request = CapturedCompositionProjectRequest::new(
-            capture_envelope(
-                sources(),
-                vec![],
-                old::CAPTURE_REQUEST_VERSION,
-                CancellationToken::new(),
-            ),
-            old::REQUIRED_FEATURES
-                .iter()
-                .map(|s| (*s).to_owned())
-                .collect(),
-            composition_limits(),
-        );
-        if let Ok(captured) = capture_composition_project(request) {
-            assert!(
-                compile_composition_project(&captured, &CancellationToken::new()).is_err(),
-                "{body}"
-            );
-        }
-    }
-}
-
 /// Materializing an immutable alias must not erase its checked source dependency.
 #[test]
 fn integration_source_reuse_survives_wire_without_exposing_private_origins() {

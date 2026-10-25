@@ -184,12 +184,13 @@ Massif and Memcheck measurements.
 
 The performance commands automatically capture phase/end-to-end, growth, and
 concurrency timings, Massif heap snapshots, and Memcheck allocation/leak results.
-Distinct composition phases cover multi-unit/vocabulary capture, graph construction,
-clean compilation, reader validation, encoding/decoding, public views, all identity
-partitions, warm and changed-unit cache execution, growth, and concurrency.
+Distinct expression-project phases cover multi-unit/vocabulary capture, graph
+construction, clean compilation, reader validation, encoding/decoding, public
+views, all identity partitions, warm and changed-unit cache execution, growth,
+and concurrency.
 Cache and decoding measurements also check results against clean compilation.
-Old document measurements remain separately labeled for compatibility; old-only
-reports no longer satisfy the current performance gate.
+The performance gate covers the current expression-project phases; historical
+document-only measurements do not satisfy it.
 `performance.maximum_ns_per_iteration` in `config/quality-gates.toml` defines
 both the required phase inventory and inclusive timing ceilings. Every direct
 benchmark phase must appear exactly once with positive integer iterations/time;

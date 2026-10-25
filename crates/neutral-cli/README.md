@@ -18,17 +18,17 @@ Run the locally built command and display its interface with:
 cargo run --package neutral-cli -- --help
 ```
 
-- `neutral-cli compile --output <artifact|-> [options] <source|->` validates a
-  captured source and writes a framed Neutral IR artifact.
+- `neutral-cli compile --output <artifact|-> [options] <source|->` captures and
+  validates a `neu "1.0"` expression project and writes `NIR-PROJECT-CBOR/3`.
 - `neutral-cli validate [options] <source|->` validates without producing an
   authoritative output.
 - `neutral-cli format --output <source|-> [options] <source|->` validates and
   writes canonical, ordinary Neutral source.
 - `neutral-cli capture-project --source-id <id> --module-id <id> [options]
-  <source|->` constructs the public v1 project request, captures it without
-  core I/O, and reports bounded source/vocabulary resource facts.
-- `neutral-cli profiles` reports every recognized source profile, its current
-  availability, and stable implemented capabilities without reading a source.
+  <source|->` captures an explicit current project request without core I/O and
+  reports bounded source/vocabulary resource facts.
+- `neutral-cli profiles` reports the one current development source profile and
+  its implemented expression features without reading a source.
 
 Use `-` for one selected standard stream. Source and vocabulary data cannot
 both read standard input. Status messages and safe diagnostics always use
@@ -41,7 +41,8 @@ written, synchronized, and committed from a same-directory temporary file; a
 failed or cancelled operation does not publish partial authoritative output.
 Host acquisition failures do not echo paths or source content.
 
-Captured vocabulary is opt-in and exact: `--vocabulary-bundle` must be paired
+Captured vocabulary is opt-in and exact: schema `2.0` bundles require the
+`vocabulary-composition-v2` feature. `--vocabulary-bundle` must be paired
 with identity, version, encoding-version, schema-version, and digest lock
 options. Structural ceilings have explicit `--max-*` options and bounded
 reviewed defaults. Run `neutral-cli <command> --help` for stable command usage.

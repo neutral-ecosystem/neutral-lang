@@ -8,9 +8,10 @@ the same representation with exact module-symbol references. Scalar comparison
 is shared by restrictions and validators, with no floating-point conversion.
 
 [`profile.rs`](profile.rs) owns frozen selectors, feature IDs and transport/domain
-constants. Package versions never select language behavior. The [project
-module](project/README.md) adds complete raw data, policies, origins and preflight.
-Construction or profile recognition does not imply semantic validation or activation.
+constants. Package versions never select language behavior. The [shared
+inspection module](project/README.md) owns bounded composition policies and
+preflight used by current expression artifacts. Construction or profile
+recognition does not imply semantic validation or activation.
 
 Vocabulary validates contracts and defaults; semantics checks expression typing;
 reader validates complete artifacts. Reuse these contracts instead of creating

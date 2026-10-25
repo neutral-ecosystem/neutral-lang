@@ -305,7 +305,7 @@ impl State<'_, '_> {
         }
         declarations.sort_unstable_by(|a, b| a.identity.cmp(&b.identity));
         self.charge_captured_companions()?;
-        let companions = super::super::assembly::captured_companions(&self.resolver)
+        let companions = super::super::companions::captured_companions(&self.resolver)
             .map_err(composition_error)?;
         let mut public_templates = Vec::new();
         if !temporary {

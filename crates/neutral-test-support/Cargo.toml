@@ -10,9 +10,5 @@ repository.workspace = true
 [package.metadata.neutral]
 owner = "test-infrastructure"
 
-[dependencies]
-neutral-core = { path = "../neutral-core" }
-neutral-ir = { path = "../neutral-ir" }
-
 [lints]
 workspace = true

@@ -4,14 +4,10 @@
 
 /// Encoded input exceeded an effective size or traversal ceiling.
 pub const ENCODED_SIZE_LIMIT: &str = "NLE7001";
-/// The fixed frame or directory was malformed.
+/// The selected artifact framing was malformed.
 pub const MALFORMED_FRAME: &str = "NLE7002";
-/// A framing, section, encoding, or contract version is unsupported.
+/// An artifact profile or contract version is unsupported.
 pub const UNSUPPORTED_VERSION: &str = "NLE7003";
-/// Capability declarations are unknown, missing, unused, or inconsistent.
-pub const UNSUPPORTED_CAPABILITY: &str = "NLE7004";
-/// One integrity record did not match its exact section bytes.
-pub const INTEGRITY_MISMATCH: &str = "NLE7005";
 /// Restricted CBOR lexical or container validation failed.
 pub const MALFORMED_CBOR: &str = "NLE7006";
 /// A closed encoded schema had an invalid member or scalar.

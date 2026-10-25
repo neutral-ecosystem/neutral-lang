@@ -38,6 +38,8 @@ pub(super) mod cache;
 #[path = "../expansion/mod.rs"]
 /// Definition-scoped templates and finite matrices.
 mod expansion;
+#[path = "../expression_formatter.rs"]
+mod formatter;
 /// Complete producer assembly and shared static evaluation.
 mod lowering;
 /// Contextual successor lexical/source syntax.
@@ -50,6 +52,8 @@ mod retention;
 mod source_reuse;
 use parser::{BindingSyntax, Lex, MatrixSyntax, TemplateSyntax};
 
+pub use formatter::format_expression_source;
+
 /// Safe atomic successor compilation failure with checked original-byte occurrence.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExpressionCompileFailure {
@@ -59,6 +63,11 @@ pub struct ExpressionCompileFailure {
     pub location: Option<SourceLocation>,
 }
 impl ExpressionCompileFailure {
+    /// Distinguishes cooperative cancellation without duplicating diagnostic spellings in hosts.
+    #[must_use]
+    pub fn is_cancelled(&self) -> bool {
+        self.code == ec::EXP_CANCELLED
+    }
     /// Returns the explicitly selected successor whole-request schema.
     #[must_use]
     pub const fn schema(&self) -> &'static str {
@@ -451,9 +460,6 @@ fn initial_state<'a>(
             roots: BTreeMap::new(),
             types: BTreeMap::new(),
             definitions: Vec::new(),
-            values: BTreeMap::new(),
-            active: BTreeSet::new(),
-            provenance: Vec::new(),
             work: 0,
             cancel,
         },

@@ -1,50 +1,44 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Coverage-guided target for capture, source decoding, frontend, and semantics.
-
+//! Current complete expression-project source capture and compilation.
 #![no_main]
-
 use libfuzzer_sys::fuzz_target;
-use neutral_compiler::{CompilationRequest, compile};
-use neutral_core::{CancellationToken, StructuralLimits};
+use neutral_compiler::compile_expression_project;
+use neutral_core::CancellationToken;
 mod composition_support;
 
-fuzz_target!(|bytes: &[u8]| {
-    let limits = StructuralLimits::new(1_048_576, 32).expect("fuzz limits must be nonzero");
-    let _ = compile(CompilationRequest::new(
-        bytes.to_vec(),
-        limits,
-        CancellationToken::new(),
-    ));
-    if bytes.len() <= 65_536
-        && let Some(captured) = composition_support::capture(bytes)
-    {
-        let _ = composition_support::encode(&captured);
+fn exercise(bytes: &[u8]) {
+    if let Some(captured) = composition_support::capture(bytes) {
+        let cancel = CancellationToken::new();
+        if let Ok(ir) = compile_expression_project(&captured, &cancel) {
+            let authority = neutral_reader::ValidatedExpressionProject::from_ir(
+                ir,
+                composition_support::semantic_limits(),
+                &cancel,
+            );
+            if let Ok(authority) = authority {
+                let encoded =
+                    neutral_encoding::expression::encode_expression_project(&authority, &cancel)
+                        .unwrap();
+                let decoded = neutral_encoding::expression::decode_expression_project(
+                    &encoded,
+                    neutral_encoding::DecodeLimits::hard(),
+                    composition_support::semantic_limits(),
+                    &cancel,
+                )
+                .expect("compiled expression projects must independently round trip");
+                assert_eq!(decoded.ir(), authority.ir());
+            }
+        }
     }
-    // Also mutate inside a valid header so a random campaign can reach the new
-    // grammar instead of spending its entire budget rejecting the envelope.
-    let mut source = include_bytes!("../seeds/composition-source.neu").to_vec();
-    let header_bytes = b"neu \"1.0\"\nmodule example\n".len();
-    for (original, replacement) in source[header_bytes..].iter_mut().zip(bytes) {
+}
+
+fuzz_target!(|bytes: &[u8]| {
+    exercise(bytes);
+    let mut seeded = include_bytes!("../seeds/composition-source.neu").to_vec();
+    let header = b"neu \"1.0\"\nmodule example\n".len();
+    for (original, replacement) in seeded[header..].iter_mut().zip(bytes) {
         *original = *replacement;
     }
-    if let Some(captured) = composition_support::capture(&source)
-        && let Some(encoded) = composition_support::encode(&captured)
-    {
-        neutral_encoding::composition::decode_composition_project(
-            &encoded,
-            neutral_encoding::DecodeLimits::hard(),
-            neutral_encoding::project::hard_project_limits(),
-            composition_support::limits(),
-            &CancellationToken::new(),
-        )
-        .expect("encoded compiler output must decode independently");
-    }
-    let _ = neutral_encoding::composition::decode_composition_project(
-        &composition_support::mutated_seed(bytes),
-        neutral_encoding::DecodeLimits::hard(),
-        neutral_encoding::project::hard_project_limits(),
-        composition_support::limits(),
-        &CancellationToken::new(),
-    );
+    exercise(&seeded);
 });

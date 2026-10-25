@@ -117,7 +117,15 @@ fn assembly_copies_debit_retention_and_reject_exhausted_storage() {
     for source in captured.sources() {
         parser::parse_source(source, &mut state).unwrap();
     }
-    let roots = state.resolver.retained_roots().unwrap();
+    state
+        .budget
+        .retain::<Root>(state.resolver.roots.len())
+        .unwrap();
+    let mut roots = Vec::new();
+    grow(&mut roots, state.resolver.roots.len()).unwrap();
+    for root in state.resolver.roots.values() {
+        roots.push(state.budget.copy_root(root).unwrap());
+    }
     state.resolver.signatures(&roots).unwrap();
     let owner = symbol("example::expressions", "result").unwrap();
     state.ensure_binding(&owner).unwrap();

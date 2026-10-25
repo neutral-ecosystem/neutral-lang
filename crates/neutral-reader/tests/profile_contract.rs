@@ -16,6 +16,6 @@ fn reader_profile_catalogue_is_the_shared_public_contract() {
             .iter()
             .map(|descriptor| descriptor.profile().source_version())
             .collect::<Vec<_>>(),
-        ["0.1", "1.0"]
+        ["1.0"]
     );
 }

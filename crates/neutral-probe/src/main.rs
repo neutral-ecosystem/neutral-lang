@@ -3,11 +3,10 @@
 //! Standalone Neutral encoded-artifact probe.
 
 use neutral_core::CancellationToken;
-use neutral_encoding::{DecodeError, DecodeLimits};
+use neutral_encoding::DecodeError;
 use neutral_probe::{
-    inspect_encoded, output,
-    project::{ProjectProbeError, inspect_project_encoded, render_project_summary_json},
-    render_summary, render_summary_json,
+    expression::{ExpressionProbeError, render_standalone_expression},
+    output,
 };
 use std::{
     fs::File,
@@ -50,79 +49,14 @@ fn inspect_path(path: &Path, json: bool, roots: Option<&[String]>) -> Result<(),
     if bytes.len() > maximum {
         return Err(neutral_encoding::diagnostics::ENCODED_SIZE_LIMIT.to_owned());
     }
-    if bytes.starts_with(&neutral_reader::composition::profile::MAGIC) {
-        return inspect_composition(&bytes, json, roots);
+    if !bytes.starts_with(&neutral_reader::expression::profile::MAGIC) {
+        return Err(format!(
+            "unsupported artifact format; expected {}",
+            neutral_reader::expression::profile::ENCODING
+        ));
     }
-    if bytes.starts_with(&neutral_encoding::project::MAGIC) {
-        let summary = inspect_project_encoded(
-            &bytes,
-            DecodeLimits::hard(),
-            neutral_encoding::project::hard_project_limits(),
-            roots,
-            &CancellationToken::new(),
-        )
-        .map_err(|error| match error {
-            ProjectProbeError::Decode(e) => render_decode_error(e),
-            ProjectProbeError::View(e) => format!("{} {e:?}", e.schema()),
-            ProjectProbeError::Identity(e) => {
-                format!("{} identity {e:?}", neutral_reader::PROJECT_RESULT_SCHEMA)
-            }
-        })?;
-        let rendered = render_project_summary_json(&summary);
-        if json {
-            emit_stdout(&rendered)?;
-        } else {
-            for line in rendered.lines() {
-                emit_stdout(&format!("{} {line}\n", output::INFO))?;
-            }
-        }
-        return Ok(());
-    }
-    if roots.is_some() {
-        return Err("root selection requires a complete project artifact".to_owned());
-    }
-    let summary = inspect_encoded(&bytes, DecodeLimits::hard(), &CancellationToken::new())
-        .map_err(render_decode_error)?;
-    if json {
-        emit_stdout(&render_summary_json(&summary))?;
-    } else {
-        for line in render_summary(&summary) {
-            emit_stdout(&format!("{} {line}\n", output::INFO))?;
-        }
-    }
-    Ok(())
-}
-
-/// Selects the explicit successor reader/probe boundary without compiler linkage or legacy fallback.
-fn inspect_composition(bytes: &[u8], json: bool, roots: Option<&[String]>) -> Result<(), String> {
-    use neutral_probe::composition::{
-        CompositionProbeError, inspect_composition_encoded, render_composition_summary_json,
-    };
-    use neutral_reader::composition::{CompositionScalarLimits, ProjectCompositionLimits};
-    let scalar = neutral_core::StructuralLimits::new(
-        neutral_encoding::constants::MAXIMUM_ARTIFACT_BYTES as u64,
-        1,
-    )
-    .map_err(|_| "invalid probe bounds")?;
-    let summary = inspect_composition_encoded(
-        bytes,
-        DecodeLimits::hard(),
-        neutral_encoding::project::hard_project_limits(),
-        ProjectCompositionLimits::from_vocabulary(CompositionScalarLimits::from_structural(scalar)),
-        roots,
-        &CancellationToken::new(),
-    )
-    .map_err(|error| match error {
-        CompositionProbeError::Consumer(e) => e.to_string(),
-        CompositionProbeError::Decode(e) => render_decode_error(e),
-        CompositionProbeError::View(e) => format!("{} {e:?}", e.schema()),
-        CompositionProbeError::Identity(e) => format!(
-            "{} identity {e:?}",
-            neutral_reader::composition::profile::PROJECT_RESULT_SCHEMA
-        ),
-    })?;
-    let rendered = render_composition_summary_json(&summary, &CancellationToken::new())
-        .map_err(render_failure)?;
+    let rendered = render_standalone_expression(&bytes, roots, &CancellationToken::new())
+        .map_err(render_expression_error)?;
     if json {
         emit_stdout(&rendered)
     } else {
@@ -183,9 +117,21 @@ fn render_decode_error(error: DecodeError) -> String {
     )
 }
 
-/// Keeps internal JSON formatting failures stable at the process boundary.
-fn render_failure(_: neutral_probe::composition::CompositionProbeError) -> String {
-    "probe-render-failed".to_owned()
+/// Reports the current checked boundary without exposing private artifact fields.
+fn render_expression_error(error: ExpressionProbeError) -> String {
+    match error {
+        ExpressionProbeError::Decode(error) => render_decode_error(error),
+        ExpressionProbeError::Entry(error) => format!(
+            "{} {error:?}",
+            neutral_reader::expression::profile::PROJECT_VIEW_SCHEMA
+        ),
+        ExpressionProbeError::Identity(error) => {
+            format!(
+                "{} identity {error:?}",
+                neutral_reader::expression::profile::IDENTITY_PROFILE
+            )
+        }
+    }
 }
 
 #[cfg(test)]

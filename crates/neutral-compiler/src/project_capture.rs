@@ -2,7 +2,6 @@
 
 //! Complete, bounded, and effect-free project capture for the v1 profile.
 
-use crate::module_graph::{ModuleGraph, ModuleGraphFailure, build_module_graph};
 use neutral_core::allocation::RetainCapacity;
 use neutral_core::allocation::Shared as Arc;
 use neutral_core::allocation::{TryClone, text};
@@ -14,17 +13,17 @@ use neutral_vocabulary::VocabularyLock;
 
 mod composition;
 mod expression;
-pub use composition::{
-    CapturedCompositionProject, CapturedCompositionProjectRequest, CompositionCaptureFailure,
-    capture_composition_project,
-};
+pub use composition::CompositionCaptureFailure;
+pub(crate) use composition::{CapturedCompositionProject, CapturedCompositionProjectRequest};
+#[cfg(test)]
+pub(crate) use expression::capture_expression_observed;
 pub use expression::{
     CapturedExpressionProject, CapturedExpressionProjectRequest, ExpressionCaptureFailure,
-    capture_expression_project,
+    capture_expression_project, source_module_name,
 };
 
 /// Exact version accepted by the captured-project request boundary.
-pub const CAPTURE_REQUEST_VERSION: &str = "neutral.capture/v1";
+pub use neutral_ir::expression::profile::CAPTURE_REQUEST_VERSION;
 
 /// Named values for every independent project-capture resource bound.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -436,7 +435,7 @@ impl CapturedProjectVocabulary {
 
 /// Immutable, complete, canonically ordered captured project.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CapturedProject {
+pub(crate) struct CapturedInputs {
     /// Exact project profile.
     profile: LanguageProfile,
     /// All supplied sources in `(module ID, source ID)` order.
@@ -449,25 +448,7 @@ pub struct CapturedProject {
     resource_facts: ProjectCaptureResourceFacts,
 }
 
-impl CapturedProject {
-    /// Validates this complete captured closure and builds its logical module graph.
-    ///
-    /// # Errors
-    ///
-    /// Returns source-accounted graph diagnostics without publishing a partial graph.
-    pub fn module_graph(
-        &self,
-        cancellation: &CancellationToken,
-    ) -> Result<ModuleGraph, ModuleGraphFailure> {
-        build_module_graph(self, cancellation)
-    }
-
-    /// Returns the exact captured language profile.
-    #[must_use]
-    pub const fn profile(&self) -> LanguageProfile {
-        self.profile
-    }
-
+impl CapturedInputs {
     /// Returns every supplied source, including disconnected members.
     #[must_use]
     pub fn sources(&self) -> &[CapturedProjectSource] {
@@ -490,45 +471,6 @@ impl CapturedProject {
     #[must_use]
     pub const fn resource_facts(&self) -> ProjectCaptureResourceFacts {
         self.resource_facts
-    }
-
-    /// Compares captured closure meaning while excluding acceptance limits.
-    #[must_use]
-    pub fn meaning_equivalent(&self, other: &Self) -> bool {
-        self.profile == other.profile
-            && self.sources == other.sources
-            && self.vocabularies == other.vocabularies
-    }
-
-    /// Reconstructs a closed request for deterministic capture replay.
-    #[must_use]
-    pub fn replay_request(&self, cancellation: CancellationToken) -> CapturedProjectRequest {
-        let sources = self
-            .sources
-            .iter()
-            .map(|source| {
-                CapturedSourceInput::new(
-                    source.source_id.to_string(),
-                    source.module_id.to_string(),
-                    source.bytes.to_vec(),
-                )
-                .requiring_digest(source.digest)
-            })
-            .collect();
-        let vocabularies = self
-            .vocabularies
-            .iter()
-            .map(|vocabulary| {
-                CapturedVocabularyInput::new(vocabulary.bytes.to_vec(), vocabulary.lock.clone())
-            })
-            .collect();
-        CapturedProjectRequest::new(
-            CAPTURE_REQUEST_VERSION,
-            self.profile,
-            sources,
-            vocabularies,
-            ProjectCaptureControls::new(self.limits, cancellation),
-        )
     }
 }
 
@@ -585,26 +527,9 @@ impl ProjectCaptureError {
     }
 }
 
-/// Captures a complete supplied project without resolution or ambient I/O.
-///
-/// Every byte sequence and lock must already be present in `request`. The
-/// request type has no resolver, callback, path, URL, or root field.
-/// Capture validates the envelope, integrity, headers, and exact vocabulary
-/// coverage, not declaration semantics or contextual values. A successful
-/// capture is an immutable input boundary, not a successful compilation.
-///
-/// # Errors
-///
-/// Returns one stable fail-closed error and never exposes a partial project.
-pub fn capture_project(
-    request: CapturedProjectRequest,
-) -> Result<CapturedProject, ProjectCaptureError> {
-    capture_project_with_checkpoints(request, |_| {})
-}
-
 /// Deterministic capture handoffs used to prove cancellation behavior.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum ProjectCaptureCheckpoint {
+pub(crate) enum ProjectCaptureCheckpoint {
     /// Before request validation or traversal.
     Start,
     /// After all exact source and vocabulary integrity checks.
@@ -613,56 +538,6 @@ enum ProjectCaptureCheckpoint {
     Headers,
     /// Immediately before immutable output publication.
     Publish,
-}
-
-/// Captures a project while exposing deterministic handoffs to private tests.
-///
-/// Validate collection/byte budgets before scanning content. Check exact input
-/// integrity before trusting headers, then require the locked vocabulary set to
-/// match those headers. Test checkpoints can request cancellation between these
-/// phases; production supplies a no-op callback. Only the final freeze publishes
-/// a project, and cancellation is checked again at that boundary.
-fn capture_project_with_checkpoints(
-    request: CapturedProjectRequest,
-    mut checkpoint: impl FnMut(ProjectCaptureCheckpoint),
-) -> Result<CapturedProject, ProjectCaptureError> {
-    checkpoint(ProjectCaptureCheckpoint::Start);
-    if request.controls.cancellation.is_cancelled() {
-        return Err(ProjectCaptureError::Cancelled);
-    }
-    validate_envelope(&request)?;
-    // Take ownership of accepted source bytes without changing their spelling;
-    // normalization here would invalidate exact digests and original-byte spans.
-    let values = request.controls.limits.values();
-    let mut captured_sources = validate_sources(request.sources, values)?;
-    let vocabulary_ids = validate_vocabularies(&request.vocabularies, values)?;
-    checkpoint(ProjectCaptureCheckpoint::Integrity);
-    if request.controls.cancellation.is_cancelled() {
-        return Err(ProjectCaptureError::Cancelled);
-    }
-    let required_vocabularies = validate_headers(&captured_sources, request.profile)?;
-    checkpoint(ProjectCaptureCheckpoint::Headers);
-    if request.controls.cancellation.is_cancelled() {
-        return Err(ProjectCaptureError::Cancelled);
-    }
-    validate_vocabulary_cover(&required_vocabularies, &vocabulary_ids)?;
-    // A subset would hide missing locks; a superset would retain unused inputs.
-    checkpoint(ProjectCaptureCheckpoint::Publish);
-    if request.controls.cancellation.is_cancelled() {
-        return Err(ProjectCaptureError::Cancelled);
-    }
-    freeze_project(
-        &request.controls.cancellation,
-        request.profile,
-        request.controls.limits,
-        &mut captured_sources,
-        request.vocabularies,
-    )
-}
-
-/// Validates closed-envelope fields and collection bounds before traversal.
-fn validate_envelope(request: &CapturedProjectRequest) -> Result<(), ProjectCaptureError> {
-    validate_envelope_version(request, CAPTURE_REQUEST_VERSION)
 }
 
 /// Checks shared capture controls while retaining explicit, non-fallback profile selection.
@@ -694,14 +569,6 @@ fn validate_envelope_version(
         return Err(ProjectCaptureError::LimitExceeded);
     }
     Ok(())
-}
-
-/// Validates source identities, independent byte bounds, and exact digests.
-fn validate_sources(
-    sources: Vec<CapturedSourceInput>,
-    values: ProjectCaptureLimitValues,
-) -> Result<Vec<(CapturedSourceInput, SourceContentDigest)>, ProjectCaptureError> {
-    validate_sources_cancellable(sources, values, None)
 }
 
 /// Validates exact sources with optional per-member successor cancellation checkpoints.
@@ -768,14 +635,6 @@ fn validate_sources_cancellable(
     Ok(captured_sources)
 }
 
-/// Validates vocabulary identity uniqueness, byte bounds, and exact locks.
-fn validate_vocabularies(
-    vocabularies: &[CapturedVocabularyInput],
-    values: ProjectCaptureLimitValues,
-) -> Result<OrderedSet<String>, ProjectCaptureError> {
-    validate_vocabularies_cancellable(vocabularies, values, None)
-}
-
 /// Checks exact lock integrity without disabling successor per-bundle cancellation.
 fn validate_vocabularies_cancellable(
     vocabularies: &[CapturedVocabularyInput],
@@ -812,25 +671,16 @@ fn validate_vocabularies_cancellable(
     Ok(vocabulary_ids)
 }
 
-/// Validates request/header agreement and returns the complete required lock set.
-fn validate_headers(
-    sources: &[(CapturedSourceInput, SourceContentDigest)],
-    profile: LanguageProfile,
-) -> Result<OrderedSet<String>, ProjectCaptureError> {
-    validate_headers_policy(sources, profile, false, None)
-}
-
 /// Checks header agreement under an explicit alias policy without changing capture /1.
 fn validate_headers_policy(
     sources: &[(CapturedSourceInput, SourceContentDigest)],
     profile: LanguageProfile,
-    repeated_aliases: bool,
     cancellation: Option<&CancellationToken>,
 ) -> Result<OrderedSet<String>, ProjectCaptureError> {
     let mut required_vocabularies = OrderedSet::new();
     for (source, _) in sources {
         capture_cancelled(cancellation)?;
-        let headers = scan_headers(&source.bytes, repeated_aliases, cancellation)?;
+        let headers = scan_headers(&source.bytes, cancellation)?;
         if headers.profile != profile.source_version() {
             return Err(ProjectCaptureError::ProfileMismatch);
         }
@@ -847,20 +697,6 @@ fn validate_headers_policy(
     Ok(required_vocabularies)
 }
 
-/// Requires supplied locks to be exactly the set referenced by source headers.
-fn validate_vocabulary_cover(
-    required: &OrderedSet<String>,
-    supplied: &OrderedSet<String>,
-) -> Result<(), ProjectCaptureError> {
-    if required.iter().any(|identity| !supplied.contains(identity)) {
-        return Err(ProjectCaptureError::MissingVocabulary);
-    }
-    if supplied.iter().any(|identity| !required.contains(identity)) {
-        return Err(ProjectCaptureError::ExtraVocabulary);
-    }
-    Ok(())
-}
-
 /// Canonically orders and freezes a completely validated request.
 fn freeze_project(
     cancellation: &CancellationToken,
@@ -868,7 +704,7 @@ fn freeze_project(
     limits: ProjectCaptureLimits,
     sources: &mut Vec<(CapturedSourceInput, SourceContentDigest)>,
     mut vocabularies: Vec<CapturedVocabularyInput>,
-) -> Result<CapturedProject, ProjectCaptureError> {
+) -> Result<CapturedInputs, ProjectCaptureError> {
     let resource_facts = ProjectCaptureResourceFacts {
         source_units: length(sources.len()),
         total_source_bytes: sources
@@ -915,7 +751,7 @@ fn freeze_project(
     if cancellation.is_cancelled() {
         return Err(ProjectCaptureError::Cancelled);
     }
-    let captured = CapturedProject {
+    let captured = CapturedInputs {
         profile,
         sources: Arc::try_new(frozen_sources).map_err(|_| ProjectCaptureError::LimitExceeded)?,
         vocabularies: Arc::try_new(frozen_vocabularies)
@@ -937,10 +773,9 @@ struct HeaderFacts<'a> {
     vocabularies: OrderedSet<String>,
 }
 
-/// Scans only required header lines without invoking the inactive v1 parser.
+/// Scans explicit current headers before declaration parsing.
 fn scan_headers<'a>(
     bytes: &'a [u8],
-    repeated_aliases: bool,
     cancellation: Option<&CancellationToken>,
 ) -> Result<HeaderFacts<'a>, ProjectCaptureError> {
     let source = std::str::from_utf8(bytes).map_err(|_| ProjectCaptureError::InvalidHeader)?;
@@ -957,9 +792,7 @@ fn scan_headers<'a>(
         .filter(|value| valid_module_id(value))
         .ok_or(ProjectCaptureError::InvalidHeader)?;
     let mut vocabularies = OrderedSet::new();
-    for (identity, _) in
-        scan_vocabulary_requirements_policy(source, repeated_aliases, cancellation)?
-    {
+    for (identity, _) in scan_vocabulary_requirements_policy(source, cancellation)? {
         capture_cancelled(cancellation)?;
         vocabularies
             .insert(identity)
@@ -972,21 +805,12 @@ fn scan_headers<'a>(
     })
 }
 
-/// Scans exact vocabulary requirements once for capture and later alias resolution.
-pub(crate) fn scan_vocabulary_requirements(
-    source: &str,
-) -> Result<Vec<(String, String)>, ProjectCaptureError> {
-    scan_vocabulary_requirements_policy(source, false, None)
-}
-
-/// Scans module-local aliases, permitting repeated identities only in explicit capture /2.
+/// Scans exact module-local aliases; repeated identities may have distinct aliases.
 fn scan_vocabulary_requirements_policy(
     source: &str,
-    repeated_aliases: bool,
     cancellation: Option<&CancellationToken>,
 ) -> Result<Vec<(String, String)>, ProjectCaptureError> {
     let mut requirements = Vec::new();
-    let mut identities = OrderedSet::new();
     let mut aliases = OrderedSet::new();
     let mut in_block_comment = false;
     for line in source.lines().skip(2) {
@@ -1014,14 +838,9 @@ fn scan_vocabulary_requirements_policy(
         {
             return Err(ProjectCaptureError::InvalidHeader);
         }
-        if (!repeated_aliases
-            && !identities
-                .insert(identity)
-                .map_err(|_| ProjectCaptureError::LimitExceeded)?)
-            || (repeated_aliases
-                && !aliases
-                    .insert(alias)
-                    .map_err(|_| ProjectCaptureError::LimitExceeded)?)
+        if !aliases
+            .insert(alias)
+            .map_err(|_| ProjectCaptureError::LimitExceeded)?
         {
             return Err(ProjectCaptureError::InvalidHeader);
         }
@@ -1037,7 +856,7 @@ fn scan_vocabulary_requirements_policy(
     Ok(requirements)
 }
 
-/// Observes an optional cancellation signal without changing old-profile phase precedence.
+/// Observes cancellation before retaining or publishing capture facts.
 fn capture_cancelled(cancellation: Option<&CancellationToken>) -> Result<(), ProjectCaptureError> {
     if cancellation.is_some_and(CancellationToken::is_cancelled) {
         Err(ProjectCaptureError::Cancelled)
@@ -1125,7 +944,3 @@ fn valid_vocabulary_identity(value: &str) -> bool {
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
 }
-
-#[cfg(test)]
-#[path = "../tests/project_capture/mod.rs"]
-mod tests;

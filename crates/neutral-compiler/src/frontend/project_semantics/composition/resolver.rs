@@ -1,49 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Resolve composition types, defaults and immutable binding values.
+//! Resolve nominal types, closed defaults and shared vocabulary restrictions.
 //!
-//! The request-local resolver links source and vocabulary contracts, validates
-//! record/variant payloads and follows reuse/reference dependencies. Expansion
-//! accounting and cancellation checks bound recursive work and retained copies.
-//! Resolution yields typed meaning; final companions and publication belong to assembly.
+//! The current expression resolver links source and vocabulary contracts and
+//! checks record/variant defaults before expression typing. Expansion accounting
+//! and cancellation remain owned by the expression request.
 
 use super::{
     B, BTreeMap, ByteSpan, CancellationToken, ClosedValue, CompositionAlternative,
-    CompositionDefinition, CompositionError, CompositionField, CompositionValue, E, Edge,
-    ExactNumber, FieldPresence, FieldRestrictions, LogicalModuleIdentity, ModuleSymbolIdentity,
-    PROJECT_MAX_DEPTH, ProjectProvenance, Resolver, RetainCapacity, Root,
-    SourceCompositionDefinition, SourceLocation, T, Token, TokenKind, TryClone, TypeExpr, V,
-    V1_SOURCE_PROFILE, boxed, codes, contract, fail, graph, parse_name, parse_reference, profile,
-    reserve, retain, split, text,
+    CompositionDefinition, CompositionError, CompositionField, CompositionValue, E, ExactNumber,
+    FieldPresence, FieldRestrictions, LogicalModuleIdentity, ModuleSymbolIdentity,
+    PROJECT_MAX_DEPTH, Resolver, RetainCapacity, Root, SourceCompositionDefinition, SourceLocation,
+    T, Token, TokenKind, TryClone, TypeExpr, V, V1_SOURCE_PROFILE, boxed, codes, contract, fail,
+    graph, parse_name, parse_reference, profile, reserve, retain, split, text,
 };
 
 impl Resolver<'_> {
-    /// Retains bounded syntax for mutable semantic traversal without infallible deep copies.
-    pub(super) fn retained_roots(&mut self) -> Result<Vec<Root>, E> {
-        let work = self.roots.values().try_fold(0_u64, |sum, root| {
-            let Some(work) = sum
-                .checked_add(root.tokens.len() as u64)
-                .and_then(|sum| {
-                    sum.checked_add(root.location.span().end() - root.location.span().start())
-                })
-                .and_then(|sum| sum.checked_add(symbol_work(&root.owner) + 1))
-            else {
-                return Err(fail(codes::LIMIT, Some(root.location)));
-            };
-            Ok(work)
-        })?;
-        self.step(work, None)?;
-        let mut roots = Vec::new();
-        reserve(&mut roots, self.roots.len())?;
-        for root in self.roots.values() {
-            if self.cancel.is_cancelled() {
-                return Err(fail(codes::CANCELLED, Some(root.location)));
-            }
-            roots.push(retain(root.try_clone())?);
-        }
-        self.step(1, None)?;
-        Ok(roots)
-    }
     /// Resolves all source signature owners before any value evaluation.
     pub(super) fn signatures(&mut self, roots: &[Root]) -> Result<(), E> {
         // Resolve every signature before interpreting a default or initializer.
@@ -126,7 +98,7 @@ impl Resolver<'_> {
                         return Err(fail(codes::INVALID_SOURCE, Some(root.location)));
                     };
                     let ty = retain(ty.try_clone())?;
-                    let value = self.value(root, &ty, &member[eq + 1..], true, 0)?;
+                    let value = self.value(root, &ty, &member[eq + 1..], 0)?;
                     reserve(&mut defaults, 1)?;
                     defaults.push((
                         retain(root.owner.try_clone())?,
@@ -294,39 +266,6 @@ impl Resolver<'_> {
         self.step(1, None)?;
         Ok(copied)
     }
-    /// Resolves ordinary reuse with explicit cycle/depth guards; references do not evaluate targets.
-    pub(super) fn binding(&mut self, owner: &ModuleSymbolIdentity, depth: usize) -> Result<V, E> {
-        self.step(1, None)?;
-        if depth > PROJECT_MAX_DEPTH {
-            return Err(fail(codes::LIMIT, None));
-        }
-        if let Some(v) = self.values.get(owner) {
-            let work = value_clone_work(v, self.cancel, symbol_work)?;
-            self.step(work, None)?;
-            return retain(self.values[owner].try_clone());
-        }
-        self.step(self.active.len() as u64 + 1, None)?;
-        if !self
-            .active
-            .insert(retain(owner.try_clone())?)
-            .map_err(|_| fail(codes::LIMIT, None))?
-        {
-            return Err(fail(codes::REUSE_CYCLE, Some(self.roots[owner].location)));
-        }
-        let root = retain(self.roots[owner].try_clone())?;
-        let ty = retain(self.types[owner].try_clone())?;
-        let value = self.value(&root, &ty, &root.tokens, false, 0)?;
-        self.step(self.active.len() as u64 + self.values.len() as u64, None)?;
-        self.active.remove(owner);
-        self.step(
-            value_clone_work(&value, self.cancel, symbol_work)?,
-            Some(root.location),
-        )?;
-        self.values
-            .insert(retain(owner.try_clone())?, retain(value.try_clone())?)
-            .map_err(|_| fail(codes::LIMIT, None))?;
-        Ok(value)
-    }
     /// Types exact scalar literals without host numeric or inert-location coercion.
     pub(super) fn scalar(&self, ty: &T, token: &Token, location: SourceLocation) -> Result<V, E> {
         match &token.kind {
@@ -429,30 +368,19 @@ impl Resolver<'_> {
         root: &Root,
         ty: &T,
         tokens: &[Token],
-        closed: bool,
         depth: usize,
     ) -> Result<V, E> {
         let location = SourceLocation::new(root.location.source(), tokens[0].span);
         let members = self.record_members(tokens, location)?;
         match self.body(ty)? {
             B::Record(fields) => {
-                if !closed
-                    && fields.iter().any(|f| {
-                        f.presence == FieldPresence::Required
-                            && !members.contains_key(f.name.as_str())
-                    })
-                {
-                    let end =
-                        SourceLocation::new(root.location.source(), tokens[tokens.len() - 1].span);
-                    return Err(fail(codes::MISSING_REQUIRED_FIELD, Some(end)));
-                }
                 let mut value = Vec::new();
                 for (name, tokens) in members {
                     let field = fields
                         .iter()
                         .find(|f| f.name == name)
                         .ok_or_else(|| fail(codes::INCOMPATIBLE_VALUE, Some(location)))?;
-                    let v = self.value(root, &field.ty, tokens, closed, depth + 1)?;
+                    let v = self.value(root, &field.ty, tokens, depth + 1)?;
                     if field.restrictions != FieldRestrictions::default() {
                         neutral_vocabulary::composition::check_composition_field_restrictions(
                             field,
@@ -498,13 +426,8 @@ impl Resolver<'_> {
                             Some(SourceLocation::new(root.location.source(), *span)),
                         )
                     })?;
-                let payload = self.value(
-                    root,
-                    &alternative.ty,
-                    members[profile::PAYLOAD],
-                    closed,
-                    depth + 1,
-                )?;
+                let payload =
+                    self.value(root, &alternative.ty, members[profile::PAYLOAD], depth + 1)?;
                 Ok(V::Variant {
                     tag: retain(tag.value.try_clone())?,
                     payload: retain(boxed(payload))?,
@@ -513,13 +436,12 @@ impl Resolver<'_> {
         }
     }
 
-    /// Parses contextually typed values and exact selected variant payloads using the shared bodies.
+    /// Parses closed default values and exact selected variant payloads using shared contracts.
     pub(super) fn value(
         &mut self,
         root: &Root,
         ty: &T,
         tokens: &[Token],
-        closed: bool,
         depth: usize,
     ) -> Result<V, E> {
         self.step(tokens.len() as u64 + 1, Some(root.location))?;
@@ -534,47 +456,11 @@ impl Resolver<'_> {
         if tokens.is_empty() {
             return Err(fail(codes::INVALID_SOURCE, Some(root.location)));
         }
-        if let Some((name, end)) = parse_reference(tokens, 0)
-            && end == tokens.len()
-        {
-            if closed {
-                return Err(fail(codes::INCOMPATIBLE_VALUE, Some(location)));
-            }
-            let target = self.name(root, name.alias, name.name, name.span, false)?;
-            let expected = if let T::Nullable(inner) = ty {
-                inner.as_ref()
-            } else {
-                ty
-            };
-            let T::Ref(expected) = expected else {
-                return Err(fail(codes::INCOMPATIBLE_VALUE, Some(location)));
-            };
-            if self.types.get(&target) != Some(expected.as_ref()) {
-                return Err(fail(codes::INCOMPATIBLE_VALUE, Some(location)));
-            }
-            if root.public && !self.roots[&target].public {
-                return Err(fail(codes::PRIVATE_EXPOSURE, Some(location)));
-            }
-            return Ok(V::Reference(target));
+        if parse_reference(tokens, 0) == Some(tokens.len()) {
+            return Err(fail(codes::INCOMPATIBLE_VALUE, Some(location)));
         }
-        if let Some((name, end)) = parse_name(tokens, 0)
-            && end == tokens.len()
-        {
-            if closed {
-                return Err(fail(codes::INCOMPATIBLE_VALUE, Some(location)));
-            }
-            let target = self.name(root, name.alias, name.name, name.span, false)?;
-            if self.types.get(&target) != Some(ty) {
-                return Err(fail(codes::INCOMPATIBLE_VALUE, Some(location)));
-            }
-            reserve(&mut self.provenance, 1)?;
-            self.provenance.push(ProjectProvenance {
-                from: retain(root.owner.try_clone())?,
-                to: retain(target.try_clone())?,
-                kind: Edge::Value,
-                location,
-            });
-            return self.binding(&target, self.active.len());
+        if parse_name(tokens, 0) == Some(tokens.len()) {
+            return Err(fail(codes::INCOMPATIBLE_VALUE, Some(location)));
         }
         if let [token] = tokens
             && matches!(
@@ -589,7 +475,7 @@ impl Resolver<'_> {
             return self.scalar(ty, token, location);
         }
         if let T::Nullable(inner) = ty {
-            return self.value(root, inner, tokens, closed, depth);
+            return self.value(root, inner, tokens, depth);
         }
         if matches!(tokens[0].kind, TokenKind::OpenBracket)
             && matches!(
@@ -603,14 +489,14 @@ impl Resolver<'_> {
             let mut values = Vec::new();
             for item in split(&tokens[1..tokens.len() - 1])? {
                 reserve(&mut values, 1)?;
-                values.push(self.value(root, inner, item, closed, depth + 1)?);
+                values.push(self.value(root, inner, item, depth + 1)?);
             }
             return Ok(V::List(values));
         }
         if matches!(tokens[0].kind, TokenKind::OpenBrace)
             && matches!(tokens.last().map(|t| &t.kind), Some(TokenKind::CloseBrace))
         {
-            return self.record_value(root, ty, tokens, closed, depth);
+            return self.record_value(root, ty, tokens, depth);
         }
         Err(fail(codes::INVALID_SOURCE, Some(location)))
     }
@@ -788,36 +674,6 @@ pub(super) fn closed(v: V) -> Result<ClosedValue, E> {
             payload: retain(boxed(closed(*payload)?))?,
         },
     })
-}
-
-/// Retains type/reference-type occurrence dependencies without embedding referenced targets.
-pub(super) fn type_edges(
-    from: &ModuleSymbolIdentity,
-    ty: &T,
-    reference: bool,
-    location: SourceLocation,
-    resolver: &mut Resolver<'_>,
-) -> Result<(), E> {
-    resolver.step(1, Some(location))?;
-    match ty {
-        T::Nominal(to) => {
-            reserve(&mut resolver.provenance, 1)?;
-            resolver.provenance.push(ProjectProvenance {
-                from: retain(from.try_clone())?,
-                to: retain(to.try_clone())?,
-                kind: if reference {
-                    Edge::ReferenceType
-                } else {
-                    Edge::Type
-                },
-                location,
-            });
-        }
-        T::Ref(t) => type_edges(from, t, true, location, resolver)?,
-        T::List(t) | T::Nullable(t) => type_edges(from, t, reference, location, resolver)?,
-        _ => {}
-    }
-    Ok(())
 }
 
 #[cfg(test)]

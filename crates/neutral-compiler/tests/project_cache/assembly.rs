@@ -1,63 +1,40 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Assembly rejects incomplete checked inputs at the original declaration.
+//! Current `/3` captured-companion facts remain separate from syntax semantics.
 
-use super::super::{
-    BTreeMap, BTreeSet, CancellationToken, graph, parse, validate_composition_bindings,
-    validate_composition_scope,
-};
+use super::super::{BTreeMap, Resolver, graph};
 use super::*;
-use crate::tests::project_cache_support::capture_source;
+use crate::project_cache_support::capture_expression_source;
+use neutral_core::CancellationToken;
 
-/// Neither a missing materialized binding nor a missing nominal definition can publish declarations.
 #[test]
-fn assembly_rejects_missing_checked_declarations_with_source_location() {
-    for body in ["public num answer = 42", "public record Item { num value }"] {
-        let captured = capture_source(body);
-        let cancel = CancellationToken::new();
-        let mut resolver = Resolver {
-            captured: &captured,
-            graph: graph::build(&captured, &cancel).unwrap(),
-            roots: BTreeMap::new(),
-            types: BTreeMap::new(),
-            definitions: Vec::new(),
-            values: BTreeMap::new(),
-            active: BTreeSet::new(),
-            provenance: Vec::new(),
-            work: 0,
-            cancel: &cancel,
-        };
-        let roots = parse(&captured.sources()[0], &captured, &cancel).unwrap();
-        assert_eq!(roots.len(), 1);
-        let location = roots[0].location;
-        for root in roots {
-            resolver
-                .roots
-                .insert(root.owner.try_clone().unwrap(), root)
-                .unwrap();
-        }
-        let scope = Arc::try_new(
-            validate_composition_scope(
-                captured.catalogue(),
-                Vec::new(),
-                captured.composition_limits(),
-                &cancel,
-            )
-            .unwrap(),
-        )
-        .unwrap();
-        let bindings = validate_composition_bindings(
-            scope.clone(),
-            &[],
-            captured.composition_limits(),
-            &cancel,
-        )
-        .unwrap();
-        let Err(failure) = declarations(&mut resolver, &scope, &bindings) else {
-            panic!("assembly accepted missing checked declaration: {body}");
-        };
-        assert_eq!(failure.code, codes::INCOMPATIBLE_VALUE, "{body}");
-        assert_eq!(failure.location, Some(location), "{body}");
-        assert_eq!(resolver.provenance, Vec::new());
-    }
+fn current_companion_projection_preserves_canonical_sources_and_modules() {
+    let captured = capture_expression_source("num answer = 42");
+    let context = &captured.composition;
+    let cancel = CancellationToken::new();
+    let resolver = Resolver {
+        captured: context,
+        graph: graph::build_expression(context, &cancel).unwrap(),
+        roots: BTreeMap::new(),
+        types: BTreeMap::new(),
+        definitions: Vec::new(),
+        work: 0,
+        cancel: &cancel,
+    };
+    let companions = captured_companions(&resolver).unwrap();
+    assert_eq!(companions.modules.len(), 1);
+    assert_eq!(companions.modules[0].identity.module_name(), "example");
+    assert_eq!(companions.modules[0].imports, Vec::<String>::new());
+    assert_eq!(companions.sources.len(), 1);
+    assert_eq!(companions.sources[0].module, "example");
+    assert_eq!(companions.sources[0].source_id, "unit");
+    assert_eq!(companions.sources[0].digest, context.sources()[0].digest());
+    assert_eq!(
+        companions.sources[0].byte_len,
+        context.sources()[0].bytes().len() as u64
+    );
+    assert_eq!(
+        companions.vocabulary_sources,
+        [] as [neutral_ir::project::ProjectVocabularySource; 0]
+    );
 }

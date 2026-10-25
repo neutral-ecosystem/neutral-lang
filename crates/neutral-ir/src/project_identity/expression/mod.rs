@@ -3,6 +3,7 @@
 //! Complete /3 identity partitions; framing does not replace independent reader validation.
 
 mod captured;
+mod contract;
 mod derived;
 mod interface;
 mod logical;

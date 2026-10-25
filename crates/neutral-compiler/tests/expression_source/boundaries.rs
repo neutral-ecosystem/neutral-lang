@@ -400,18 +400,6 @@ fn compile_failures_report_selected_schema_and_safe_debug_fields() {
     assert!(failure.location.is_some());
     let diagnostic = format!("{failure:?}");
     assert!(!diagnostic.contains("secret_missing_symbol"));
-    let captured = capture(
-        "neu \"1.0\"\nmodule example::expressions\nnum result = false\n",
-        ExpressionLimits::hard(),
-        ExpansionLimits::hard(),
-    );
-    let failure = super::super::super::compile_composition_project(
-        &captured.composition,
-        &CancellationToken::new(),
-    )
-    .unwrap_err();
-    assert_eq!(failure.schema(), "neutral.project-result/2");
-    assert!(failure.location.is_some());
 }
 
 /// Declaration syntax errors retain their phase-specific classification before resolution.

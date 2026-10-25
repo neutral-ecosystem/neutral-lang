@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Compiler-independent catalogue, complete-project and redacted public-view inspection.
+//! Compiler-independent inspection of validated vocabulary catalogues and scopes.
 //!
-//! Catalogue APIs expose contracts; the separate complete-project boundary checks
-//! decoded companions and occurrence attribution before deriving public closure.
-//! It never reparses source, changes identity or grants effects.
+//! These APIs expose contracts, checked values and reference facts. They do not
+//! validate complete captured projects, derive project views, grant effects or
+//! reparse source.
 
 use neutral_core::CancellationToken;
 use neutral_core::allocation::Shared as Arc;
@@ -19,34 +19,20 @@ use neutral_vocabulary::composition::{
 };
 
 mod bindings;
-mod identity;
-mod project;
 mod references;
 mod scope;
-mod view;
 pub use bindings::{CompositionBindingCatalogue, CompositionBindingLookupError};
-pub use identity::{
-    CompositionDerivationFacts, CompositionIdentities, CompositionIdentityContext,
-    CompositionIdentityReadError,
-};
 pub use neutral_ir::composition::profile;
-pub use neutral_ir::composition::project::{
-    CompositionAttribution, CompositionDeclaration, CompositionOrigin, CompositionSignature,
-};
 pub use neutral_ir::composition::{
     CompositionBindingReference, CompositionBody, CompositionBundle, ValuePathSegment,
 };
-pub use neutral_ir::project_identity::CompositionLogicalIdentity;
-pub use neutral_ir::project_identity::canonical_composition_project;
 pub use neutral_vocabulary::VocabularyLimits as CompositionScalarLimits;
 pub use neutral_vocabulary::composition::CompositionLimits as ProjectCompositionLimits;
-pub use project::{CompositionReadError, ValidatedCompositionProject};
 pub use references::{
     CompositionInspectionLimits, CompositionReferenceError, ReferenceTypeDependency,
     ReferenceTypeSegment,
 };
 pub use scope::CompositionTypeCatalogue;
-pub use view::{CompositionView, CompositionViewLimits, CompositionViewRequest};
 
 /// Safe lookup failures containing no private type names, captured text or host paths.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -1,0 +1,684 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//! Closed tuple contracts shared by current and historical project codecs.
+
+use crate::{
+    DecodeError as D, DecodeErrorClass as C, EncodingError as E,
+    cbor::CborWriter,
+    decoder::{CborValue, LocatedValue},
+    primitives::{
+        array, boolean, digest, edge_tag, failure, owned_text, read_edge, read_list, read_location,
+        read_symbol, read_type, schema, signed, text, tuple, unsigned, write_list, write_location,
+        write_numbers, write_symbol, write_type,
+    },
+};
+use neutral_core::allocation::RetainCapacity;
+use neutral_core::{ByteSpan, CancellationToken, SourceContentDigest, VocabularyContentDigest};
+use neutral_ir::{
+    ExactNumber, ModuleSymbolIdentity, VocabularyIdentity,
+    composition::{
+        ClosedReference, CompositionAlternative, CompositionBody as B, CompositionBundle,
+        CompositionDefinition, CompositionDependency, CompositionField, CompositionValue as V,
+        FieldPresence as Presence, FieldRestrictions, ValueOriginKind as K, ValuePathSegment as P,
+        project::{CompositionAttribution as A, CompositionOrigin},
+    },
+    project::{
+        PROJECT_MAX_DEPTH, ProjectLimits, ProjectProvenance, ProjectResourceFacts, ProjectSource,
+        ProjectSourceMap, ProjectVocabularySource,
+    },
+};
+
+/// Shares the value grammar while keeping non-null default references unconstructible.
+pub(crate) trait Reference: Sized {
+    /// Borrows a stable target symbol, never its value.
+    fn symbol(&self) -> &ModuleSymbolIdentity;
+    /// Reads a target only where this value category permits references.
+    fn read(v: &LocatedValue) -> Result<Self, D>;
+}
+impl Reference for ModuleSymbolIdentity {
+    /// Retains exact logical owner identity.
+    fn symbol(&self) -> &ModuleSymbolIdentity {
+        self
+    }
+    /// Defers visibility/invariant typing to the independent reader.
+    fn read(v: &LocatedValue) -> Result<Self, D> {
+        read_symbol(v)
+    }
+}
+impl Reference for ClosedReference {
+    /// A closed default cannot reach this branch.
+    fn symbol(&self) -> &ModuleSymbolIdentity {
+        match *self {}
+    }
+    /// Rejects non-null references before constructing a closed value.
+    fn read(v: &LocatedValue) -> Result<Self, D> {
+        Err(schema(v))
+    }
+}
+
+/// Writes normalized complete value meaning, preserving omission inside record fields only.
+pub(crate) fn write_value<R: Reference>(
+    w: &mut CborWriter,
+    v: &V<R>,
+    depth: usize,
+) -> Result<(), E> {
+    if depth > PROJECT_MAX_DEPTH {
+        return Err(E::EncodedSizeLimit);
+    }
+    match v {
+        V::Null => {
+            w.array(1)?;
+            w.text("null")
+        }
+        V::Number(n) => {
+            w.array(4)?;
+            w.text("num")?;
+            w.boolean(n.is_negative())?;
+            w.text(n.coefficient())?;
+            w.signed(n.scale())
+        }
+        V::Bool(b) => {
+            w.array(2)?;
+            w.text("bool")?;
+            w.boolean(*b)
+        }
+        V::String(s) | V::Url(s) | V::Path(s) => {
+            w.array(2)?;
+            w.text(match v {
+                V::String(_) => "string",
+                V::Url(_) => "url",
+                _ => "path",
+            })?;
+            w.text(s)
+        }
+        V::Reference(r) => {
+            w.array(2)?;
+            w.text("Ref")?;
+            write_symbol(w, r.symbol())
+        }
+        V::List(values) => {
+            w.array(2)?;
+            w.text("List")?;
+            write_list(w, values, |w, v| write_value(w, v, depth + 1))
+        }
+        V::Record(fields) => {
+            w.array(2)?;
+            w.text("record")?;
+            write_list(w, fields, |w, (n, v)| {
+                w.array(2)?;
+                w.text(n)?;
+                if let Some(v) = v {
+                    write_value(w, v, depth + 1)
+                } else {
+                    w.array(1)?;
+                    w.text("omitted")
+                }
+            })
+        }
+        V::Variant { tag, payload } => {
+            w.array(3)?;
+            w.text("variant")?;
+            w.text(tag)?;
+            write_value(w, payload, depth + 1)
+        }
+    }
+}
+
+/// Reads a bounded value tuple, rejecting wrong arity and illegal absence states.
+pub(crate) fn read_value<R: Reference>(v: &LocatedValue, depth: usize) -> Result<V<R>, D> {
+    if depth > PROJECT_MAX_DEPTH {
+        return Err(failure(C::EncodedSizeLimit));
+    }
+    let a = array(v)?;
+    let tag = text(a.first().ok_or_else(|| schema(v))?)?;
+    Ok(match (tag, a.len()) {
+        ("null", 1) => V::Null,
+        ("num", 4) => {
+            let coefficient = text(&a[2])?;
+            let scale = signed(&a[3])?;
+            let digits = crate::constants::MAXIMUM_EXACT_NUMBER_DIGITS as u64;
+            let scale_limit = crate::constants::MAXIMUM_TEXT_BYTES as u64;
+            // Historical oversized numeric tuples stay schema errors; allocation failure is a limit.
+            if coefficient.len() as u64 > digits || scale.unsigned_abs() > scale_limit {
+                return Err(schema(v));
+            }
+            V::Number(
+                ExactNumber::from_normalized_parts(
+                    boolean(&a[1])?,
+                    coefficient,
+                    scale,
+                    digits,
+                    scale_limit,
+                )
+                .map_err(|error| match error {
+                    neutral_ir::IrError::ExactNumberLimitExceeded => failure(C::EncodedSizeLimit),
+                    neutral_ir::IrError::InvalidExactNumber => schema(v),
+                })?,
+            )
+        }
+        ("bool", 2) => V::Bool(boolean(&a[1])?),
+        ("string", 2) => V::String(owned_text(&a[1])?),
+        ("url", 2) => V::Url(owned_text(&a[1])?),
+        ("path", 2) => V::Path(owned_text(&a[1])?),
+        ("Ref", 2) => V::Reference(R::read(&a[1])?),
+        ("List", 2) => V::List(read_list(&a[1], |v| read_value(v, depth + 1))?),
+        ("record", 2) => V::Record(read_list(&a[1], |v| {
+            let f = tuple::<2>(v)?;
+            let omitted = matches!(&f[1].value,CborValue::Array(a) if a.len()==1 && text(&a[0]).ok()==Some("omitted"));
+            Ok((
+                owned_text(&f[0])?,
+                if omitted {
+                    None
+                } else {
+                    Some(read_value(&f[1], depth + 1)?)
+                },
+            ))
+        })?),
+        ("variant", 3) => V::Variant {
+            tag: owned_text(&a[1])?,
+            payload: neutral_core::allocation::boxed(read_value(&a[2], depth + 1)?)
+                .map_err(|_| failure(C::EncodedSizeLimit))?,
+        },
+        _ => return Err(schema(v)),
+    })
+}
+
+/// Writes an explicit nullable transport slot, not a semantic null value.
+pub(crate) fn write_option<T>(
+    w: &mut CborWriter,
+    v: Option<&T>,
+    item: impl FnOnce(&mut CborWriter, &T) -> Result<(), E>,
+) -> Result<(), E> {
+    match v {
+        Some(v) => item(w, v),
+        None => w.null(),
+    }
+}
+/// Reads an explicit nullable transport slot without coercion.
+pub(crate) fn read_option<T>(
+    v: &LocatedValue,
+    item: impl FnOnce(&LocatedValue) -> Result<T, D>,
+) -> Result<Option<T>, D> {
+    if matches!(v.value, CborValue::Null) {
+        Ok(None)
+    } else {
+        item(v).map(Some)
+    }
+}
+/// Writes the closed field restriction tuple in frozen order.
+fn write_restrictions(w: &mut CborWriter, r: &FieldRestrictions) -> Result<(), E> {
+    w.array(5)?;
+    write_list(w, r.choices.as_deref().unwrap_or(&[]), |w, v| {
+        write_value(w, v, 0)
+    })?;
+    for n in [&r.minimum, &r.maximum] {
+        write_option(w, n.as_ref(), |w, n| {
+            w.array(4)?;
+            w.text(neutral_ir::language::NUM)?;
+            w.boolean(n.is_negative())?;
+            w.text(n.coefficient())?;
+            w.signed(n.scale())
+        })?;
+    }
+    for n in [&r.min_length, &r.max_length] {
+        write_option(w, n.as_ref(), |w, n| w.unsigned(*n))?;
+    }
+    Ok(())
+}
+/// Reads normalized restrictions; semantic compatibility remains reader-owned.
+pub(crate) fn read_restrictions(v: &LocatedValue) -> Result<FieldRestrictions, D> {
+    let a = tuple::<5>(v)?;
+    let choices = read_list(&a[0], |v| read_value(v, 0))?;
+    let number = |v: &LocatedValue| match read_value::<ClosedReference>(v, 0)? {
+        V::Number(n) => Ok(n),
+        _ => Err(schema(v)),
+    };
+    Ok(FieldRestrictions {
+        choices: if choices.is_empty() {
+            None
+        } else {
+            Some(choices)
+        },
+        minimum: read_option(&a[1], number)?,
+        maximum: read_option(&a[2], number)?,
+        min_length: read_option(&a[3], unsigned)?,
+        max_length: read_option(&a[4], unsigned)?,
+    })
+}
+/// Writes complete nominal bodies, including dormant defaults and all alternative types.
+pub(crate) fn write_body(w: &mut CborWriter, b: &B) -> Result<(), E> {
+    w.array(2)?;
+    match b {
+        B::Record(fields) => {
+            w.text("record")?;
+            write_list(w, fields, |w, f| {
+                w.array(5)?;
+                w.text(&f.name)?;
+                write_type(w, &f.ty, 0)?;
+                w.text(match f.presence {
+                    Presence::Required => "required",
+                    Presence::Optional => "optional",
+                    Presence::Defaulted => "defaulted",
+                })?;
+                write_restrictions(w, &f.restrictions)?;
+                if let Some(v) = &f.default {
+                    w.array(2)?;
+                    w.boolean(true)?;
+                    write_value(w, v, 0)
+                } else {
+                    w.array(1)?;
+                    w.boolean(false)
+                }
+            })
+        }
+        B::Variant(alternatives) => {
+            w.text("variant")?;
+            write_list(w, alternatives, |w, a| {
+                w.array(2)?;
+                w.text(&a.tag)?;
+                write_type(w, &a.ty, 0)
+            })
+        }
+    }
+}
+/// Reads one exact record/variant signature with no fallback to the old body grammar.
+pub(crate) fn read_body(v: &LocatedValue) -> Result<B, D> {
+    let a = tuple::<2>(v)?;
+    match text(&a[0])? {
+        "record" => Ok(B::Record(read_list(&a[1], |v| {
+            let f = tuple::<5>(v)?;
+            let d = array(&f[4])?;
+            let default = match d {
+                [flag] if !boolean(flag)? => None,
+                [flag, value] if boolean(flag)? => Some(read_value(value, 0)?),
+                _ => return Err(schema(v)),
+            };
+            Ok(CompositionField {
+                name: owned_text(&f[0])?,
+                ty: read_type(&f[1], 0)?,
+                presence: match text(&f[2])? {
+                    "required" => Presence::Required,
+                    "optional" => Presence::Optional,
+                    "defaulted" => Presence::Defaulted,
+                    _ => return Err(schema(v)),
+                },
+                restrictions: read_restrictions(&f[3])?,
+                default,
+            })
+        })?)),
+        "variant" => Ok(B::Variant(read_list(&a[1], |v| {
+            let a = tuple::<2>(v)?;
+            Ok(CompositionAlternative {
+                tag: owned_text(&a[0])?,
+                ty: read_type(&a[1], 0)?,
+            })
+        })?)),
+        _ => Err(schema(v)),
+    }
+}
+
+/// Writes the unchanged base project companions in their frozen six-slot order.
+pub(crate) fn write_companions(
+    w: &mut CborWriter,
+    sources: &[ProjectSource],
+    source_maps: &[ProjectSourceMap],
+    provenance: &[ProjectProvenance],
+    limits: ProjectLimits,
+    resources: ProjectResourceFacts,
+    vocabulary_sources: &[ProjectVocabularySource],
+) -> Result<(), E> {
+    write_list(w, sources, |w, s| {
+        w.array(4)?;
+        w.text(&s.module)?;
+        w.text(&s.source_id)?;
+        w.bytes(&s.digest.as_bytes())?;
+        w.unsigned(s.byte_len)
+    })?;
+    write_list(w, source_maps, |w, m| {
+        w.array(2)?;
+        write_symbol(w, &m.declaration)?;
+        write_location(w, m.location)
+    })?;
+    write_list(w, provenance, |w, p| {
+        w.array(4)?;
+        write_symbol(w, &p.from)?;
+        write_symbol(w, &p.to)?;
+        w.unsigned(edge_tag(p.kind))?;
+        write_location(w, p.location)
+    })?;
+    write_numbers(
+        w,
+        &[
+            limits.modules,
+            limits.declarations,
+            limits.import_edges,
+            limits.nodes,
+            limits.text_bytes,
+            limits.artifact_bytes,
+        ],
+    )?;
+    let r = resources;
+    write_numbers(
+        w,
+        &[
+            r.source_units,
+            r.source_bytes,
+            r.vocabulary_units,
+            r.vocabulary_bytes,
+            r.declarations,
+            r.import_edges,
+            r.value_nodes,
+        ],
+    )?;
+    write_list(w, vocabulary_sources, |w, s| {
+        w.array(4)?;
+        w.text(&s.identity)?;
+        w.text(&s.version)?;
+        w.bytes(&s.digest.as_bytes())?;
+        w.unsigned(s.byte_len)
+    })?;
+    Ok(())
+}
+
+/// Owned raw base companions, never a fabricated historical project authority.
+pub(crate) struct BaseCompanions {
+    /// Original source accounting.
+    pub sources: Vec<ProjectSource>,
+    /// Declaration and public-template original occurrences.
+    pub maps: Vec<ProjectSourceMap>,
+    /// Historical structural edge evidence.
+    pub provenance: Vec<ProjectProvenance>,
+    /// Declared project controls.
+    pub limits: ProjectLimits,
+    /// Claimed base resource facts.
+    pub resources: ProjectResourceFacts,
+    /// Original vocabulary accounting.
+    pub vocabularies: Vec<ProjectVocabularySource>,
+}
+
+/// Reads all historical source companions without opening any retained location.
+pub(crate) fn read_companions(
+    p: &[LocatedValue],
+    cancel: &CancellationToken,
+) -> Result<BaseCompanions, D> {
+    if cancel.is_cancelled() {
+        return Err(failure(C::Cancelled));
+    }
+    let limits = tuple::<6>(&p[9])?;
+    let resources = tuple::<7>(&p[10])?;
+    Ok(BaseCompanions {
+        sources: read_list(&p[6], |v| {
+            if cancel.is_cancelled() {
+                return Err(failure(C::Cancelled));
+            }
+            let a = tuple::<4>(v)?;
+            Ok(ProjectSource {
+                module: owned_text(&a[0])?,
+                source_id: owned_text(&a[1])?,
+                digest: SourceContentDigest::from_raw_bytes(digest(&a[2])?),
+                byte_len: unsigned(&a[3])?,
+            })
+        })?,
+        maps: read_list(&p[7], |v| {
+            if cancel.is_cancelled() {
+                return Err(failure(C::Cancelled));
+            }
+            let a = tuple::<2>(v)?;
+            Ok(ProjectSourceMap {
+                declaration: read_symbol(&a[0])?,
+                location: read_location(&a[1])?,
+            })
+        })?,
+        provenance: read_list(&p[8], |v| {
+            if cancel.is_cancelled() {
+                return Err(failure(C::Cancelled));
+            }
+            let a = tuple::<4>(v)?;
+            Ok(ProjectProvenance {
+                from: read_symbol(&a[0])?,
+                to: read_symbol(&a[1])?,
+                kind: read_edge(unsigned(&a[2])?)?,
+                location: read_location(&a[3])?,
+            })
+        })?,
+        limits: ProjectLimits {
+            modules: unsigned(&limits[0])?,
+            declarations: unsigned(&limits[1])?,
+            import_edges: unsigned(&limits[2])?,
+            nodes: unsigned(&limits[3])?,
+            text_bytes: unsigned(&limits[4])?,
+            artifact_bytes: unsigned(&limits[5])?,
+        },
+        resources: ProjectResourceFacts {
+            source_units: unsigned(&resources[0])?,
+            source_bytes: unsigned(&resources[1])?,
+            vocabulary_units: unsigned(&resources[2])?,
+            vocabulary_bytes: unsigned(&resources[3])?,
+            declarations: unsigned(&resources[4])?,
+            import_edges: unsigned(&resources[5])?,
+            value_nodes: unsigned(&resources[6])?,
+        },
+        vocabularies: read_list(&p[11], |v| {
+            if cancel.is_cancelled() {
+                return Err(failure(C::Cancelled));
+            }
+            let a = tuple::<4>(v)?;
+            Ok(ProjectVocabularySource {
+                identity: owned_text(&a[0])?,
+                version: owned_text(&a[1])?,
+                digest: VocabularyContentDigest::from_raw_bytes(digest(&a[2])?),
+                byte_len: unsigned(&a[3])?,
+            })
+        })?,
+    })
+}
+
+/// Writes an origin separately from materialized meaning and logical identity.
+pub(crate) fn write_origin(w: &mut CborWriter, o: &CompositionOrigin) -> Result<(), E> {
+    w.array(4)?;
+    write_symbol(w, &o.binding)?;
+    write_list(w, &o.path, |w, p| match p {
+        P::Field(n) => {
+            w.array(2)?;
+            w.text("field")?;
+            w.text(n)
+        }
+        P::Element(n) => {
+            w.array(2)?;
+            w.text("element")?;
+            w.unsigned(*n)
+        }
+        P::Payload => {
+            w.array(1)?;
+            w.text("payload")
+        }
+    })?;
+    w.text(match o.kind {
+        K::Supplied => "supplied",
+        K::ExplicitNull => "explicit-null",
+        K::OmittedOptional => "omitted-optional",
+        K::Defaulted => "defaulted",
+    })?;
+    write_option(w, o.attribution.as_ref(), |w, a| match a {
+        A::Source(location) => {
+            w.array(2)?;
+            w.text("source")?;
+            write_location(w, *location)
+        }
+        A::Vocabulary {
+            identity,
+            version,
+            type_name,
+            field_name,
+            span,
+        } => {
+            w.array(6)?;
+            w.text("vocabulary")?;
+            w.text(identity)?;
+            w.text(version)?;
+            w.text(type_name)?;
+            w.text(field_name)?;
+            write_option(w, span.as_ref(), |w, s| {
+                write_numbers(w, &[s.start(), s.end()])
+            })
+        }
+    })
+}
+
+/// Reads exact origin paths and explicit evidence availability; reader checks ownership.
+pub(crate) fn read_origin(v: &LocatedValue) -> Result<CompositionOrigin, D> {
+    let a = tuple::<4>(v)?;
+    Ok(CompositionOrigin {
+        binding: read_symbol(&a[0])?,
+        path: read_list(&a[1], |v| {
+            let p = array(v)?;
+            match p {
+                [tag] if text(tag)? == "payload" => Ok(P::Payload),
+                [tag, n] if text(tag)? == "field" => Ok(P::Field(owned_text(n)?)),
+                [tag, n] if text(tag)? == "element" => Ok(P::Element(unsigned(n)?)),
+                _ => Err(schema(v)),
+            }
+        })?,
+        kind: match text(&a[2])? {
+            "supplied" => K::Supplied,
+            "explicit-null" => K::ExplicitNull,
+            "omitted-optional" => K::OmittedOptional,
+            "defaulted" => K::Defaulted,
+            _ => return Err(schema(v)),
+        },
+        attribution: read_option(&a[3], |v| {
+            let p = array(v)?;
+            match p {
+                [tag, l] if text(tag)? == "source" => Ok(A::Source(read_location(l)?)),
+                [tag, identity, revision, type_name, field_name, span]
+                    if text(tag)? == "vocabulary" =>
+                {
+                    Ok(A::Vocabulary {
+                        identity: owned_text(identity)?,
+                        version: owned_text(revision)?,
+                        type_name: owned_text(type_name)?,
+                        field_name: owned_text(field_name)?,
+                        span: read_option(span, |v| {
+                            let a = tuple::<2>(v)?;
+                            ByteSpan::new(unsigned(&a[0])?, unsigned(&a[1])?).map_err(|_| schema(v))
+                        })?,
+                    })
+                }
+                _ => Err(schema(v)),
+            }
+        })?,
+    })
+}
+
+/// Joins all exact catalogue owners, public names, definitions and dependency records without sorting untrusted input.
+pub(crate) fn read_vocabularies(
+    p: &[LocatedValue],
+    vocabulary_sources: &[ProjectVocabularySource],
+) -> Result<Vec<CompositionBundle>, D> {
+    // Wire definitions are already ordered by exact owner/name. Group once in
+    // linear order instead of allocating a tree or cloning ownership keys.
+    let raw_definitions = array(&p[3])?;
+    let mut definitions: Vec<((&str, &str), Vec<CompositionDefinition>)> = Vec::new();
+    definitions
+        .try_retain_exact(raw_definitions.len())
+        .map_err(|_| failure(C::EncodedSizeLimit))?;
+    let mut previous = None;
+    for d in raw_definitions {
+        let a = tuple::<5>(d)?;
+        let owner = (text(&a[0])?, text(&a[1])?);
+        let name = owned_text(&a[2])?;
+        let key = (owner, text(&a[2])?);
+        if previous.as_ref().is_some_and(|p| p >= &key) {
+            return Err(schema(d));
+        }
+        previous = Some(key);
+        if definitions.last().is_none_or(|last| last.0 != owner) {
+            definitions.push((owner, Vec::new()));
+        }
+        let Some((_, group)) = definitions.last_mut() else {
+            return Err(schema(d));
+        };
+        group
+            .try_retain(1)
+            .map_err(|_| failure(C::EncodedSizeLimit))?;
+        group.push(CompositionDefinition {
+            name,
+            public: boolean(&a[3])?,
+            body: read_body(&a[4])?,
+        });
+    }
+    let dependencies = read_list(&p[12], |v| {
+        let a = tuple::<3>(v)?;
+        Ok((
+            owned_text(&a[0])?,
+            owned_text(&a[1])?,
+            read_list(&a[2], |v| {
+                let d = tuple::<2>(v)?;
+                Ok(CompositionDependency {
+                    identity: owned_text(&d[0])?,
+                    version: owned_text(&d[1])?,
+                })
+            })?,
+        ))
+    })?;
+    let catalogues = array(&p[4])?;
+    if catalogues.len() != dependencies.len() || catalogues.len() != vocabulary_sources.len() {
+        return Err(schema(&p[4]));
+    }
+    let mut definitions = definitions.into_iter().peekable();
+    let mut vocabularies = Vec::new();
+    vocabularies
+        .try_retain_exact(catalogues.len())
+        .map_err(|_| failure(C::EncodedSizeLimit))?;
+    for ((c, dep), source) in catalogues.iter().zip(dependencies).zip(vocabulary_sources) {
+        let a = tuple::<5>(c)?;
+        let identity = owned_text(&a[0])?;
+        let version = owned_text(&a[1])?;
+        if (identity.as_str(), version.as_str()) != (dep.0.as_str(), dep.1.as_str())
+            || identity != source.identity
+            || version != source.version
+        {
+            return Err(schema(c));
+        }
+        let owner = (identity.as_str(), version.as_str());
+        let defs = match definitions.next_if(|entry| entry.0 == owner) {
+            Some(entry) => entry.1,
+            None => Vec::new(),
+        };
+        let public = read_list(&a[4], owned_text)?;
+        if !defs
+            .iter()
+            .filter(|d| d.public)
+            .map(|d| &d.name)
+            .eq(public.iter())
+        {
+            return Err(schema(c));
+        }
+        vocabularies.push(CompositionBundle {
+            identity: VocabularyIdentity::new(
+                identity,
+                version,
+                owned_text(&a[2])?,
+                neutral_core::allocation::text(neutral_vocabulary::composition::ENCODING_VERSION)
+                    .map_err(|_| failure(C::EncodedSizeLimit))?,
+                source.digest,
+                read_list(&a[3], owned_text)?,
+            ),
+            dependencies: dep.2,
+            definitions: defs,
+        });
+    }
+    if definitions.next().is_some() {
+        return Err(schema(&p[4]));
+    }
+    Ok(vocabularies)
+}
+
+/// Reads an exact unsigned control/fact tuple without trusting advertised semantics.
+pub(crate) fn read_numbers<const N: usize>(value: &LocatedValue) -> Result<[u64; N], D> {
+    let mut numbers = [0; N];
+    for (out, item) in numbers.iter_mut().zip(tuple::<N>(value)?) {
+        *out = unsigned(item)?;
+    }
+    Ok(numbers)
+}

@@ -2,17 +2,18 @@
 
 //! Compiler capture -> independent catalogue reader integration; not source/codec activation.
 
-use super::{REQUESTS, bytes, frame_count, limits_for, locks, vectors};
+use super::{REQUESTS, bytes, limits_for, locks};
 use neutral_compiler::{
-    CapturedCompositionProjectRequest, CapturedProjectRequest, CapturedProjectVocabulary,
+    CapturedExpressionProjectRequest, CapturedProjectRequest, CapturedProjectVocabulary,
     CapturedSourceInput, CapturedVocabularyInput, ProjectCaptureControls, ProjectCaptureError,
-    ProjectCaptureLimitValues, ProjectCaptureLimits, capture_composition_project,
+    ProjectCaptureLimitValues, ProjectCaptureLimits, capture_expression_project,
 };
 use neutral_core::{CancellationToken, SourceContentDigest, profile::LanguageProfile};
 use neutral_ir::{
-    composition::{ClosedValue as V, CompositionBody, FieldPresence, ValueOriginKind, profile},
-    project_identity::{
-        CapturedIdentityInput, IdentityError, IdentityLimits, captured_composition_closure,
+    composition::{ClosedValue as V, CompositionBody, FieldPresence, ValueOriginKind},
+    expression::{
+        profile::{self, ExpressionLimits, SemanticProfiles},
+        templates::ExpansionLimits,
     },
     project_interface::ProjectPublicType,
 };
@@ -40,7 +41,7 @@ fn case(family: usize, name: &str) -> Value {
 /// Catalogue-only fixtures have no source unit. For those tests only, an explicit
 /// synthetic source declares their reviewed roots; this is not a literal source
 /// compilation expectation or permission to infer roots in production.
-pub(super) fn request(case: &Value) -> CapturedCompositionProjectRequest {
+pub(super) fn request(case: &Value) -> CapturedExpressionProjectRequest {
     let inputs = case["capture"]["vocabularies"].as_array().unwrap();
     let vocabularies = inputs
         .iter()
@@ -81,7 +82,7 @@ pub(super) fn request(case: &Value) -> CapturedCompositionProjectRequest {
             text.into_bytes(),
         ));
     }
-    CapturedCompositionProjectRequest::new(
+    CapturedExpressionProjectRequest::new(
         CapturedProjectRequest::new(
             profile::CAPTURE_REQUEST_VERSION,
             LanguageProfile::V1_0,
@@ -107,13 +108,10 @@ pub(super) fn request(case: &Value) -> CapturedCompositionProjectRequest {
                 CancellationToken::new(),
             ),
         ),
-        case["capture"]["required_features"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|v| v.as_str().unwrap().to_owned())
-            .collect(),
+        SemanticProfiles::try_frozen().unwrap(),
         limits_for(case),
+        ExpressionLimits::hard(),
+        ExpansionLimits::hard(),
     )
 }
 
@@ -123,10 +121,10 @@ fn conformance_composition_capture_registered_catalogue_cases() {
     for raw in REQUESTS {
         let data: Value = serde_json::from_str(raw).unwrap();
         for case in data["cases"].as_array().unwrap() {
-            let actual = capture_composition_project(request(case));
+            let actual = capture_expression_project(request(case));
             let expected = case["catalogue_outcome"].as_str().unwrap();
             if expected == "accepted" {
-                assert!(actual.is_ok(), "{}: {actual:?}", case["id"]);
+                assert!(actual.is_ok(), "{}", case["id"]);
             } else {
                 // Capture rejects duplicate/conflicting locks at integrity,
                 // before the standalone catalogue's duplicate-owner check.
@@ -135,7 +133,7 @@ fn conformance_composition_capture_registered_catalogue_cases() {
                 } else {
                     expected
                 };
-                assert_eq!(actual.unwrap_err().code(), expected, "{}", case["id"]);
+                assert_eq!(actual.err().unwrap().code(), expected, "{}", case["id"]);
             }
         }
     }
@@ -145,7 +143,7 @@ fn conformance_composition_capture_registered_catalogue_cases() {
 #[test]
 fn integration_composition_capture_diamond_and_independent_public_reader() {
     let case = case(0, "exact-diamond-closure");
-    let captured = capture_composition_project(request(&case)).unwrap();
+    let captured = capture_expression_project(request(&case)).unwrap();
     let identities = captured
         .vocabularies()
         .iter()
@@ -153,14 +151,6 @@ fn integration_composition_capture_diamond_and_independent_public_reader() {
         .collect::<Vec<_>>();
     assert_eq!(identities, ["Leaf", "Left", "Right", "Root"]);
     assert_eq!(captured.resource_facts().vocabulary_units(), 4);
-    assert_eq!(
-        captured
-            .vocabulary_for_alias("example", "root")
-            .unwrap()
-            .identity(),
-        "Root"
-    );
-    assert_eq!(captured.vocabulary_for_alias("example", "leaf"), None);
     let reader = CompositionCatalogue::from_shared(captured.catalogue());
     assert_eq!(
         reader
@@ -208,7 +198,7 @@ fn integration_composition_capture_diamond_and_independent_public_reader() {
 #[test]
 fn integration_composition_capture_reader_reference_paths_and_privacy() {
     let case = case(0, "list-nullable-reference-unselected-alternative");
-    let captured = capture_composition_project(request(&case)).unwrap();
+    let captured = capture_expression_project(request(&case)).unwrap();
     let reader = CompositionCatalogue::from_shared(captured.catalogue());
     let policy = CompositionInspectionLimits {
         visits: 1000,
@@ -268,7 +258,7 @@ fn integration_composition_capture_reader_preserves_complete_restrictions() {
         0,
         "both-origins-heterogeneous-list-default-absence-reference",
     );
-    let captured = capture_composition_project(request(&case)).unwrap();
+    let captured = capture_expression_project(request(&case)).unwrap();
     let reader = CompositionCatalogue::from_shared(captured.catalogue());
     let CompositionBody::Record(fields) = &reader
         .public_type("ExampleDomain", "1.0.0", "Request")
@@ -301,23 +291,23 @@ fn integration_composition_capture_reader_preserves_complete_restrictions() {
 #[test]
 fn property_composition_capture_permutation_replay_and_concurrent_requests() {
     let mut case = case(0, "exact-diamond-closure");
-    let first = capture_composition_project(request(&case)).unwrap();
+    let first = capture_expression_project(request(&case)).unwrap();
     case["capture"]["vocabularies"]
         .as_array_mut()
         .unwrap()
         .reverse();
-    let reversed = capture_composition_project(request(&case)).unwrap();
+    let reversed = capture_expression_project(request(&case)).unwrap();
     assert_eq!(first.vocabularies(), reversed.vocabularies());
     assert_eq!(first.catalogue(), reversed.catalogue());
     let replay =
-        capture_composition_project(first.replay_request(CancellationToken::new()).unwrap())
+        capture_expression_project(first.replay_request(CancellationToken::new()).unwrap())
             .unwrap();
     assert_eq!(first.sources(), replay.sources());
     assert_eq!(first.vocabularies(), replay.vocabularies());
     assert_eq!(first.catalogue(), replay.catalogue());
     std::thread::scope(|scope| {
         let handles = (0..8)
-            .map(|_| scope.spawn(|| capture_composition_project(request(&case)).unwrap()))
+            .map(|_| scope.spawn(|| capture_expression_project(request(&case)).unwrap()))
             .collect::<Vec<_>>();
         for handle in handles {
             assert_eq!(handle.join().unwrap().catalogue(), first.catalogue());
@@ -329,7 +319,7 @@ fn property_composition_capture_permutation_replay_and_concurrent_requests() {
 #[test]
 fn compatibility_composition_capture_legacy_leaf_adapter_is_explicit() {
     let case = case(3, "legacy-leaf-explicit-adapter");
-    let captured = capture_composition_project(request(&case)).unwrap();
+    let captured = capture_expression_project(request(&case)).unwrap();
     let reader = CompositionCatalogue::from_shared(captured.catalogue());
     let CompositionBody::Record(fields) =
         &reader.public_type("Fixture", "1.0.0", "Item").unwrap().body
@@ -340,152 +330,4 @@ fn compatibility_composition_capture_legacy_leaf_adapter_is_explicit() {
     assert_eq!(fields[0].presence, FieldPresence::Required);
     assert_eq!(fields[0].default, None);
     assert_eq!(reader.dependencies("Fixture", "1.0.0").unwrap(), []);
-}
-
-/// Production capture /2 matches frozen independent transcript bytes, not a generated expectation.
-#[test]
-fn conformance_composition_capture_identity_matches_literal_vector() {
-    let data = vectors();
-    let captured = capture_composition_project(request(&case(
-        0,
-        "both-origins-heterogeneous-list-default-absence-reference",
-    )))
-    .unwrap();
-    let expected = &data["expected"]["captured"];
-    let policy = IdentityLimits {
-        bytes: expected["transcript_bytes"].as_u64().unwrap(),
-        nodes: expected["frames"].as_u64().unwrap(),
-    };
-    let transcript = captured
-        .identity_transcript(policy, &CancellationToken::new())
-        .unwrap();
-    assert_eq!(transcript.bytes(), bytes(&expected["transcript_hex"]));
-    assert_eq!(
-        transcript.identity().to_string(),
-        expected["sha256"].as_str().unwrap()
-    );
-    assert_eq!(frame_count(transcript.bytes(), 0, ""), policy.nodes);
-    let replay =
-        capture_composition_project(captured.replay_request(CancellationToken::new()).unwrap())
-            .unwrap();
-    assert_eq!(
-        replay
-            .identity_transcript(policy, &CancellationToken::new())
-            .unwrap(),
-        transcript
-    );
-}
-
-/// Actual captured-identity output enforces literal byte/frame boundaries, zeros and cancellation.
-#[test]
-fn security_composition_capture_identity_exact_and_one_over_bounds() {
-    let data = vectors();
-    let expected = &data["expected"]["captured"];
-    let captured = capture_composition_project(request(&case(
-        0,
-        "both-origins-heterogeneous-list-default-absence-reference",
-    )))
-    .unwrap();
-    let policy = IdentityLimits {
-        bytes: expected["transcript_bytes"].as_u64().unwrap(),
-        nodes: expected["frames"].as_u64().unwrap(),
-    };
-    for limited in [
-        IdentityLimits {
-            bytes: policy.bytes - 1,
-            ..policy
-        },
-        IdentityLimits {
-            nodes: policy.nodes - 1,
-            ..policy
-        },
-        IdentityLimits { bytes: 0, ..policy },
-        IdentityLimits { nodes: 0, ..policy },
-    ] {
-        assert_eq!(
-            captured.identity_transcript(limited, &CancellationToken::new()),
-            Err(IdentityError::Limit)
-        );
-    }
-    let cancelled = CancellationToken::new();
-    cancelled.cancel();
-    assert_eq!(
-        captured.identity_transcript(policy, &cancelled),
-        Err(IdentityError::Cancelled)
-    );
-}
-
-/// Independent identity callers cannot infer the successor from a header or arbitrary capability list.
-#[test]
-fn security_composition_capture_identity_rejects_unsupported_selection() {
-    let limits = IdentityLimits {
-        bytes: 4096,
-        nodes: 64,
-    };
-    let input = CapturedIdentityInput {
-        profile: LanguageProfile::V1_0.source_version(),
-        sources: &[],
-        vocabularies: &[],
-    };
-    for features in [
-        Vec::new(),
-        vec!["unknown-feature".to_owned()],
-        profile::REQUIRED_FEATURES
-            .iter()
-            .rev()
-            .map(|f| (*f).to_owned())
-            .collect(),
-    ] {
-        assert_eq!(
-            captured_composition_closure(&input, &features, limits, &CancellationToken::new()),
-            Err(IdentityError::InvalidInput)
-        );
-    }
-    let features = profile::REQUIRED_FEATURES
-        .iter()
-        .map(|f| (*f).to_owned())
-        .collect::<Vec<_>>();
-    let wrong_profile = CapturedIdentityInput {
-        profile: "unknown-profile",
-        ..input
-    };
-    assert_eq!(
-        captured_composition_closure(&wrong_profile, &features, limits, &CancellationToken::new()),
-        Err(IdentityError::InvalidInput)
-    );
-}
-
-/// Capture-order changes leave identity stable; changed source evidence is capture-significant.
-#[test]
-fn property_composition_capture_identity_order_and_exact_source_facts() {
-    let mut case = case(0, "exact-diamond-closure");
-    let policy = IdentityLimits {
-        bytes: 65_536,
-        nodes: 4096,
-    };
-    let first = capture_composition_project(request(&case)).unwrap();
-    let identity = first
-        .identity_transcript(policy, &CancellationToken::new())
-        .unwrap();
-    case["capture"]["vocabularies"]
-        .as_array_mut()
-        .unwrap()
-        .reverse();
-    let reversed = capture_composition_project(request(&case)).unwrap();
-    assert_eq!(
-        reversed
-            .identity_transcript(policy, &CancellationToken::new())
-            .unwrap(),
-        identity
-    );
-    case["capture"]["sources"][0]["source_id"] = Value::String("source:renamed".to_owned());
-    let renamed = capture_composition_project(request(&case)).unwrap();
-    assert_eq!(renamed.catalogue(), first.catalogue());
-    assert_ne!(
-        renamed
-            .identity_transcript(policy, &CancellationToken::new())
-            .unwrap()
-            .identity(),
-        identity.identity()
-    );
 }

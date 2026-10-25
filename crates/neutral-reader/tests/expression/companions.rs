@@ -29,9 +29,6 @@ use neutral_semantics::{SemanticLimits, derive_expression_resources, validate_ex
 #[path = "consumer_coverage.rs"]
 mod consumer_coverage;
 
-#[path = "composition_consumer_coverage.rs"]
-mod composition_consumer_coverage;
-
 #[path = "public_projection_coverage.rs"]
 mod public_projection_coverage;
 

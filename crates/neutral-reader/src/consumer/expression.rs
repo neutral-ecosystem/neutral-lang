@@ -5,7 +5,7 @@
 use super::{
     ConsumerContext, ConsumerError, ConsumerLimits, ConsumerLocation, ConsumerProtocol,
     LocationUnavailable,
-    validation::{Budget, public_scope_type},
+    budget::{Budget, public_scope_type},
 };
 use crate::expression::ValidatedExpressionProject;
 use neutral_core::CancellationToken;

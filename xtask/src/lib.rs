@@ -81,8 +81,9 @@ use quality::ledger::{
 use release::approval::{quality_document_status, release_plan, verify_release_approval};
 use runtime::execution::{command_output, run_cargo, run_program};
 use runtime::files::{
-    collect_regular_files, is_sha256, markdown_link_targets, read_workspace_text,
-    require_clean_checkout, require_main_head_checkout, sha256_file, unique_generated_directory,
+    collect_regular_files, is_sha256, markdown_link_exists, markdown_link_targets,
+    read_workspace_text, require_clean_checkout, require_main_head_checkout, sha256_file,
+    unique_generated_directory,
 };
 use runtime::workflow::{run_recorded_workflow, unix_time_millis};
 

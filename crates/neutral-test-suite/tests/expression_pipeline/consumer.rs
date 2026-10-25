@@ -18,10 +18,10 @@ mod generations;
 /// Syntax reuse must not capture external bindings or consumer revision context.
 #[test]
 fn integration_cached_expression_artifact_has_literal_reports_and_immutable_identity() {
-    use neutral_compiler::{CompositionCompilationCache, ProjectCacheLimits};
+    use neutral_compiler::{ExpressionCompilationCache, ProjectCacheLimits};
     let captured = capture(include_bytes!("fixtures/guarded.neu"));
     let cancel = CancellationToken::new();
-    let mut cache = CompositionCompilationCache::new(ProjectCacheLimits {
+    let mut cache = ExpressionCompilationCache::new(ProjectCacheLimits {
         source_units: 8,
         source_bytes: 1_048_576,
     })
