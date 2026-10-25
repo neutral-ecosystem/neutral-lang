@@ -235,7 +235,7 @@ unchanged-input campaigns retain their own later checkboxes.
 
 ## Task 9: Explicit `/3` capture, source semantics and finite expansion
 
-**Files:** `neutral-compiler/src/project_capture/expression.rs`; `frontend/expressions/{mod,parser,resolution,lowering}.rs`; `frontend/expansion/{mod,parameters,matrix,attribution}.rs`; owning compiler tests. Reuse existing lexer/header/capture/graph ownership and shared semantic library; make contextual successor parsing explicit rather than widening historical parser acceptance.
+**Files:** `neutral-compiler/src/project_capture/expression.rs`; `frontend/project_semantics/expressions/{mod,parser,resolution,lowering}.rs`; `frontend/project_semantics/expressions/expansion.rs`; owning compiler tests. Reuse existing lexer/header/capture/graph ownership and shared semantic library; make contextual successor parsing explicit rather than widening historical parser acceptance.
 
 **Interfaces:** `CapturedExpressionProjectRequest`, `capture_expression_project(request)`, and `compile_expression_project(&CapturedExpressionProject, cancel) -> Result<Shared<ExpressionProjectIr>, ExpressionCompileFailure>`. Requests carry exact `/3` tuple and positive expression/expansion controls. The compiler resolves source/import/binder names, builds raw typed trees and uses Tasks 2–4 for typing/normalization; it cannot read external bindings from ambient state.
 
@@ -274,7 +274,7 @@ unchanged. No `/3` availability advertisement or activation is implied.
 
 ## Task 10: Independent probe and actual clean/cache equivalence
 
-**Files:** `neutral-probe/src/expression.rs`; `neutral-compiler/src/frontend/expression_cache.rs`; owning probe/compiler tests; `neutral-test-suite/tests/expression_pipeline/{mod,source,consumer,identity,cache}.rs`.
+**Files:** `neutral-probe/src/expression.rs`; `neutral-compiler/src/frontend/project_semantics/expressions/cache.rs`; owning probe/compiler tests; `neutral-test-suite/tests/expression_pipeline/{mod,source,consumer,identity,cache}.rs`.
 
 **Interfaces:** `inspect_expression_encoded(bytes, wire_limits, semantic_limits, entry_request, cancel)` returns safe counts, complete typed identities, public contracts/ports/obligations/guarded dependencies and a redacted view. It never evaluates. Reuse the existing cache generation/publication pattern with `/3` captured/semantic keys; no second persistent cache is required.
 

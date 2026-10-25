@@ -2,13 +2,15 @@
 
 # Private source frontend
 
-This directory owns compiler-private source decoding, raw tokens, physical
-newline retention, semantic line-end normalization, and the recovery-free
-parser. It handles exact trivia, identifiers, bounded string escape decoding,
-Unicode scalar validation, exact numbers, Boolean literals, nullability,
-record declarations and defaults, invariant lists, immutable-value reuse, and
-typed identity references. Executable expressions remain inactive.
+`lexer.rs` owns bounded shared nominal/header tokens, strings, trivia and exact
+original-byte spans. `graph_syntax.rs` scans explicit module/import facts.
+`project_semantics/expressions/` owns current expression parsing, all-branch
+resolution, static normalization, finite expansion, formatting and syntax caching.
+`project_semantics/nominal/` owns shared record/variant contracts, defaults,
+import/SCC checking and captured companion facts. The physical tree follows these
+private Rust module boundaries; production modules do not redirect sibling files.
 
-Nothing here is a public Neutral contract. Public consumers receive only
-bounded diagnostics and validated public IR. A partial or
-recovered private syntax model can never become authoritative output.
+Pure expressions are current language data; effects, acquisition and scheduling
+remain outside the compiler. Public consumers receive checked diagnostics and
+complete IR that still requires independent reader validation. No partial syntax
+or recovered declaration becomes authoritative output.

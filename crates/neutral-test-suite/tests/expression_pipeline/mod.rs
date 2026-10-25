@@ -49,7 +49,7 @@ fn composition_limits() -> CompositionLimits {
     ))
 }
 
-/// Captures exact source bytes with explicit successor profiles, without activating the CLI profile.
+/// Captures exact source bytes with the same explicit current profiles as the CLI.
 fn capture(source: &[u8]) -> CapturedExpressionProject {
     capture_with_vocabularies(source, vec![])
 }

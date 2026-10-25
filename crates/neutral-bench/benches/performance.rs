@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Controlled dependency-free performance, stress, and soak harness.
-#[path = "../src/composition.rs"]
+#[path = "../src/pipeline.rs"]
 mod current;
 use std::{env, time::Instant};
 /// Fast informational samples for the local development loop.

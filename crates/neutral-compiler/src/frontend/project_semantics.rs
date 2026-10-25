@@ -2,12 +2,13 @@
 
 //! Current captured-project composition and expression compilation entry points.
 
-mod composition;
+mod expressions;
+mod nominal;
 mod type_syntax;
 
-pub use composition::{
-    ExpressionCompilationCache, ExpressionCompileFailure, ProjectCacheLimits, ProjectCacheStats,
-    compile_expression_project, format_expression_source,
+pub use expressions::cache::{ExpressionCompilationCache, ProjectCacheLimits, ProjectCacheStats};
+pub use expressions::{
+    ExpressionCompileFailure, compile_expression_project, format_expression_source,
 };
 pub(super) use type_syntax::parse_complete_type_fallible;
 

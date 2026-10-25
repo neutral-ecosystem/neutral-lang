@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Composition capture
+# Current project capture
 
 The successor capture boundary validates exact source headers and the complete
 transitive vocabulary lock closure without host acquisition. It shares validated
@@ -10,6 +10,7 @@ Captured identity projects verified source and lock facts into its explicitly
 versioned transcript; the IR crate owns the unchanged framing machinery and the
 separate typed successor identity. Bounds and cancellation apply before publication.
 
-Capture success does not mean that source semantics, project IR, wire encoding or
-identity /2 are implemented. The separate output type deliberately cannot enter
-the old compiler; there is no old-profile fallback or public downcast.
+Capture success is not complete source acceptance. The current compiler resolves
+the captured project, and an independent reader validates complete IR before
+encoding. Project contracts use `/3`; the catalogue's schema `2.0` is a separate
+versioned contract. There is no old-profile fallback or public downcast.

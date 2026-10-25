@@ -27,12 +27,13 @@ still pass `neutral_reader::ValidatedExpressionProject::from_ir` before encoding
 That independent reader checks semantics, companions, resource facts and identities.
 
 For code orientation, follow [capture](src/project_capture/expression.rs),
-[bounded graph construction](src/frontend/project_semantics/composition_graph.rs),
-[source expression semantics](src/frontend/expressions/mod.rs),
-[lowering](src/frontend/expressions/lowering.rs), and
-[finite expansion](src/frontend/expansion/mod.rs). Shared nominal resolution remains
-under [composition internals](src/frontend/project_semantics/composition/README.md);
-that directory name does not imply a second supported project pipeline.
+[bounded graph construction](src/frontend/project_semantics/nominal/graph.rs),
+[source expression semantics](src/frontend/project_semantics/expressions/mod.rs),
+[lowering](src/frontend/project_semantics/expressions/lowering.rs), and
+[finite expansion](src/frontend/project_semantics/expressions/expansion.rs).
+[Nominal resolution](src/frontend/project_semantics/nominal/README.md) is a sibling
+of expression compilation; neither module owns the other. Cache, formatter and
+expansion live with their expression owner, without redirected production modules.
 
 `ExpressionCompilationCache` is the only caller-owned syntax cache.
 `compile_expression` checks exact bytes, module, semantic tuple and parser policy;

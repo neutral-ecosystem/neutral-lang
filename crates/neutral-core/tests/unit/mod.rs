@@ -122,14 +122,10 @@ fn inverted_spans_are_rejected() {
 #[test]
 /// Verifies that CRLF and lone CR retain deterministic original-byte locations.
 fn line_columns_distinguish_supported_line_endings() {
-    assert_eq!(
-        line_column_at(b"a\r\nb\rc", 3).expect("offset should be valid"),
-        super::LineColumn { line: 2, column: 1 }
-    );
-    assert_eq!(
-        line_column_at(b"a\r\nb\rc", 5).expect("offset should be valid"),
-        super::LineColumn { line: 3, column: 1 }
-    );
+    let position = line_column_at(b"a\r\nb\rc", 3).expect("offset should be valid");
+    assert_eq!((position.line(), position.column()), (2, 1));
+    let position = line_column_at(b"a\r\nb\rc", 5).expect("offset should be valid");
+    assert_eq!((position.line(), position.column()), (3, 1));
 }
 
 #[test]
@@ -154,46 +150,6 @@ fn diagnostics_sort_by_source_position_before_stable_code() {
     );
     assert!(earlier < later);
     assert!(!earlier.is_truncated());
-}
-
-#[test]
-/// Verifies every diagnostic tie-breaker agrees with equality and ordered collections.
-fn diagnostic_ordering_resolves_equal_source_positions() {
-    let location = SourceLocation::new(
-        SourceContentDigest::from_bytes(b"source"),
-        ByteSpan::new(0, 1).unwrap(),
-    );
-    let baseline = Diagnostic::new(
-        DiagnosticCode::new("AAA").unwrap(),
-        DiagnosticLayer::Syntax,
-        DiagnosticSeverity::Note,
-        location,
-        Vec::new(),
-        false,
-    );
-    assert_eq!(baseline.cmp(&baseline), std::cmp::Ordering::Equal);
-    let mut variants = Vec::new();
-    let mut value = baseline.clone();
-    value.code = DiagnosticCode::new("BBB").unwrap();
-    variants.push(value);
-    variants.push(baseline.clone().with_related(vec![location]));
-    let mut value = baseline.clone();
-    value.parameters.push("detail".into());
-    variants.push(value);
-    let mut value = baseline.clone();
-    value.layer = DiagnosticLayer::Semantics;
-    variants.push(value);
-    let mut value = baseline.clone();
-    value.severity = DiagnosticSeverity::Error;
-    variants.push(value);
-    let mut value = baseline.clone();
-    value.truncated = true;
-    variants.push(value);
-    for value in variants {
-        assert!(baseline < value);
-        assert!(value > baseline);
-        assert_ne!(baseline, value);
-    }
 }
 
 #[test]

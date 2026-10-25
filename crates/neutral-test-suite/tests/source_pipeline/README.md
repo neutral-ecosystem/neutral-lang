@@ -17,4 +17,6 @@ No language runtime exists: execution here means the probe executable.
 `system.rs` also runs actual CLI validation, formatting and compilation through
 the current profile. Failed compilation cannot replace a previously valid
 artifact. Detailed expression, bounds, evaluator, hostile decoder, and consumer
-coverage remains in the adjacent `expression_pipeline` and `suite` tests.
+coverage remains in the adjacent `expression_pipeline`, `transport` and
+owning compiler/reader tests. See the [test inventory](../README.md) for the
+separation between executable modules and historical records.

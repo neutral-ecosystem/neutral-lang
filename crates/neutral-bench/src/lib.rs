@@ -7,5 +7,5 @@
 //! operations used by the standalone performance harness.
 
 #[cfg(test)]
-#[path = "composition.rs"]
-mod composition;
+#[path = "pipeline.rs"]
+mod pipeline;

@@ -5,7 +5,6 @@
 use neutral_core::ByteSpan;
 
 pub(crate) mod expression_codes;
-mod format_style;
 mod graph_syntax;
 mod lexer;
 mod project_semantics;

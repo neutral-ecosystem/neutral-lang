@@ -2,8 +2,8 @@
 
 # Complete expression pipeline
 
-These tests use explicit successor profiles without activating them as the CLI
-default. Real captured source and vocabulary bytes pass through compilation,
+These tests use the current exact project/semantic profiles also selected by the
+CLI. Real captured source and vocabulary bytes pass through compilation,
 complete artifact encoding and independent reader validation before assertions.
 No ambient bindings, execution, backend adapters or acquisition are involved.
 

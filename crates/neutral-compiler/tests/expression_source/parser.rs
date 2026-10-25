@@ -5,6 +5,25 @@
 use super::super::{CancellationToken, ExpansionLimits, ExpressionLimits};
 use super::*;
 
+/// Contextual keyword lexemes retain exact spelling for later declaration/name checks.
+#[test]
+fn contextual_keywords_keep_exact_original_spellings() {
+    let words = [
+        "neu", "module", "use", "import", "record", "variant", "List", "Ref", "ref", "num",
+        "string", "bool", "true", "false", "null", "input", "template", "expand",
+    ];
+    let source = words.join(" ");
+    let cancel = CancellationToken::new();
+    let tokens = lex(source.as_bytes(), 0, &mut budget(&cancel)).unwrap();
+    assert_eq!(
+        tokens
+            .iter()
+            .map(|token| token.spelling)
+            .collect::<Vec<_>>(),
+        words
+    );
+}
+
 #[test]
 fn raw_lexing_rejects_invalid_utf8_and_preserves_offsets() {
     let cancel = CancellationToken::new();
@@ -143,4 +162,38 @@ fn nested_interpolations_and_decoded_strings_enforce_their_own_boundaries() {
         string("\"a\"", &mut bounded),
         Err(error(ec::EXP_LIMIT, None))
     );
+}
+
+/// Complete nested constructions accept; every token prefix before their final closer rejects.
+#[test]
+fn recursive_construction_token_prefixes_never_publish_partial_values() {
+    for body in [
+        "record Item { num value }",
+        "List<num> item = [1, 2]",
+        "record Item { num value }\nItem item = { value: 1 }",
+        "record Item { num value }\nItem target = { value: 1 }\nRef<Item> item = ref(target)",
+        "num item = (1 + 2)",
+    ] {
+        let cancel = CancellationToken::new();
+        let captured = crate::test_support::capture_expression_source(body);
+        crate::compile_expression_project(&captured, &cancel).unwrap();
+        let line = body.rsplit_once('\n').map_or(body, |(_, line)| line);
+        let offset = body.len() - line.len();
+        for token in lex(line.as_bytes(), 0, &mut budget(&cancel))
+            .unwrap()
+            .iter()
+            .skip(1)
+        {
+            let index = usize::try_from(token.span.start()).unwrap();
+            let prefix = &body[..offset + index];
+            if prefix.trim().is_empty() {
+                continue;
+            }
+            let captured = crate::test_support::capture_expression_source(prefix);
+            assert!(
+                crate::compile_expression_project(&captured, &cancel).is_err(),
+                "accepted incomplete: {prefix}"
+            );
+        }
+    }
 }

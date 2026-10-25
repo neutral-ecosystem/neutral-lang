@@ -27,8 +27,8 @@ mod project_capture;
 mod project_identity;
 
 #[cfg(test)]
-#[path = "../tests/project_cache/support.rs"]
-mod project_cache_support;
+#[path = "../tests/support/mod.rs"]
+mod test_support;
 
 pub use frontend::{
     ExpressionCompilationCache, ExpressionCompileFailure, ProjectCacheLimits, ProjectCacheStats,

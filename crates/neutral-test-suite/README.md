@@ -14,15 +14,13 @@ compilation paths, typed reader and probe traversal, external
 encoding and hostile decoding, frozen oracles, determinism, structural limits,
 deterministic fuzz-style cases, the reference formatter, host CLI, standalone
 probe, documentation, and traceability.
-The [shared feature suite](tests/suite/README.md) groups these regressions by
-language responsibility while retaining the category prefixes used by xtask.
-Formatter evidence spans the complete positive source corpus and checks exact
-canonical layout, idempotence, logical/provenance preservation, deterministic
-nonsemantic comment placement, and separation from source/artifact identity.
-Project identity tests pin complete literal transcripts and SHA-256 digests,
-verify capture/logical/derivation/artifact exclusions, exact byte/node boundaries,
-cancellation, canonical value equivalence, and artifact kind/format/selection.
-Crate-owned vector copies remain runnable when the active portable is archived.
+The [transport suite](tests/transport/README.md) groups complete wire and hostile
+decoder regressions while retaining category prefixes used by xtask. The
+[test inventory](tests/README.md) distinguishes active modules from historical
+records; fixture presence alone is not test coverage. Owning compiler tests check
+formatter idempotence and meaning preservation. Current independent identity
+vectors live in `neutral-ir`; runtime-owned copies remain runnable when the active
+portable is archived.
 
 The [file-backed pipeline corpus](tests/source_pipeline/README.md) tests real
 `.neu` programs, expected materialized values, rejected phases, source maps,

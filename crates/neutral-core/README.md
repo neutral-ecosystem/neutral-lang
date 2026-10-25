@@ -10,9 +10,8 @@ The active structural limits bound source and diagnostics, decoded strings,
 exact-number digits and scale, root declarations, record fields, and contextual
 record nesting before semantic work expands those structures.
 
-The profile catalogue recognizes the frozen available profile and the reserved
-next profile, reports stable capabilities, centralizes default limits, and
-distinguishes an unavailable recognized profile from an unknown lookalike.
+The profile catalogue reports the sole current development source profile,
+stable capabilities and centralized default limits; unsupported profiles reject.
 
 It sits at the bottom of the dependency graph. Its reviewed `sha2` dependency
 implements the frozen exact-byte SHA-256 digest contract. The allocation boundary
@@ -22,9 +21,14 @@ depend on compiler, reader, CLI, host, automation, or test packages, and it
 must not perform host I/O. Higher layers use these stable value contracts to
 communicate without coupling to a particular source parser or artifact encoding.
 
-For code orientation, [lib.rs](src/lib.rs) explains exact-byte digests, transcript
-framing, original-byte coordinates, diagnostic ordering, and cooperative
-cancellation. [profile.rs](src/profile.rs) owns discovery and defaults. These are
+For code orientation, [lib.rs](src/lib.rs) preserves the root exports.
+[digest.rs](src/digest.rs) owns exact-byte hashes and transcript framing;
+[source.rs](src/source.rs) owns original-byte coordinates;
+[diagnostics.rs](src/diagnostics.rs) owns diagnostic ordering;
+[limits.rs](src/limits.rs) owns structural ceilings; and
+[cancellation.rs](src/cancellation.rs) owns cooperative cancellation;
+[error.rs](src/error.rs) owns constructor failures and result classes.
+[profile.rs](src/profile.rs) owns discovery and defaults. These are
 primitives; they do not establish that a whole program or external artifact is valid.
 
 [allocation.rs](src/allocation.rs) provides `Shared::try_new`, fallible owned

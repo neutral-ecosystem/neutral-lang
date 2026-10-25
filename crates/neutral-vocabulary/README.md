@@ -5,6 +5,10 @@
 `neutral-vocabulary` defines the closed logical schema for captured Neutral
 vocabularies and validates their bundles strictly.
 
+Its implementation separates limits, lock facts, normalized models, errors,
+and bounded bundle decoding. The crate root keeps their public API available
+through the same exports.
+
 It depends only on `neutral-core` and `neutral-ir`. During compilation and
 artifact reading it turns already-captured vocabulary facts into validated,
 immutable contracts; it never resolves names from the filesystem or network.

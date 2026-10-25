@@ -239,5 +239,5 @@ pub enum EncodingError {
 }
 
 #[cfg(test)]
-#[path = "../tests/current/mod.rs"]
-mod tests;
+#[path = "../tests/contracts/mod.rs"]
+mod contract_tests;

@@ -45,6 +45,12 @@ owner = "documentation"
 lifecycle = "tracked task-oriented project guides"
 
 [[directory]]
+path = "examples"
+readme = "examples/README.md"
+owner = "language-examples"
+lifecycle = "tracked current-profile runnable language examples"
+
+[[directory]]
 path = "fuzz"
 readme = "fuzz/README.md"
 owner = "security-testing"

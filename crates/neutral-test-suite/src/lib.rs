@@ -7,8 +7,8 @@
 //! not provide production APIs or duplicate normative fixtures.
 
 #[cfg(test)]
-#[path = "../tests/suite/mod.rs"]
-mod tests;
+#[path = "../tests/transport/mod.rs"]
+mod transport;
 
 #[cfg(test)]
 #[path = "../tests/hardening/mod.rs"]

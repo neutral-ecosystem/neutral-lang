@@ -3,7 +3,7 @@
 # Development compatibility policy
 
 Before the first stable release, this checkout targets one current language
-pipeline. The approved [latest-only design](superpowers/specs/2026-10-24-latest-only-development-design.md)
+pipeline. The approved latest-only policy
 supersedes earlier development requirements to keep historical source profiles
 and complete project codecs executable.
 
@@ -21,8 +21,10 @@ Current frozen wire and identity vectors remain unchanged.
 The cutover is not a stable release or a waiver of safety and quality gates.
 Bounds, cancellation, fallible retention, atomic publication, privacy, independent
 reading and compiler-free probing still apply. Measurements from earlier inputs
-do not qualify the changed tree. Follow the [implementation plan](superpowers/plans/2026-10-24-latest-only-development.md)
-for the cutover's actual completion state.
+do not qualify the changed tree. The operational
+[implementation checklist](../portable/development/07-IMPLEMENTATION-CHECKLIST.md)
+records completion and the remaining qualification gates; this policy does not
+depend on retaining temporary implementation plans.
 
 At the first stable release, freeze the supported source, vocabulary, artifact,
 public API and interpretation contracts as the compatibility baseline. Subsequent

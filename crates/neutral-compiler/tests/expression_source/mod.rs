@@ -28,6 +28,8 @@ mod current_formatter;
 mod expansion;
 /// Request-local allocation and cancellation checks across complete source lowering.
 mod fault_sweeps;
+/// Current replacements for retired parser fault-boundary coverage.
+mod grammar_boundaries;
 
 fn capture(
     bytes: &str,

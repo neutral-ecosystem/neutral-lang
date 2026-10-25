@@ -11,6 +11,7 @@
 | `conformance/` | Immutable per-release contracts, fixtures, and oracles |
 | `crates/` | Rust implementation, binaries, and crate-owned tests |
 | `docs/` | Maintained task-oriented documentation hub and guides |
+| `examples/` | Runnable current-profile language examples |
 | `fuzz/` | Fuzz harnesses and subsystem definitions |
 | `quality/` | Quality policy, reviews, release records, and evidence |
 | `scripts/` | Thin Linux and Windows host adapters |

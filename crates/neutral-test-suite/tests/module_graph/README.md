@@ -1,15 +1,11 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Module graph validation
+# Historical module graph records
 
-This suite owns executable cross-package checks for module/import graph
-construction from complete captured requests. It compares the reviewed fixture
-corpus with its graph and diagnostic oracles, then repeats every case with
-shuffled source submissions and concurrent graph builds. Additional probes
-cover diagnostic limits, recovery, ambiguity, and excluded acquisition forms.
+The retained requests, source inputs and oracle describe the earlier module-graph
+review. This directory has no registered executable Rust module; it must not be
+counted as current passing coverage. Source files and oracle bytes remain unchanged.
 
-The fixture and oracle files are exact crate-owned copies of the active
-portable module-graph corpus. Keeping executable copies here lets normal tests run
-after a finished portable plan is archived or removed. The source plan remains
-the normative authority while active; `cargo xtask fixtures check` verifies its
-registered hashes.
+Current import/SCC checks live in `neutral-compiler/tests/graph/`, and source-to-wire
+import/cache checks live in the sibling `source_pipeline/` and
+`expression_pipeline/` modules. See the [active test inventory](../README.md).

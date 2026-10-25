@@ -1,21 +1,23 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Cross-package test modules
+# Cross-package test inventory
 
-The non-published `neutral-test-suite` crate owns cross-package integration,
-system, conformance, property, security, and deterministic hardening tests. Its
-test modules are wired from `src/lib.rs` and remain filterable by module name.
+Only modules registered by `src/lib.rs` execute. Historical records retain their
+original paths and bytes so existing approvals, pins and references stay valid.
 
-| Module | Current coverage |
+| Active module | Responsibility |
 | --- | --- |
-| `source_pipeline/` | Current source capture, compilation, cache recovery, and CLI behavior. |
-| `expression_pipeline/` | Complete `/3` reader, identity, consumer, projection, and transport behavior. |
-| `composition_contract/` | Raw composition/vocabulary catalogue capture and reader contracts, plus immutable historical identity vectors. |
-| `hardening/` | Fixed-seed source, formatter, vocabulary, `/3` decoder/probe campaigns and bounded metamorphic checks. |
-| `suite/` | Current wire round trips and hostile decoder rejection tests. |
+| `source_pipeline/` | File-backed current sources, imports, cache and CLI/probe processes |
+| `expression_pipeline/` | Complete wire, literal results, consumers, views, identities and registered expression corpus |
+| `composition_contract/` | Raw catalogue contracts and current capture/reader integration; its `pipeline/` record is historical |
+| `transport/` | Complete current artifact round trips, deterministic wire and hostile decoding |
+| `hardening/` | Current-source/property campaigns and deterministic fuzz smoke |
 
-Run the focused current pipeline checks with
-`cargo test -p neutral-test-suite expression_pipeline` or
-`cargo test -p neutral-test-suite source_pipeline`. Run
-`cargo test -p neutral-test-suite` for all cross-package tests, or
-`cargo xtask test all` for the complete repository suite including doctests.
+The `module_graph/`, `project_capture/`, `project_ir/`, `public_semantics/` and
+`project_identity/` directories retain historical requests, fixtures or oracles;
+their presence does not register an executable suite. Consult the current module
+above for active coverage. Source-pipeline fixtures execute only when explicitly
+referenced; merely adding a `.neu` file does not add a test.
+
+Use `cargo xtask test all` for full discovery, or `cargo nextest list --package
+neutral-test-suite` to inspect the executable inventory without running it.

@@ -13,12 +13,20 @@ Development policy amendment (24-10-2026): the approved
 source/profile and complete-artifact acceptance requirements before stable 1.0.
 Earlier checked items below remain historical evidence; they do not require
 shipping obsolete pipelines. Current `/3` vectors and all unrelated safety and
-qualification requirements remain binding. Cutover progress is tracked in the
-[implementation plan](../../docs/superpowers/plans/2026-10-24-latest-only-development.md).
+qualification requirements remain binding. This checklist is the durable
+completion record; temporary implementation plans are not required to retain
+the development policy.
 The cutover is implemented and fast-validated on 25-10-2026: current CLI,
 formatter, cache, independent reader/probe and tool harnesses use `/3` only;
 877 tests and CI pass. Fresh coverage/mutation/fuzz/controlled-performance
 qualification and unrelated Stage 8–9 gates remain open.
+
+Structure follow-up (25-10-2026): compiler expression and nominal modules now
+follow their physical ownership; core/vocabulary responsibilities are split with
+unchanged public root APIs. Active test inventories distinguish historical
+records, and five registered current-parser checks replace disconnected legacy
+test code. The 882-test suite, CI, locked fuzz-target build, oracle verification
+and benchmark smoke pass. This refactor does not renew long-campaign evidence.
 
 Developers choose and review the next unchecked item. `cargo xtask dev` and
 `cargo xtask ci pr` retain the toolchain, commit, commands, and results in

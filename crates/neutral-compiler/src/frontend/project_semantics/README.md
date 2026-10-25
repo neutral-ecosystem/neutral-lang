@@ -2,10 +2,11 @@
 
 # Current captured source compilation
 
-This directory contains the nominal parsing, type resolution and source
-companion helpers used by current expression compilation. The shared bounded
-type grammar lives in `type_syntax`; exact syntax can be retained by the
-caller-owned `/3` cache.
+`expressions/` owns parsing, resolution, lowering, finite expansion, formatting
+and the caller-owned syntax cache. `nominal/` owns shared nominal declarations,
+defaults, import graphs and captured companion facts. They are sibling modules;
+their physical locations follow their Rust ownership. The shared bounded type
+grammar lives in `type_syntax.rs`.
 
 All graph, catalogue/default, semantic and companion work stays fresh on each
 compile. Failed runs never publish a pending cache generation. Iterative graph
