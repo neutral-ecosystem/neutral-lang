@@ -1,5 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Current expression-project measurements, shared by harness and smoke tests.
+//!
+//! The embedded source is captured under an explicit current semantic tuple and
+//! fixed request controls. Capture and compilation are timed separately; later
+//! phases reuse prepared artifacts so their setup does not silently enter each
+//! sample. The baseline source contains public scalar bindings and supplies no
+//! vocabulary bundles: phase coverage is not full language-feature coverage.
+//!
+//! [`measure`] performs one untimed warm-up, then reports aggregate wall time for
+//! exactly the requested repetitions. Timed closures include result destruction
+//! and any explicit equality/cache assertions they contain. `black_box` discourages
+//! dead-work elimination but does not provide statistical analysis or isolate
+//! operating-system scheduling, CPU frequency and allocator effects.
+//!
+//! Growth deliberately includes generated-source construction, capture, compilation
+//! and independent reading for several sizes. Concurrency includes worker startup
+//! and joins. These are one-shot workloads, not repeated per-phase samples.
+//! Failures panic rather than emit timings for incomplete work; the outer harness
+//! and evidence workflow decide whether a complete run is usable qualification.
 use neutral_compiler::{
     CapturedExpressionProject, CapturedExpressionProjectRequest, CapturedProjectRequest,
     CapturedSourceInput, ExpressionCompilationCache, ProjectCacheLimits, ProjectCaptureControls,
@@ -38,12 +56,21 @@ const GROWTH: [usize; 4] = [1, 8, 64, 128];
 /// Independent requests used to check concurrent isolation.
 const WORKERS: usize = 8;
 /// Uses the same bounded nominal contracts for every measured phase.
+/// These are local benchmark controls, not proposed production defaults. Keeping
+/// producer/reader setup aligned prevents policy differences from dominating comparisons.
 fn semantic() -> CompositionLimits {
     CompositionLimits::from_vocabulary(VocabularyLimits::from_structural(
         StructuralLimits::new(SOURCE_BYTES, 64).unwrap(),
     ))
 }
 /// Captures only supplied bytes under an exact current semantic tuple.
+/// Uses one logical module/source label and no captured vocabularies. Embedded
+/// corpus acquisition happens at build time; capture itself receives bytes and
+/// cannot discover imports or bundles through ambient filesystem/network access.
+///
+/// # Panics
+/// Panics if the fixed policy or supplied benchmark source cannot be captured;
+/// rejected input is a workload failure rather than a valid timing sample.
 fn capture(source: &str) -> CapturedExpressionProject {
     capture_expression_project(CapturedExpressionProjectRequest::new(
         CapturedProjectRequest::new(
@@ -83,6 +110,8 @@ fn capture(source: &str) -> CapturedExpressionProject {
     .unwrap()
 }
 /// Intersects independent reading with the producer's complete project controls.
+/// Supplies the producer's project policy alongside independent semantic controls;
+/// the reader boundary performs the effective validation/intersection.
 fn limits(ir: &neutral_ir::expression::project::ExpressionProjectIr) -> SemanticLimits {
     SemanticLimits {
         project: ir.limits,
@@ -92,13 +121,22 @@ fn limits(ir: &neutral_ir::expression::project::ExpressionProjectIr) -> Semantic
     }
 }
 /// Opens raw producer data through the independent reader before observation.
+/// Sharing the root avoids timing a deep producer clone, while validation itself
+/// still runs on every call. Failure aborts the workload instead of publishing
+/// measurements from unchecked or partial IR.
 fn read(
     ir: &Shared<neutral_ir::expression::project::ExpressionProjectIr>,
 ) -> ValidatedExpressionProject {
     ValidatedExpressionProject::from_ir(ir.clone(), limits(ir), &CancellationToken::new()).unwrap()
 }
 /// Warms once, then measures exactly the reported number of operations.
+///
+/// Returns total elapsed time, not an average or percentile. The warm-up may
+/// mutate closure state (notably the cache generation toggle), and is excluded
+/// from the reported iteration count. Zero iterations still execute the warm-up;
+/// supported harness profiles and the smoke test supply positive counts.
 pub(crate) fn measure(iterations: usize, mut operation: impl FnMut()) -> Duration {
+    // Keep initialization/first-use work outside ordinary repeated phase totals.
     operation();
     let start = Instant::now();
     for _ in 0..iterations {
@@ -107,6 +145,11 @@ pub(crate) fn measure(iterations: usize, mut operation: impl FnMut()) -> Duratio
     start.elapsed()
 }
 /// Reports direct phase, identity, cache, growth and concurrent measurements.
+///
+/// Prepares shared capture/IR/bytes between phase timers, then invokes the report
+/// callback after each phase. Callback time belongs only to the outer run total.
+/// Growth reports the number of input sizes and concurrency the number of workers,
+/// so their counts must not be read as ordinary profile repetition counts.
 pub(crate) fn run(iterations: usize, mut report: impl FnMut(&str, usize, Duration)) {
     let cancel = CancellationToken::new();
     report(
@@ -117,6 +160,7 @@ pub(crate) fn run(iterations: usize, mut report: impl FnMut(&str, usize, Duratio
         }),
     );
     let captured = capture(SOURCE);
+    // Reuse captured input so compile timing excludes byte capture and request assembly.
     report(
         "expression-compile",
         iterations,
@@ -148,6 +192,7 @@ pub(crate) fn run(iterations: usize, mut report: impl FnMut(&str, usize, Duratio
             let decoded =
                 decode_expression_project(&bytes, DecodeLimits::hard(), limits(&ir), &cancel)
                     .unwrap();
+            // Retain the comparison in timing: decoding must reproduce complete checked data.
             assert_eq!(decoded.ir(), project.ir());
             black_box(decoded);
         }),
@@ -168,6 +213,7 @@ pub(crate) fn run(iterations: usize, mut report: impl FnMut(&str, usize, Duratio
     cache_measurements(iterations, &captured, &ir, &mut report);
     let start = Instant::now();
     for count in GROWTH {
+        // Include source generation in this end-to-end growth scenario, unlike isolated phase setup.
         let mut source = format!(
             "neu \"{}\"\nmodule benchmark\n",
             LanguageProfile::V1_0.source_version()
@@ -180,6 +226,7 @@ pub(crate) fn run(iterations: usize, mut report: impl FnMut(&str, usize, Duratio
     }
     report("expression-growth", GROWTH.len(), start.elapsed());
     let start = Instant::now();
+    // Each worker captures/compiles independently; only the immutable expected root is shared.
     let threads = (0..WORKERS)
         .map(|_| {
             let expected = ir.clone();
@@ -198,6 +245,9 @@ pub(crate) fn run(iterations: usize, mut report: impl FnMut(&str, usize, Duratio
     report("expression-concurrent", WORKERS, start.elapsed());
 }
 /// Measures public closure and independently decoded standalone inspection separately.
+/// Builds explicit public roots outside the view timer. The probe timer includes
+/// standalone decode/validation and rendering, so it is broader than traversal of
+/// an already-validated project. Neither path evaluates deferred values or executes effects.
 fn projection_measurements(
     iterations: usize,
     project: &ValidatedExpressionProject,
@@ -237,6 +287,11 @@ fn projection_measurements(
 }
 
 /// Exercises real warm and changed-input parser generations against clean output.
+///
+/// An initial successful publication seeds the cache outside the measured phase.
+/// Warm samples require zero reparses. Changed samples alternate two captures of
+/// the same module, requiring exactly one reparse and comparison with clean output
+/// each time; these counters describe parser reuse, not skipped semantic validation.
 fn cache_measurements(
     iterations: usize,
     captured: &CapturedExpressionProject,
@@ -250,6 +305,7 @@ fn cache_measurements(
     })
     .unwrap();
     cache.compile_expression(captured, &cancel).unwrap();
+    // Both the warm-up and measured calls must reuse the already-published parser generation.
     report(
         "expression-cache-warm",
         iterations,
@@ -261,6 +317,7 @@ fn cache_measurements(
         }),
     );
     let changed = capture(&SOURCE.replace("42", "43"));
+    // This edit is coupled to the fixed corpus; assert_ne prevents a no-op replacement going unnoticed.
     let changed_ir = compile_expression_project(&changed, &cancel).unwrap();
     assert_ne!(&changed_ir, ir);
     let mut use_changed = false;
@@ -269,6 +326,7 @@ fn cache_measurements(
         iterations,
         measure(iterations, || {
             use_changed = !use_changed;
+            // Alternating forces every call to differ from the last successful cache input.
             let (input, expected) = if use_changed {
                 (&changed, &changed_ir)
             } else {
