@@ -60,13 +60,19 @@ fn project_profile_selection_never_falls_back() {
 fn profile_names_and_limits_are_exact_and_intersect_independently() {
     use neutral_ir::expression::profile::{ExpressionLimits, is_binding_name};
 
-    for valid in ["answer", "choice__0", "choice__12__3"] {
+    for valid in [
+        "answer",
+        "choice__0",
+        "choice__12__3",
+        "choice__18446744073709551615",
+    ] {
         assert!(is_binding_name(valid), "{valid}");
     }
     for invalid in [
         "Upper",
         "choice__",
         "choice__01",
+        "choice__0__",
         "choice__1x",
         "choice__18446744073709551616",
     ] {

@@ -45,6 +45,32 @@ fn prefix_operands_preserve_boolean_and_comparison_results() {
     }
 }
 
+/// Logical/equality/ordering/concatenation classes must bind according to the language grammar.
+#[test]
+fn operator_classes_preserve_relative_binding_and_grouped_comparisons() {
+    for (expression, expected) in [
+        ("true || false && false", true),
+        ("false && true || true", true),
+        ("1 + 2 * 3 == 7 && !false", true),
+        ("\"a\" ++ \"b\" == \"ab\"", true),
+        ("(1 < 2) == true", true),
+        ("(3 >= 4) != false", false),
+    ] {
+        let ir = compile(&format!("bool result = {expression}"))
+            .unwrap_or_else(|error| panic!("{expression}: {error:?}"));
+        assert_eq!(value(&ir, "result"), &V::Bool(expected), "{expression}");
+    }
+    for expression in ["1 < 2 < 3", "1 == 1 == true", "1 < 2 == true"] {
+        assert_eq!(
+            compile(&format!("bool result = {expression}"))
+                .unwrap_err()
+                .code,
+            "NEU-EXP-002",
+            "{expression}"
+        );
+    }
+}
+
 /// Guard operators belong to the conditional primary while surrounding operators keep precedence.
 #[test]
 fn unparenthesized_compound_guards_preserve_surrounding_operator_precedence() {

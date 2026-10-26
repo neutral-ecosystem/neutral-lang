@@ -35,6 +35,8 @@ pub const MAX_DEPTH: usize = 64;
 pub const MAX_WORK: u64 = 100_000_000;
 /// Frozen owned model/output byte ceiling, excluding allocator metadata.
 pub const MAX_MODEL_BYTES: u64 = 67_108_864;
+/// Frozen delimiter between a generated binding's base name and original axis indices.
+pub const MATRIX_INDEX_SEPARATOR: &str = "__";
 
 /// Recognizes successor bindings, including canonical original-axis matrix suffixes.
 /// Historical profiles keep their unchanged lower-snake spelling rule.
@@ -42,12 +44,12 @@ pub const MAX_MODEL_BYTES: u64 = 67_108_864;
 /// spelling, not whether a matrix actually generated it or whether it is unique.
 #[must_use]
 pub fn is_binding_name(value: &str) -> bool {
-    let Some((base, axes)) = value.split_once("__") else {
+    let Some((base, axes)) = value.split_once(MATRIX_INDEX_SEPARATOR) else {
         return crate::language::is_snake_name(value);
     };
     // The original axis positions survive filtering; they are not dense output sequence numbers.
     crate::language::is_snake_name(base)
-        && axes.split("__").all(|axis| {
+        && axes.split(MATRIX_INDEX_SEPARATOR).all(|axis| {
             !axis.is_empty()
                 && (axis == "0" || !axis.starts_with('0'))
                 && axis.bytes().all(|b| b.is_ascii_digit())

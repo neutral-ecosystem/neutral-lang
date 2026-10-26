@@ -134,7 +134,7 @@ impl<'a> State<'a, '_> {
         let mut nesting = 0_i64;
         let mut selected = None;
         let mut previous = None;
-        let mut relation_count = 0;
+        let mut comparison_count = 0;
         let mut generic = 0_u64;
         let mut primary_head = false;
         for (i, t) in tokens.iter().enumerate() {
@@ -177,8 +177,8 @@ impl<'a> State<'a, '_> {
                 previous = Some(t.spelling);
                 continue;
             }
-            if matches!(precedence, 3 | 4) {
-                relation_count += 1;
+            if precedence.is_comparison() {
+                comparison_count += 1;
             }
             if selected.is_none_or(|(_, p, _)| precedence <= p) {
                 selected = Some((i, precedence, operator));
@@ -189,7 +189,7 @@ impl<'a> State<'a, '_> {
             return Err(error(ec::EXP_SYNTAX, Some(root.location)));
         }
         if let Some((i, precedence, operator)) = selected {
-            if matches!(precedence, 3 | 4) && relation_count > 1 {
+            if precedence.is_comparison() && comparison_count > 1 {
                 return Err(error(ec::EXP_SYNTAX, Some(root.location)));
             }
             let operand_context = match operator {
@@ -941,22 +941,48 @@ fn expects_operand_after(spelling: &str) -> bool {
     binary(spelling).is_some() || matches!(spelling, "(" | "[" | "{" | "," | ":" | "=>" | "!")
 }
 
+/// Grammar binding order from weakest to strongest; enum order is not a wire representation.
+#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
+enum Precedence {
+    /// Boolean disjunction.
+    Disjunction,
+    /// Boolean conjunction.
+    Conjunction,
+    /// Typed equality and inequality.
+    Equality,
+    /// Ordered numeric/string comparisons.
+    Relational,
+    /// String/list construction.
+    Concatenation,
+    /// Addition and subtraction.
+    Additive,
+    /// Multiplication and division.
+    Multiplicative,
+}
+
+impl Precedence {
+    /// Comparisons cannot chain in one ungrouped expression, even across equality/ordering classes.
+    const fn is_comparison(self) -> bool {
+        matches!(self, Self::Equality | Self::Relational)
+    }
+}
+
 /// Frozen precedence and closed operator tags; no host operation dispatch is possible.
-fn binary(spelling: &str) -> Option<(u8, Op)> {
+fn binary(spelling: &str) -> Option<(Precedence, Op)> {
     Some(match spelling {
-        "||" => (1, Op::Or),
-        "&&" => (2, Op::And),
-        "==" => (3, Op::Equal),
-        "!=" => (3, Op::NotEqual),
-        "<" => (4, Op::Less),
-        "<=" => (4, Op::LessEqual),
-        ">" => (4, Op::Greater),
-        ">=" => (4, Op::GreaterEqual),
-        "++" => (5, Op::Concat),
-        "+" => (6, Op::Add),
-        "-" => (6, Op::Subtract),
-        "*" => (7, Op::Multiply),
-        "/" => (7, Op::Divide),
+        "||" => (Precedence::Disjunction, Op::Or),
+        "&&" => (Precedence::Conjunction, Op::And),
+        "==" => (Precedence::Equality, Op::Equal),
+        "!=" => (Precedence::Equality, Op::NotEqual),
+        "<" => (Precedence::Relational, Op::Less),
+        "<=" => (Precedence::Relational, Op::LessEqual),
+        ">" => (Precedence::Relational, Op::Greater),
+        ">=" => (Precedence::Relational, Op::GreaterEqual),
+        "++" => (Precedence::Concatenation, Op::Concat),
+        "+" => (Precedence::Additive, Op::Add),
+        "-" => (Precedence::Additive, Op::Subtract),
+        "*" => (Precedence::Multiplicative, Op::Multiply),
+        "/" => (Precedence::Multiplicative, Op::Divide),
         _ => return None,
     })
 }

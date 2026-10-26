@@ -31,6 +31,7 @@ use super::{
     parse_complete_type_fallible, symbol, text,
 };
 use crate::frontend::expression_codes as ec;
+use crate::language::{graph_names, names};
 
 /// Original source spelling and span; decoding happens only at the typed literal boundary.
 #[derive(Clone, Copy)]
@@ -489,7 +490,7 @@ pub(super) fn parse_source<'a>(
                 .find(|t| !t.spelling.starts_with(['\n', '\r']))
                 .is_some_and(|t| matches!(t.spelling, "for" | "where" | "exclude"));
             if depth == 0 && !statement.is_empty() && !continuation {
-                let header = matches!(statement[0].spelling, "neu" | "module" | "use" | "import");
+                let header = is_header_keyword(statement[0].spelling);
                 if header && headers_done {
                     return Err(error(ec::EXP_SYNTAX, None));
                 }
@@ -519,12 +520,20 @@ pub(super) fn parse_source<'a>(
     }
     // EOF is also a statement boundary; a final newline is not required.
     if !statement.is_empty() {
-        if headers_done && matches!(statement[0].spelling, "neu" | "module" | "use" | "import") {
+        if headers_done && is_header_keyword(statement[0].spelling) {
             return Err(error(ec::EXP_SYNTAX, None));
         }
         declaration(source, &statement, state)?;
     }
     Ok(())
+}
+
+/// Headers belong to the capture/import prefix and cannot reopen after ordinary declarations.
+fn is_header_keyword(spelling: &str) -> bool {
+    matches!(
+        spelling,
+        names::NEU | names::MODULE | names::USE | graph_names::IMPORT
+    )
 }
 
 /// Retains one complete source declaration without evaluating its initializer.
@@ -533,7 +542,7 @@ fn declaration<'a>(
     tokens: &[Lex<'a>],
     state: &mut State<'a, '_>,
 ) -> Result<(), E> {
-    if matches!(tokens[0].spelling, "neu" | "module" | "use" | "import") {
+    if is_header_keyword(tokens[0].spelling) {
         return Ok(());
     }
     let public = tokens[0].spelling == "public";

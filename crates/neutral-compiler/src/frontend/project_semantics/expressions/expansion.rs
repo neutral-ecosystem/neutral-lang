@@ -558,7 +558,11 @@ impl<'a> State<'a, '_> {
                     let mut name = self
                         .budget
                         .copy_text(matrix.root.owner.declaration_name())?;
-                    let Some(extra) = (indices.len() as u64).checked_mul(22) else {
+                    let separator = super::expression_profile::MATRIX_INDEX_SEPARATOR;
+                    // Reserve the same worst-case suffix for every u64 index, independent of tuple values.
+                    let index_digits = u64::from(u64::MAX.ilog10()) + 1;
+                    let suffix_bytes = separator.len() as u64 + index_digits;
+                    let Some(extra) = (indices.len() as u64).checked_mul(suffix_bytes) else {
                         return Err(error(ec::TPL_LIMIT, Some(matrix.root.location)));
                     };
                     let limit = self.captured.composition_limits().json.string_bytes();
@@ -575,7 +579,7 @@ impl<'a> State<'a, '_> {
                     }))?;
                     for index in &indices {
                         use std::fmt::Write;
-                        if write!(name, "__{index}").is_err() {
+                        if write!(name, "{separator}{index}").is_err() {
                             return Err(error(ec::TPL_LIMIT, Some(matrix.root.location)));
                         }
                     }
