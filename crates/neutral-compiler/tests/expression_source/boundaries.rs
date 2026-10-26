@@ -5,6 +5,46 @@
 use super::*;
 use neutral_ir::composition::{ValueOriginKind, ValuePathSegment};
 
+/// Prefix minus must remain an operand after an operator, without changing binary associativity.
+#[test]
+fn prefix_minus_and_binary_operators_preserve_literal_results() {
+    for (expression, expected) in [
+        ("-2", "-2"),
+        ("2 - 3", "-1"),
+        ("2 - -3", "5"),
+        ("2--3", "5"),
+        ("2 + -3", "-1"),
+        ("2 * -3", "-6"),
+        ("2 / -4", "-0.5"),
+        ("-2 * -3", "6"),
+        ("- -2", "2"),
+        ("4 * -(2 + 1)", "-12"),
+        ("8 - 3 - 2", "3"),
+        ("if true { -2 } else { -3 }", "-2"),
+    ] {
+        let ir = compile(&format!("num result = {expression}"))
+            .unwrap_or_else(|error| panic!("{expression}: {error:?}"));
+        assert_eq!(value(&ir, "result"), &number(expected), "{expression}");
+    }
+}
+
+/// Prefix Boolean/numeric operands must not be mistaken for another infix boundary.
+#[test]
+fn prefix_operands_preserve_boolean_and_comparison_results() {
+    for (expression, expected) in [
+        ("!false && !false", true),
+        ("!true || !false", true),
+        ("!!true", true),
+        ("1 < -2", false),
+        ("-1 == -1", true),
+        ("-2 >= -1", false),
+    ] {
+        let ir = compile(&format!("bool result = {expression}"))
+            .unwrap_or_else(|error| panic!("{expression}: {error:?}"));
+        assert_eq!(value(&ir, "result"), &V::Bool(expected), "{expression}");
+    }
+}
+
 /// Guard operators belong to the conditional primary while surrounding operators keep precedence.
 #[test]
 fn unparenthesized_compound_guards_preserve_surrounding_operator_precedence() {
@@ -282,6 +322,9 @@ fn contextual_parser_rejects_malformed_source() {
         "num item = @",
         "num item = 1e+",
         "num item = 1..2",
+        "num item = 1 * * 2",
+        "num item = 1 + +2",
+        "num item = 1 -",
         "num item =",
         "num item = if true { 1 }",
         "num item = text(1) extra",

@@ -173,32 +173,7 @@ impl<'a> State<'a, '_> {
                 previous = Some(t.spelling);
                 continue;
             };
-            if i == 0
-                || previous.is_none_or(|p| {
-                    matches!(
-                        p,
-                        "(" | "["
-                            | "{"
-                            | ","
-                            | ":"
-                            | "=>"
-                            | "!"
-                            | "-"
-                            | "+"
-                            | "*"
-                            | "/"
-                            | "++"
-                            | "&&"
-                            | "||"
-                            | "<"
-                            | "<="
-                            | ">"
-                            | ">="
-                            | "=="
-                            | "!="
-                    )
-                })
-            {
+            if i == 0 || previous.is_none_or(expects_operand_after) {
                 previous = Some(t.spelling);
                 continue;
             }
@@ -956,6 +931,14 @@ impl<'a> State<'a, '_> {
             root,
         )
     }
+}
+
+/// Whether a preceding token leaves the parser expecting an operand rather than an infix operator.
+///
+/// Binary operators share the precedence classifier; only delimiters and the
+/// prefix-only Boolean operator need separate recognition here.
+fn expects_operand_after(spelling: &str) -> bool {
+    binary(spelling).is_some() || matches!(spelling, "(" | "[" | "{" | "," | ":" | "=>" | "!")
 }
 
 /// Frozen precedence and closed operator tags; no host operation dispatch is possible.
