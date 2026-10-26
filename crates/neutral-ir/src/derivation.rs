@@ -6,6 +6,17 @@
 //! so consumers can distinguish semantic inputs from processing conditions.
 //! The manifest records schema versions and captured vocabulary identity; it
 //! describes how a result was derived, rather than replacing logical equality.
+//!
+//! Resource facts describe successful retained output; acceptance limits describe
+//! what a request was allowed to process. They are not interchangeable counters.
+//! The constructors snapshot supplied values without checking facts against limits
+//! or source bytes. Independent consumers must recompute applicable facts rather
+//! than trust the manifest's declarations.
+//!
+//! This module supplies the minimal document manifest. Complete expression-project
+//! derivation identities use their own explicit processing context and profile
+//! tuple in [`crate::project_identity`]. A manifest or digest records derivation
+//! inputs; it does not attest that a particular producer actually ran them.
 
 use crate::{
     LOGICAL_IR_SCHEMA_VERSION, PROVENANCE_VERSION, SOURCE_MAP_VERSION, VocabularyIdentity,
@@ -109,6 +120,7 @@ pub struct AcceptancePartition {
 
 impl AcceptancePartition {
     /// Captures the complete resource-limit partition from core limits.
+    /// Copies policy values, not observed usage; later phases still enforce them.
     #[must_use]
     pub const fn from_limits(limits: StructuralLimits) -> Self {
         Self {
@@ -220,6 +232,8 @@ pub struct DerivationManifest {
 
 impl DerivationManifest {
     /// Creates the minimal partitioned derivation manifest.
+    /// Initially records safe bounded diagnostic policy and no vocabulary; the
+    /// caller supplies validated accounting and can attach exact vocabulary facts.
     #[must_use]
     pub fn new(
         language_behavior_version: impl Into<String>,

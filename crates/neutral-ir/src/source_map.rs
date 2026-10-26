@@ -6,6 +6,12 @@
 //! to one captured input. Element IDs connect entries to the logical document;
 //! they are not durable cross-document identities. Consumers must validate the
 //! map against its document rather than treating construction as proof of coverage.
+//!
+//! A span can be ordered yet outside the captured source, or attached to the wrong
+//! element. Constructors intentionally do not infer coverage, overlap/containment,
+//! duplicate IDs or source authenticity. Those relational checks need the complete
+//! document and its independently checked companions. These minimal document
+//! entries coexist with current project and fine-grained expression attribution.
 
 use crate::ElementId;
 use neutral_core::{ByteSpan, SourceContentDigest};
@@ -27,6 +33,7 @@ pub struct SourceMapEntry {
 
 impl SourceMapEntry {
     /// Creates source accounting for one root declaration.
+    /// Accepts already-checked spans without verifying child containment or ID ownership.
     #[must_use]
     pub const fn new(
         element_id: ElementId,
@@ -90,6 +97,8 @@ pub struct SourceMap {
 
 impl SourceMap {
     /// Creates an immutable source map from validated compiler accounting.
+    /// Preserves entry order and claimed length/digest; no input bytes are available
+    /// here to check integrity or range bounds.
     #[must_use]
     pub fn new(
         source_digest: SourceContentDigest,
@@ -130,6 +139,8 @@ impl SourceMap {
     }
 
     /// Finds source accounting for one graph-local element.
+    /// Linear in entry count and returns the first match. Duplicate-entry rejection
+    /// belongs to validation, not this lookup convenience.
     #[must_use]
     pub fn entry(&self, element_id: ElementId) -> Option<&SourceMapEntry> {
         self.entries

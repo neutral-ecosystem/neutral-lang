@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Shared retained-data policy and preflight helpers for current expression projects.
+//!
+//! [`CompositionSignature`] lets source nominal declarations and vocabulary
+//! definitions share one body model. [`CompositionPolicy`] keeps independent
+//! catalogue, dependency, type, default/value and work controls in frozen tuple
+//! order. [`CompositionResourceFacts`] describes retained structure, not the
+//! amount of compilation or consumer execution that actually took place.
+//!
+//! Origin companions connect a consuming value path to supplied/null/omitted/default
+//! evidence. Attribution can refer to original source or a canonical vocabulary
+//! field owner, or explicitly be absent/redacted. It never authenticates a producer
+//! or instructs a reader to fetch a file/bundle. Raw tuples and evidence need full
+//! independent validation; the reexported preflight functions only bound inspection.
 
 use super::{CompositionBody, ValueOriginKind, ValuePathSegment};
 use crate::ModuleSymbolIdentity;
@@ -93,10 +105,13 @@ impl CompositionPolicy {
     }
 
     /// Intersects producer and independent consumer policies without relaxing either.
+    /// Keeps zero controls invalid and preserves tuple positions; it does not
+    /// redistribute unused budgets or validate the resulting policy.
     #[must_use]
     pub fn intersect(self, other: Self) -> Self {
         let left = self.values();
         let right = other.values();
+        // Use the same frozen projection in both directions so every named control is intersected.
         Self::from_values(std::array::from_fn(|i| left[i].min(right[i])))
     }
 }

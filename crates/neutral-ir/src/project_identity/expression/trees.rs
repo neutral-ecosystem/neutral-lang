@@ -1,6 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Every frozen typed tree and template tuple, preserving semantic child/parameter order.
+//!
+//! Each expression emits a stable kind tag, claimed result type and its ordered
+//! children. If/match/short-circuit bodies are all retained; hashing never selects
+//! a branch or asks for an external binding. Lexical references use frame/slot
+//! coordinates and output selectors remain typed path data rather than executable text.
+//!
+//! Canonical records and match arms require strict key/tag ordering. List items,
+//! operator operands and template parameters preserve semantic order instead of
+//! being sorted. Named parameter spelling and phase/default contracts remain
+//! semantic even though incidental lexical binder spellings are absent.
+//!
+//! Depth, collection and framing bounds limit construction; independent semantic
+//! validation must still verify annotations, scope, exhaustiveness and visibility.
+//! A well-framed selector does not prove future value availability or backend success.
 
 use crate::{
     expression::{
@@ -58,6 +72,7 @@ pub(super) fn tree(w: &mut Writer<'_>, expression: &Expression, depth: usize) ->
                 then_branch,
                 else_branch,
             } => {
+                // All potential dependency paths affect retained meaning, even if later evaluation skips one.
                 child(w, "guard", guard, depth)?;
                 child(w, "then", then_branch, depth)?;
                 child(w, "else", else_branch, depth)
@@ -187,6 +202,7 @@ pub(super) fn templates(w: &mut Writer<'_>, templates: &[PublicTemplate]) -> Res
                     return Err(E::Limit);
                 }
                 for (index, parameter) in template.parameters.iter().enumerate() {
+                    // Check uniqueness without sorting: declaration order defines lexical parameter slots.
                     w.text(&parameter.name)?;
                     if parameter.name.is_empty()
                         || template.parameters[..index]

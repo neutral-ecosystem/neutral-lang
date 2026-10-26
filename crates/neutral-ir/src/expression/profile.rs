@@ -1,6 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Frozen expression selectors and independent controls; recognition is not activation.
+//!
+//! Source capture, complete IR, public views, result envelopes, binary encoding
+//! and identity each have explicit selectors. The semantic tuple additionally
+//! fixes expression, evaluator, expansion and decimal behavior with an exact
+//! sorted feature set. A package version or familiar magic prefix cannot replace
+//! these compatibility checks, and unknown features are not optional fallbacks.
+//!
+//! [`SemanticProfiles`] stores raw tuple data; matching it proves recognition only.
+//! [`ExpressionLimits`] supplies independent positive request controls: nodes,
+//! structural/evaluation depth, potential dependencies, work, retained/output bytes
+//! and numeric growth. Hard ceilings are acceptance maxima, not a recommended
+//! request policy. Intersection preserves zero so validators can reject invalid
+//! controls instead of silently converting them into defaults.
 
 /// Pure typed expression contract.
 pub const EXPRESSION_PROFILE: &str = "neutral.expression/1";
@@ -25,11 +38,14 @@ pub const MAX_MODEL_BYTES: u64 = 67_108_864;
 
 /// Recognizes successor bindings, including canonical original-axis matrix suffixes.
 /// Historical profiles keep their unchanged lower-snake spelling rule.
+/// Each suffix is a canonical `u64` axis index. This checks the generated name's
+/// spelling, not whether a matrix actually generated it or whether it is unique.
 #[must_use]
 pub fn is_binding_name(value: &str) -> bool {
     let Some((base, axes)) = value.split_once("__") else {
         return crate::language::is_snake_name(value);
     };
+    // The original axis positions survive filtering; they are not dense output sequence numbers.
     crate::language::is_snake_name(base)
         && axes.split("__").all(|axis| {
             !axis.is_empty()
@@ -86,6 +102,7 @@ impl SemanticProfiles {
         use neutral_core::allocation::{RetainCapacity, text};
         let mut required_features = Vec::new();
         required_features.try_retain_exact(REQUIRED_FEATURES.len())?;
+        // Preserve the frozen feature order; normalization belongs to no implicit fallback here.
         for feature in REQUIRED_FEATURES {
             required_features.push(text(feature)?);
         }

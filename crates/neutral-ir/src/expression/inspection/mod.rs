@@ -1,6 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Allocation-free structural preflight; never grants semantic or public project authority.
+//!
+//! Inspection walks borrowed trees and every retained branch before a recursive
+//! copy, comparison or semantic pass. It bounds expression occurrences, depth,
+//! potential input/output edges, numeric payloads and modeled owned storage.
+//! Materialized values and type envelopes can be inspected without inventing
+//! synthetic expression nodes; public templates include parameters and defaults.
+//!
+//! The byte projection counts owned slots and UTF-8 text, not allocator metadata,
+//! vector spare capacity or serialized bytes. Work also includes conservative copy
+//! costs. Each public call starts a local allowance and reports its consumption;
+//! callers inspecting multiple trees must debit a shared aggregate budget themselves.
+//! Name ordering is checked rather than repaired, but binder scope, nominal typing,
+//! public closure and future output availability remain higher-layer responsibilities.
 
 use super::{
     Expression, ExpressionNode as N, MatchArm, SelectorSegment, profile::ExpressionLimits,
@@ -117,6 +130,7 @@ fn inspect_retention(
         return Err(E::Cancelled);
     }
     let limits = limits.intersect(ExpressionLimits::hard());
+    // Preserve invalid zero controls instead of turning a missing allowance into a default.
     if limits.values().contains(&0) {
         return Err(E::Limit);
     }
@@ -133,6 +147,7 @@ fn inspect_retention(
         },
     };
     inspect(&mut state)?;
+    // Remaining-budget subtraction yields costs the caller can debit across separate trees.
     Ok(ExpressionInspection {
         shape: state.shape,
         retained_bytes: limits.retained_bytes - state.bytes,
@@ -279,6 +294,7 @@ impl Inspection<'_> {
         if depth > self.limits.evaluation_depth || self.shape.nodes >= self.limits.nodes {
             return Err(E::Limit);
         }
+        // Count occurrences, not distinct values: identical branches still occupy separate storage.
         self.shape.nodes += 1;
         self.shape.depth = self.shape.depth.max(depth);
         self.storage::<Expression>(1)?;
@@ -326,6 +342,7 @@ impl Inspection<'_> {
                 then_branch,
                 else_branch,
             } => {
+                // Structural acceptance must cover the skipped branch too; this is not evaluation.
                 self.expression(guard, depth)?;
                 self.expression(then_branch, depth)?;
                 self.expression(else_branch, depth)
@@ -366,6 +383,7 @@ impl Inspection<'_> {
     /// Retains canonical names without sorting hostile inputs or granting nominal authority.
     fn name<'a>(&mut self, name: &'a str, previous: &mut Option<&'a str>) -> Result<(), E> {
         self.text(name)?;
+        // Strict increase rejects both duplicates and reordered producer data without sorting it.
         if previous.is_some_and(|p| p >= name) {
             return Err(E::Malformed);
         }

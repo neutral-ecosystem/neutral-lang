@@ -6,6 +6,17 @@
 //! declarations and captured vocabulary field contracts. It stores meaning, not
 //! source tokens, host resources or executable behavior. Constructors allow
 //! assembly; full schema, reference and companion consistency belongs to the reader.
+//!
+//! These shared materialized types are distinct from the richer composition and
+//! residual-expression models. Records carry nominal owners, lists retain order,
+//! and references retain both a local target label and a durable symbol identity.
+//! Schema fields/defaults and final values are separate: a nullable field is not
+//! automatically optional, and a declared default is not evaluated by construction.
+//!
+//! Constructors preserve supplied field order and declared fingerprints. They do
+//! not sort, materialize defaults or verify reference targets. Display is a safe
+//! reader-facing projection of stored values, not a canonical transport or a
+//! source round-trip format. Recursive helpers require already-bounded input.
 
 use crate::{
     DeclarationFingerprint, ElementId, ExactNumber, ModuleSymbolIdentity, NominalTypeIdentity,
@@ -35,7 +46,8 @@ pub enum ResolvedType {
 }
 
 impl ResolvedType {
-    /// Wraps a resolved non-null type in exactly one outer nullable layer.
+    /// Adds one outer nullable layer around the supplied type.
+    /// Does not reject an already-nullable argument or perform semantic validation.
     #[must_use]
     pub fn nullable(inner: Self) -> Self {
         Self::Nullable(Box::new(inner))
@@ -69,6 +81,11 @@ impl ResolvedType {
     }
 
     /// Returns whether a logical value satisfies exact identity plus outer nullability.
+    ///
+    /// This is a contextual compatibility check, not complete value validation:
+    /// records compare nominal owners rather than their fields and references
+    /// compare declared target types without looking up the target declaration.
+    /// Lists recurse over their items; callers must preflight depth/work first.
     #[must_use]
     pub fn accepts_value(&self, value: &LogicalValue) -> bool {
         match (self, value) {
@@ -83,6 +100,7 @@ impl ResolvedType {
                 expected == value.nominal_type()
             }
             (Self::List(expected), LogicalValue::List(items)) => {
+                // An empty list satisfies any contextual element type; context supplies its type.
                 items.iter().all(|item| expected.accepts_value(item))
             }
             (Self::Ref(expected), LogicalValue::Reference(reference)) => {
@@ -215,6 +233,8 @@ pub struct IdentityReference {
 
 impl IdentityReference {
     /// Creates one typed identity edge after target validation.
+    /// The local ID, durable symbol and target type are stored independently;
+    /// a reader must verify that all three describe the same declaration.
     #[must_use]
     pub fn new(
         target_element_id: ElementId,
@@ -326,6 +346,7 @@ impl fmt::Display for RecordValue {
 }
 
 /// Formats a logical string with all hostile control text escaped.
+/// This is diagnostic text escaping, not shell, HTML or general JSON escaping.
 fn format_safe_string(value: &str, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     formatter.write_str("\"")?;
     for character in value.chars() {
@@ -368,6 +389,7 @@ impl RecordFieldSchema {
     }
 
     /// Attaches one validated closed logical default to this field contract.
+    /// Does not check type compatibility or apply the default to any value.
     #[must_use]
     pub fn with_default(mut self, default_value: LogicalValue) -> Self {
         self.default_value = Some(default_value);
@@ -648,6 +670,9 @@ impl VocabularyContract {
     }
 
     /// Compares normalized logical vocabulary meaning without captured-byte facts.
+    /// Ignores encoding version and captured digest, but retains semantic revision,
+    /// schema, required features and complete type contracts. Ordinary equality
+    /// remains stricter; choose it when exact retained lock facts must also agree.
     #[must_use]
     pub fn logically_equivalent(&self, other: &Self) -> bool {
         self.identity.identity == other.identity.identity

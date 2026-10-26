@@ -6,6 +6,18 @@
 //! through floating point. Source parsing checks digit and scale budgets before
 //! normalization; equivalent spellings share a normalized representation.
 //! Display and hash-transcript emission consume that same representation.
+//!
+//! The represented value is `(-1 if negative else 1) * coefficient * 10^scale`.
+//! Nonzero coefficients have no leading or trailing zeroes; zero always has a
+//! positive sign and scale zero. Source parsing accepts spelling variations and
+//! normalizes them, whereas decoding normalized parts rejects alternate spellings.
+//! That distinction prevents multiple canonical encodings of the same value.
+//!
+//! This is a value representation, not the expression arithmetic policy. Decimal
+//! division precision/rounding belongs to the evaluator profile. Derived `Ord`
+//! compares stored fields and is not mathematical ordering; use
+//! [`crate::composition::compare_exact_numbers`] for numeric comparisons.
+//! Display emits a reader-facing rational notation, not source or JSON syntax.
 
 use crate::IrError;
 use neutral_core::allocation::RetainCapacity;
@@ -48,6 +60,7 @@ impl ExactNumber {
         }
         let valid_digits =
             !coefficient.is_empty() && coefficient.bytes().all(|byte| byte.is_ascii_digit());
+        // Reject alternative zero encodings instead of silently repairing untrusted wire parts.
         let valid_zero = coefficient == "0" && !negative && scale == 0;
         let valid_nonzero = coefficient
             .starts_with(|character: char| ('1'..='9').contains(&character))
@@ -112,11 +125,15 @@ impl ExactNumber {
         })
     }
 
-    /// Normalizes one unsigned digits-only integer for minimal compatibility tests.
+    /// Parses a number using spelling-length-derived bounds for compatibility callers.
+    ///
+    /// Despite the historical name, this delegates to the complete source-number
+    /// grammar rather than enforcing digits-only input. Request-facing code should
+    /// use [`Self::from_source`] with its independently configured numeric limits.
     ///
     /// # Errors
     ///
-    /// Returns an error when the spelling is empty or contains non-digits.
+    /// Returns an error for malformed source syntax or a digit/scale limit violation.
     pub fn from_unsigned_integer(spelling: &str) -> Result<Self, IrError> {
         let maximum_digits = u64::try_from(spelling.len()).unwrap_or(u64::MAX).max(1);
         Self::from_source(spelling, maximum_digits, maximum_digits)
@@ -141,6 +158,8 @@ impl ExactNumber {
     }
 
     /// Builds the frozen NHT logical-definition payload for this number.
+    /// Uses ordinary temporary allocations; bounded identity writers frame the
+    /// normalized components directly on their allocation-aware path instead.
     ///
     /// # Errors
     ///
@@ -171,7 +190,9 @@ struct ParsedSourceNumber {
     scale: i64,
 }
 
-/// Parses the frozen numeric grammar before allocating its normalized coefficient.
+/// Scans source ranges and checks digit/scale bounds before allocating the coefficient.
+/// Separators contribute source bytes but not coefficient digits; the caller must
+/// independently bound source length/work before invoking this scalar helper.
 fn parse_source_number(
     spelling: &str,
     maximum_digits: u64,
@@ -235,6 +256,7 @@ fn parse_source_number(
         return Err(IrError::ExactNumberLimitExceeded);
     }
     let mut coefficient = String::new();
+    // Only validated digit runs reach retention; rejecting a giant exponent needs no expanded integer.
     coefficient
         .try_retain_exact(digit_count)
         .map_err(|_| IrError::ExactNumberLimitExceeded)?;
@@ -310,6 +332,8 @@ fn consume_digit_run(bytes: &[u8], index: &mut usize) -> Result<DigitRun, IrErro
 }
 
 /// Parses a bounded decimal exponent without host floating-point conversion.
+/// Checks each multiply/add before applying the sign, preventing overflow or a
+/// large temporary integer even when the source exponent contains many digits.
 fn parse_bounded_exponent(
     digits: &str,
     maximum_scale: u64,

@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Raw original-byte expression/expansion evidence, separate from logical meaning.
+//!
+//! Expression evidence identifies an occurrence by stable declaration/template
+//! owner and a canonical child-index path. This avoids ambiguous dotted text and
+//! distinguishes repeated occurrences of the same input/output key. Missing
+//! occurrence data remains explicit; readers must not fabricate source spans.
+//!
+//! Expansion evidence points back to real application, definition and argument
+//! locations plus original matrix-axis positions. Generated names do not pretend
+//! to occupy newly invented source bytes. Independent validation checks owners,
+//! paths and source bounds; public views redact private lineage while preserving
+//! usable public evidence. These records authenticate neither producer nor access.
 
 use crate::ModuleSymbolIdentity;
 use neutral_core::SourceLocation;

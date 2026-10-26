@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Shared `/3` derivation/artifact framing inputs and body helpers.
+//!
+//! Derivation links already-typed logical/captured hashes to an explicit producer
+//! revision and positive processing controls. Artifact context then distinguishes
+//! complete publication from a selected public view and includes exact format
+//! options. No ambient package version, environment defaults or selected roots
+//! enter complete logical identity through these helpers.
+//!
+//! View-root order is normalized by sorting borrowed identities, but duplicates
+//! are rejected rather than silently removed. Complete artifacts must have no
+//! selection roots. Option names must already be unique/canonical; actual option
+//! support and public-root existence/closure require the format/reader boundary.
 
 use super::{CAPTURE_LIMIT_TAGS, IdentityError, framing::Writer};
 use crate::{ModuleSymbolIdentity, project::ProjectLimits};
@@ -101,6 +112,7 @@ pub(super) fn artifact_body(
         .try_retain(input.roots.len())
         .map_err(|_| IdentityError::Limit)?;
     roots.extend(input.roots);
+    // Root order is selection trivia; duplicate roots are still malformed request data.
     roots.sort_unstable();
     writer.check()?;
     super::framing::ordered(&roots)?;

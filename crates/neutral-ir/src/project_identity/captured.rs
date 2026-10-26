@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Exact capture facts; source contents are represented by verified byte digests.
+//!
+//! Borrowed inputs describe the full supplied source/lock set, including logical
+//! source labels, revisions, feature requirements, byte digests and lengths. They
+//! exclude request controls, correlation keys and machine acquisition paths. A
+//! digest supplied here must already have been checked against the captured bytes;
+//! framing cannot establish that relationship without the original content.
+//!
+//! Source/module and vocabulary sequences must already be canonical. A separate
+//! sorted borrowed-ID index detects duplicate source labels without changing the
+//! module-ordered transcript. Required features likewise require strict ordering.
+//! The expression wrapper chooses the exact `/3` domain and semantic tuple.
 
 use super::{
     IdentityError,
@@ -67,6 +78,7 @@ pub(super) fn capture_body(
         }
     }
     let mut source_ids = Vec::new();
+    // Source labels must be unique across modules, not merely adjacent in module order.
     source_ids
         .try_retain(input.sources.len())
         .map_err(|_| IdentityError::Limit)?;

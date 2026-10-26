@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Public /3 meaning has its own typed digest and retains every structural section.
+//!
+//! Reuses the logical builder's fixed grammar with public declarations and public
+//! vocabulary definitions selected explicitly. Module/import structure, catalogue
+//! and dependency contracts, semantic profiles and exported templates remain part
+//! of interpretation. This is a separate domain, not a truncated complete digest.
+//!
+//! Filtering is not a privacy validator: independent readers must establish that
+//! public signatures/bodies and retained interpretation contracts have valid public
+//! closure. Source/provenance redaction for a selected view is handled at its own
+//! boundary; computing this fingerprint alone does not produce a safe view.
 
 use super::{INTERFACE_DOMAIN, logical::build};
 use crate::{

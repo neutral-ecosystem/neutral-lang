@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Non-callable public template data and independent finite-expansion controls.
+//!
+//! A template retains its definition-scoped parameter frame, result contract and
+//! typed body. Parameter order determines lexical slots; names additionally matter
+//! for named arguments. An absent default is different from an expression whose
+//! value is null. Construction does not validate scope, phases or visibility.
+//!
+//! Static parameters may determine finite compile-time expansion. Deferred values
+//! may populate generated descriptions but cannot decide their count, names or
+//! topology. These types describe that contract, not an expansion engine or runtime
+//! callable. [`ExpansionLimits`] separates prefilter products, aggregate visits,
+//! retained generation and output so filtering cannot erase the cost of rejected tuples.
 
 use super::{
     Expression,
@@ -94,6 +105,7 @@ impl ExpansionLimits {
         }
     }
     /// Projects raw controls into the frozen thirteen-position tuple.
+    /// Does not check positivity or claim that expansion actually stayed within them.
     #[must_use]
     pub const fn values(self) -> [u64; 13] {
         [
@@ -118,6 +130,7 @@ impl ExpansionLimits {
     /// them as defaults. Tuple positions are frozen and do not follow package versions.
     #[must_use]
     pub fn intersect(self, other: Self) -> Self {
+        // Every dimension tightens independently; a small output cannot buy more Cartesian work.
         Self {
             definitions: self.definitions.min(other.definitions),
             applications: self.applications.min(other.applications),

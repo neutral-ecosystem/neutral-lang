@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Deep materialized literal accounting under the expression's shared preflight budget.
+//!
+//! A literal inside a residual node can own arbitrarily nested lists, records and
+//! variants; counting only expression nodes would miss that storage. This visitor
+//! therefore shares the parent's depth/work/byte policy while counting value slots
+//! separately from residual occurrences. References count their stable owner text
+//! without following targets. Record absence retains an optional slot but no value
+//! child; field order remains subject to the parent's canonical-name check.
 
 use super::{E, Inspection};
 use crate::composition::BindingValue as V;
@@ -22,6 +29,7 @@ impl Inspection<'_> {
             V::Bool(_) | V::Null => Ok(()),
             V::Reference(s) => self.symbol(s),
             V::List(values) => {
+                // Charge child slots before traversing them; the outer expression count cannot bound these.
                 self.storage::<V>(values.len())?;
                 for v in values {
                     self.value(v, depth + 1)?;

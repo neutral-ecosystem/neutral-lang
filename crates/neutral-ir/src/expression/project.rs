@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Complete raw /3 producer data; neither a materialized /2 project nor reader authority.
+//! Complete raw `/3` project data, awaiting independent semantic and companion checks.
+//!
+//! Declarations retain a signature and an explicit body category; nominal
+//! definitions have no binding body. The complete project also retains all modules,
+//! vocabularies, public templates, original-byte evidence, policies and claimed
+//! resource facts needed for independent reading without source acquisition.
+//! A selected public view is derived later rather than replacing this authority.
+//!
+//! The transport's fixed section order and the resource tuple positions are
+//! governed contracts, not Rust layout or Cargo version details. Counts and the
+//! public-interface digest are claims until recomputed; attribution and provenance
+//! likewise need ownership/path validation. Holding this struct does not establish
+//! all-branch typing or permission to evaluate external/output inputs.
 
 use super::{
     ExpressionBody, ExpressionShapeError,
@@ -42,6 +54,7 @@ impl ExpressionDeclaration {
     /// # Errors
     /// Rejects fabricated definition bodies and missing binding bodies.
     pub fn validate_body_shape(&self) -> Result<(), ExpressionShapeError> {
+        // An input is a real binding body; only nominal definitions use structural absence.
         match (&self.signature, &self.body) {
             (CompositionSignature::Binding(_), Some(_))
             | (CompositionSignature::Definition(_), None) => Ok(()),
@@ -70,6 +83,7 @@ pub struct ExpressionResourceFacts {
 }
 impl ExpressionResourceFacts {
     /// Projects claimed counts without validating their truth.
+    /// The seven positions are the frozen transport order, not interchangeable counters.
     #[must_use]
     pub const fn values(self) -> [u64; 7] {
         [

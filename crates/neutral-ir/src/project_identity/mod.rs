@@ -1,6 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Bounded, explicitly partitioned current `/3` identity transcripts, not attestations.
+//!
+//! Captured identity records exact source/vocabulary evidence. Logical identity
+//! records complete normalized meaning, including private/disconnected declarations;
+//! interface identity records the public interpretive projection. Derivation adds
+//! explicit producer and acceptance context, then artifact identity adds kind,
+//! format/options and selected public roots. Distinct wrappers prevent accidental
+//! substitution between these layers even though all use SHA-256 underneath.
+//!
+//! Each operation returns both the typed digest and its literal complete transcript
+//! for independent comparisons. Frozen domain/profile tags and length framing make
+//! the input explicit. Canonical-order checks reject malformed representation;
+//! hashing still does not validate nominal semantics, source evidence, root closure
+//! or producer authenticity. Callers must establish those at their owning boundary.
+//!
+//! One unpublished fallible writer enforces independent byte/frame/key budgets and
+//! cancellation. Any failure discards the operation's buffer; a transcript is only
+//! returned after complete framing and a final cancellation check.
 
 mod captured;
 mod derived;
@@ -143,6 +160,7 @@ fn transcript_profile<I>(
     })?;
     writer.check()?;
     let bytes = writer.finish();
+    // Hash the already-enveloped bytes once; from_nht would wrap them a second time.
     let digest = SemanticDigest::from_transcript(&bytes);
     if cancellation.is_cancelled() {
         return Err(IdentityError::Cancelled);

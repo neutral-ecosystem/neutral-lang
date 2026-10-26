@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Complete /3 identity partitions; framing does not replace independent reader validation.
+//!
+//! This module selects the exact expression identity profile and a distinct domain
+//! for each captured, complete-logical, public-interface, derivation and artifact
+//! layer. Private helpers share contract/tree framing without allowing callers to
+//! invent protocol selectors or conflate identity with transport serialization.
+//!
+//! The four semantic profiles and complete required-feature set are frozen inputs.
+//! Their placement differs by partition, so features are framed separately from
+//! the semantic tuple rather than appended indiscriminately by one generic helper.
+//! Unknown, missing or reordered features fail recognition; a recognized tuple
+//! still requires semantic/reader validation before its digest is authoritative.
 
 mod captured;
 mod contract;
@@ -32,6 +43,7 @@ const ARTIFACT_DOMAIN: &str = "neutral/project-artifact/v3";
 
 /// Shares the frozen semantic tuple without placing required features in its body.
 fn semantic_profiles(w: &mut Writer<'_>, profiles: &SemanticProfiles) -> Result<(), E> {
+    // Check the complete tuple even when this particular section writes only its four selectors.
     if !profiles.matches_frozen() {
         return Err(E::InvalidInput);
     }

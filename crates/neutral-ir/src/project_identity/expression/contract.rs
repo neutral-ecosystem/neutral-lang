@@ -1,6 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Shared composition-contract framing used by current expression identity.
+//!
+//! Frames modules/imports, nominal definitions, complete field restrictions and
+//! defaults, vocabulary catalogues/dependencies, types and materialized values.
+//! The same record/variant model serves source and vocabulary owners; visibility
+//! filtering is chosen by the enclosing logical/interface builder.
+//!
+//! Wrappers, omission, null and reference targets have distinct tags. Numeric
+//! components are framed directly without floating point or allocating expanded
+//! decimal strings. Defaults use an uninhabited reference type, while binding
+//! references emit stable symbol keys without embedding target values.
+//!
+//! These helpers enforce canonical framing and selected structural invariants,
+//! including default presence, reference-wrapper shape and strict scalar choice
+//! order. They do not prove restriction applicability, nominal resolution or
+//! dependency closure. The enclosing preflight/writer supplies aggregate budgets.
 
 use super::super::{
     IdentityError as E,
@@ -125,6 +140,7 @@ pub(super) fn body(w: &mut Writer<'_>, b: &B) -> Result<(), E> {
             ordered(fields.iter().map(|f| &f.name))?;
             w.frame("record", |w| {
                 for f in fields {
+                    // A missing default and an omitted optional value are different contracts.
                     if (f.presence == FieldPresence::Defaulted) != f.default.is_some() {
                         return Err(E::InvalidInput);
                     }
@@ -181,6 +197,7 @@ fn restrictions(w: &mut Writer<'_>, r: &FieldRestrictions) -> Result<(), E> {
             }
         }
         for pair in choices.windows(2) {
+            // Derived enum order is not numeric order; choices use typed scalar meaning.
             if crate::composition::compare_composition_scalars(&pair[0], &pair[1])
                 != Some(std::cmp::Ordering::Less)
             {
@@ -220,6 +237,7 @@ pub(super) fn type_transcript(
     depth: usize,
 ) -> Result<(), E> {
     let mut inner = ty;
+    // Validate every wrapper before recursive emission so malformed deep types cannot bypass checks.
     let mut current_depth = depth;
     loop {
         w.check()?;
@@ -353,6 +371,7 @@ pub(super) fn value<R: Reference>(w: &mut Writer<'_>, v: &V<R>, depth: usize) ->
                         w.leaf("name", n.as_bytes())?;
                         match v {
                             Some(v) => value(w, v, depth + 1),
+                            // Absence is only legal as a record member, not as a standalone null value.
                             None => w.leaf("omitted", &[]),
                         }
                     })?;

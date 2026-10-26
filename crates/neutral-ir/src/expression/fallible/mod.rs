@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Preflighted owned retention; no unbounded allocating Clone implementation on raw trees.
+//!
+//! Public entry points first inspect borrowed trees/literals without allocating,
+//! then copy only their preflighted structure using fallible strings, vectors and
+//! boxes. Every retained branch is copied: this path does not fold constants,
+//! select guards, substitute bindings or dereference output targets.
+//!
+//! Private recursive helpers rely on the completed depth/storage preflight and
+//! recheck cancellation between children and after allocation checkpoints. A late
+//! cancellation must discard even a successfully allocated result. Partial prefixes
+//! stay local and drop on error; successful copying still establishes no type,
+//! restriction, visibility or lexical-scope authority.
 
 use super::{
     Expression, ExpressionNode as N, ExpressionShapeError as E, MatchArm, SelectorSegment as S,
@@ -44,6 +55,7 @@ impl Expression {
 
 /// Observes cancellation even when it arrives at the final allocation checkpoint.
 fn check<T>(result: Result<T, AllocationError>, cancel: &CancellationToken) -> Result<T, E> {
+    // Injection may cancel during a successful reservation; check before returning its value.
     if cancel.is_cancelled() {
         return Err(E::Cancelled);
     }
@@ -64,6 +76,7 @@ fn sequence<T, U>(
         }
         result.push(retain(item)?);
     }
+    // The final child may have requested cancellation; do not publish its completed container.
     if cancel.is_cancelled() {
         return Err(E::Cancelled);
     }

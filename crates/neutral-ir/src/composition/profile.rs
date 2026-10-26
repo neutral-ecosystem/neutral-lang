@@ -4,6 +4,16 @@
 //!
 //! These are contract versions, not package versions. Defining a selector does
 //! not activate a compiler or codec; each boundary must explicitly implement it.
+//!
+//! The vocabulary composition schema and shared record/variant feature spellings
+//! remain useful to current expression projects. Complete `/2` capture/project/view
+//! selectors here retain their historical definitions; current `/3` transport
+//! discovery uses [`crate::expression::profile`] instead. Shared model reuse is not
+//! a request to accept an older complete artifact or negotiate a fallback.
+//!
+//! Policy tag order is part of derivation/wire compatibility. Equal current version
+//! strings do not merge schema, encoding and identity contracts, and hard item/view
+//! ceilings are independent of the more restrictive request policy a caller supplies.
 
 /// Closed captured-input envelope for vocabulary composition and tagged variants.
 pub const CAPTURE_REQUEST_VERSION: &str = "neutral.capture/v2";

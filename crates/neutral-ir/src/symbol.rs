@@ -6,6 +6,17 @@
 //! vocabulary identities retain the captured bundle contract and digest.
 //! `ElementId` is deliberately different: it is an opaque document-local label,
 //! not a content fingerprint or a stable identifier across compilations.
+//!
+//! A module-symbol tuple follows declaration continuity when its value changes;
+//! a nominal identity additionally distinguishes types by their owning namespace.
+//! Vocabulary lock facts include exact revisions and captured bytes, while a
+//! vocabulary type name must be interpreted within the surrounding validated lock
+//! context. Local aliases and machine paths are not substitutes for these owners.
+//!
+//! Constructors assemble the requested components without parsing names, checking
+//! feature order, resolving declarations or recomputing digests. Producers and
+//! independent readers must establish those invariants before using the identities
+//! for lookup. Derived equality/order compare the stored components exactly.
 
 use neutral_core::VocabularyContentDigest;
 use std::fmt;
@@ -21,6 +32,7 @@ pub struct LogicalModuleIdentity {
 
 impl LogicalModuleIdentity {
     /// Creates a logical module identity from validated semantic values.
+    /// Does not validate either string or consult the profile catalogue.
     #[must_use]
     pub fn new(
         language_behavior_version: impl Into<String>,
@@ -127,6 +139,7 @@ pub struct ElementId(u64);
 
 impl ElementId {
     /// Creates a validated-document-local element identifier.
+    /// Accepts any integer; uniqueness and membership belong to the owning document.
     #[must_use]
     pub const fn new(value: u64) -> Self {
         Self(value)
@@ -158,6 +171,8 @@ pub struct VocabularyIdentity {
 
 impl VocabularyIdentity {
     /// Creates an exact validated vocabulary identity contract.
+    /// Stores features in the supplied order and trusts the declared digest;
+    /// canonical order, revision support and byte integrity require external checks.
     #[must_use]
     pub fn new(
         identity: impl Into<String>,

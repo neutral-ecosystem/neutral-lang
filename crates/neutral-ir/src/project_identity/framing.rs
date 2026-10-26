@@ -6,6 +6,16 @@
 //! The caller chooses the domain and field order; this module enforces framing,
 //! cancellation, and limits, not semantic validity. On any error the enclosing
 //! transcript operation discards the writer, so incomplete bytes cannot escape.
+//!
+//! A frame writes tag length/tag plus an empty payload-length slot, appends nested
+//! content to the same buffer, then backpatches its actual length. Integer bytes
+//! are fixed-width big-endian, never host-layout serialization. Stored offsets
+//! remain valid if fallible growth relocates the backing vector.
+//!
+//! Frame count, output bytes and inspected key bytes bound different work. Checking
+//! one collection's length does not debit its future frames; each frame and append
+//! still checks independently. The writer does not roll a failed frame back, so
+//! callers must propagate errors rather than continue with its partial buffer.
 
 use super::{IdentityError, IdentityLimits, MAX_TRANSCRIPT_BYTES, MAX_TRANSCRIPT_NODES};
 use neutral_core::CancellationToken;
@@ -143,6 +153,7 @@ impl<'a> Writer<'a> {
     }
     /// Returns only the complete successfully framed transcript.
     pub(super) fn finish(self) -> Vec<u8> {
+        // Publication is the enclosing transcript operation's job; it must check success first.
         self.bytes
     }
 }

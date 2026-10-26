@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Fallible owned identities and exact coefficients used by independently bounded successor paths.
+//! Fallible copies of shared owners, values and composition contracts.
+//!
+//! These [`TryClone`](neutral_core::allocation::TryClone) implementations preserve every retained semantic field,
+//! including visibility, unused defaults, restrictions and exact vocabulary lock
+//! facts. Reference copying retains a target identity without following it; closed
+//! defaults cannot gain a reference channel because their reference type is uninhabited.
+//!
+//! Each owned child delegates to fallible storage primitives. A failure drops any
+//! successfully copied prefix before returning; it never returns a partial object.
+//! This is storage handling, not validation: callers must preflight hostile depth,
+//! aggregate size and work, and observe request cancellation around these copies.
+//! For expression literals/trees, use their bounded cancellation-aware entry points.
 
 use super::composition::{CompositionBindingReference, project::CompositionSignature};
 use super::{ExactNumber, LogicalModuleIdentity, ModuleSymbolIdentity, VocabularyIdentity};

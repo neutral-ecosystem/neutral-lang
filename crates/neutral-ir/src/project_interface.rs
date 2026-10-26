@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Public-interface facts, separate from the future complete project IR.
+//! Shared public type/edge vocabulary and the frozen signature-only interface model.
+//!
+//! [`ProjectPublicType`] represents exact nominal ownership and invariant wrappers
+//! without source-local aliases. Location scalars retain inert text rather than
+//! host handles. Structural edge kinds distinguish type, value-reuse and identity
+//! reference relationships; guarded expression dependencies have a separate model.
+//!
+//! [`ProjectInterface`] stores a declared signature fingerprint and can recompute
+//! it from supplied vocabulary/export/edge sequences. It neither sorts those
+//! sequences nor proves public closure, reference validity or private redaction.
+//! Producers must supply canonical data and independent readers must verify it.
+//! Current complete expression interface identity is constructed separately in
+//! [`crate::project_identity::expression`], while reusing the public type vocabulary.
+//!
+//! The signature transcript helpers here enforce framing/type depth, not full
+//! request work or fallible-allocation guarantees. They consume already-bounded
+//! data and exclude implementation bodies and original-byte provenance.
 
 use crate::ModuleSymbolIdentity;
 use neutral_core::{CoreError, SemanticDigest, nht_frame, profile::V1_SOURCE_PROFILE};
@@ -342,6 +358,7 @@ pub struct ProjectInterface {
 
 impl ProjectInterface {
     /// Constructs a snapshot with a separately supplied declared fingerprint.
+    /// This assembles raw facts; it does not check fingerprint equality or edge visibility.
     #[must_use]
     pub const fn from_parts(
         exports: Vec<ProjectPublicExport>,
@@ -428,6 +445,8 @@ impl ProjectInterface {
     }
 
     /// Recomputes the fingerprint from the complete public signature surface.
+    /// Equality with the declared digest is necessary but does not prove canonical
+    /// ordering, closure or the truth of the supplied public projection.
     ///
     /// # Errors
     ///
@@ -442,6 +461,7 @@ impl ProjectInterface {
         exports: &[ProjectPublicExport],
         edges: &[ProjectPublicEdge],
     ) -> Result<SemanticDigest, CoreError> {
+        // Hash supplied canonical order, keeping this frozen signature grammar distinct from /3.
         let mut payload = nht_frame("profile", V1_SOURCE_PROFILE.as_bytes())?;
         for vocabulary in vocabularies {
             payload.extend(vocabulary.transcript()?);

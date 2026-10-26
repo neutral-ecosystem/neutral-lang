@@ -1,6 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Iterative raw preflight before any recursive consumer or retained clone.
+//!
+//! This visitor bounds borrowed catalogue bodies, materialized values and complete
+//! project companions before deeper validation/copying. Type wrappers use a loop;
+//! nested values and expression trees use fallibly growing worklists, avoiding
+//! unbounded native-stack recursion on raw data. Unlike expression-only inspection,
+//! this preflight may allocate temporary traversal stacks and reports failure safely.
+//!
+//! One inspector aggregates text, traversal work and retained composition facts
+//! across declarations, defaults, finite choices and companion paths. Its byte
+//! projection models owned slots/text for callers planning retention, not allocator
+//! overhead or transport size. Expression-specific node/evaluation controls still
+//! require the expression inspector and semantic integration; these facts alone
+//! do not prove types, lock closure, provenance correctness or reader authority.
 
 use super::{CompositionPolicy, CompositionResourceFacts, CompositionSignature};
 use crate::{
@@ -156,6 +169,7 @@ impl Inspector<'_> {
 
     /// Checked retained-storage projection; never allocates or changes the configured policy.
     fn storage<U>(&mut self, count: usize) -> Result<(), CompositionShapeError> {
+        // Return modeled storage to the caller; this counter is not a heap reservation itself.
         self.bytes = self
             .bytes
             .checked_add(
@@ -252,6 +266,7 @@ impl Inspector<'_> {
             .try_retain(1)
             .map_err(|_| CompositionShapeError::Limit)?;
         stack.push((value, 0_u64));
+        // A separate depth travels with each pending child, independent of worklist length.
         while let Some((value, depth)) = stack.pop() {
             self.storage::<CompositionValue<R>>(1)?;
             self.step(1)?;
@@ -294,6 +309,7 @@ impl Inspector<'_> {
                         if let Some(value) = value {
                             stack.push((value, depth + 1));
                         } else {
+                            // Optional absence still occupies a retained contract/value occurrence.
                             self.facts.retained_value_nodes = self
                                 .facts
                                 .retained_value_nodes
@@ -367,6 +383,7 @@ impl Inspector<'_> {
                         self.text(bound.coefficient())?;
                     }
                     if let Some(default) = &field.default {
+                        // Dormant defaults remain contract data even if no source value uses them.
                         self.value(default, |never| match *never {})?;
                     }
                 }
@@ -475,6 +492,7 @@ fn inspect_retained<'a>(
     for expression in expressions {
         inspector.expression(expression)?;
     }
+    // Source/provenance evidence has retention cost even though it is excluded from logical identity.
     inspect_companions(&ir, &mut inspector)?;
     inspector.facts.bundles = ir.vocabularies.len() as u64;
     Ok(CompositionBodyInspection {
@@ -635,6 +653,8 @@ pub fn inspect_expression_project_resources(
 }
 
 /// Reports complete artifact inspection work so nested producers can debit an aggregate allowance.
+/// Includes residual literal contracts and public template bodies/defaults without
+/// evaluating them. Full expression facts and template scope checks remain separate.
 ///
 /// # Errors
 /// Same structural/count/allocation/cancellation failures as the facts-only entry point.
@@ -654,6 +674,7 @@ pub fn inspect_expression_project_resources_with_work(
         return Err(CompositionShapeError::Limit);
     }
     let mut trees = Vec::new();
+    // Borrow roots instead of cloning them; the subsequent inspector shares one composition allowance.
     for d in &ir.declarations {
         if cancellation.is_cancelled() {
             return Err(CompositionShapeError::Cancelled);

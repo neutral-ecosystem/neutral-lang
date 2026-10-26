@@ -6,6 +6,17 @@
 //! immutable reuse edges and typed reference edges retain distinct evidence;
 //! copying a value is not the same operation as referring to a binding.
 //! These records do not change logical meaning and require independent reader checks.
+//!
+//! Root records explain normalization; field records explain supplied/defaulted
+//! values; reuse and reference records retain occurrence paths and distinct target
+//! roles. Reuse copies meaning into a consuming location, whereas a reference
+//! preserves an identity edge without embedding the target's value.
+//!
+//! Constructors record supplied claims without resolving paths, checking target
+//! membership or proving correspondence with source bytes. Consumers must not
+//! treat these records as authorization or invent evidence when it is absent.
+//! The graph-local paths/IDs here belong to the materialized document model;
+//! complete expression projects retain their own stable-owner companions.
 
 use crate::ElementId;
 
@@ -91,7 +102,8 @@ pub struct ProvenanceRecord {
 }
 
 impl ProvenanceRecord {
-    /// Creates provenance for an explicit normalized numeric binding.
+    /// Records the declared origin and normalization for one materialized binding.
+    /// Does not verify that the selected categories match the binding's actual value.
     #[must_use]
     pub const fn new(
         element_id: ElementId,
@@ -148,6 +160,8 @@ pub struct ReuseProvenanceRecord {
 
 impl ReuseProvenanceRecord {
     /// Creates one validated ordinary immutable-value reuse edge.
+    /// The path identifies an occurrence in the consumer, not a traversal request
+    /// into the source binding; neither endpoint is resolved by this constructor.
     #[must_use]
     pub fn new(
         element_id: ElementId,

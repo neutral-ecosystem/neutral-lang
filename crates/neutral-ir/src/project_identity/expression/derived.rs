@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Explicit /3 processing and representation inputs; no ambient package-version discovery.
+//!
+//! [`ExpressionDerivationContext`] couples complete logical/captured identities to
+//! the producer revision, base capture/project controls and the composition,
+//! expression and expansion policies. Controls are framed in their frozen named
+//! tuple order, so changing acceptance policy can change derivation without
+//! changing complete logical meaning.
+//!
+//! Artifact identity adds complete/view kind, format, roots and explicit options
+//! under a separate domain. It is an identity for the selected representation
+//! context, not a checksum of encoded artifact bytes or an attestation of execution.
+//! Caller-supplied producer facts are recorded verbatim after structural checks;
+//! no host environment or Cargo metadata is consulted to fill missing values.
 
 use super::{ARTIFACT_DOMAIN, DERIVATION_DOMAIN, semantic_profiles};
 use crate::{
@@ -43,7 +55,7 @@ pub struct ExpressionDerivationContext<'a> {
     pub expansion_limits: ExpansionLimits,
 }
 
-/// Frames /2 processing fields followed by the complete frozen /3 semantic and limit tuples.
+/// Frames shared base processing fields followed by the complete frozen `/3` semantic and limit tuples.
 ///
 /// # Errors
 /// Rejects unsupported tuples, empty producer facts, zero controls, bounds or cancellation.
@@ -125,6 +137,7 @@ fn controls<const N: usize>(
     tags: [&str; N],
     values: [u64; N],
 ) -> Result<(), E> {
+    // Array arity ties labels to positions; positivity is checked without substituting defaults.
     w.frame(tag, |w| {
         for (tag, value) in tags.into_iter().zip(values) {
             if value == 0 {

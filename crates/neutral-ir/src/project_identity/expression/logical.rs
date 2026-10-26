@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Complete typed /3 logical framing; private bodies are omitted only in interface projection.
+//!
+//! Complete framing includes every module/declaration, retained expression branch,
+//! public template and source-independent vocabulary contract. It excludes
+//! original-byte source maps/origins, processing policies, graph-local IDs, runtime
+//! bindings and selected roots. The interface variant uses the same structural
+//! grammar with public declarations/definitions under its own identity domain.
+//!
+//! Preflight charges comparison keys before canonical-order checks and lookups;
+//! the writer separately charges frames/output. Supplied canonical sequences are
+//! rejected if reordered or duplicated rather than repaired. Structural public
+//! edges are the intentional exception: repeated provenance occurrences become a
+//! sorted set of semantic edges. Their source coordinates are not identity inputs.
+//!
+//! These operations establish bounded deterministic framing, not nominal typing,
+//! safe provenance or public closure. Independent validation is required before
+//! treating a raw project's computed digest as authoritative meaning.
 
 use super::{LOGICAL_DOMAIN, features, semantic_profiles, trees};
 use crate::{
@@ -63,6 +79,7 @@ pub(super) fn build<I>(
                 return Err(E::InvalidInput);
             }
             preflight(w, ir)?;
+            // Keep section order frozen; complete and interface hashes share grammar, not a domain.
             w.leaf("schema", ir.schema.as_bytes())?;
             w.leaf("profile", V1_SOURCE_PROFILE.as_bytes())?;
             contract::modules(w, &ir.modules)?;
@@ -280,6 +297,7 @@ fn public_edges(w: &mut Writer<'_>, ir: &ExpressionProjectIr) -> Result<(), E> {
         }
     }
     edges.sort_unstable();
+    // Provenance records occurrences; identity retains each structural public edge only once.
     edges.dedup();
     w.check()?;
     w.frame("public-edges", |w| {

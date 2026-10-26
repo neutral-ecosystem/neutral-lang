@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Shared source and resource companions used by current expression projects.
+//!
+//! Modules describe the complete logical import graph, including disconnected
+//! private units. Source and vocabulary records describe exact captured bytes;
+//! source maps and provenance connect declaration identities to original occurrences.
+//! These companions retain evidence separately from normalized logical meaning.
+//!
+//! All public fields are raw claims until checked with the complete project.
+//! Digests must match captured facts, spans must fit their owning source, and
+//! resource counts must be independently recomputed. Logical source IDs are opaque
+//! labels, not paths that instruct a reader to acquire missing content.
+//! [`ProjectLimits`] carries independent policy dimensions rather than counters;
+//! intersection cannot loosen either the producer or consumer's bound.
 
 use crate::{
     LogicalModuleIdentity, ModuleSymbolIdentity, project_interface::ProjectPublicEdgeKind,
@@ -92,6 +104,8 @@ pub struct ProjectLimits {
 
 impl ProjectLimits {
     /// Intersects producer context with independent consumer bounds; neither can relax the other.
+    /// Zero remains zero for the validation boundary to reject. This does not
+    /// validate positivity, enforce hard ceilings or count current resource usage.
     #[must_use]
     pub fn intersect(self, other: Self) -> Self {
         Self {

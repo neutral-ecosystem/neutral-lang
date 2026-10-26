@@ -3,8 +3,21 @@
 //! Shared raw vocabulary-composition contracts for producers and independent readers.
 //!
 //! These structures are not validated artifacts. The vocabulary boundary checks
-//! their captured representation before publishing an immutable catalogue. They
-//! do not extend the frozen project IR or its encoding/identity profiles.
+//! their captured representation before publishing an immutable catalogue; current
+//! expression projects reuse the same contracts for source and vocabulary types.
+//! Adding a Rust variant here does not implicitly change a frozen wire or identity profile.
+//!
+//! [`CompositionValue`] parameterizes the reference channel: [`ClosedValue`] uses
+//! an uninhabited target type so defaults cannot reference bindings, while
+//! [`BindingValue`] retains exact module-symbol reference owners. Record fields
+//! distinguish `None` (optional absence) from an explicit null value. Presence,
+//! default materialization and restrictions are separate contract facts.
+//!
+//! Bundles retain canonical ownership, exact dependency revisions and all nominal
+//! definitions, including private types and unused defaults. These public fields
+//! are claims until scope/contract validation checks names, closure, recursion,
+//! restrictions and values. URL/path text never opens a resource. Scalar comparison
+//! helpers compare meaning without evaluating expressions or expanding decimal powers.
 
 use crate::{
     ExactNumber, ModuleSymbolIdentity, VocabularyIdentity, project_interface::ProjectPublicType,
@@ -261,6 +274,7 @@ pub fn compare_exact_numbers(left: &ExactNumber, right: &ExactNumber) -> Orderin
     } else if right.coefficient() == "0" {
         Ordering::Greater
     } else {
+        // Equal decimal positions align the leading digit; virtual zeroes compare the remaining precision.
         let left_position = left.coefficient().len() as i128 + i128::from(left.scale());
         let right_position = right.coefficient().len() as i128 + i128::from(right.scale());
         left_position.cmp(&right_position).then_with(|| {
@@ -278,6 +292,7 @@ pub fn compare_exact_numbers(left: &ExactNumber, right: &ExactNumber) -> Orderin
                 )
         })
     };
+    // Magnitude ordering reverses for negative operands; differing signs were handled above.
     if left.is_negative() {
         magnitude.reverse()
     } else {

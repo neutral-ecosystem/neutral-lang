@@ -2,8 +2,21 @@
 
 //! Raw successor expression trees, not validated project or evaluation authority.
 //!
-//! Both branches and exact input/output contracts remain data. This module neither
-//! activates capture/wire `/3` nor resolves bindings, evaluates values or schedules effects.
+//! Both branches and exact input/output contracts remain data. Defining these
+//! types neither selects a capture/wire profile nor resolves bindings, evaluates
+//! values or schedules effects; the owning boundaries implement those operations.
+//!
+//! [`ExpressionBody`] separates materialized constants, declared external inputs
+//! and retained expressions. Each [`Expression`] carries a claimed result type;
+//! its presence does not prove agreement with the node, lexical environment or
+//! nominal contracts. Unselected branches are retained for all-branch validation
+//! and dependency inspection even when evaluation later short-circuits.
+//!
+//! Output selectors describe potential consumer-supplied values, not successful
+//! backend results. [`ExpressionNode::Bound`] uses lexical frame/slot coordinates
+//! rather than external binding names. Public templates are compile-time contracts,
+//! not runtime function values. Shape inspection and bounded copying live here;
+//! semantic authority, evaluation and public consumer policy live in higher layers.
 
 use crate::{
     ModuleSymbolIdentity, composition::BindingValue, project_interface::ProjectPublicType,
@@ -43,6 +56,8 @@ pub struct Expression {
 }
 
 /// Owned typed selector data; never implicitly unwraps null or follows a reference.
+/// A structurally valid path can still be unavailable for a future result. Shape,
+/// type-mode legality and value availability are separate validation questions.
 #[derive(Debug, Eq, PartialEq)]
 pub enum SelectorSegment {
     /// Exact record member.
@@ -54,6 +69,8 @@ pub enum SelectorSegment {
 }
 
 /// One match arm; canonical wire order is tag order, not source spelling order.
+/// The payload adds one lexical frame for this arm only. Recording its type does
+/// not establish tag membership, exhaustiveness or the validity of bound slots.
 #[derive(Debug, Eq, PartialEq)]
 pub struct MatchArm {
     /// Exact alternative tag.
@@ -178,6 +195,7 @@ pub enum ExpressionNode {
 
 impl ExpressionNode {
     /// Returns the exact frozen wire/transcript node tag, never a host dispatch name.
+    /// It is a protocol spelling, not `Debug` output or a promise that the node has been validated.
     #[must_use]
     pub const fn kind(&self) -> &'static str {
         match self {

@@ -6,6 +6,16 @@
 //! contracts and defaults. These fingerprints describe definitions, not symbol
 //! continuity or complete project identity. Transcript tags and framing are
 //! frozen compatibility contracts, not implementation details to rename.
+//!
+//! The constructors consume already-resolved, canonically ordered materialized
+//! data. They do not sort fields, resolve references or validate schema/value
+//! agreement. Reference payloads use durable module-symbol identities rather than
+//! graph-local element numbers, so relabelling local IDs does not rename a target.
+//!
+//! These shared definition helpers retain their frozen grammar; current complete
+//! project identities use the separate bounded transcript writers. Temporary
+//! vectors and type formatting here use ordinary allocations, and recursive value
+//! traversal has no request budget: callers must establish safe input bounds first.
 
 use crate::{LogicalValue, RecordFieldSchema, ResolvedType};
 use neutral_core::{CoreError, SemanticDigest, nht_frame};
@@ -16,6 +26,7 @@ pub struct DeclarationFingerprint(SemanticDigest);
 
 impl DeclarationFingerprint {
     /// Reconstructs a declared fingerprint from validated external digest bytes.
+    /// Wrapping the supplied digest does not recompute or verify the definition.
     #[must_use]
     pub const fn from_digest(digest: SemanticDigest) -> Self {
         Self(digest)
@@ -47,6 +58,7 @@ impl DeclarationFingerprint {
     ///
     /// Returns an error only when NHT framing exceeds its fixed widths.
     pub fn for_record(fields: &[RecordFieldSchema]) -> Result<Self, CoreError> {
+        // Field order is already canonical input; repairing it here would hide malformed data.
         let mut payload = Vec::new();
         payload.extend(nht_frame("declaration-kind", b"record")?);
         for field in fields {
@@ -120,6 +132,7 @@ fn logical_value_payload(value: &LogicalValue) -> Result<Vec<u8>, CoreError> {
             nht_frame("list", &payload)
         }
         LogicalValue::Reference(reference) => {
+            // Local element labels are indexing details; continuity comes from the stable owner tuple.
             let mut payload = Vec::new();
             payload.extend(nht_frame(
                 "target-language-version",

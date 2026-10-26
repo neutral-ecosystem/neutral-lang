@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Frozen source and logical-name spellings shared by Neutral producers and readers.
+//!
+//! These helpers answer narrow lexical questions, not complete source validity.
+//! A valid name can still be reserved, private, duplicated or unresolved in its
+//! owning scope. Contextual expression/composition keywords and generated binding
+//! suffixes are governed by their own modules rather than added implicitly to
+//! the frozen protected-name set here.
+//!
+//! Exact release versions accept only three canonical unsigned decimal components;
+//! they are deliberately narrower than general `SemVer` ranges or prerelease syntax.
+//! Feature identifiers are inert spellings, not dynamically loaded capabilities:
+//! their permitted alphabet alone establishes neither support nor a size budget.
 
 /// Canonical source-level language version spelling.
 pub use neutral_core::profile::V0_SOURCE_PROFILE as SOURCE_LANGUAGE_VERSION;
@@ -54,6 +65,8 @@ pub fn is_upper_name(value: &str) -> bool {
 }
 
 /// Returns whether a module, binding, or field name is canonical lower snake case ASCII.
+/// Requires a lowercase first byte and alphanumeric final byte, with no doubled
+/// underscores. This does not recognize expression-generated matrix suffixes.
 #[must_use]
 pub fn is_snake_name(value: &str) -> bool {
     let bytes = value.as_bytes();
@@ -71,6 +84,7 @@ pub fn is_snake_name(value: &str) -> bool {
 pub fn is_exact_release_version(value: &str) -> bool {
     let mut parts = value.split('.');
     let valid = parts.by_ref().take(3).all(is_canonical_unsigned_component);
+    // all() also accepts a short iterator; the separator count rules out missing components.
     valid && parts.next().is_none() && value.matches('.').count() == 2
 }
 
