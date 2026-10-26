@@ -94,7 +94,7 @@ pub(super) fn ensure_no_unreviewed_contract_changes(root: &Path) -> Result<(), S
             &manifest,
             &oracles,
             &review,
-            "config/ir-encoding.toml",
+            constants::IR_ENCODING_CONFIG_FILE,
         ])
         .output()
         .map_err(|error| format!("could not inspect normative changes: {error}"))?;

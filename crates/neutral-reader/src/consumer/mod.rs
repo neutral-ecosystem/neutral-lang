@@ -10,6 +10,33 @@ use neutral_ir::{
 mod budget;
 pub mod expression;
 
+/// Frozen independently selected entry-root ceiling.
+const MAX_ROOTS: u64 = 1_000_000;
+/// Frozen enumeration-candidate ceiling, separate from selected roots.
+const MAX_CANDIDATES: u64 = 1_000_000;
+/// Frozen interpretation-closure edge ceiling.
+const MAX_CLOSURE_EDGES: u64 = 1_000_000;
+/// Frozen aggregate retained envelope bytes.
+const MAX_RETAINED_BYTES: u64 = 67_108_864;
+/// Frozen per-text envelope ceiling.
+const MAX_TEXT_BYTES: u64 = 1_048_576;
+/// Frozen feature registration and request ceiling.
+const MAX_FEATURES: u64 = 1_000_000;
+/// Frozen diagnostic registration and report ceiling.
+const MAX_DIAGNOSTICS: u64 = 1_000_000;
+/// Frozen attribution-location entry ceiling.
+const MAX_LOCATIONS: u64 = 1_000_000;
+/// Frozen selector-path segment ceiling.
+const MAX_PATH_SEGMENTS: u64 = 64;
+/// Frozen validation work ceiling, independent of output storage.
+const MAX_WORK: u64 = 100_000_000;
+/// Frozen retained public-output ceiling, independent of work.
+const MAX_OUTPUT_BYTES: u64 = 100_000_000;
+
+#[cfg(test)]
+#[path = "../../tests/internal/consumer_limits.rs"]
+mod tests;
+
 /// Frozen typed request for selecting current expression-project entries.
 pub const ENTRY_REQUEST_SCHEMA: &str = "neutral.entry-request/1";
 
@@ -128,17 +155,17 @@ pub struct ConsumerLimits {
 impl Default for ConsumerLimits {
     fn default() -> Self {
         Self {
-            roots: 1_000_000,
-            candidates: 1_000_000,
-            closure_edges: 1_000_000,
-            bytes: 67_108_864,
-            text_bytes: 1_048_576,
-            features: 1_000_000,
-            diagnostics: 1_000_000,
-            locations: 1_000_000,
-            path_segments: 64,
-            work: 100_000_000,
-            output_bytes: 100_000_000,
+            roots: MAX_ROOTS,
+            candidates: MAX_CANDIDATES,
+            closure_edges: MAX_CLOSURE_EDGES,
+            bytes: MAX_RETAINED_BYTES,
+            text_bytes: MAX_TEXT_BYTES,
+            features: MAX_FEATURES,
+            diagnostics: MAX_DIAGNOSTICS,
+            locations: MAX_LOCATIONS,
+            path_segments: MAX_PATH_SEGMENTS,
+            work: MAX_WORK,
+            output_bytes: MAX_OUTPUT_BYTES,
         }
     }
 }

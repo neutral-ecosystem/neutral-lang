@@ -247,7 +247,7 @@ fn release_provenance_bytes(
     crate::runtime::json::pretty(&BuildProvenance {
         schema_version: release_metadata::RELEASE_METADATA_SCHEMA,
         builder: "cargo xtask package",
-        candidate_ref: release_metadata::CANDIDATE_REF,
+        candidate_ref: constants::RELEASE_BRANCH,
         candidate_commit,
         release_tag: &plan.release_tag,
         target: host,
@@ -276,7 +276,7 @@ pub(crate) fn append_binary_release_entries(
             checksums,
             &filename,
             &bytes,
-            "github-binaries",
+            release_metadata::BINARY_CHANNEL,
             context,
         );
     }
@@ -319,7 +319,7 @@ pub(crate) fn release_manifest_bytes(
     crate::runtime::json::pretty(&ReleaseManifest {
         schema_version: release_metadata::RELEASE_METADATA_SCHEMA,
         release_tag: &plan.release_tag,
-        candidate_ref: release_metadata::CANDIDATE_REF,
+        candidate_ref: constants::RELEASE_BRANCH,
         candidate_commit: context.candidate_commit,
         license: context.license,
         supported_targets: [host],

@@ -18,6 +18,8 @@ toml = "1"
 toml_edit = "0.25"
 cargo_metadata = "0.23"
 nextest-metadata = "0.15"
+yaml_serde = "0.10"
+shlex = "2"
 
 [dev-dependencies]
 neutral-test-support = { path = "../crates/neutral-test-support" }

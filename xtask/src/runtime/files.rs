@@ -275,15 +275,19 @@ pub(crate) fn require_clean_checkout() -> Result<String, String> {
 /// Requires a clean checked-out `main` and returns its exact current candidate commit.
 pub(crate) fn require_main_head_checkout() -> Result<String, String> {
     let branch = command_output(constants::GIT_COMMAND, &["branch", "--show-current"])?;
-    if branch != "main" {
+    if branch != constants::RELEASE_BRANCH {
         return Err(format!(
-            "release qualification requires checked-out main; found {branch:?}"
+            "release qualification requires checked-out {}; found {branch:?}",
+            constants::RELEASE_BRANCH,
         ));
     }
     let head = command_output(constants::GIT_COMMAND, &["rev-parse", "HEAD"])?;
     let status = command_output(constants::GIT_COMMAND, &["status", "--porcelain"])?;
     if !status.is_empty() {
-        return Err("release qualification requires a clean main worktree".to_owned());
+        return Err(format!(
+            "release qualification requires a clean {} worktree",
+            constants::RELEASE_BRANCH
+        ));
     }
     Ok(head)
 }

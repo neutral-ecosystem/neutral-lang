@@ -43,6 +43,10 @@ pub const RUSTUP_COMMAND: &str = "rustup";
 pub const VALGRIND_COMMAND: &str = "valgrind";
 /// Git executable required for repository and release identity checks.
 pub const GIT_COMMAND: &str = "git";
+/// Reviewed release source branch shared by metadata, checkout checks and publication.
+pub const RELEASE_BRANCH: &str = "main";
+/// Git remote used for release ancestry, immutable tag checks and atomic publication.
+pub const RELEASE_REMOTE: &str = "origin";
 /// POSIX shell executable required by the supported Linux adapter.
 pub const POSIX_SHELL_COMMAND: &str = "sh";
 /// Archive executable required for release assembly.
@@ -115,6 +119,12 @@ pub const RELEASE_CONFIG_FILE: &str = "config/release.toml";
 pub const RESIDUAL_RISKS_FILE: &str = "quality/reviews/residual-risks.md";
 /// Root workspace manifest relative to the workspace root.
 pub const WORKSPACE_MANIFEST_FILE: &str = "Cargo.toml";
+/// Workspace toolchain channel and required components.
+pub const RUST_TOOLCHAIN_FILE: &str = "rust-toolchain.toml";
+/// Supported host-target policy relative to the workspace root.
+pub const HOST_POLICY_FILE: &str = "config/host-policy.toml";
+/// Current independent artifact format policy relative to the workspace root.
+pub const IR_ENCODING_CONFIG_FILE: &str = "config/ir-encoding.toml";
 /// Root dependency lock relative to the workspace root.
 pub const CARGO_LOCK_FILE: &str = "Cargo.lock";
 /// Declared dependency-source policy relative to the workspace root.

@@ -7,3 +7,4 @@ pub(crate) mod git_hygiene;
 pub(crate) mod repository;
 pub(crate) mod test_layout;
 pub(crate) mod traceability;
+pub(crate) mod workflows;

@@ -1056,3 +1056,4 @@ fn inherited_conformance_selection_is_bounded_and_explicit() {
 
 mod repository_policy;
 mod runtime_helpers;
+mod workflows;

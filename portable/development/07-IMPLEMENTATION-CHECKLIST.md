@@ -36,6 +36,13 @@ sources require the expected compilation phase/code; cross-module private
 reference rejection pins its consuming declaration span. All 924 tests and the
 70-case integration selection pass; long-campaign qualification remains separate.
 
+Repository-policy follow-up (26-10-2026): release branch/remote and configuration
+paths share existing xtask authorities; consumer limit defaults retain their
+independent, unchanged ceilings. Workflow checks parse YAML and supported shell
+arguments to validate permissions, tag/main preparation, retained reports and
+event-tag draft publication. All 929 tests and CI pass. This maintenance work
+does not renew coverage, mutation, fuzz or controlled-performance evidence.
+
 Developers choose and review the next unchecked item. `cargo xtask dev` and
 `cargo xtask ci pr` retain the toolchain, commit, commands, and results in
 ignored workflow logs. This checklist is the routine completion authority;

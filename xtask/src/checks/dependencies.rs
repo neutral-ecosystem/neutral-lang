@@ -222,6 +222,8 @@ pub(crate) fn direct_dependency_policy() -> BTreeMap<&'static str, BTreeSet<&'st
                 "toml_edit",
                 "cargo_metadata",
                 "nextest-metadata",
+                "yaml_serde",
+                "shlex",
             ]),
         ),
     ])

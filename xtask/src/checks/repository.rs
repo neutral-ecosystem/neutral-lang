@@ -51,7 +51,7 @@ pub(crate) fn verify_repository_markdown_links() -> Result<(), String> {
 /// Verifies command documentation, platform adapters, and CI stay synchronized.
 pub(crate) fn check_workflow_contract() -> Result<(), String> {
     let root = workspace_root()?;
-    for relative in ["README.md"] {
+    for relative in [constants::ROOT_README_FILE] {
         let content = read_workspace_text(&root, relative)?;
         for command in interface::DOCUMENTED_COMMANDS {
             if !content.contains(command) {
@@ -61,55 +61,14 @@ pub(crate) fn check_workflow_contract() -> Result<(), String> {
     }
 
     let ci = read_workspace_text(&root, ".github/workflows/ci.yml")?;
-    if !ci.contains("cargo xtask ci pr") {
-        return Err("ci.yml does not delegate to `cargo xtask ci pr`".to_owned());
-    }
     let retained_workflows = format!(
         "{}/workflows",
         crate::configuration::automation_at(&root)?
             .output
             .results_root
     );
-    for retention_requirement in [
-        "if: always()",
-        "actions/upload-artifact@",
-        &retained_workflows,
-    ] {
-        if !ci.contains(retention_requirement) {
-            return Err(format!(
-                "ci.yml does not retain workflow evidence with `{retention_requirement}`"
-            ));
-        }
-    }
     let release = read_workspace_text(&root, ".github/workflows/release.yml")?;
-    if !release.contains("cargo xtask release qualify") {
-        return Err("release.yml does not delegate to `cargo xtask release qualify`".to_owned());
-    }
-    for requirement in [
-        "tags: ['v*']",
-        "github.event_name == 'push' && github.ref || 'main'",
-        "Verify tag identifies main HEAD",
-        "git switch -C main",
-        "cargo xtask release tag",
-        "sha256sum --check SHA256SUMS",
-        "contents: write",
-        "if: github.event_name == 'push'",
-        "gh release create",
-        "--verify-tag",
-        "--draft",
-    ] {
-        if !release.contains(requirement) {
-            return Err(format!(
-                "release.yml does not enforce publication requirement `{requirement}`"
-            ));
-        }
-    }
-    if ci.contains("pull_request:") || ci.contains("contents: write") {
-        return Err("push CI must not expose release credentials or write permission".to_owned());
-    }
-    if ci.contains("cargo xtask docs") || ci.contains("cargo xtask quality") {
-        return Err("ci.yml must use the single logged CI composition".to_owned());
-    }
+    crate::checks::workflows::validate_workflows(&ci, &release, &retained_workflows)?;
 
     for (relative, command) in [
         ("scripts/linux/bootstrap.sh", "xtask bootstrap"),
@@ -422,10 +381,10 @@ pub(crate) fn verify_ignore_policy(root: &Path) -> Result<(), String> {
     let manifest = bundle.member("conformance/manifest.toml");
     for required in [
         crate::constants::CARGO_LOCK_FILE,
-        "rust-toolchain.toml",
+        constants::RUST_TOOLCHAIN_FILE,
         constants::AUTOMATION_CONFIG_FILE,
         constants::CONFORMANCE_CONFIG_FILE,
-        "config/release.toml",
+        constants::RELEASE_CONFIG_FILE,
         &freeze,
         &manifest,
         "scripts/linux/bootstrap.sh",

@@ -15,8 +15,11 @@ use crate::{
 pub(crate) fn prepare(requested: Option<&str>) -> Result<(), String> {
     let root = workspace_root()?;
     if let Some(paths) = super::version_update::recover(&root)? {
-        if git(&root, &["branch", "--show-current"])? != "main" {
-            return Err("finish recovered release metadata on main".to_owned());
+        if git(&root, &["branch", "--show-current"])? != constants::RELEASE_BRANCH {
+            return Err(format!(
+                "finish recovered release metadata on {}",
+                constants::RELEASE_BRANCH
+            ));
         }
         let version = workspace_package_version(&read_workspace_text(
             &root,
@@ -158,7 +161,14 @@ pub(crate) fn publish() -> Result<(), String> {
         .strip_prefix('v')
         .ok_or("invalid release tag")?;
     require_remote_tag_available(&root, &plan.release_tag)?;
-    git(&root, &["fetch", "origin", "main"])?;
+    git(
+        &root,
+        &[
+            "fetch",
+            constants::RELEASE_REMOTE,
+            constants::RELEASE_BRANCH,
+        ],
+    )?;
     let head = git(&root, &["rev-parse", "HEAD"])?;
     // This rejects a moved local tag before approval creates a new commit.
     if git_exists(
@@ -179,7 +189,12 @@ pub(crate) fn publish() -> Result<(), String> {
         .status()
         .map_err(|error| error.to_string())?;
     if !ancestry.success() {
-        return Err("origin/main is not an ancestor of local main; integrate remote changes and rerun release prepare".to_owned());
+        return Err(format!(
+            "{}/{} is not an ancestor of local {}; integrate remote changes and rerun release prepare",
+            constants::RELEASE_REMOTE,
+            constants::RELEASE_BRANCH,
+            constants::RELEASE_BRANCH
+        ));
     }
     // Approval itself requires the exact current candidate's passing evaluation.
     let evidence = evidence_directory(version);
@@ -200,7 +215,10 @@ pub(crate) fn publish() -> Result<(), String> {
     let release_head = require_main_head_checkout()?;
     crate::release_qualify()?;
     if require_main_head_checkout()? != release_head {
-        return Err("main changed during release qualification; rerun release prepare".to_owned());
+        return Err(format!(
+            "{} changed during release qualification; rerun release prepare",
+            constants::RELEASE_BRANCH
+        ));
     }
     let tag_ref = format!("refs/tags/{}", plan.release_tag);
     if !git_exists(&root, &["show-ref", "--verify", "--quiet", &tag_ref])? {
@@ -231,7 +249,8 @@ pub(crate) fn publish() -> Result<(), String> {
     let arguments = arguments.iter().map(String::as_str).collect::<Vec<_>>();
     git(&root, &arguments)?;
     output::pass(format!(
-        "pushed main + {}; GitHub will create a draft release",
+        "pushed {} + {}; GitHub will create a draft release",
+        constants::RELEASE_BRANCH,
         plan.release_tag
     ));
     Ok(())
@@ -242,8 +261,8 @@ fn atomic_push_arguments(tag: &str) -> Vec<String> {
     vec![
         "push".to_owned(),
         "--atomic".to_owned(),
-        "origin".to_owned(),
-        "refs/heads/main:refs/heads/main".to_owned(),
+        constants::RELEASE_REMOTE.to_owned(),
+        format!("refs/heads/{0}:refs/heads/{0}", constants::RELEASE_BRANCH),
         format!("refs/tags/{tag}:refs/tags/{tag}"),
     ]
 }
@@ -327,7 +346,7 @@ fn require_remote_tag_available(root: &Path, tag: &str) -> Result<(), String> {
             "--exit-code",
             "--refs",
             "--tags",
-            "origin",
+            constants::RELEASE_REMOTE,
             &format!("refs/tags/{tag}"),
         ])
         .output()
@@ -335,10 +354,12 @@ fn require_remote_tag_available(root: &Path, tag: &str) -> Result<(), String> {
     match result.status.code() {
         Some(2) => Ok(()),
         Some(0) => Err(format!(
-            "{tag} already exists on origin; release tags are immutable; use a new version"
+            "{tag} already exists on {}; release tags are immutable; use a new version",
+            constants::RELEASE_REMOTE,
         )),
         _ => Err(format!(
-            "could not check origin tag: {}",
+            "could not check {} tag: {}",
+            constants::RELEASE_REMOTE,
             String::from_utf8_lossy(&result.stderr).trim()
         )),
     }

@@ -60,3 +60,17 @@ Dependency-boundary allowlists include these two reviewed backends. Locked
 advisory scans remain a separate qualification requirement; this source review
 does not refresh the historical audit result above or prove every pipeline
 allocation is fallible.
+
+## Automation format parsing (26-10-2026)
+
+`xtask` adds `yaml_serde` and `shlex` to validate repository-owned GitHub Actions
+structure and command arguments. The official YAML-project parser and shell-word
+lexer replace formatting-sensitive substring checks; neither is used by a shipped
+language crate. The locked additions are `yaml_serde` 0.10.7, `shlex` 2.0.1,
+`libyaml-rs` 0.3.0 and `ryu` 1.0.23, with registry checksums. No existing dependency
+version was changed. The new parser/lexer manifests disable build scripts; parsing
+does not execute workflow commands or acquire workflow inputs.
+
+This records dependency scope and source ownership, not a fresh advisory scan or
+release approval. Candidate-bound advisory and other qualification measurements
+remain separate requirements.

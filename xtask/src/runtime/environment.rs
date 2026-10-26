@@ -25,17 +25,17 @@ pub(crate) fn verify_environment() -> Result<(), String> {
     let workspace_root = workspace_root()?;
     for required_path in [
         crate::constants::CARGO_LOCK_FILE,
-        "rust-toolchain.toml",
+        constants::RUST_TOOLCHAIN_FILE,
         constants::AUTOMATION_CONFIG_FILE,
-        "config/dependency-sources.toml",
+        constants::DEPENDENCY_SOURCES_FILE,
         constants::CONFORMANCE_CONFIG_FILE,
-        "config/generated-outputs.toml",
-        "config/host-policy.toml",
-        "config/ir-encoding.toml",
-        "config/quality-gates.toml",
-        "config/release.toml",
-        "config/repository-layout.toml",
-        "config/test-levels.toml",
+        constants::GENERATED_OUTPUTS_FILE,
+        constants::HOST_POLICY_FILE,
+        constants::IR_ENCODING_CONFIG_FILE,
+        constants::QUALITY_GATES_FILE,
+        constants::RELEASE_CONFIG_FILE,
+        constants::REPOSITORY_LAYOUT_FILE,
+        constants::TEST_LEVELS_FILE,
         constants::TEST_SUITES_FILE,
         constants::QUALITY_MANIFEST_FILE,
     ] {
@@ -65,13 +65,14 @@ pub(crate) fn verify_environment() -> Result<(), String> {
         .lines()
         .find_map(|line| line.strip_prefix("host: "))
         .ok_or_else(|| "rustc -vV did not report a host target".to_owned())?;
-    let host_policy = read_workspace_text(&workspace_root, "config/host-policy.toml")?;
+    let host_policy = read_workspace_text(&workspace_root, constants::HOST_POLICY_FILE)?;
     if !configuration_array_from(&host_policy, "hosts", "supported")?
         .iter()
         .any(|supported| supported == host)
     {
         return Err(format!(
-            "unsupported release host {host}; use a host listed in config/host-policy.toml"
+            "unsupported release host {host}; use a host listed in {}",
+            constants::HOST_POLICY_FILE,
         ));
     }
 
@@ -317,7 +318,7 @@ pub(crate) fn environment_tools_json() -> Result<String, String> {
 
 /// Reads the selected Rust channel from the repository toolchain manifest.
 pub(crate) fn rust_channel() -> Result<String, String> {
-    let path = workspace_root()?.join("rust-toolchain.toml");
+    let path = workspace_root()?.join(constants::RUST_TOOLCHAIN_FILE);
     let manifest = fs::read_to_string(&path)
         .map_err(|error| format!("could not read {}: {error}", path.display()))?;
     manifest
@@ -325,7 +326,7 @@ pub(crate) fn rust_channel() -> Result<String, String> {
         .map(str::trim)
         .find_map(|line| line.strip_prefix("channel = \"")?.strip_suffix('"'))
         .map(str::to_owned)
-        .ok_or_else(|| "rust-toolchain.toml has no quoted channel".to_owned())
+        .ok_or_else(|| format!("{} has no quoted channel", constants::RUST_TOOLCHAIN_FILE))
 }
 
 /// Returns whether one compiler version belongs to the selected toolchain channel.

@@ -6,10 +6,8 @@ use crate::constants;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
-/// Reviewed source branch used for release candidates.
-pub(crate) const CANDIDATE_REF: &str = "main";
 /// Distribution channel represented by the assembled binary package.
-const BINARY_CHANNEL: &str = "github-binaries";
+pub(crate) const BINARY_CHANNEL: &str = "github-binaries";
 /// State of a locally assembled, not yet published package.
 const ASSEMBLED_STATUS: &str = "assembled";
 
@@ -121,7 +119,7 @@ pub(crate) fn package_summary_json(
 ) -> Result<String, String> {
     let summary = PackageSummary {
         release_tag,
-        candidate_ref: CANDIDATE_REF,
+        candidate_ref: constants::RELEASE_BRANCH,
         candidate_commit,
         host,
         channel: BINARY_CHANNEL,

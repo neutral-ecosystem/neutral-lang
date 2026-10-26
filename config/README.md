@@ -24,6 +24,11 @@ Optional per-invocation environment overrides are
 documented in the [developer command guide](../docs/workflow-optimization.md).
 Repository layout, quality thresholds, and the active conformance corpus stay
 in their own policy files rather than being duplicated in xtask constants.
+Repository file locations and the fixed `main`/`origin` release authority are
+named once in `xtask/src/config/constants.rs`; they are not new user overrides.
+Workflow checks parse YAML structure and shell arguments instead of depending on
+display names or inline-versus-block YAML formatting. Draft publication,
+qualification dependencies, read-only CI and evidence retention remain required.
 `ir-encoding.toml` selects the active `NIR-PROJECT-CBOR/3` expression artifact
 and records its profile tuple and bounded decoder ceilings; historical wire
 contracts remain in immutable release bundles.
