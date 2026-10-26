@@ -36,7 +36,7 @@ pub(crate) fn package_version(
     current: &str,
     requested: &str,
 ) -> Result<String, String> {
-    let mut document = parse(content, "Cargo.toml")?;
+    let mut document = parse(content, crate::constants::WORKSPACE_MANIFEST_FILE)?;
     let item = document
         .get_mut("workspace")
         .and_then(|item| item.get_mut("package"))

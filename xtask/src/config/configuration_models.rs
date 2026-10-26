@@ -115,6 +115,13 @@ pub(crate) enum TestRunner {
 }
 
 impl TestRunner {
+    /// Parses exact backend spellings using the same names passed to Cargo integrations.
+    pub(crate) fn parse(value: &str) -> Option<Self> {
+        [Self::Nextest, Self::Cargo]
+            .into_iter()
+            .find(|runner| runner.as_str() == value)
+    }
+
     /// Returns the backend name accepted by Cargo's test integrations.
     pub(crate) const fn as_str(self) -> &'static str {
         match self {

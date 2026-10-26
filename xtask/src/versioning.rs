@@ -405,7 +405,8 @@ pub(super) fn workspace_package_license(manifest: &str) -> Result<String, String
 
 /// Reads one quoted value from the root workspace package section.
 pub(super) fn workspace_package_value(manifest: &str, key: &str) -> Result<String, String> {
-    let document: toml::Table = configuration::parse(manifest, "Cargo.toml")?;
+    let document: toml::Table =
+        configuration::parse(manifest, crate::constants::WORKSPACE_MANIFEST_FILE)?;
     document
         .get("workspace")
         .and_then(|workspace| workspace.get("package"))

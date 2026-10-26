@@ -38,6 +38,9 @@ fn graph_vocabulary_precedes_qualified_imports_and_declarations() {
     for body in [
         "import other as dep\nuse Vocabulary as dict",
         "string message = \"ok\"\nuse Vocabulary as dict",
+        "string message = \"ok\"\nimport other as dep",
+        "module example",
+        "neu \"1.0\"",
     ] {
         let source = format!("neu \"1.0\"\nmodule example\n{body}\n");
         let error = scan_graph_source(source.as_bytes(), "example", 4)
@@ -45,6 +48,15 @@ fn graph_vocabulary_precedes_qualified_imports_and_declarations() {
             .expect("late vocabulary requirement must fail");
         assert_eq!(error.kind, GraphSyntaxErrorKind::InvalidSyntax, "{body}");
     }
+}
+
+/// Neither an empty source nor a lone language header completes the required prefix.
+#[test]
+fn graph_headers_must_complete_before_publication() {
+    for source in ["", "neu \"1.0\"\n"] {
+        assert!(scan_graph_source(source.as_bytes(), "example", 1).is_err());
+    }
+    assert!(scan_graph_source(b"neu \"1.0\"\nmodule example\n", "example", 1).is_ok());
 }
 
 /// Validates vocabulary identity, separator, alias grammar, and collisions independently.

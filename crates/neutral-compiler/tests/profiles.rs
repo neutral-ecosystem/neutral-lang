@@ -39,6 +39,25 @@ fn current_source_header_is_available() {
     );
 }
 
+/// Capture accepts canonical snake-case segments without admitting generated-name suffixes.
+#[test]
+fn source_module_segments_keep_canonical_name_boundaries() {
+    for name in ["a", "a1_b2", "a_2", "some_module::child2"] {
+        let source = format!("neu \"1.0\"\nmodule {name}\n");
+        assert_eq!(
+            source_module_name(source.as_bytes(), limits(), &CancellationToken::new()).unwrap(),
+            name
+        );
+    }
+    for name in ["A", "1a", "_a", "a_", "a__b", "aB", "é", "a::", "a::::b"] {
+        let source = format!("neu \"1.0\"\nmodule {name}\n");
+        assert!(
+            source_module_name(source.as_bytes(), limits(), &CancellationToken::new()).is_err(),
+            "{name}"
+        );
+    }
+}
+
 /// Historical and normalized-looking version spellings never fall back to the current grammar.
 #[test]
 fn old_unknown_and_lookalike_source_profiles_fail_closed() {

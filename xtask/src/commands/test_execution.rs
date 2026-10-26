@@ -77,14 +77,14 @@ impl TestExecution {
 
 /// Validates the supported backend names for command-line environment overrides.
 fn parse_runner(value: &str) -> Result<TestRunner, String> {
-    match value {
-        "nextest" => Ok(TestRunner::Nextest),
-        "cargo" => Ok(TestRunner::Cargo),
-        _ => Err(format!(
-            "{} must be nextest or cargo; found {value:?}",
-            constants::TEST_RUNNER_ENV
-        )),
-    }
+    TestRunner::parse(value).ok_or_else(|| {
+        format!(
+            "{} must be {} or {}; found {value:?}",
+            constants::TEST_RUNNER_ENV,
+            TestRunner::Nextest.as_str(),
+            TestRunner::Cargo.as_str(),
+        )
+    })
 }
 
 /// Verifies the selected runner early and explains how to install it.

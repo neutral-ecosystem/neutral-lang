@@ -26,6 +26,7 @@ use neutral_core::ordered::OrderedSet;
 use neutral_core::{
     CancellationToken, SourceContentDigest, VocabularyContentDigest, profile::LanguageProfile,
 };
+use neutral_ir::language::is_snake_name;
 use neutral_vocabulary::VocabularyLock;
 
 mod composition;
@@ -858,7 +859,7 @@ fn scan_vocabulary_requirements_policy(
         if words.next().is_some()
             || as_keyword != crate::language::graph_names::AS
             || !valid_vocabulary_identity(identity)
-            || !valid_name_segment(alias)
+            || !is_snake_name(alias)
         {
             return Err(ProjectCaptureError::InvalidHeader);
         }
@@ -947,16 +948,7 @@ fn valid_source_id(value: &str) -> bool {
 
 /// Checks one exact qualified snake-case logical module ID.
 fn valid_module_id(value: &str) -> bool {
-    !value.is_empty() && value.split("::").all(valid_name_segment)
-}
-
-/// Checks one lowercase snake-case name segment.
-fn valid_name_segment(value: &str) -> bool {
-    let mut bytes = value.bytes();
-    bytes.next().is_some_and(|byte| byte.is_ascii_lowercase())
-        && bytes.all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
-        && !value.ends_with('_')
-        && !value.contains("__")
+    !value.is_empty() && value.split("::").all(is_snake_name)
 }
 
 /// Checks the canonical vocabulary identity spelling during capture.

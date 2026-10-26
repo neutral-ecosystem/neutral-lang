@@ -136,6 +136,9 @@ fn automation_test_counts_ignore_metadata_and_substrings() {
 /// Unsupported backends and unsafe category filters fail rather than silently changing policy.
 #[test]
 fn automation_test_runner_selection_is_explicit() {
+    for runner in [TestRunner::Nextest, TestRunner::Cargo] {
+        assert_eq!(parse_runner(runner.as_str()).unwrap(), runner);
+    }
     assert_eq!(
         parse_runner("nextest").expect("nextest"),
         TestRunner::Nextest
@@ -143,6 +146,8 @@ fn automation_test_runner_selection_is_explicit() {
     assert_eq!(parse_runner("cargo").expect("cargo"), TestRunner::Cargo);
     assert!(parse_runner("unknown").is_err());
     assert!(parse_runner("").is_err());
+    assert!(parse_runner("Cargo").is_err());
+    assert!(parse_runner(" nextest").is_err());
     assert!(run_filter("bad) or all()").is_err());
     assert!(run_filter("").is_err());
 }

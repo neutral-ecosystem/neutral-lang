@@ -22,6 +22,21 @@ use neutral_core::{ByteSpan, CancellationToken, allocation::text, profile::V1_SO
 #[path = "../../tests/frontend/graph_syntax.rs"]
 mod tests;
 
+/// Source sections advance monotonically; later sections cannot reopen earlier ones.
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum SourcePhase {
+    /// The language header has not been read.
+    LanguageHeader,
+    /// The module header must follow the language header.
+    ModuleHeader,
+    /// Vocabulary uses may precede imports or declarations.
+    VocabularyUses,
+    /// Only further imports or declarations may follow.
+    Imports,
+    /// All header and import sections are closed.
+    Declarations,
+}
+
 /// One parsed, source-accounted logical import.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct GraphImport {
@@ -98,7 +113,7 @@ pub(crate) fn scan_graph_source_bounded(
         imports: Vec::new(),
         vocabulary_aliases: Vec::new(),
     };
-    let mut phase = 0_u8;
+    let mut phase = SourcePhase::LanguageHeader;
     // Once declarations begin, later lines cannot reopen the import section.
     let mut start = 0_usize;
     for (index, token) in lexed.tokens.iter().enumerate() {
@@ -117,7 +132,10 @@ pub(crate) fn scan_graph_source_bounded(
         }
         start = index + 1;
     }
-    if phase < 2 {
+    if matches!(
+        phase,
+        SourcePhase::LanguageHeader | SourcePhase::ModuleHeader
+    ) {
         return Err(GraphSyntaxError {
             kind: GraphSyntaxErrorKind::InvalidSyntax,
             span: span(bytes.len(), bytes.len()),
@@ -131,30 +149,30 @@ fn scan_line(
     line: &[Token],
     expected_module: &str,
     import_limit: u64,
-    phase: &mut u8,
+    phase: &mut SourcePhase,
     result: &mut GraphSourceSyntax,
 ) -> Result<(), GraphSyntaxError> {
     let line_span = token_span(line);
-    if *phase == 0 {
+    if *phase == SourcePhase::LanguageHeader {
         if !matches!(line, [Token { kind: TokenKind::Neu, .. }, Token { kind: TokenKind::StringLiteral(value), .. }] if !value.had_escape && value.value == V1_SOURCE_PROFILE)
         {
             return Err(invalid(line_span));
         }
-        *phase = 1;
+        *phase = SourcePhase::ModuleHeader;
         return Ok(());
     }
-    if *phase == 1 {
+    if *phase == SourcePhase::ModuleHeader {
         if !matches!(line[0].kind, TokenKind::Module)
             || parse_module_name(&line[1..])?.as_deref() != Some(expected_module)
         {
             return Err(invalid(line_span));
         }
         result.header_span = line_span;
-        *phase = 2;
+        *phase = SourcePhase::VocabularyUses;
         return Ok(());
     }
     if matches!(line[0].kind, TokenKind::Use) {
-        if *phase > 2 {
+        if *phase != SourcePhase::VocabularyUses {
             return Err(invalid(line_span));
         }
         let [
@@ -209,10 +227,10 @@ fn scan_line(
         });
     }
     if matches!(&line[0].kind, TokenKind::Identifier(word) if word == graph_names::IMPORT) {
-        if *phase > 3 {
+        if *phase == SourcePhase::Declarations {
             return Err(invalid(line_span));
         }
-        *phase = 3;
+        *phase = SourcePhase::Imports;
         let parsed = parse_import(line)?;
         if u64::try_from(result.imports.len()).unwrap_or(u64::MAX) >= import_limit {
             return Err(GraphSyntaxError {
@@ -230,7 +248,7 @@ fn scan_line(
     if matches!(line[0].kind, TokenKind::Module | TokenKind::Neu) {
         return Err(invalid(line_span));
     }
-    *phase = 4;
+    *phase = SourcePhase::Declarations;
     Ok(())
 }
 
