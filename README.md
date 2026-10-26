@@ -143,6 +143,7 @@ documentation. Test execution uses the configured nextest runner.
 
 | Need | Command |
 | --- | --- |
+| Show the authoritative command list | `cargo xtask --help` |
 | Verify the environment | `cargo xtask bootstrap` |
 | Run the daily development loop | `cargo xtask dev` |
 | Run the exact push CI gate | `cargo xtask ci pr` |
@@ -150,6 +151,8 @@ documentation. Test execution uses the configured nextest runner.
 | Apply formatting | `cargo xtask fmt --write` |
 | Run Clippy | `cargo xtask lint` |
 | Run compile and repository checks | `cargo xtask check` |
+| Check registered fixture hashes | `cargo xtask fixtures check` |
+| Synchronize hashes after reviewed fixture changes | `cargo xtask fixtures sync` |
 | Build the development profile | `cargo xtask build --profile dev` |
 | Generate the API website | `cargo xtask docs` |
 | Remove generated evidence | `cargo xtask clean` |
@@ -168,14 +171,16 @@ Cargo (Nextest does not support doctests). Use focused suites while editing.
 | Test scope | Command |
 | --- | --- |
 | Run every test suite and doctests | `cargo xtask test all` |
-| Run unit tests | `cargo xtask test unit` |
+| Run focused crate-local unit tests | `cargo xtask test unit` |
 | Run smoke tests | `cargo xtask test smoke` |
 | Run integration tests | `cargo xtask test integration` |
 | Run system tests | `cargo xtask test system` |
 | Run conformance tests | `cargo xtask test conformance` |
 | Run property tests | `cargo xtask test property` |
 | Run security tests | `cargo xtask test security` |
-| Run performance tests | `cargo xtask test performance --profile pr\|release\|soak` |
+| Run a short performance smoke | `cargo xtask test performance --profile pr` |
+| Measure release performance with memory checks | `cargo xtask test performance --profile release` |
+| Run the extended performance/soak profile | `cargo xtask test performance --profile soak` |
 
 </details>
 
@@ -191,21 +196,22 @@ Use these commands for quality gates, coverage, fuzzing, and analysis.
 | Run the normal quality gate | `cargo xtask quality` |
 | Run the release quality gate | `cargo xtask quality --profile release` |
 | Show quality status | `cargo xtask quality status` |
-| Render quality evidence | `cargo xtask quality render` |
 | Verify quality evidence | `cargo xtask quality verify` |
-| Evaluate retained quality | `cargo xtask quality evaluate --profile pr\|release` |
-| Approve release quality | `cargo xtask quality approve --release <version>` |
 | Reuse unchanged coverage or measure the whole workspace | `RUSTUP_TOOLCHAIN=nightly cargo xtask coverage` |
-| Run a fuzz smoke test | `RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz smoke` |
+| Resume development mutation analysis | `cargo xtask mutate` |
+| Run a fresh full mutation campaign for release evidence | `cargo xtask mutate --full` |
+| Run deterministic fuzz regressions | `cargo xtask fuzz smoke` |
 | Run full fuzz campaigns | `RUSTUP_TOOLCHAIN=nightly cargo xtask fuzz campaign` |
 
 </details>
 
 ### Artifacts, versions, and releases
 
-Use these commands to validate artifacts, inspect the TOML-derived tag, and
-prepare a release. Pushing a signed tag is a separate, explicit action that
-creates a draft GitHub Release.
+Release from clean `main` in two commands: `cargo xtask release prepare <version>`,
+then `cargo xtask release publish`. Omit the version when `Cargo.toml` already
+contains the intended one. Publication approves the prepared candidate and pushes
+`main` plus its signed tag atomically; the tag workflow creates a **draft** release.
+No separate approval, tag-creation or `git push` step is required.
 
 <details>
 <summary><strong>Commands</strong></summary>
@@ -215,15 +221,19 @@ creates a draft GitHub Release.
 | Validate an artifact | `cargo xtask validate <artifact>` |
 | Validate repository binaries | `cargo xtask validate binaries` |
 | Assemble a distribution | `cargo xtask package` |
-| Test and prepare a release | `cargo xtask release prepare [version]` |
-| Show the release tag | `cargo xtask release tag` |
+| Test and prepare the workspace version | `cargo xtask release prepare` |
+| Print the derived tag (does not create it) | `cargo xtask release tag` |
 | Approve and push main + signed tag for a draft release | `cargo xtask release publish` |
 | Build the release profile | `cargo xtask build --profile release` |
 | Show the workspace version | `cargo xtask version show` |
 | Check version consistency | `cargo xtask version check` |
-| Prepare a new version | `cargo xtask version prepare <version>` |
+| Update version metadata only (advanced) | `cargo xtask version prepare <version>` |
 
 </details>
+
+See [release and versioning](docs/release-and-versioning.md) for the complete
+sequence and advanced commands, and
+[quality and analysis](docs/quality-and-analysis.md) for ledger maintenance.
 
 ### Portable plans and environment evidence
 
@@ -236,7 +246,7 @@ Use these commands to manage portable plans and inspect the environment.
 | --- | --- |
 | Install a portable plan | `cargo xtask portable install <directory>` |
 | Verify the portable plan | `cargo xtask portable verify` |
-| Archive the portable plan | `cargo xtask portable snapshot` |
+| Create a local portable archive candidate | `cargo xtask portable snapshot` |
 | Audit the workstation | `cargo xtask environment verify` |
 | Print the environment manifest | `cargo xtask environment manifest` |
 

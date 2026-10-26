@@ -48,9 +48,11 @@ checklist filenames. `portable snapshot` creates an ignored, SHA-256-addressed
 archive candidate without network access.
 
 Inputs are tracked repository configuration and explicit command arguments.
-Outputs are terminal messages prefixed with a category and ignored generated
-files beneath `target/` or `test-results/`. It does not tag, push, upload,
-publish, mutate frozen contracts, or write into another repository.
+Outputs are terminal status messages and ignored generated files beneath `target/`
+or `test-results/`. Explicit `release prepare [version]` may commit version metadata;
+`release publish` records approval, creates a signed tag and atomically pushes
+`main` plus that tag. The GitHub workflow then creates a draft release. Ordinary
+development commands do not publish or write into another repository.
 
 ## Structure
 
@@ -70,8 +72,8 @@ publish, mutate frozen contracts, or write into another repository.
 | `tests/command_output.rs` | Executable-level reporting and script-compatible stdout contracts |
 
 Use `cargo xtask --help` for the authoritative command list. The root README
-documents contributor usage and migration from removed legacy names. Linux and
-Windows scripts are thin adapters that delegate here.
+documents current contributor commands. Linux and Windows scripts are thin
+adapters that delegate here.
 
 Local defaults live in [`config/automation.toml`](../config/automation.toml).
 The [developer command guide](../docs/workflow-optimization.md) maps other
@@ -85,6 +87,12 @@ Nextest integrations. `NEUTRAL_TEST_RUNNER=cargo` explicitly selects the standar
 Cargo compatibility backend. Missing nextest never silently changes the backend.
 `cargo xtask coverage` reuses verified results when measurement inputs match.
 When inputs change, it clears LLVM coverage data and measures the whole workspace again.
+
+`cargo xtask mutate` resumes development mutation analysis; `cargo xtask mutate --full`
+runs a fresh full campaign and records release evidence. Use `cargo xtask fixtures check`
+to verify registered fixture hashes, or `cargo xtask fixtures sync` after reviewed
+fixture changes. `cargo xtask fuzz smoke` runs deterministic regressions on the
+normal toolchain; full coverage-guided campaigns require nightly and `cargo-fuzz`.
 
 Full coverage-guided fuzzing, LLVM coverage, and mutation analysis require their
 documented external Cargo tools. Missing tools fail their command; bounded fuzz
