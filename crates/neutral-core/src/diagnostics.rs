@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Safe diagnostic values and deterministic canonical ordering.
+//!
+//! A [`Diagnostic`] stores a stable code, owning layer, severity, primary source
+//! location and caller-prepared parameters. It deliberately carries no localized
+//! message or host error object. Renderers can change wording without changing
+//! diagnostic identity or the canonical order used by concurrent producers.
+//!
+//! This module canonicalizes related locations but does not discover them, check
+//! source-map membership, enforce retention budgets or sanitize parameter text.
+//! Those checks belong where the data is produced. Likewise, [`DiagnosticCode`]
+//! accepts any nonempty ASCII spelling; it does not register a code family or
+//! guarantee that a code is supported by a particular consumer contract.
+//!
+//! Ordering starts with original source identity/range and stable code, then
+//! breaks ties using retained details and classifications. Including every field
+//! keeps total ordering consistent with equality; emission timing and translated
+//! messages cannot reorder the same set of diagnostic values.
 
 use crate::{CoreError, SourceLocation};
 use std::cmp::Ordering as CompareOrdering;
@@ -15,6 +31,8 @@ impl DiagnosticCode {
     /// # Errors
     ///
     /// Returns [`CoreError::InvalidDiagnosticCode`] for empty or non-ASCII input.
+    /// Conversion to owned text happens before validation and is not a fallible
+    /// allocation API; bounded callers should prepare the owned value first.
     pub fn new(value: impl Into<String>) -> Result<Self, CoreError> {
         let value = value.into();
         if value.is_empty() || !value.is_ascii() {
@@ -85,6 +103,7 @@ impl Ord for Diagnostic {
     /// Remaining fields break ties to keep ordering consistent with equality.
     /// Sorting never depends on emission timing or localized rendered messages.
     fn cmp(&self, other: &Self) -> CompareOrdering {
+        // SourceLocation compares digest then span; host filenames never enter this order.
         self.primary
             .cmp(&other.primary)
             .then_with(|| self.code.cmp(&other.code))
@@ -109,6 +128,8 @@ impl Diagnostic {
     /// Safety is the caller's responsibility: parameters are stored as supplied,
     /// not escaped or redacted here. Rendering and input-derived text checks must
     /// happen at the owning diagnostic boundary.
+    /// `truncated` records a caller's prior truncation decision; this constructor
+    /// neither truncates parameters nor changes an error into an accepted result.
     #[must_use]
     pub fn new(
         code: DiagnosticCode,
@@ -130,8 +151,14 @@ impl Diagnostic {
     }
 
     /// Attaches deterministic source locations related to the primary failure.
+    ///
+    /// Replaces any existing related locations, sorts them and removes exact
+    /// duplicates. This does not remove the primary location if it is supplied
+    /// again, nor validate any range against its source. Budget the input before
+    /// calling: sorting work and its temporary storage are not checked here.
     #[must_use]
     pub fn with_related(mut self, mut related: Vec<SourceLocation>) -> Self {
+        // Canonicalize at attachment, so equality and ordering do not depend on producer traversal.
         related.sort();
         related.dedup();
         self.related = related;
@@ -168,7 +195,8 @@ impl Diagnostic {
         self.primary
     }
 
-    /// Returns only safe diagnostic parameters.
+    /// Borrows parameters previously prepared as safe by the diagnostic producer.
+    /// No escaping or redaction is performed when reading them back.
     #[must_use]
     pub fn parameters(&self) -> &[String] {
         &self.parameters

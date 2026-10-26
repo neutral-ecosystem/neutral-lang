@@ -1,6 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Thread-local reservation failure scopes; never replace the process allocator.
+//!
+//! A sweep first calls [`observe`](crate::allocation::testing::observe)
+//! without a failure index to count checkpoints,
+//! then repeats the same operation with each zero-based index selected. Setup,
+//! fixture construction and result assertions belong outside the observed closure
+//! so they do not shift the boundary being tested. The operation itself still
+//! owns error propagation, rollback and publication guarantees.
+//!
+//! [`observe_cancellation`](crate::allocation::testing::observe_cancellation)
+//! uses the same checkpoint sequence but cancels a real
+//! token instead of synthesizing an allocation error. A passing test must therefore
+//! prove that normal cancellation checks reject publication. RAII guards restore
+//! outer observation state even during unwinding; cancellation already requested
+//! on a token stays requested. Child threads do not inherit either local policy.
 
 use super::AllocationError;
 use crate::CancellationToken;
@@ -48,6 +62,8 @@ impl Drop for Restore {
 /// Setup and assertions should run outside the closure so only the operation
 /// under review contributes to the count. The result carries no partial output
 /// unless the operation's own public contract explicitly permits it.
+/// The returned count includes the rejected checkpoint if execution reached it;
+/// subsequent checkpoints are counted if the operation continues after failure.
 pub fn observe<T>(fail_at: Option<usize>, operation: impl FnOnce() -> T) -> (T, usize) {
     let previous = STATE.with(|state| {
         let previous = state.get();
@@ -58,6 +74,7 @@ pub fn observe<T>(fail_at: Option<usize>, operation: impl FnOnce() -> T) -> (T, 
         });
         previous
     });
+    // Install restoration before running user code, including code that might unwind.
     let restore = Restore(previous);
     let result = operation();
     let count = STATE.with(|state| state.get().count);
@@ -88,6 +105,7 @@ pub(super) fn checkpoint() -> Result<(), AllocationError> {
         if !current.active {
             return Ok(());
         }
+        // Compare before incrementing so failure and cancellation share zero-based indexes.
         let failed = current.fail_at == Some(current.count);
         CANCEL.with(|signal| {
             if let Some((index, signal)) = signal.borrow().as_ref()
@@ -96,6 +114,7 @@ pub(super) fn checkpoint() -> Result<(), AllocationError> {
                 signal.cancel();
             }
         });
+        // Record the attempt even when it will fail, keeping sweep counts reproducible.
         current.count += 1;
         state.set(current);
         if failed { Err(AllocationError) } else { Ok(()) }

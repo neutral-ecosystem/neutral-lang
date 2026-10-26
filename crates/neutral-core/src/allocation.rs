@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Safe fallible ownership primitives. Semantic count, depth and cancellation checks belong to callers.
+//! Fallible storage and shared ownership for already-bounded request data.
+//!
+//! [`RetainCapacity`] reserves vector elements or string bytes before mutation;
+//! [`text`], [`boxed`] and [`Shared::try_new`] cover owned text, boxed children and
+//! immutable shared roots. [`TryClone`] propagates failure through composite
+//! values instead of hiding allocating copies behind ordinary `Clone`.
+//!
+//! These helpers enforce allocation success, not semantic limits. Callers must
+//! check count, depth, total retention, work and cancellation before requesting
+//! storage. A successful reservation also does not make an entire request atomic:
+//! callers must keep incomplete results private until validation finishes.
+//!
+//! Every explicit reservation goes through [`checkpoint`]. With the
+//! `allocation-testing` feature, tests can fail a chosen boundary or request
+//! cancellation there; ordinary builds do not install a process-wide allocator
+//! hook. Checkpoints count reservation attempts even when existing capacity would
+//! suffice, so their sequence describes this implementation, not physical mallocs.
 
 /// Allocation or capacity failure without formatting, heap-owned error text or partial output.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -23,7 +39,10 @@ pub trait RetainCapacity {
     /// # Errors
     /// Returns allocation/capacity failure or a deterministic test failure.
     fn try_retain(&mut self, additional: usize) -> Result<(), AllocationError>;
-    /// Reserves exactly the additional capacity requested, without changing retained content.
+    /// Requests the minimum additional capacity, without changing retained content.
+    ///
+    /// The allocator may provide more storage; this avoids the collection's own
+    /// speculative growth policy rather than promising an exact heap size.
     ///
     /// # Errors
     /// Returns allocation/capacity failure or a deterministic test failure.
@@ -65,10 +84,12 @@ impl RetainCapacity for String {
 #[cfg(feature = "allocation-testing")]
 pub mod testing;
 
-/// Fallibly constructed immutable shared ownership for successor-only public contracts.
+/// Fallibly constructed immutable shared ownership for allocation-aware public contracts.
 ///
 /// Unlike standard `Arc` construction, this type offers no infallible allocating
 /// constructor or slice conversion. Cloning shares an existing allocation.
+/// Construction only covers this wrapper's allocation: any allocations used to
+/// build `T` must already have succeeded through the caller's fallible path.
 pub struct Shared<T>(triomphe::Arc<T>);
 
 impl<T> Shared<T> {
@@ -77,6 +98,7 @@ impl<T> Shared<T> {
     /// # Errors
     /// Returns [`AllocationError`] if the shared header/data allocation fails.
     pub fn try_new(value: T) -> Result<Self, AllocationError> {
+        // The checkpoint precedes ownership publication; failure drops the supplied value.
         checkpoint()?;
         triomphe::Arc::try_new(value)
             .map(Self)
@@ -137,6 +159,7 @@ pub fn text(value: &str) -> Result<String, AllocationError> {
     result
         .try_retain_exact(value.len())
         .map_err(|_| AllocationError)?;
+    // UTF-8 byte length is also the capacity required by push_str, so it cannot grow here.
     result.push_str(value);
     Ok(result)
 }
@@ -187,6 +210,7 @@ pub fn copy_slice<T: TryClone>(values: &[T]) -> Result<Vec<T>, AllocationError> 
     result
         .try_retain_exact(values.len())
         .map_err(|_| AllocationError)?;
+    // Keep the copied prefix local: a failed child drops it instead of exposing a partial copy.
     for value in values {
         result.push(value.try_clone()?);
     }

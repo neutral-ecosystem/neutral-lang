@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Fallibly growing canonical indexes. Callers charge insertion shifts and key comparisons to work policy.
+//! Canonical request-local maps and sets with fallible storage growth.
+//!
+//! [`OrderedMap`] keeps unique keys in a sorted vector. Binary search gives
+//! deterministic lookup and iteration follows key order regardless of insertion
+//! order, without hash seeds or per-node tree allocations. [`OrderedSet`] reuses
+//! that storage with unit values rather than maintaining a second algorithm.
+//! Borrowed-key lookup avoids allocating a temporary owned key.
+//!
+//! This trades insertion/removal speed for simple, fallible ownership: a shift
+//! can move a linear number of entries and a comparison may itself inspect long
+//! keys. Callers must budget those costs before accepting hostile input. The map
+//! does not enforce work, cancellation or key/value size limits on their behalf.
+//!
+//! New membership reserves capacity before mutation; replacing an existing value
+//! needs no growth. An [`Entry`] holds an exclusive borrow and pre-reserved slot,
+//! so installation cannot lose that reservation to another mutation. Construction
+//! of the supplied value (including its `Default`) remains the caller's concern.
 
 use crate::allocation::{AllocationError as E, RetainCapacity, TryClone};
 use std::borrow::Borrow;
@@ -39,6 +55,8 @@ impl<K: Ord, V> OrderedMap<K, V> {
         self.entries.is_empty()
     }
     /// Finds a borrowed key without allocating.
+    /// Returns the occupied index or the insertion point that preserves ordering.
+    /// Borrowed and owned key ordering must agree, as required by [`Borrow`].
     fn position<Q: Ord + ?Sized>(&self, key: &Q) -> Result<usize, usize>
     where
         K: Borrow<Q>,
@@ -75,8 +93,10 @@ impl<K: Ord, V> OrderedMap<K, V> {
     /// Returns allocation failure without changing the index when growth cannot be reserved.
     pub fn insert(&mut self, key: K, value: V) -> Result<Option<V>, E> {
         match self.position(&key) {
+            // Preserve the stored key: replacement changes only its associated value.
             Ok(index) => Ok(Some(std::mem::replace(&mut self.entries[index].1, value))),
             Err(index) => {
+                // Reserve before shifting: a failed reservation leaves membership and values intact.
                 self.entries.try_retain(1)?;
                 self.entries.insert(index, (key, value));
                 Ok(None)
@@ -84,6 +104,9 @@ impl<K: Ord, V> OrderedMap<K, V> {
         }
     }
     /// Reserves a vacant entry before any nonallocating default is installed.
+    ///
+    /// Holding the returned handle prevents intervening map mutations. Dropping
+    /// it without installation leaves membership unchanged, but may retain capacity.
     ///
     /// # Errors
     /// Returns allocation failure before changing entry membership.
@@ -99,6 +122,7 @@ impl<K: Ord, V> OrderedMap<K, V> {
         })
     }
     /// Removes one exact key without allocating.
+    /// Removing an entry shifts its sorted suffix; callers must account for that work.
     pub fn remove<Q: Ord + ?Sized>(&mut self, key: &Q) -> Option<V>
     where
         K: Borrow<Q>,
@@ -130,6 +154,7 @@ impl<K: Ord, V> OrderedMap<K, V> {
 impl<K: TryClone, V: TryClone> TryClone for OrderedMap<K, V> {
     /// Copies retained canonical entries fallibly without repeating insertion work.
     fn try_clone(&self) -> Result<Self, E> {
+        // Copying the already-sorted sequence preserves uniqueness without quadratic reinsertion.
         Ok(Self {
             entries: self.entries.try_clone()?,
         })
@@ -173,6 +198,9 @@ pub struct Entry<'a, K, V> {
 }
 impl<'a, K, V> Entry<'a, K, V> {
     /// Installs the supplied nonallocating value after successful reservation.
+    ///
+    /// An occupied slot keeps its current value and drops the supplied value.
+    /// Arguments are evaluated before this method runs, even for occupied slots.
     pub fn or_insert(self, value: V) -> &'a mut V {
         let index = match self.position {
             Ok(index) => index,
@@ -186,6 +214,7 @@ impl<'a, K, V> Entry<'a, K, V> {
 }
 impl<'a, K, V: Default> Entry<'a, K, V> {
     /// Installs an empty default; callers must use a nonallocating `Default` implementation.
+    /// The default is constructed even when the key already exists.
     pub fn or_default(self) -> &'a mut V {
         self.or_insert(V::default())
     }

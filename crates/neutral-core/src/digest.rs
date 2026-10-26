@@ -1,6 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Typed exact-byte and semantic digests with frozen transcript framing.
+//!
+//! Source, vocabulary and encoded-section digests hash their supplied bytes
+//! verbatim. Distinct wrapper types prevent accidental substitution between
+//! identity layers even when the raw SHA-256 values happen to match. Reconstructing
+//! a wrapper from raw bytes does not prove that those bytes match any captured
+//! content; the caller must establish that relationship at its trust boundary.
+//!
+//! [`SemanticDigest`] instead hashes a caller-defined transcript. [`nht_frame`]
+//! uses explicit big-endian lengths to separate tags and payloads, and
+//! [`SemanticDigest::from_nht`] adds the frozen outer envelope. Domain choice,
+//! canonical value order, semantic exclusions and profile compatibility belong
+//! to the identity layer constructing that transcript, not to SHA-256 itself.
+//!
+//! Text is also a contract: source/vocabulary display uses prefixed lowercase
+//! hex, vocabulary parsing rejects alternate spellings, and semantic display uses
+//! unprefixed lowercase hex. Hashing is an integrity/identity operation, not a
+//! signature, authorization check or proof that an artifact is semantically valid.
 
 use crate::CoreError;
 use sha2::{Digest, Sha256};
@@ -88,6 +105,7 @@ impl VocabularyContentDigest {
         if value.len() != SHA256_TEXT_LENGTH || !value.starts_with(SHA256_TEXT_PREFIX) {
             return Err(DigestTextError::InvalidSha256Text);
         }
+        // Exact length fixes the pair count; decode ASCII bytes without allocating substrings.
         let mut bytes = [0_u8; 32];
         let hexadecimal = &value.as_bytes()[SHA256_TEXT_PREFIX.len()..];
         for (index, byte) in bytes.iter_mut().enumerate() {
@@ -108,8 +126,13 @@ impl VocabularyContentDigest {
     }
 
     /// Compares digest bytes without data-dependent early exit.
+    ///
+    /// Visits all bytes instead of revealing the first mismatch position through
+    /// source-level control flow. This is not a general cryptographic timing
+    /// guarantee and does not authenticate a vocabulary bundle's publisher.
     #[must_use]
     pub fn securely_matches(self, other: Self) -> bool {
+        // OR preserves any earlier mismatch; XOR makes equal pairs contribute zero.
         self.0
             .iter()
             .zip(other.0)
@@ -162,7 +185,8 @@ impl SemanticDigest {
     pub fn from_transcript(transcript: &[u8]) -> Self {
         Self(Sha256::digest(transcript).into())
     }
-    /// Reconstructs a typed semantic digest from validated transcript bytes.
+    /// Reconstructs a typed semantic digest from a supplied 32-byte hash value.
+    /// The caller must verify its relationship to the intended transcript.
     #[must_use]
     pub const fn from_raw_bytes(bytes: [u8; 32]) -> Self {
         Self(bytes)
@@ -175,6 +199,7 @@ impl SemanticDigest {
     /// Returns an error when a tag is non-ASCII or a framed length cannot be
     /// represented by the frozen transcript integer widths.
     pub fn from_nht(domain: &str, payload: &[u8]) -> Result<Self, CoreError> {
+        // Wrap exactly once: domain framing separates meaning, envelope framing fixes NHT-v1.
         let domain = nht_frame(domain, payload)?;
         let transcript = nht_frame(HASH_TRANSCRIPT_ENVELOPE, &domain)?;
         let bytes: [u8; 32] = Sha256::digest(transcript).into();
@@ -204,6 +229,9 @@ impl fmt::Display for SemanticDigest {
 /// Explicit lengths distinguish tuples that collide under plain concatenation.
 /// This low-level helper checks representable lengths, not application budgets;
 /// large or hostile inputs need a bounded encoder before reaching this boundary.
+/// Storage uses ordinary vector allocation; length checks do not turn allocator
+/// exhaustion into a returned `CoreError`. Allocation-aware identity builders
+/// must retain their own fallible framing path rather than assume this helper is one.
 ///
 /// # Errors
 ///
@@ -215,6 +243,7 @@ pub fn nht_frame(tag: &str, payload: &[u8]) -> Result<Vec<u8>, CoreError> {
     let tag_length = u16::try_from(tag.len()).map_err(|_| CoreError::TranscriptLengthExceeded)?;
     let payload_length =
         u64::try_from(payload.len()).map_err(|_| CoreError::TranscriptLengthExceeded)?;
+    // Wire-width checks and host capacity arithmetic are separate: both must fit.
     let capacity = 2_usize
         .checked_add(tag.len())
         .and_then(|length| length.checked_add(8))

@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Stable language-profile, capability, and default-limit contracts.
+//!
+//! A source header selects an exact [`LanguageProfile`], independent of the
+//! workspace's package/release version. Recognition does not parse a version
+//! range, accept alternate spellings or fall back to a nearby profile. Historical
+//! spellings may remain as constants for rejection tests and archived vectors
+//! without becoming accepted entries in the current discovery catalogue.
+//!
+//! [`language_profiles`] exposes a deterministic catalogue of availability and
+//! foundational data capabilities. These coarse capabilities do not promise every
+//! expression, expansion or artifact feature: those require their separately
+//! versioned contracts and exact compatibility checks at the relevant boundary.
+//! Adding an enum variant alone must not silently advertise implementation support.
+//!
+//! The `DEFAULT_*` constants are shared starting ceilings, not mutable settings
+//! or automatically enforced counters. Request constructors decide which defaults
+//! to apply and must preserve independent caller limits through later phases.
 
 /// Historical source spelling retained for literal rejection and archived vectors.
 pub const V0_SOURCE_PROFILE: &str = "0.1";
@@ -41,6 +57,8 @@ pub enum LanguageProfile {
 
 impl LanguageProfile {
     /// Selects a recognized profile from an exact unescaped header value.
+    /// Returns `None` for historical, malformed or unsupported spellings; the
+    /// caller owns header decoding and the resulting source diagnostic.
     #[must_use]
     pub const fn from_source_version(value: &str) -> Option<Self> {
         if const_str_eq(value, V1_SOURCE_PROFILE) {
@@ -113,7 +131,7 @@ impl LanguageCapability {
 pub struct LanguageProfileDescriptor {
     /// Exact source-level profile.
     profile: LanguageProfile,
-    /// Current fail-open or fail-closed availability.
+    /// Whether this exact recognized profile may produce authoritative output.
     availability: ProfileAvailability,
     /// Stable implemented capabilities, empty for unavailable profiles.
     capabilities: &'static [LanguageCapability],
@@ -156,12 +174,15 @@ const LANGUAGE_PROFILES: &[LanguageProfileDescriptor] = &[LanguageProfileDescrip
 }];
 
 /// Returns the complete deterministic profile and capability catalogue.
+/// The borrowed static slice needs no allocation or host/toolchain discovery.
 #[must_use]
 pub const fn language_profiles() -> &'static [LanguageProfileDescriptor] {
     LANGUAGE_PROFILES
 }
 
 /// Returns the discovery record for one recognized profile.
+/// Accepting the closed enum makes unknown source spellings the responsibility
+/// of [`LanguageProfile::from_source_version`], not this catalogue lookup.
 #[must_use]
 pub const fn language_profile(profile: LanguageProfile) -> &'static LanguageProfileDescriptor {
     match profile {
@@ -170,9 +191,12 @@ pub const fn language_profile(profile: LanguageProfile) -> &'static LanguageProf
 }
 
 /// Compares ASCII profile spellings in a constant context.
+/// Byte equality is intentional: no trimming, Unicode normalization or numeric
+/// version parsing may turn a different source spelling into an accepted profile.
 const fn const_str_eq(left: &str, right: &str) -> bool {
     let left = left.as_bytes();
     let right = right.as_bytes();
+    // Index only after equal lengths are established, keeping const evaluation bounds-safe.
     if left.len() != right.len() {
         return false;
     }

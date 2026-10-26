@@ -1,6 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Validated structural ceilings shared by source and vocabulary processing.
+//!
+//! [`StructuralLimits`] is an immutable policy value, not a counter or allocator.
+//! It groups source bytes, diagnostic retention, scalar sizes, container widths,
+//! nesting and aggregate value traversal. Owning phases must compare measured or
+//! preflighted sizes with these ceilings before proportional work or allocation;
+//! merely carrying this struct does not enforce a bound.
+//!
+//! [`StructuralLimits::new`] requires positive source/diagnostic bounds and seeds
+//! the remaining dimensions from the source-byte bound. The `with_*` methods
+//! independently replace one dimension and reject zero. They do not intersect
+//! with another policy or infer relationships between counts, bytes and depth.
+//! Shared profile defaults live in [`crate::profile`]; callers choose explicitly
+//! how to apply those defaults and any tighter request-specific controls.
+//!
+//! These are foundational input limits. Project graphs, semantic evaluation,
+//! encoded artifacts and public consumer views require their own independent
+//! work/retention controls at the layers that understand those structures.
 
 use crate::CoreError;
 
@@ -32,6 +49,10 @@ pub struct StructuralLimits {
 impl StructuralLimits {
     /// Creates limits when all bounds are nonzero.
     ///
+    /// Only source bytes and diagnostic count are supplied explicitly. All other
+    /// ceilings initially equal `source_bytes`; callers needing profile defaults
+    /// or tighter independent bounds must apply the corresponding builders.
+    ///
     /// # Errors
     ///
     /// Returns [`CoreError::ZeroLimit`] when a required bound is zero.
@@ -39,6 +60,7 @@ impl StructuralLimits {
         if source_bytes == 0 || diagnostics == 0 {
             return Err(CoreError::ZeroLimit);
         }
+        // Seed independent fields without inventing cross-dimensional ratios or hidden defaults.
         Ok(Self {
             source_bytes,
             diagnostics,

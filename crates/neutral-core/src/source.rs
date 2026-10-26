@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Checked original-byte spans and source coordinates shared across the pipeline.
+//!
+//! [`ByteSpan`] guarantees an ordered half-open range, not membership in a source.
+//! [`SourceLocation`] pairs that range with an exact byte digest so attribution
+//! survives parsing, normalization and independent artifact reading. The owning
+//! source-map validator must still check bounds against the captured byte length.
+//! Neither value contains a host path or grants access to source contents.
+//!
+//! [`line_column_at`] is a display projection over supplied bytes, not a replacement
+//! identity. It counts bytes rather than Unicode scalars, graphemes or screen
+//! cells, accepts EOF and treats CRLF as one newline. Editors needing character
+//! columns or repeated lookups should build their own validated/indexed projection
+//! while retaining these original-byte coordinates for diagnostics.
 
 use crate::{CoreError, SourceContentDigest};
 
@@ -15,6 +27,9 @@ pub struct ByteSpan {
 
 impl ByteSpan {
     /// Creates a half-open span when `start` does not follow `end`.
+    ///
+    /// Empty spans are valid insertion/EOF locations. No source is supplied here,
+    /// so neither source bounds nor UTF-8 character boundaries can be checked.
     ///
     /// # Errors
     ///
@@ -39,6 +54,7 @@ impl ByteSpan {
     }
 
     /// Returns the number of bytes in this span.
+    /// The constructor's ordering invariant makes subtraction safe without saturation.
     #[must_use]
     pub const fn len(self) -> u64 {
         self.end - self.start
@@ -120,6 +136,7 @@ impl LineColumn {
 ///
 /// Returns [`CoreError::OffsetOutOfBounds`] when `offset` exceeds `bytes`.
 pub fn line_column_at(bytes: &[u8], offset: u64) -> Result<LineColumn, CoreError> {
+    // An unrepresentable host index must fail the bounds check, never wrap into valid input.
     let offset = usize::try_from(offset).unwrap_or(usize::MAX);
     if offset > bytes.len() {
         return Err(CoreError::OffsetOutOfBounds {
@@ -137,6 +154,8 @@ pub fn line_column_at(bytes: &[u8], offset: u64) -> Result<LineColumn, CoreError
                 line = line.saturating_add(1);
                 column = 1;
                 index += 1;
+                // Consume LF only if it precedes the requested offset. At LF itself,
+                // CR has already advanced the line, yielding column one as documented.
                 if index < offset && bytes.get(index) == Some(&b'\n') {
                     index += 1;
                 }
