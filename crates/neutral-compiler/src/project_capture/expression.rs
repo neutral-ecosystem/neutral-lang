@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Explicit expression capture; shared integrity phases never retry a historical envelope.
+//!
+//! The public request combines a data-only source/lock envelope with the exact
+//! expression/evaluator/expansion/decimal tuple and independent policies. Capture
+//! rejects unsupported selectors/features before interpreting the request under a
+//! different grammar; recognized tuples never imply fallback or runtime bindings.
+//!
+//! The private composition phase validates bytes, header agreement and the complete
+//! nominal catalogue. Successful expression capture then retains that immutable
+//! closure and caller policies for compilation/reader intersection. It establishes
+//! input ownership, not complete expression typing or executable behavior.
+//! Identity projection and replay use retained exact bytes without host I/O.
 
 use super::{
     CapturedCompositionProject, CapturedCompositionProjectRequest, CapturedProjectRequest,
@@ -33,6 +44,7 @@ pub fn source_module_name(
     if bytes.len() as u64 > limits.values().source_bytes_per_unit {
         return Err(ExpressionCaptureFailure::Limit);
     }
+    // This reads capture's narrow header facts, not complete declarations or import resolution.
     let header = super::scan_headers(bytes, Some(cancel))?;
     if header.profile != neutral_core::profile::V1_SOURCE_PROFILE {
         return Err(ExpressionCaptureFailure::Unsupported);
@@ -281,6 +293,7 @@ pub(crate) fn capture_expression_observed(
 }
 
 impl From<ProjectCaptureError> for ExpressionCaptureFailure {
+    /// Preserves the original capture classification within the expression request envelope.
     fn from(error: ProjectCaptureError) -> Self {
         Self::Capture(CompositionCaptureFailure::Capture(error))
     }

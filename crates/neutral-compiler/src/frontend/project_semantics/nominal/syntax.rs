@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Shared source-value token helpers for `/3` nominal defaults.
+//!
+//! Converts raw record/variant member syntax into private roots before nominal
+//! lookup. Member types/default tokens retain their source occurrence; neither
+//! default materialization nor public signature closure happens during parsing.
+//! `variant` is contextual rather than a globally reserved identifier.
+//!
+//! Top-level splitting treats nested values and generic type arguments as opaque
+//! groups so their commas cannot become surrounding member separators. A final
+//! comma is optional, empty interior members are rejected, and variant alternatives
+//! cannot declare field defaults. Shared type parsing distinguishes malformed
+//! grammar from fallible-retention failure without importing host state.
 
 use super::{
     ByteSpan, E, LogicalModuleIdentity, ModuleSymbolIdentity, Root, SourceLocation, TypeExpr,
@@ -143,6 +154,7 @@ fn parsed_fields(tokens: &[Token], limit: u64) -> Result<Vec<(String, TypeExpr)>
     let mut result = Vec::new();
     let mut names = neutral_core::ordered::OrderedSet::new();
     for member in split(tokens)? {
+        // Parse the field contract before its default; initializer tokens are interpreted in the full scope later.
         let end = member
             .iter()
             .position(|t| matches!(t.kind, TokenKind::Equals))
@@ -181,6 +193,7 @@ fn parsed_fields(tokens: &[Token], limit: u64) -> Result<Vec<(String, TypeExpr)>
 
 /// Splits top-level members only, permitting one final comma and rejecting empty interior entries.
 pub(super) fn split(tokens: &[Token]) -> Result<Vec<&[Token]>, E> {
+    // This helper handles type syntax too: angle-bracket commas belong to nested generic arguments.
     let mut result = Vec::new();
     let mut start = 0;
     let mut depth = 0;

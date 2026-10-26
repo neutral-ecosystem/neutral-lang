@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Shared bounded type and header syntax for current captured-project compilers.
+//!
+//! Consumes an entire already-lexed type: scalars, contextual inert locations,
+//! local/qualified nominal names and invariant list/reference/nullable wrappers.
+//! A parsed name retains the original occurrence for later resolution diagnostics;
+//! parsing does not determine whether its owner exists, is public or is the right kind.
+//!
+//! `Ok(None)` means malformed/incomplete grammar or excessive syntactic depth;
+//! allocation failure remains an explicit `Err`. This distinction prevents a
+//! failed retention from masquerading as an ordinary unrecognized spelling.
+//! Recursion is bounded before allocating wrappers; semantic wrapper constraints
+//! are enforced after complete syntax has been accepted.
 
 use super::TypeExpr;
 use crate::frontend::{Token, TokenKind};
@@ -13,6 +24,7 @@ pub(crate) fn parse_complete_type_fallible(
 ) -> Result<Option<TypeExpr>, neutral_core::allocation::AllocationError> {
     let mut index = 0;
     let ty = parse_type_fallible(tokens, &mut index, 0)?;
+    // A valid prefix is insufficient: trailing tokens must not turn into a second implicit type.
     Ok(ty.filter(|_| index == tokens.len()))
 }
 

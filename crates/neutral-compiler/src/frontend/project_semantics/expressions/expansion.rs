@@ -1,6 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Definition-scoped applications and checked finite Cartesian enumeration.
+//!
+//! Templates are typed in definition scope, including unused/private definitions
+//! and all branches. Parameters retain declared order, exact types, explicit
+//! static/deferred phases and definition-scoped defaults. Applications resolve
+//! caller arguments separately, substitute lexical values hygienically and leave
+//! no runtime call node. Recursion is rejected through an active-definition stack.
+//!
+//! Matrices require static finite axes and preflight the full unfiltered Cartesian
+//! product before tuple enumeration. Filters/exclusions can remove output but cannot
+//! erase visitation costs or renumber original axis positions. Deferred data may
+//! populate generated bodies, never choose their count, names or topology. Generated
+//! names share the ordinary declaration namespace and preserve original-index suffixes.
+//!
+//! Nested typing, applications, static checks and copying share persistent expression
+//! and expansion allowances. Real application/definition/argument/axis lineage is
+//! retained separately from generated semantic identity. Any failure discards the
+//! request's unpublished generation instead of returning a partially expanded project.
 
 use super::{
     BindingSyntax, ByteSpan, E, ExpansionAttribution, Expression, ExpressionBody, Frame, Lex,
@@ -46,6 +63,7 @@ impl<'a> State<'a, '_> {
     }
 
     /// Types every definition, including unused/private definitions and recursive skipped paths.
+    /// Validates a non-callable contract; it does not execute arithmetic in unused bodies.
     pub(super) fn template(&mut self, owner: &ModuleSymbolIdentity) -> Result<(), E> {
         self.in_expansion(|state| state.template_inner(owner))
     }
@@ -114,6 +132,7 @@ impl<'a> State<'a, '_> {
             };
             self.budget.retain::<Local<'_>>(1)?;
             grow(&mut frames[0], 1)?;
+            // Insert after typing its default, so that default sees earlier parameters, not itself.
             frames[0].push(Local::Bound(name, self.budget.copy_type(&ty)?, phase));
             self.budget.retain::<TemplateParameter>(1)?;
             grow(&mut parameters, 1)?;
@@ -160,6 +179,8 @@ impl<'a> State<'a, '_> {
     }
 
     /// Checks all arguments/defaults in declared order and substitutes at definition scope.
+    /// Caller expressions and definition defaults use separate frames; this is
+    /// compile-time substitution, not evaluation under ambient consumer bindings.
     #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Explicit lexical caller/definition frames are kept at this single application boundary.
     fn application(
         &mut self,
@@ -422,6 +443,7 @@ impl<'a> State<'a, '_> {
                 axes.push((*name, inner, items));
             }
             let mut product = u64::from(!axes.iter().any(|(_, _, values)| values.is_empty()));
+            // An empty axis annihilates the product before multiplication, even after large preceding axes.
             for (_, _, values) in &axes {
                 product = product
                     .checked_mul(values.len() as u64)
@@ -597,6 +619,7 @@ impl<'a> State<'a, '_> {
                         },
                     ))?;
                 }
+                // Mixed-radix counting preserves original axis positions, including filtered tuples.
                 for axis in (0..indices.len()).rev() {
                     indices[axis] += 1;
                     if indices[axis] < axes[axis].2.len() as u64 {

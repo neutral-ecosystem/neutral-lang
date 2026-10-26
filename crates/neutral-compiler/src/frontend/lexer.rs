@@ -1,6 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Raw lexer for source text, exact trivia, and physical line boundaries.
+//!
+//! This shared lexer serves header/nominal syntax and literal decoding; the
+//! expression parser owns its wider contextual operator grammar. Input encoding
+//! is checked before slicing Unicode scalars. A leading BOM may be skipped as a
+//! token but remains part of original offsets and captured content identity.
+//!
+//! Tokens preserve CR/LF/CRLF boundaries even inside block comments; comments
+//! and horizontal whitespace remain separate trivia. Later declaration parsing
+//! decides which boundaries terminate statements. Numeric candidates retain
+//! spelling for exact validation instead of choosing floating-point values here.
+//!
+//! Retention bounds decoded UTF-8 string bytes, uses fallible token/trivia growth
+//! and polls explicit cancellation inside the scan. Failure discards local buffers.
+//! Lexing does not resolve names, enforce nominal types or acquire additional source.
 
 use super::{
     DecodedString, FrontendError, LexedSource, PhysicalLineEnd, Token, TokenKind, Trivia,
@@ -100,6 +114,7 @@ pub(super) fn lex_bounded(
                 index = end;
             }
             b'/' if source.get(index + 1) == Some(&b'*') => {
+                // Comment contents are trivia; their newlines still separate surrounding source tokens.
                 let (end, line_ends) = block_comment(source, index, policy)?;
                 trivia.push(Trivia {
                     kind: TriviaKind::BlockComment,
@@ -168,6 +183,7 @@ fn starts_number(source: &[u8], index: usize, byte: u8) -> bool {
 
 /// Consumes a numeric candidate for later exact semantic validation.
 fn consume_number_candidate(source: &[u8], start: usize) -> usize {
+    // Keep a suspicious spelling whole so validation rejects it instead of splitting valid prefixes.
     consume_while(source, start, |byte| {
         byte.is_ascii_alphanumeric() || matches!(*byte, b'_' | b'.' | b'+' | b'-')
     })
@@ -435,7 +451,7 @@ fn ascii_text(bytes: &[u8], start: usize) -> Result<String, FrontendError> {
         .map_err(|_| FrontendError::record_limit_exceeded(span(start, start + bytes.len())))
 }
 
-/// Request-local lexer retention policy; legacy callers keep their existing scalar policy.
+/// Request-local decoded-string retention and optional cancellation policy.
 #[derive(Clone, Copy)]
 struct Retention<'a> {
     /// Maximum decoded UTF-8 scalar bytes before reserving string growth.

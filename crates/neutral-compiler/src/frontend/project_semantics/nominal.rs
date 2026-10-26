@@ -1,6 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Shared nominal contracts, defaults and restrictions used by `/3` expressions.
+//!
+//! Source records/variants and captured vocabulary definitions converge on the
+//! same composition body model. Roots preserve private syntax, stable owners and
+//! declaration occurrences until signatures resolve; complete definitions then
+//! retain canonical member order and closed defaults. An absent binding type in
+//! a root marks a nominal definition, not an unknown type to infer from a value.
+//!
+//! The resolver consults only the captured import graph and vocabulary alias
+//! table. It distinguishes module-owned from vocabulary-owned identities, checks
+//! visibility at lookup and never turns an alias or inert location into acquisition.
+//! The expression layer owns aggregate request retention/expansion accounting;
+//! nominal helpers additionally charge their contract traversal and copy work.
+//! Private failures preserve safe codes/locations for the enclosing expression adapter.
 
 pub(super) mod syntax;
 use syntax::{parse_name, parse_reference, split};
@@ -49,7 +62,7 @@ pub(super) struct Root {
     pub(super) public: bool,
     /// Complete original declaration span.
     pub(super) location: SourceLocation,
-    /// Resolved binding type, absent for nominal declarations.
+    /// Parsed unresolved binding type, absent for nominal declarations.
     pub(super) ty: Option<TypeExpr>,
     /// Record fields or variant alternatives in source order.
     pub(super) fields: Vec<(String, TypeExpr)>,
@@ -93,6 +106,7 @@ pub(super) struct Resolver<'a> {
 }
 
 /// Maps shared catalogue validation failures to the current expression envelope.
+/// Keeps resource/cancellation failures distinct without retaining hostile payload text.
 fn contract(e: &CompositionError, location: Option<SourceLocation>) -> E {
     fail(
         match e {

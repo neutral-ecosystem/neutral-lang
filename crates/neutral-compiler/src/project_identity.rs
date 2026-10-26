@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Borrowed identity projections from successfully frozen capture, without recapture or I/O.
+//!
+//! Capture already owns immutable, canonically ordered bytes and verified lock
+//! facts. This module projects borrowed labels, digests, lengths and revisions into
+//! the IR identity API rather than rehashing content or rebuilding a request.
+//! Small fallibly allocated vectors hold the projections; source/bundle contents
+//! and feature strings remain borrowed from capture for the duration of framing.
+//!
+//! Capture-control tuple order is a frozen derivation contract. These controls
+//! affect processing context, not normalized logical meaning. Projection validates
+//! its independent count policy and cancellation; the identity writer separately
+//! enforces transcript byte/frame budgets. A hash records supplied facts rather
+//! than authenticating a producer or granting access to an external source.
 
 use crate::{CapturedInputs, CapturedProjectSource, CapturedProjectVocabulary};
 use neutral_core::CancellationToken;
@@ -36,7 +48,7 @@ impl CapturedInputs {
     }
 }
 
-/// Bounded borrowed projection buffers shared by old and successor capture identities.
+/// Bounded borrowed projection buffers for current captured source/vocabulary identity.
 type CaptureFacts<'a> = (
     Vec<CapturedIdentitySource<'a>>,
     Vec<CapturedIdentityVocabulary<'a>>,
@@ -60,6 +72,7 @@ pub(crate) fn capture_facts<'a>(
         return Err(IdentityError::Limit);
     }
     let mut sources = Vec::new();
+    // Reserve projection slots only; immutable source storage is never copied into this buffer.
     sources
         .try_retain(captured_sources.len())
         .map_err(|_| IdentityError::Limit)?;

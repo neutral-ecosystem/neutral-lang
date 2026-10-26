@@ -1,11 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! Successor-only lexical boundaries; historical token acceptance is unchanged.
+//! Contextual expression lexing and source declaration retention.
 //!
 //! Tokens borrow the captured source and keep original-byte ranges. String decoding
 //! and owned syntax retention use the request's fallible allocation/work budget.
 //! This module recognizes syntax only: symbol visibility, all-branch typing and
 //! template hygiene belong to resolution, not to lexical acceptance.
+//!
+//! Lexemes borrow exact spelling, including quoted escapes, and keep spans relative
+//! to the original captured unit. Leading signs are expression operators; exponent
+//! signs stay inside numeric tokens. Interpolated strings are scanned as nested
+//! lexical groups before their inserted expressions are resolved and typed.
+//!
+//! Physical newlines delimit declarations only outside grouped syntax, with matrix
+//! continuation clauses attached to their application. Headers are recognized for
+//! placement but their meaning is checked at capture/graph boundaries. Record and
+//! variant declarations reuse the shared nominal parser, rebasing slice-relative
+//! token spans to original source coordinates. Other initializers/templates/matrices
+//! remain unevaluated syntax until the complete project namespace is registered.
+//!
+//! Group/member helpers preserve source order and borrowed slices rather than
+//! sorting or creating semantic values. Callers charge aggregate scans/copies;
+//! syntax acceptance cannot establish visibility, typing or finite expansion
+//! cardinality. Cache retention snapshots this same original syntax.
 
 use super::{
     Budget, ByteSpan, E, ExactNumber, Expression, ParameterPhase, Root, SourceLocation, State,
@@ -389,6 +406,7 @@ pub(super) fn group<'t, 'a>(
     open: &str,
     close: &str,
 ) -> Result<&'t [Lex<'a>], E> {
+    // Return the interior slice while advancing past its closer; callers can reject trailing tokens.
     expect(tokens, cursor, open)?;
     let start = *cursor;
     let mut depth = 1;
@@ -410,6 +428,8 @@ pub(super) fn group<'t, 'a>(
     Err(error(ec::EXP_SYNTAX, None))
 }
 /// Splits top-level comma members without changing source evaluation order.
+/// Returned slices borrow source lexemes. Surrounding callers own work/storage
+/// accounting; this helper checks grouping/separators but does not type members.
 pub(super) fn split<'t, 'a>(tokens: &'t [Lex<'a>]) -> Result<Vec<&'t [Lex<'a>]>, E> {
     let mut result = Vec::new();
     let mut start = 0;
@@ -542,6 +562,7 @@ fn declaration<'a>(
         .tokens;
         old.retain(|t| !matches!(t.kind, TokenKind::EndOfFile | TokenKind::PhysicalLineEnd(_)));
         for t in &mut old {
+            // Shared lexing saw a declaration slice; locations must still address the complete captured unit.
             t.span = ByteSpan::new(
                 t.span.start() + location.span().start(),
                 t.span.end() + location.span().start(),

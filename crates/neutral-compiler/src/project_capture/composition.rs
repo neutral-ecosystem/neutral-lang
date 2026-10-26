@@ -6,6 +6,18 @@
 //! Publication requires the entire locked vocabulary closure to pass schema,
 //! dependency, public-type, default and restriction validation. No resolver,
 //! path, URL, environment or failed old-schema retry participates in capture.
+//!
+//! The expression capture boundary selects the accepted envelope/features before
+//! entering these shared phases. Integrity/header checks precede catalogue closure:
+//! source `use` identities are roots, but all required transitive locks must be
+//! present exactly. Extra/missing/conflicting inputs fail instead of triggering
+//! registry resolution. Module-local aliases are retained separately from owners.
+//!
+//! Publication shares verified original bytes, the validated catalogue, policies
+//! and aliases only after the whole request succeeds. Replay explicitly copies
+//! those exact inputs into a new request with a new cancellation token; it neither
+//! substitutes current disk contents nor reuses semantic success as new authority.
+//! Debug projections expose counts rather than raw source/private contract text.
 
 use super::{
     CapturedInputs, CapturedProjectRequest, CapturedProjectSource, CapturedProjectVocabulary,
@@ -156,6 +168,8 @@ impl CapturedCompositionProject {
     }
 
     /// Shares the same fallible exact-input reconstruction with current expression replay.
+    /// Retains source digest assertions and exact bundle locks; the resulting
+    /// request still has to pass ordinary capture validation.
     pub(super) fn replay_envelope(
         &self,
         request_version: &str,
@@ -291,6 +305,7 @@ pub(super) fn capture_selected(
     capture_cancelled(Some(cancellation))?;
 
     let mut roots = Vec::new();
+    // Direct source requirements seed closure; transitive locks are not implicit source aliases.
     roots
         .try_retain(requirements.len())
         .map_err(|_| CompositionError::Allocation)?;
@@ -325,6 +340,7 @@ pub(super) fn capture_selected(
         cancellation,
     )?;
     checkpoint(ProjectCaptureCheckpoint::Publish);
+    // Catalogue, exact bytes, aliases and policies must succeed together before returning capture.
     capture_cancelled(Some(cancellation))?;
     let captured = freeze_project(
         cancellation,

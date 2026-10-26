@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Every typed retained copy pays aggregate work/storage before allocating.
+//!
+//! Centralizes source-root, token, type, symbol, definition and value copying so
+//! call sites cannot accidentally pay only for an outer handle while retaining a
+//! large owned subtree. Borrowed lexemes still require vector slots; root copies
+//! also retain their type syntax, member names and any decoded token contents.
+//!
+//! Shared IR inspectors preflight recursive values/contracts without granting
+//! semantic authority. Their modeled storage and conservative traversal/copy work
+//! debit the persistent compiler budget before fallible retention. Expression
+//! copies preserve all branches and use cancellation-aware bounded entry points;
+//! numeric normalization, default materialization and evaluation happen elsewhere.
+//! Resource mapping preserves cancellation and the tighter active expansion policy.
 
 use super::{Budget, E, Expression, ModuleSymbolIdentity, T, TryClone, V, alloc, error};
 use crate::frontend::expression_codes as ec;
@@ -142,6 +154,7 @@ impl Budget<'_> {
     /// Shared borrowed inspection charges both traversal and the ensuing bounded clone.
     fn pay(&mut self, cost: Result<ExpressionInspection, ExpressionShapeError>) -> Result<(), E> {
         let cost = cost.map_err(|_| self.resource_error())?;
+        // Cover inspection and ensuing retention work; a copy is not free just because shape was checked.
         self.charge(
             cost.work
                 .checked_mul(2)
@@ -152,6 +165,7 @@ impl Budget<'_> {
 
     /// Copies all branches without resetting remaining request counters.
     pub(super) fn copy_expression(&mut self, expression: &Expression) -> Result<Expression, E> {
+        // Keep the same preflight policy for the bounded clone while debiting aggregate counters here.
         let limits = self.remaining();
         self.pay(neutral_ir::expression::inspect_expression_retention(
             expression,

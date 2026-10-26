@@ -1,6 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Current `/3` graph retention over explicitly captured source headers.
+//!
+//! Scans all supplied header prefixes before validating edges, preserving syntax-
+//! first failure precedence in canonical capture order. Every import must name an
+//! existing distinct module with a unique target and noncolliding local alias.
+//! The retained graph includes disconnected units; imports never fetch new input.
+//!
+//! Logical import cycles are allowed within the independent SCC size bound.
+//! Iterative Kosaraju passes use forward/reverse numeric adjacency only for that
+//! check; semantic value/default cycles are different errors handled later. The
+//! graph publishes one canonical import list rather than an additional persistent
+//! condensation model. Traversal/retention are bounded and cancellation-aware.
+//!
+//! Only header prefixes enter the shared raw lexer, so its narrower punctuation
+//! grammar cannot accidentally reject expression operators inside declarations.
 
 use super::{CapturedCompositionProject, E, codes, fail, reserve, retain};
 use crate::frontend::{GraphSyntaxErrorKind, scan_graph_source_bounded};
@@ -48,6 +62,7 @@ pub(in super::super) fn build_expression(
 ) -> Result<Graph, E> {
     let limits = captured.limits().values();
     let mut work = captured.composition_limits().work;
+    // Separate passes keep later missing-target failures from masking malformed headers in another unit.
     let syntax = scan(captured, &mut work, cancel)?;
     let (mut edges, positions) = imports(captured, &syntax, &mut work, cancel)?;
     scc(
@@ -135,6 +150,7 @@ fn scan(
 
 /// Locates the original header prefix, skipping exact trivia without rewriting captured bytes.
 fn header_end(bytes: &[u8]) -> usize {
+    // Stop before the first declaration without rewriting bytes, preserving offsets for header diagnostics.
     let mut i = 0;
     loop {
         while i < bytes.len() {
@@ -326,6 +342,7 @@ fn scc(
         }
     }
     seen.fill(false);
+    // Reverse finishing order on the reversed graph visits exactly one SCC at a time.
     let mut stack = Vec::new();
     reserve(&mut stack, count)?;
     for &root in finishing.iter().rev() {

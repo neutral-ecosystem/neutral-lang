@@ -5,6 +5,18 @@
 //! The current expression resolver links source and vocabulary contracts and
 //! checks record/variant defaults before expression typing. Expansion accounting
 //! and cancellation remain owned by the expression request.
+//!
+//! Signature registration precedes defaults so forward nominal references resolve
+//! against a complete owner set. Defaults are parsed as closed values and attached
+//! only after their initial collection; later shared scope validation checks
+//! recursive contracts, restrictions and public closure consistently with vocabularies.
+//!
+//! Unqualified names stay local. A module import alias selects an explicitly
+//! captured module, while vocabulary qualifiers resolve through its exact lock.
+//! Cross-module lookup requires public declarations and correct binding/nominal kind.
+//! Location scalars remain text, and identity references retain target keys rather
+//! than materializing target values. Contract copies preflight nested work before
+//! fallible retention so repeated nominal use cannot expand without accounting.
 
 use super::{
     B, BTreeMap, ByteSpan, CancellationToken, ClosedValue, CompositionAlternative,
@@ -17,6 +29,7 @@ use super::{
 
 impl Resolver<'_> {
     /// Resolves all source signature owners before any value evaluation.
+    /// Canonicalizes source member order while preserving each nominal owner and visibility.
     pub(in super::super) fn signatures(&mut self, roots: &[Root]) -> Result<(), E> {
         // Resolve every signature before interpreting a default or initializer.
         for root in roots {
@@ -109,6 +122,7 @@ impl Resolver<'_> {
             }
         }
         for (owner, name, value) in defaults {
+            // Mutate definitions only after collecting parsed defaults, avoiding an order-dependent partial lookup scope.
             let Some(d) = self.definitions.iter_mut().find(|d| d.owner == owner) else {
                 return Err(fail(codes::INVALID_SOURCE, None));
             };
@@ -141,7 +155,10 @@ impl Resolver<'_> {
         }
         Ok(())
     }
-    /// Resolves explicit local/import/vocabulary qualifiers without path/URL interpretation.
+    /// Resolves local/import-qualified source declarations without path/URL interpretation.
+    /// This lookup resolves source declarations through module aliases; vocabulary
+    /// type qualification is handled separately by `ty`. `nominal` selects the
+    /// required declaration kind, and external private declarations reject.
     pub(in super::super) fn name(
         &mut self,
         root: &Root,
@@ -201,6 +218,7 @@ impl Resolver<'_> {
             TypeExpr::Ref(t) => T::Ref(retain(boxed(self.ty(root, t)?))?),
             TypeExpr::Nullable(t) => T::Nullable(retain(boxed(self.ty(root, t)?))?),
             TypeExpr::Nominal(alias, name, span) => {
+                // Source-local aliases disappear here; public types retain canonical exact vocabulary ownership.
                 if let Some(v) = alias.as_deref().and_then(|a| {
                     self.captured
                         .vocabulary_for_alias(root.owner.module().module_name(), a)
@@ -520,6 +538,8 @@ fn symbol_work(owner: &ModuleSymbolIdentity) -> u64 {
 }
 
 /// Bounds recursive value copies iteratively before reuse/default expansion can allocate them.
+/// Counts owned descendants without following reference targets; caller work policy
+/// still applies when the actual copy/materialization is performed.
 fn value_clone_work<R>(
     value: &CompositionValue<R>,
     cancel: &CancellationToken,

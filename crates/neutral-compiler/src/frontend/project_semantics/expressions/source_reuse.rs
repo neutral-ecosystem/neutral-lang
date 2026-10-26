@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Original immutable-copy occurrences survive normalization; computations and ports remain separate.
+//!
+//! Normalization can replace an ordinary binding reuse with its materialized
+//! value, erasing the source name from the typed tree. This pass pairs original
+//! syntax with retained construction positions to recover genuine copy occurrences
+//! as private provenance, without changing the materialized meaning.
+//!
+//! It follows complete names, parentheses and matching list/record/variant payload
+//! construction. It deliberately does not infer copy evidence from arbitrary
+//! arithmetic or a deferred dependency. Generated expressions use separate real
+//! application/definition lineage rather than rebinding source names in caller scope.
+//! Work/depth/path retention share the request budget, and recorded locations
+//! refer to supplied original bytes instead of fabricated generated source spans.
 
 use super::{
     E, Edge, ExpressionBody, ModuleSymbolIdentity, ProjectProvenance, Root, SourceLocation, State,
@@ -79,6 +91,7 @@ impl State<'_, '_> {
             return Ok(());
         }
         let (open, close) = match value {
+            // Only surviving construction positions justify descending after static normalization.
             V::List(_) => ("[", "]"),
             V::Record(_) | V::Variant { .. } => ("{", "}"),
             _ => return Ok(()),

@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Current captured-project composition and expression compilation entry points.
+//!
+//! This private layer connects source spelling to shared nominal and expression
+//! semantics. [`TypeExpr`] still carries local/import aliases and original spans;
+//! it is syntax rather than a validated public type. Nominal resolution converts
+//! it into exact module/vocabulary owners before expressions are normalized.
+//!
+//! The expression module owns whole-request orchestration, expansion and publication.
+//! Shared type grammar and nominal/default resolution remain separate so records,
+//! variants, templates and ordinary bindings agree on ownership and wrappers.
+//! Reexporting public entry points does not expose intermediate parsed authority.
 
 mod expressions;
 mod nominal;

@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Current `/3` source, module and vocabulary companions.
+//!
+//! Derives complete module/import topology, logical source labels, original-byte
+//! digests/lengths and vocabulary capture evidence from already-frozen inputs.
+//! Disconnected/private-only modules remain present: these are complete project
+//! companions, not a root-selected public projection or a request to read source.
+//!
+//! Imports are sorted to remove source ordering trivia while aliases remain in
+//! private resolver state. Vocabulary byte lengths come from the exact matching
+//! captured bundle, not authoring metadata. The caller precharges aggregate copy/
+//! lookup work; these helpers use fallible retention and cancellation during copying.
+//! Output still requires independent companion consistency validation by consumers.
 
 use super::{E, Resolver, codes, fail, reserve, retain};
 use neutral_core::allocation::text;
@@ -46,6 +57,7 @@ pub(in super::super) fn captured_companions(
             imports.push(retain(text(e.target()))?);
         }
         imports.sort_unstable();
+        // Keep exact captured evidence separate from logical topology; no host path is reconstructed.
         modules.push(ProjectModule {
             identity: LogicalModuleIdentity::new(
                 retain(text(V1_SOURCE_PROFILE))?,
@@ -74,6 +86,7 @@ pub(in super::super) fn captured_companions(
             .iter()
             .find(|v| v.lock().identity() == b.identity.identity())
         else {
+            // A catalogue without its captured byte owner cannot yield honest derivation evidence.
             return Err(fail(codes::INCOMPATIBLE_VALUE, None));
         };
         vocabulary_sources.push(ProjectVocabularySource {

@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Private orchestration for captured source, trivia, layout, and parsing.
+//!
+//! Shared raw tokens retain original-byte spans, decoded strings and physical
+//! newline facts; comments/whitespace remain separate trivia. Header/nominal syntax
+//! reuse that representation, while the current expression parser borrows its own
+//! contextual lexemes to recognize operators, interpolation and finite expansion.
+//! These are private implementation forms, never a public artifact schema.
+//!
+//! An identifier token is not a resolved symbol, a numeric candidate is not a
+//! normalized value, and decoded string length does not redefine source coordinates.
+//! Errors carry safe categories and original spans; owning capture/semantic
+//! boundaries map them to public codes. Exports expose complete compilation,
+//! syntax-cache and formatting while keeping parsed state inside the compiler.
 
 use neutral_core::ByteSpan;
 
@@ -136,9 +148,9 @@ enum TokenKind {
     ProtectedName(String),
     /// An ASCII identifier retained for later semantic validation.
     Identifier(String),
-    /// A raw, unescaped string body used only for the version header.
+    /// A decoded quoted value with escape-history retained for exact header checks.
     StringLiteral(DecodedString),
-    /// A digits-only minimal numeric spelling retained for later semantics.
+    /// A raw numeric candidate retained for later exact grammar/semantic checks.
     Number(String),
     /// The binding initializer delimiter.
     Equals,
@@ -164,7 +176,7 @@ enum TokenKind {
     OpenParen,
     /// Identity-reference target closing delimiter.
     CloseParen,
-    /// Required record field terminator.
+    /// Member separator; contextual grammar decides whether the final comma is optional.
     Comma,
     /// An original physical newline before layout normalization.
     PhysicalLineEnd(PhysicalLineEnd),
@@ -270,6 +282,7 @@ impl FrontendError {
 
 /// Creates a checked source span from validated in-memory indexes.
 fn span(start: usize, end: usize) -> ByteSpan {
+    // Only ordered internal cursor positions reach this helper; input boundaries check hostile ranges.
     ByteSpan::new(
         u64::try_from(start).unwrap_or(u64::MAX),
         u64::try_from(end).unwrap_or(u64::MAX),

@@ -6,6 +6,23 @@
 //! atomically under shared limits. Static evaluation may materialize a value;
 //! deferred evaluation remains explicit consumer work. Recomputed resource and
 //! identity facts describe the complete project, never a selected public view.
+//!
+//! Temporary models allow selected typed subtrees to be checked/folded against
+//! request-local dependencies without publishing them as complete artifacts.
+//! Complete assembly instead requires every ordinary/generated binding body,
+//! retains exported non-callable templates and rebuilds source/expansion evidence.
+//! Missing values are never silently replaced with null or invented external inputs.
+//!
+//! Structural type/reference provenance is distinct from guarded expression output
+//! dependencies. Normalized source reuse needs its own original-syntax evidence;
+//! source maps and origins remain companions rather than logical identity inputs.
+//! Occurrence evidence records the source precision actually retained by this
+//! producer; it must not imply finer token-level attribution than was supplied.
+//!
+//! Catalogue/companion copies, nested semantic preparation and normalization debit
+//! the same aggregate request budget. Recomputed retained facts describe the final
+//! model, not execution history. Placeholder digest/count fields stay private until
+//! final orchestration derives the authoritative producer values and publishes a root.
 
 use super::{
     B, Budget, CompositionOrigin, CompositionResourceFacts, E, Edge, ExpansionAttribution,
@@ -58,7 +75,7 @@ impl State<'_, '_> {
         self.budget.charge(before - remaining)?;
         Ok(scope)
     }
-    /// Captured metadata and catalogue copies pay before the shared legacy builder allocates.
+    /// Captured metadata and catalogue copies pay before shared companion assembly allocates.
     fn charge_captured_companions(&mut self) -> Result<(), E> {
         use neutral_ir::project::{ProjectModule, ProjectSource, ProjectVocabularySource};
         self.budget
@@ -184,6 +201,7 @@ impl State<'_, '_> {
 
     /// Normalizes an actual typed subtree in a closed request-local semantic model.
     /// No unavailable declaration is relabelled as null or as an external input.
+    /// `None` means a residual/deferred result, not a typed null or an omitted field.
     pub(super) fn static_value(
         &mut self,
         owner: &Root,
@@ -207,6 +225,8 @@ impl State<'_, '_> {
     }
 
     /// Assembles complete raw sections; only the independent reader can grant artifact authority.
+    /// Temporary mode may omit unresolved ordinary bindings for local static checks;
+    /// it is never the complete publication path. Selected expressions remain private.
     #[allow(clippy::too_many_lines)] // Keep the closed section grammar together while source integration is qualified.
     pub(super) fn assemble(
         &mut self,
@@ -328,6 +348,7 @@ impl State<'_, '_> {
         let cap = self.captured.resource_facts();
         let limits = self.semantic_limits().project;
         let mut ir = ExpressionProjectIr {
+            // Placeholder facts/digest are filled by checked derivation before public return.
             schema: self
                 .budget
                 .copy_text(expression_profile::PROJECT_IR_SCHEMA)?,
@@ -541,6 +562,7 @@ impl State<'_, '_> {
         };
         ir.resources.import_edges = import_edges;
         ir.resources.value_nodes = ir.composition_resources.retained_value_nodes;
+        // These are retained model counts, not the cumulative work already spent assembling it.
         Ok(ir)
     }
 }
@@ -820,6 +842,7 @@ fn materialized_origins(
     budget.retain::<CompositionOrigin>(1)?;
     charge_path(budget, path)?;
     grow(origins, 1)?;
+    // Reuse the real retained source occurrence; do not manufacture child byte spans from value shape.
     origins.push(CompositionOrigin {
         binding: budget.copy_symbol(owner)?,
         path: alloc(path.try_clone())?,

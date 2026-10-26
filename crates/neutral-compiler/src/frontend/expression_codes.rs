@@ -5,6 +5,13 @@
 //! Capture, parsing, resolution and lowering share these frozen classifications.
 //! Package versions do not select diagnostic behavior. Evaluator-only failures
 //! remain owned by the evaluator; this module does not activate a source profile.
+//!
+//! These identifiers describe whole source-request rejection categories, not
+//! rendered messages or arbitrary host errors. Phase adapters preserve cancellation/
+//! resource distinctions and attach checked locations when available; consumer
+//! binding/availability decisions retain their separate report registry. Renaming
+//! a Rust constant is not permission to change its frozen external spelling or
+//! reinterpret existing fixture oracles.
 
 /// Unsupported exact expression profile or feature tuple.
 pub(crate) const EXP_UNSUPPORTED: &str = "NEU-EXP-001";

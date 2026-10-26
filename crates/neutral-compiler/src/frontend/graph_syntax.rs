@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Bounded v1 module/import scanner over the existing exact-byte lexer.
+//!
+//! Extracts imports and vocabulary aliases without resolving targets. Monotonic
+//! phases require language/module headers, then vocabulary uses, then imports
+//! before declarations. Imports name logical modules through mandatory local
+//! aliases; paths, relative forms and re-exports are rejected.
+//!
+//! The caller supplies the expected captured module ID and per-unit controls.
+//! Results retain source order/spans for deterministic graph diagnostics; the
+//! graph layer separately checks missing/self/duplicate targets, import namespace
+//! collisions and bounded SCC topology. Syntax acceptance alone does not establish
+//! that an imported module exists or is visible to the consuming declaration.
 
 use super::{Token, TokenKind, lexer};
 use crate::language::{graph_names, names};
@@ -88,6 +99,7 @@ pub(crate) fn scan_graph_source_bounded(
         vocabulary_aliases: Vec::new(),
     };
     let mut phase = 0_u8;
+    // Once declarations begin, later lines cannot reopen the import section.
     let mut start = 0_usize;
     for (index, token) in lexed.tokens.iter().enumerate() {
         if cancel.is_some_and(CancellationToken::is_cancelled) {

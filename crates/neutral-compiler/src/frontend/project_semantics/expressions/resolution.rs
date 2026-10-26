@@ -6,6 +6,22 @@
 //! evaluation. Every branch resolves under explicit lexical frames, including
 //! branches that static folding will skip. Stable symbols identify dependencies;
 //! source aliases never become semantic identities or host lookup instructions.
+//!
+//! Expression parsing and typing are contextual: explicit expected types resolve
+//! empty lists, typed nulls, nominal record/variant construction and inert location
+//! literals. Operators require exact operand/result contracts without implicit
+//! numeric/string coercions. Both sides and every conditional/match arm are typed
+//! here; short-circuit evaluation belongs to the later shared semantic kernel.
+//!
+//! Ordinary reuse copies a resolved immutable body, while an explicit reference
+//! retains an identity target. External input and future output nodes remain data;
+//! output selector legality does not prove a value is currently available. Lexical
+//! parameter/payload slots are distinct from global symbols, and substitutions lift
+//! free frame depths so nested matches cannot capture a caller's binding.
+//!
+//! All recursive construction and copies debit the persistent request budget.
+//! Successful body memoization is request-local; a failed cycle/name/type check
+//! discards compilation state instead of publishing a partial body registry.
 
 use super::{
     B, Budget, ClosedValue, E, ExactNumber, Expression, ExpressionBody, FieldPresence, Frame, Lex,
@@ -17,6 +33,7 @@ use crate::frontend::expression_codes as ec;
 
 impl<'a> State<'a, '_> {
     /// Resolves ordinary reuse once per request and rejects value cycles before evaluation.
+    /// Returns an owned budgeted copy; use `ensure_binding` when only completion is needed.
     pub(super) fn binding(&mut self, owner: &ModuleSymbolIdentity) -> Result<ExpressionBody, E> {
         self.ensure_binding(owner)?;
         self.budget.charge(1)?;
@@ -93,6 +110,7 @@ impl<'a> State<'a, '_> {
             )?)
         };
         self.active.remove(owner);
+        // Only completed bodies enter the memo table; active markers are never accepted as results.
         self.budget.retain::<ExpressionBody>(1)?;
         alloc(self.bodies.insert(self.budget.copy_symbol(owner)?, body))?;
         Ok(())
@@ -446,6 +464,8 @@ impl<'a> State<'a, '_> {
         Self::checked(Expression { ty, node }, expected, root)
     }
     /// Types a Boolean guard and both exact common-result branches.
+    /// Does not evaluate the guard: even a statically skipped branch must resolve
+    /// its names and match the invariant result type before normalization.
     fn conditional(
         &mut self,
         root: &Root,
@@ -534,6 +554,7 @@ impl<'a> State<'a, '_> {
             ));
             grow(frames, 1)?;
             frames.push(frame);
+            // Each arm sees its own payload frame; sibling binder names cannot leak across arms.
             let body = self.expression(root, &member[i..], result.as_ref(), frames, depth + 1)?;
             frames.pop();
             if result.is_none() {
@@ -957,6 +978,8 @@ fn binary(spelling: &str) -> Option<(u8, Op)> {
     })
 }
 /// Lifts only free lexical references; local payload frames keep their original slots.
+/// `cutoff` counts frames introduced inside the substituted tree. References below
+/// it are locally bound; references at/above it must move outward by `amount`.
 fn lift(expression: &mut Expression, amount: u64, cutoff: u64) -> Result<(), E> {
     match &mut expression.node {
         N::Bound { depth, .. } if *depth >= cutoff => {
@@ -981,6 +1004,7 @@ fn lift(expression: &mut Expression, amount: u64, cutoff: u64) -> Result<(), E> 
         N::Match { scrutinee, arms } => {
             lift(scrutinee, amount, cutoff)?;
             for arm in arms {
+                // An arm adds one payload frame; do not shift references owned by that frame.
                 lift(&mut arm.body, amount, cutoff + 1)?;
             }
         }

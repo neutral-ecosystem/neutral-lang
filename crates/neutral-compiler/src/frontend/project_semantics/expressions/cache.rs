@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Owned syntax spans share the existing atomic cache; semantics and companions are never cached.
+//!
+//! Entries retain immutable original bytes and owned syntax spans, not borrowed
+//! lexemes with extended lifetimes. A hit requires exact bytes as well as digest,
+//! features, semantic tuple and parser-relevant policies. Hash equality alone is
+//! only a filter. Restored spans borrow the current capture and still pass ordinary
+//! namespace/limit checks in original declaration order.
+//!
+//! Every request reruns graph, nominal scope, all-branch semantics, normalization,
+//! companions and identities. Warm syntax replays original parse work/storage
+//! charges so caching cannot make a request acceptable under otherwise exhausted
+//! controls. Statistics count actual parser reuse, not semantic-result memoization.
+//!
+//! A separate pending map stages the next bounded generation. Only complete success
+//! and a final cancellation check replace existing entries; failure leaves the prior
+//! generation usable. Cache byte counters cover original input bytes, not all heap
+//! overhead or syntax retention. Inputs beyond cache capacity still compile normally.
 
 use super::{
     Budget, ByteSpan, E, Lex, MatrixSyntax, ModuleSymbolIdentity, ParameterPhase, Root,
@@ -427,6 +443,8 @@ impl ExpressionCompilationCache {
     ///
     /// # Errors
     /// Any compilation, allocation or cancellation failure preserves the prior generation.
+    /// Cache admission is optional when unit/byte capacity is exhausted; it does
+    /// not relax compilation limits or evict the previous generation during a failed attempt.
     pub fn compile_expression(
         &mut self,
         captured: &CapturedExpressionProject,
@@ -445,6 +463,7 @@ impl ExpressionCompilationCache {
             let previous = self.entries.get(source.module_id());
             let reusable = previous
                 .filter(|entry| {
+                    // Exact equality defends stale entries and collisions; the hash is never sole authority.
                     entry.digest == source.digest()
                         && entry.bytes.as_ref() == source.bytes()
                         && entry.features.as_slice() == captured.required_features()
@@ -504,6 +523,7 @@ impl ExpressionCompilationCache {
             return Err(error(ec::EXP_CANCELLED, None));
         }
         self.entries = pending;
+        // This is the sole generation swap; all fallible work and cancellation checks precede it.
         self.source_bytes = bytes;
         Ok((result, stats))
     }

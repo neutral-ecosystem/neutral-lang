@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Bounded source formatting for the current expression project grammar.
+//!
+//! Formats one module from a complete captured project after ordinary compilation
+//! accepts that project. A bounded lexical scan changes whitespace/indentation
+//! around braces, lists and separators while preserving comment and quoted/
+//! interpolated chunks. It does not render normalized IR back into source or
+//! replace user spelling with evaluated values.
+//!
+//! Returned bytes are replayed into a new exact capture and compiled again before
+//! publication, catching formatting that breaks grammar or project validity. This
+//! validates the rewritten capture; it is not an independent logical-equivalence
+//! proof. No files are written here; the host owns replacement. Output growth is
+//! fallible, bounded by the capture ceiling and cancellation-aware.
 
 use crate::{CancellationToken, CapturedExpressionProject};
 use neutral_core::allocation::RetainCapacity;
@@ -40,6 +52,7 @@ pub fn format_expression_source(
     let replay = captured
         .replay_with_source(module, &formatted, cancel.clone())
         .map_err(|error| failure(error.code()))?;
+    // Formatting changes exact source identity; validate those bytes through normal capture/compilation.
     let checked =
         crate::capture_expression_project(replay).map_err(|error| failure(error.code()))?;
     compile_expression_project(&checked, cancel)?;
@@ -101,6 +114,7 @@ fn normalize(
                         index += 1;
                     }
                 }
+                // Quoted/comment chunks are opaque: embedded braces must not drive outer indentation.
                 let token = &bytes[start..index];
                 if token == b"{" || token == b"[" {
                     emit_pending(

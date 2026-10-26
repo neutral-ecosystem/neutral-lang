@@ -1,6 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Complete, bounded, and effect-free project capture for the v1 profile.
+//!
+//! This is the host-input ownership boundary: requests contain already-acquired
+//! source bytes and exact vocabulary locks, never resolver callbacks or ambient
+//! acquisition authority. Logical IDs connect inputs without giving the compiler
+//! a filesystem/network lookup policy. Request builders assemble data; capture
+//! performs the definitive envelope, identity, integrity and header checks.
+//!
+//! Sources are unique by both logical source ID and module ID. Byte digests bind
+//! the original spelling, including whitespace, while source headers must agree
+//! with the supplied module/profile. Vocabulary requirements are collected from
+//! headers; the private composition phase checks their exact transitive lock cover
+//! and closed catalogue. None of this is complete source semantic compilation.
+//!
+//! Successful inputs are sorted into canonical order and moved into fallible shared
+//! ownership. Cancellation is observed during traversal and again before publication;
+//! a failed attempt never returns an incomplete captured project. Later compilation
+//! still enforces graph, declaration, expression and expansion controls retained here.
 
 use neutral_core::allocation::RetainCapacity;
 use neutral_core::allocation::Shared as Arc;
@@ -44,11 +61,11 @@ pub struct ProjectCaptureLimitValues {
     pub vocabulary_bytes_per_unit: u64,
     /// Sum of exact vocabulary bundle bytes.
     pub total_vocabulary_bytes: u64,
-    /// Imports retained for one module once import capture is active.
+    /// Maximum imports retained for one module by graph validation.
     pub imports_per_module: u64,
-    /// Total project import edges once import capture is active.
+    /// Maximum aggregate project import edges checked during graph validation.
     pub import_edges: u64,
-    /// Modules retained in one SCC once graph capture is active.
+    /// Maximum modules in one strongly connected import component.
     pub scc_units: u64,
     /// Total project declarations.
     pub declarations: u64,
@@ -64,6 +81,7 @@ pub struct ProjectCaptureLimits(ProjectCaptureLimitValues);
 
 impl ProjectCaptureLimits {
     /// Captures all independent limit values without applying ambient defaults.
+    /// Does not reject zero at construction; capture validates every required control.
     #[must_use]
     pub const fn new(values: ProjectCaptureLimitValues) -> Self {
         Self(values)
@@ -136,6 +154,7 @@ pub struct CapturedSourceInput {
 
 impl CapturedSourceInput {
     /// Creates one source input without a host location or acquisition authority.
+    /// Takes ownership without checking names, header agreement or byte integrity.
     #[must_use]
     pub fn new(source_id: impl Into<String>, module_id: impl Into<String>, bytes: Vec<u8>) -> Self {
         Self {
@@ -147,6 +166,7 @@ impl CapturedSourceInput {
     }
 
     /// Requires capture to observe one exact source digest.
+    /// This assertion is verified against supplied bytes, not substituted for hashing them.
     #[must_use]
     pub const fn requiring_digest(mut self, digest: SourceContentDigest) -> Self {
         self.expected_digest = Some(digest);
@@ -623,6 +643,7 @@ fn validate_sources_cancellable(
         {
             return Err(ProjectCaptureError::DuplicateModuleId);
         }
+        // Hash after byte ceilings and unique ownership checks; assertions never replace content hashing.
         let digest = SourceContentDigest::from_bytes(&source.bytes);
         if source
             .expected_digest
@@ -671,7 +692,7 @@ fn validate_vocabularies_cancellable(
     Ok(vocabulary_ids)
 }
 
-/// Checks header agreement under an explicit alias policy without changing capture /1.
+/// Checks exact profile/module agreement and aggregates canonical vocabulary requirements.
 fn validate_headers_policy(
     sources: &[(CapturedSourceInput, SourceContentDigest)],
     profile: LanguageProfile,
@@ -717,6 +738,7 @@ fn freeze_project(
             .map(|vocabulary| length(vocabulary.bytes.len()))
             .sum(),
     };
+    // Canonicalize after integrity succeeds; acquisition order must not leak into later traversal.
     sources.sort_unstable_by(|(left, _), (right, _)| {
         (&left.module_id, &left.source_id).cmp(&(&right.module_id, &right.source_id))
     });
@@ -774,6 +796,8 @@ struct HeaderFacts<'a> {
 }
 
 /// Scans explicit current headers before declaration parsing.
+/// This narrow capture grammar requires exact leading header lines; the later
+/// token scanner handles import placement and declaration syntax independently.
 fn scan_headers<'a>(
     bytes: &'a [u8],
     cancellation: Option<&CancellationToken>,
@@ -879,6 +903,7 @@ fn scan_comment_state(line: &[u8], in_block: &mut bool) {
             }
             continue;
         }
+        // Comment-looking bytes in a literal cannot alter cross-line comment state.
         if in_string {
             match line[index] {
                 b'\\' => index += 2,

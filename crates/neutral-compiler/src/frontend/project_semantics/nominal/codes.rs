@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! Frozen successor source classifications, separate from captured catalogue errors.
+//!
+//! These codes identify source-owned nominal/default failures. Vocabulary catalogue
+//! validation has its own error registry; the enclosing expression adapter maps
+//! nominal failures into the applicable source request classification. They carry
+//! no raw names, paths or values and do not classify consumer runtime availability.
+//! External spellings are compatibility contracts even when internal phases move.
 
 /// Malformed source declaration or contextual literal.
 pub const INVALID_SOURCE: &str = "NEU-COMP-001";

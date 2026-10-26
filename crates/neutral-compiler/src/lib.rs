@@ -18,6 +18,35 @@
 //! Current complete expression projects are the host integration boundary.
 //! Optional syntax caching reuses only private parsed units; graph, vocabulary,
 //! semantics and source-accounting work remain fresh.
+//!
+//! # Public request lifecycle
+//!
+//! Hosts assemble [`CapturedProjectRequest`] inputs with logical source/module IDs,
+//! exact bytes, vocabulary locks and explicit controls. Wrapping those inputs in
+//! [`CapturedExpressionProjectRequest`] selects the exact semantic tuple; construction
+//! alone does not validate it. [`capture_expression_project`] checks integrity,
+//! headers and the complete locked vocabulary catalogue before freezing the request.
+//!
+//! [`compile_expression_project`] then builds the import graph, registers all
+//! declarations, resolves complete nominal signatures/defaults and types every
+//! expression branch. Templates/matrices expand statically under aggregate bounds.
+//! Shared pure semantics normalize selected static paths while preserving typed
+//! deferred data; compilation never supplies runtime bindings or executes effects.
+//!
+//! # Publication and consumers
+//!
+//! Success returns complete producer IR, including private/disconnected declarations,
+//! interpretation contracts, retained evidence and recomputable resource facts.
+//! Independent reader/encoding boundaries still validate that data before granting
+//! consumer authority. Neither a successful parse nor a digest replaces those checks.
+//! Failures return safe codes and available original-byte locations without partial
+//! project publication or host-specific error text.
+//!
+//! [`ExpressionCompilationCache`] stages a new syntax generation locally and
+//! replaces the old one only after complete compilation succeeds. Cached syntax
+//! cannot skip current policy, semantic or evidence checks. [`format_expression_source`]
+//! likewise validates before formatting and recompiles the changed capture before
+//! returning bytes; it does not write a file or choose a host destination.
 
 use neutral_core::CancellationToken;
 

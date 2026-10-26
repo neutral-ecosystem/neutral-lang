@@ -8,6 +8,30 @@
 //! same request budget, so nested templates cannot reset work or retention limits.
 //! Successful raw assembly still requires independent reader validation; none of
 //! these private phases activates a profile or acquires external inputs.
+//!
+//! # Phase order
+//!
+//! Parse all original units before resolving nominal signatures, defaults and the
+//! shared contract scope. Type every template definition, expand finite matrices,
+//! then resolve every ordinary/generated binding into a typed body. Prepare the
+//! shared semantic model before normalization so skipped branches still undergo
+//! name/type checks even though selected evaluation may avoid their arithmetic.
+//! Reassemble normalized bodies, derive complete facts and compute the public
+//! interface digest before publishing one shared producer root.
+//!
+//! # Request-local authority
+//!
+//! `State` owns namespace indexes, cycle stacks, pending static checks and evidence;
+//! none survives failed compilation. Lexical frames distinguish true retained
+//! binder slots from resolved substitutions, preventing caller names from being
+//! captured by template definitions. Inputs/outputs remain typed data and cannot
+//! supply bindings or trigger consumer operations through this pipeline.
+//!
+//! One `Budget` accumulates source, resolution, copy and nested expansion costs.
+//! Nested kernels receive remaining allowances and return debited consumption,
+//! rather than creating fresh full limits. Expansion also keeps independent work,
+//! product, generation and retention counters. Mode flags affect which policy is
+//! charged; restoring a flag never refunds work already consumed.
 
 use super::nominal::{Resolver, Root, codes, graph};
 use super::{TypeExpr, parse_complete_type_fallible};
@@ -164,6 +188,8 @@ struct Budget<'a> {
 }
 impl Budget<'_> {
     /// Nested work must fit the unspent request budget, not a fresh full policy.
+    /// Non-work/storage dimensions retain their independent ceilings. Exhausted
+    /// allowance remains zero so nested validation rejects rather than defaults it.
     fn remaining(&self) -> ExpressionLimits {
         ExpressionLimits {
             work: self
@@ -191,6 +217,7 @@ impl Budget<'_> {
     }
     /// Successful nested kernels report actual checked work and cumulative storage.
     fn debit(&mut self, before: ExpressionLimits, after: ExpressionLimits) -> Result<(), E> {
+        // Nested kernels only consume allowances; charge their consumption back to this request once.
         self.charge(before.work - after.work)?;
         self.storage(before.retained_bytes - after.retained_bytes)
     }
@@ -233,6 +260,7 @@ impl Budget<'_> {
             return Err(error(ec::EXP_LIMIT, None));
         }
         if self.expanding {
+            // Expansion scratch/copy retention accumulates even when it produces no final binding.
             self.expansion_retained = self
                 .expansion_retained
                 .checked_add(count)
@@ -338,6 +366,7 @@ pub fn compile_expression_project(
     captured: &CapturedExpressionProject,
     cancel: &CancellationToken,
 ) -> Result<Arc<ExpressionProjectIr>, E> {
+    // Clean and cached entry points share orchestration; only original syntax extraction may differ.
     compile_with_parser(captured, cancel, &mut parser::parse_source)
 }
 
@@ -352,6 +381,7 @@ fn compile_with_parser<'a>(
     for source in captured.sources() {
         parse(source, &mut state)?;
     }
+    // Establish the complete nominal namespace before any default or initializer needs it.
     state.budget.retain::<Root>(state.resolver.roots.len())?;
     let mut roots = Vec::new();
     grow(&mut roots, state.resolver.roots.len())?;
@@ -393,6 +423,7 @@ fn compile_with_parser<'a>(
         state.ensure_binding(owner)?;
     }
     let ir = state.assemble(false, None)?;
+    // Shared all-branch validation precedes selected static normalization, including unused arguments.
     let model = state.prepare_model(ir)?;
     for (root, argument) in std::mem::take(&mut state.pending_static) {
         if state
@@ -448,6 +479,7 @@ fn compile_with_parser<'a>(
     );
     state.budget.retain::<ExpressionProjectIr>(1)?;
     let authority = alloc(Arc::try_new(ir))?;
+    // Shared allocation can inject cancellation too; charge/poll before making the completed root observable.
     state.budget.charge(1)?;
     Ok(authority)
 }
@@ -513,6 +545,7 @@ impl State<'_, '_> {
         let previous = self.budget.expanding;
         self.budget.expanding = true;
         let result = operation(self);
+        // Restore nesting mode on returned errors too; accumulated charges remain consumed.
         self.budget.expanding = previous;
         result
     }
