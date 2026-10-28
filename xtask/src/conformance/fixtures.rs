@@ -112,6 +112,23 @@ fn sync_manifest(
             }
         }
     }
+    if let Some(suites) = document.get("suite") {
+        let suites = suites
+            .as_array_of_tables()
+            .ok_or("fixture suites must be tables")?;
+        for suite in suites {
+            if let Some(inputs) = suite.get("input_files") {
+                let inputs = inputs
+                    .as_array()
+                    .ok_or("suite input_files must be an array")?;
+                for input in inputs {
+                    let path = input.as_str().ok_or("suite input file must be a string")?;
+                    registered_path(root, path)?;
+                    registered.insert(path.to_owned());
+                }
+            }
+        }
+    }
     Ok(registered)
 }
 

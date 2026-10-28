@@ -839,3 +839,71 @@ fn bool_tree(value: bool) -> Expression {
         node: ExpressionNode::Value(CompositionValue::Bool(value)),
     }
 }
+
+/// Every producer policy is positive before raw reconstruction, even when later validation also rejects it.
+#[test]
+fn raw_expression_decoder_rejects_each_zero_policy_before_retention() {
+    use crate::decoder::CborValue;
+    let bytes = vectors().remove(0);
+    let cancel = CancellationToken::new();
+    for section in [9, 14, 18, 19] {
+        let mut value =
+            crate::decoder::parse_canonical_section(&bytes[8..], 8, DecodeLimits::hard(), &cancel)
+                .unwrap();
+        let CborValue::Array(fields) = &mut value.value else {
+            panic!("complete tuple")
+        };
+        let CborValue::Array(policy) = &mut fields[section].value else {
+            panic!("policy tuple")
+        };
+        policy[0].value = CborValue::Unsigned(0);
+        assert_eq!(
+            project::read_ir(&value, &cancel).unwrap_err().class(),
+            C::EncodedSizeLimit,
+            "section {section}"
+        );
+    }
+}
+
+/// Body tags are closed independently of tuple arity and subsequent semantic validation.
+#[test]
+fn raw_expression_decoder_rejects_unknown_body_tags_at_both_arities() {
+    use crate::decoder::CborValue;
+    let cases = vectors();
+    let cancel = CancellationToken::new();
+    for arity in [1, 2] {
+        let bytes = &cases[usize::from(arity != 1)];
+        let declaration_index = if arity == 1 {
+            0
+        } else {
+            raw(bytes)
+                .declarations
+                .iter()
+                .position(|d| matches!(d.body, Some(ExpressionBody::Expression(_))))
+                .unwrap()
+        };
+        let mut value =
+            crate::decoder::parse_canonical_section(&bytes[8..], 8, DecodeLimits::hard(), &cancel)
+                .unwrap();
+        let CborValue::Array(fields) = &mut value.value else {
+            panic!("complete tuple")
+        };
+        let CborValue::Array(declarations) = &mut fields[2].value else {
+            panic!("declarations")
+        };
+        let CborValue::Array(declaration) = &mut declarations[declaration_index].value else {
+            panic!("declaration")
+        };
+        let CborValue::Array(body) = &mut declaration[3].value else {
+            panic!("body tuple")
+        };
+        body[0].value = CborValue::Text("unknown".into());
+        body.truncate(arity);
+        assert_eq!(body.len(), arity);
+        assert_eq!(
+            project::read_ir(&value, &cancel).unwrap_err().class(),
+            C::InvalidEncodedSchema,
+            "arity {arity}"
+        );
+    }
+}

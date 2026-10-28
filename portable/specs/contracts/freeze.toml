@@ -163,9 +163,10 @@ oracle_sha256 = "d0eb6e84a1f86bfda295a439fb5bf28219982643f8f62a7ff413d088cef88e2
 reference_path = "crates/neutral-test-suite/tests/composition_contract/reference.py"
 reference_sha256 = "4a47cc4c18be53bf347ef14b4f5d38084cd8a8c1a760bea18d1c17c230fd0e19"
 manifest_path = "portable/conformance/manifest.toml"
-manifest_sha256 = "1df3e8f5697b9b798e7e538dc12afb3c324542540035ba5a80c743302a04bfea"
+manifest_sha256 = "a77abb6043094d4a5a7ec82921a77ceaa909b4cd514d05e5b276c8521d8a01d9"
+# Index pins include additive suite registrations; original reviewed case records are unchanged.
 review_path = "portable/conformance/fixture-oracle-review.toml"
-review_sha256 = "918279b6a7c702c3f2f8cc8ec80797efe8cf6fb8cbec476ad81c10886dc85e2e"
+review_sha256 = "9089601cbbcf623cb73e3388f3c5f9b469b0786e9cdea109e996e62f3c6c6791"
 review_date = "2026-10-08"
 identity_profile = "neutral.project-identity/2"
 request_version = "neutral.capture/v2"

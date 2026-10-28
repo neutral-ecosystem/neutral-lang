@@ -331,3 +331,7 @@ impl<'a> Walk<'a, '_> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "../../tests/expression/dependency_budgets.rs"]
+mod budget_tests;

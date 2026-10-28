@@ -436,3 +436,60 @@ fn lifting_closed_structures_charges_each_child_depth() {
         }
     }
 }
+
+/// The standalone helper enforces restrictions, preserves nullable values and reports value errors.
+#[test]
+fn standalone_field_restrictions_preserve_types_null_and_error_classes() {
+    use neutral_ir::composition::BindingValue as W;
+    let cancel = CancellationToken::new();
+    let mut boolean = field(T::Bool);
+    assert_eq!(
+        check_composition_field_restrictions(&boolean, &W::Bool(true), limits(), &cancel),
+        Ok(())
+    );
+    assert_eq!(
+        check_composition_field_restrictions(
+            &boolean,
+            &W::String("wrong".into()),
+            limits(),
+            &cancel
+        ),
+        Err(E::InvalidValue)
+    );
+    boolean.restrictions.choices = Some(vec![V::Bool(true)]);
+    assert_eq!(
+        check_composition_field_restrictions(&boolean, &W::Bool(false), limits(), &cancel),
+        Err(E::InvalidValue)
+    );
+    let nullable = field(T::Nullable(Box::new(T::Bool)));
+    assert_eq!(
+        check_composition_field_restrictions(&nullable, &W::Null, limits(), &cancel),
+        Ok(())
+    );
+    let mut list = field(T::List(Box::new(T::Bool)));
+    list.restrictions.max_length = Some(1);
+    assert_eq!(
+        check_composition_field_restrictions(
+            &list,
+            &W::List(vec![W::Bool(true)]),
+            limits(),
+            &cancel
+        ),
+        Ok(())
+    );
+    assert_eq!(
+        check_composition_field_restrictions(
+            &list,
+            &W::List(vec![W::Bool(true), W::Bool(false)]),
+            limits(),
+            &cancel
+        ),
+        Err(E::InvalidValue)
+    );
+    let cancelled = CancellationToken::new();
+    cancelled.cancel();
+    assert_eq!(
+        check_composition_field_restrictions(&boolean, &W::Bool(true), limits(), &cancelled),
+        Err(E::Cancelled)
+    );
+}

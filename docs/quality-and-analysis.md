@@ -8,6 +8,10 @@ Repository quality policy is tracked under `config/` and `quality/`. Generated
 machine-readable evidence belongs under ignored `test-results/` directories and
 must not be edited manually.
 
+Shell examples use Bash. If your terminal uses Fish, run `bash` first before
+pasting a sequence with `set -e`; in Fish, `set -e` erases a variable and does
+not stop a sequence after a failed command.
+
 Release measurements are produced automatically by the commands below. Each
 successful run retains tool stdout/stderr, native reports, exact report digests,
 compiler identity, actual measurement-tool versions, duration, and an input

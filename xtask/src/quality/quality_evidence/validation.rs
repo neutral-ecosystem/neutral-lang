@@ -254,6 +254,7 @@ fn validate_performance(
     validate_phase_times(
         &output,
         &settings.policy.performance.maximum_ns_per_iteration,
+        profile,
     )?;
     let massif = fs::read_to_string(directory.join(reports::MASSIF))
         .map_err(|error| format!("missing heap profile: {error}"))?;
@@ -289,14 +290,28 @@ fn validate_performance(
 fn validate_phase_times(
     output: &str,
     budgets: &std::collections::BTreeMap<String, u64>,
+    profile: &str,
 ) -> Result<(), String> {
     let mut observed = BTreeSet::new();
+    let mut summary_seen = false;
     for line in output.lines() {
         let mut words = line.split_whitespace();
         if words.next() != Some("PASS") || words.next() != Some("performance") {
             continue;
         }
         let field = words.next().ok_or("malformed performance record")?;
+        if let Some(selected) = field.strip_prefix("profile=") {
+            let elapsed = words
+                .next()
+                .and_then(|word| word.strip_prefix("total-ns="))
+                .and_then(|value| value.parse::<u128>().ok())
+                .filter(|n| *n > 0);
+            if selected != profile || elapsed.is_none() || words.next().is_some() || summary_seen {
+                return Err("duplicate or malformed performance summary".to_owned());
+            }
+            summary_seen = true;
+            continue;
+        }
         if field.starts_with("artifact-bytes=") {
             continue;
         }

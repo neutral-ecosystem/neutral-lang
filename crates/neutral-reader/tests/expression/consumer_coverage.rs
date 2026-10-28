@@ -460,3 +460,76 @@ mod dependency_regions;
 
 #[path = "selection.rs"]
 mod selection;
+
+/// Empty dependency sets still enforce positive controls and the full owner/index lookup charge.
+#[test]
+fn empty_dependencies_keep_independent_controls_and_literal_lookup_work() {
+    let mut ir = empty();
+    for (index, name) in ["alpha", "beta", "owner"].into_iter().enumerate() {
+        scalar(&mut ir, "m", name, 10 + index as u64 * 20);
+    }
+    let project = authority(ir);
+    let owner = symbol("m", "owner");
+    let cancel = CancellationToken::new();
+    // Five owner-name bytes, three declarations, no templates, one lookup reservation.
+    let exact_work = 9;
+    for (policy, success) in [
+        (
+            ExpressionInspectionLimits {
+                work: exact_work,
+                ..Default::default()
+            },
+            true,
+        ),
+        (
+            ExpressionInspectionLimits {
+                work: exact_work - 1,
+                ..Default::default()
+            },
+            false,
+        ),
+        (
+            ExpressionInspectionLimits {
+                work: 0,
+                ..Default::default()
+            },
+            false,
+        ),
+        (
+            ExpressionInspectionLimits {
+                edges: 0,
+                ..Default::default()
+            },
+            false,
+        ),
+        (
+            ExpressionInspectionLimits {
+                output_bytes: 0,
+                ..Default::default()
+            },
+            false,
+        ),
+    ] {
+        let result = project.dependencies(&owner, policy, &cancel);
+        assert_eq!(result.is_ok(), success);
+        if success {
+            assert_eq!(result.unwrap().edges(), []);
+        } else {
+            assert_eq!(result.unwrap_err(), ExpressionReadError::Limit);
+        }
+    }
+    let project = authority(expanded());
+    let owner = symbol("m", "result");
+    // Six name bytes, one declaration, one template, one lookup and one literal-tree visit.
+    for (work, success) in [(10, true), (9, false)] {
+        let result = project.dependencies(
+            &owner,
+            ExpressionInspectionLimits {
+                work,
+                ..Default::default()
+            },
+            &cancel,
+        );
+        assert_eq!(result.is_ok(), success);
+    }
+}

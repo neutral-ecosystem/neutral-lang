@@ -450,10 +450,48 @@ fn performance_requires_real_profiler_and_matching_profile() {
     }
     replace_report(directory, &mut receipt, "benchmark.stdout", &expanded);
     assert!(validate_reports(&receipt, directory, &settings).is_ok());
+    let with_summary = format!("{expanded}PASS performance profile=release total-ns=1000\n");
+    replace_report(directory, &mut receipt, "benchmark.stdout", &with_summary);
+    assert!(validate_reports(&receipt, directory, &settings).is_ok());
+    for summary in [
+        "profile=extended-soak total-ns=1000",
+        "profile=release total-ns=0",
+        "profile=release total-ns=bad",
+        "profile=release",
+        "profile=release total-ns=1000 extra",
+    ] {
+        replace_report(
+            directory,
+            &mut receipt,
+            "benchmark.stdout",
+            &format!("{expanded}PASS performance {summary}\n"),
+        );
+        assert!(
+            validate_reports(&receipt, directory, &settings).is_err(),
+            "{summary}"
+        );
+    }
+    replace_report(
+        directory,
+        &mut receipt,
+        "benchmark.stdout",
+        &format!("{with_summary}PASS performance profile=release total-ns=1000\n"),
+    );
+    assert!(validate_reports(&receipt, directory, &settings).is_err());
     check_performance_boundaries(directory, &mut receipt, &settings, &expanded);
     receipt.gate = QualityGate::PerformanceSoak;
     assert!(validate_reports(&receipt, directory, &settings).is_err());
+    *receipt.invocations[0].arguments.last_mut().unwrap() = "extended-soak".to_owned();
+    replace_report(
+        directory,
+        &mut receipt,
+        "benchmark.stdout",
+        &format!("{expanded}PASS performance profile=extended-soak total-ns=1000\n"),
+    );
+    assert!(validate_reports(&receipt, directory, &settings).is_ok());
     receipt.gate = QualityGate::PerformanceRelease;
+    *receipt.invocations[0].arguments.last_mut().unwrap() = "release".to_owned();
+    replace_report(directory, &mut receipt, "benchmark.stdout", &with_summary);
     replace_report(
         directory,
         &mut receipt,

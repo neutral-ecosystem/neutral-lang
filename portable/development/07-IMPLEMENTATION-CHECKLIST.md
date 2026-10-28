@@ -21,6 +21,15 @@ formatter, cache, independent reader/probe and tool harnesses use `/3` only;
 877 tests and CI pass. Fresh coverage/mutation/fuzz/controlled-performance
 qualification and unrelated Stage 8–9 gates remain open.
 
+Qualification repair (28-10-2026): a focused rerun catches all 32 survivors from
+the latest full mutation run. Added tests pin import classification, raw decoder
+policy/tag rejection, standalone restrictions and literal dependency-budget costs.
+Fixture verification now recognizes registered suite inputs; refreshed index pins
+cover additive registrations without changing original reviewed case records.
+Performance report validation accepts and checks the harness's final profile
+summary. These repairs do not replace fresh full mutation, coverage, fuzz and
+soak evidence on final unchanged inputs; Task 11 and activation remain open.
+
 Structure follow-up (25-10-2026): compiler expression and nominal modules now
 follow their physical ownership; core/vocabulary responsibilities are split with
 unchanged public root APIs. Active test inventories distinguish historical

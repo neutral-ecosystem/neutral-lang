@@ -142,3 +142,43 @@ fn graph_module_segments_require_letters_after_underscores() {
     let source = format!("neu \"1.0\"\nmodule {name}\n");
     assert!(scan_graph_source(source.as_bytes(), name, 1).is_ok());
 }
+
+/// Lexer failures distinguish import acquisition/re-export lines from ordinary malformed expressions.
+#[test]
+fn unsupported_import_symbols_keep_their_forbidden_classification() {
+    for (line, expected) in [
+        (
+            "  import foo.bar as dep",
+            GraphSyntaxErrorKind::ForbiddenImport,
+        ),
+        (
+            "\tpublic import foo/bar as dep",
+            GraphSyntaxErrorKind::ForbiddenImport,
+        ),
+        (
+            "public num value = 1 % 2",
+            GraphSyntaxErrorKind::InvalidSyntax,
+        ),
+    ] {
+        for newline in ["\n", "\r\n", "\r"] {
+            let source = format!("neu \"1.0\"{newline}module example{newline}{line}{newline}");
+            let error = scan_graph_source(source.as_bytes(), "example", 1)
+                .err()
+                .unwrap();
+            assert_eq!(error.kind, expected, "{line:?} {newline:?}");
+        }
+    }
+}
+
+/// The shortest complete import has exactly four tokens; missing aliases still fail safely.
+#[test]
+fn minimum_import_tuple_accepts_exactly_target_as_alias() {
+    let source = b"neu \"1.0\"\nmodule example\nimport other as dep\n";
+    let syntax = scan_graph_source(source, "example", 1).ok().unwrap();
+    assert_eq!(syntax.imports[0].target, "other");
+    assert_eq!(syntax.imports[0].alias, "dep");
+    for statement in ["import", "import other", "import other as"] {
+        let source = format!("neu \"1.0\"\nmodule example\n{statement}\n");
+        assert!(scan_graph_source(source.as_bytes(), "example", 1).is_err());
+    }
+}

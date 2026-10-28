@@ -4,6 +4,37 @@
 
 use super::*;
 
+/// Suite-owned source inputs are registered too, but registration alone is not a passing test.
+#[test]
+fn automation_fixture_suite_inputs_are_registered_and_preflighted() {
+    let directory = neutral_test_support::TestDirectory::new().unwrap();
+    let root = directory.path();
+    fs::write(root.join("fixture.neu"), "fixture bytes").unwrap();
+    fs::write(root.join("oracle.toml"), "accepted = true\n").unwrap();
+    let case = "[[case]]\nfixture='fixture.neu'\nfixture_sha256='stale'\noracle='oracle.toml'\noracle_sha256='stale'\n";
+    fs::write(root.join("extra.neu"), "fixture bytes").unwrap();
+    let mut document = manifest_updates::parse(
+        &format!("{case}[[suite]]\nid='extra'\ninput_files=['extra.neu']\n"),
+        "manifest",
+    )
+    .unwrap();
+    let registered = sync_manifest(root, &mut document, true, &mut SyncSummary::default()).unwrap();
+    assert!(registered.contains("extra.neu"));
+    for inputs in [
+        "['missing.neu']",
+        "['../escape.neu']",
+        "[42]",
+        "'extra.neu'",
+    ] {
+        let mut document = manifest_updates::parse(
+            &format!("{case}[[suite]]\ninput_files={inputs}\n"),
+            "manifest",
+        )
+        .unwrap();
+        assert!(sync_manifest(root, &mut document, true, &mut SyncSummary::default()).is_err());
+    }
+}
+
 /// Creates a uniquely owned temporary fixture tree for one regression.
 fn tree(label: &str) -> PathBuf {
     let root = std::env::temp_dir().join(format!(
