@@ -127,3 +127,18 @@ fn graph_names_require_valid_segments_and_exclude_reserved_words() {
         assert!(!valid_graph_name(name), "{name}");
     }
 }
+
+/// Graph validation refines captured snake names rather than widening its frozen source grammar.
+#[test]
+fn graph_module_segments_require_letters_after_underscores() {
+    for name in ["a_2", "a::child_2"] {
+        let source = format!("neu \"1.0\"\nmodule {name}\n");
+        let error = scan_graph_source(source.as_bytes(), name, 1)
+            .err()
+            .expect("numeric underscore segments violate MODULE-GRAPH");
+        assert_eq!(error.kind, GraphSyntaxErrorKind::InvalidSyntax);
+    }
+    let name = "a1_b2::child_c3";
+    let source = format!("neu \"1.0\"\nmodule {name}\n");
+    assert!(scan_graph_source(source.as_bytes(), name, 1).is_ok());
+}

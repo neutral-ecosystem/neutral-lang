@@ -448,6 +448,7 @@ fn automation_hashes_snapshot_bytes_deterministically() {
 /// Quality status rendering is deterministic and contains release state.
 fn automation_renders_quality_approval_status() {
     let approval = crate::quality::ledger::QualityApproval {
+        schema_version: 1,
         release: "v1.0.0".to_owned(),
         commit: "0123456789012345678901234567890123456789".to_owned(),
         status: "approved".to_owned(),

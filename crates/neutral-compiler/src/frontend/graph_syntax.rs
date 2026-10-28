@@ -325,7 +325,8 @@ fn parse_module_name(tokens: &[Token]) -> Result<Option<String>, GraphSyntaxErro
     Ok(Some(result))
 }
 
-/// Applies the exact ASCII snake-name grammar and excludes language keywords.
+/// Applies MODULE-GRAPH's letter-leading underscore segments and excludes language keywords.
+/// Capture's envelope predicate is broader; accepting an ID there does not validate graph syntax.
 fn valid_graph_name(value: &str) -> bool {
     value.split('_').all(|part| {
         let mut bytes = part.bytes();

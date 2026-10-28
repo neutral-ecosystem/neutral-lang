@@ -42,8 +42,7 @@ use configuration::{
     configuration_value, is_safe_relative_path, repository_directories, rustc_command,
 };
 use environment::{
-    bootstrap, json_string, print_environment_manifest, verify_complete_environment,
-    verify_environment,
+    bootstrap, print_environment_manifest, verify_complete_environment, verify_environment,
 };
 use interface::{
     BuildProfile, CiProfile, FuzzMode, PerformanceProfile, PortableAction, QualityAction,

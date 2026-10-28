@@ -1,22 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! quality / ledger responsibilities for repository automation.
+//! Typed, commit-bound release evaluations and immutable quality approvals.
+//!
+//! Records are parsed once, checked against their document schema, and compared
+//! with current policy digests before approval. Existing approvals are never
+//! rewritten; only the human-readable ledger is regenerated from retained records.
 
 use crate::constants::flags;
 use crate::{
     Path, PathBuf, QualityProfile, SystemTime, UNIX_EPOCH, check_quality_inventory,
-    collect_named_files, command_output, configuration_value, constants, fs, html_spdx_marker,
-    is_sha256, json_string, line_spdx_marker, project_license, quality, quality_evidence,
-    quality_profile_name, read_workspace_text, require_clean_checkout, require_main_head_checkout,
-    result_root, rustc_command, sha256_file, validate_semver, verify_release_approval,
+    collect_named_files, command_output, constants, fs, html_spdx_marker, is_sha256,
+    line_spdx_marker, project_license, quality, quality_evidence, quality_profile_name,
+    read_workspace_text, require_clean_checkout, require_main_head_checkout, result_root,
+    rustc_command, sha256_file, validate_semver, verify_release_approval,
     workspace_package_version, workspace_root,
 };
+use serde::{Deserialize, Serialize};
 use std::fmt::Write as _;
 
+/// Schema of quality evaluations and approval records, independent of package versions.
+const QUALITY_RECORD_SCHEMA_VERSION: u32 = 1;
+
 /// One immutable release-quality record.
-#[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Debug, Deserialize, Serialize, Eq, Ord, PartialEq, PartialOrd)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct QualityApproval {
-    /// Release identifier without a `v` prefix.
+    /// Exact record schema.
+    pub(crate) schema_version: u32,
+    /// Release identifier with its `v` prefix.
     pub(crate) release: String,
     /// Exact approved Git commit.
     pub(crate) commit: String,
@@ -28,6 +39,41 @@ pub(crate) struct QualityApproval {
     pub(crate) evaluation: String,
     /// SHA-256 of the quality-gate configuration used for evaluation.
     pub(crate) quality_gates_sha256: String,
+}
+
+/// Source and policy authority retained after a successful quality evaluation.
+#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+struct QualityEvaluation {
+    /// Exact record schema.
+    schema_version: u32,
+    /// Evaluated checkout.
+    commit: String,
+    /// Selected quality profile.
+    profile: String,
+    /// Evaluation outcome.
+    status: String,
+    /// Compiler identity reported during evaluation.
+    toolchain: String,
+    /// Exact inventory policy bytes.
+    quality_manifest_sha256: String,
+    /// Exact measurement policy bytes.
+    quality_gates_sha256: String,
+}
+
+/// Serializes TOML with the owning project's license marker and no manual string escaping.
+fn quality_record_toml(record: &impl Serialize, license: &str) -> Result<String, String> {
+    let body = toml::to_string_pretty(record)
+        .map_err(|error| format!("could not serialize quality record: {error}"))?;
+    Ok(format!("{}\n\n{body}", line_spdx_marker(license)))
+}
+
+/// Rejects unknown document revisions before using their release authority.
+fn check_record_schema(schema: u32) -> Result<(), String> {
+    if schema != QUALITY_RECORD_SCHEMA_VERSION {
+        return Err(format!("unsupported quality record schema: {schema}"));
+    }
+    Ok(())
 }
 
 /// Runs a quality profile and writes a deterministic commit-bound evaluation.
@@ -47,14 +93,18 @@ pub(crate) fn evaluate_quality(profile: QualityProfile) -> Result<(), String> {
     let manifest_sha256 = sha256_file(&root.join(constants::QUALITY_MANIFEST_FILE))?;
     let quality_gates_sha256 = sha256_file(&root.join(constants::QUALITY_GATES_FILE))?;
     let toolchain = command_output(&rustc_command()?, &[flags::VERSION])?;
-    let license_marker = line_spdx_marker(&project_license(&root)?);
+    let record = QualityEvaluation {
+        schema_version: QUALITY_RECORD_SCHEMA_VERSION,
+        commit,
+        profile: profile_name.to_owned(),
+        status: "pass".to_owned(),
+        toolchain,
+        quality_manifest_sha256: manifest_sha256,
+        quality_gates_sha256,
+    };
     fs::write(
         &output,
-        format!(
-            "{license_marker}\n\nschema_version = 1\ncommit = \"{}\"\nprofile = \"{profile_name}\"\nstatus = \"pass\"\ntoolchain = \"{}\"\nquality_manifest_sha256 = \"{manifest_sha256}\"\nquality_gates_sha256 = \"{quality_gates_sha256}\"\n",
-            json_string(&commit),
-            json_string(&toolchain)
-        ),
+        quality_record_toml(&record, &project_license(&root)?)?,
     )
     .map_err(|error| format!("could not write {}: {error}", output.display()))?;
     crate::output::file("quality evaluation", &output);
@@ -86,18 +136,15 @@ pub(crate) fn approve_quality_release(release: &str) -> Result<(), String> {
             evaluation.display()
         )
     })?;
-    if configuration_value(&evaluation_content, "commit").as_deref() != Some(commit.as_str())
-        || configuration_value(&evaluation_content, "profile").as_deref() != Some("release")
-        || configuration_value(&evaluation_content, "status").as_deref() != Some("pass")
-    {
+    let evaluated: QualityEvaluation =
+        crate::configuration::parse(&evaluation_content, &evaluation.display().to_string())?;
+    check_record_schema(evaluated.schema_version)?;
+    if evaluated.commit != commit || evaluated.profile != "release" || evaluated.status != "pass" {
         return Err("release evaluation does not identify a passing current HEAD".to_owned());
     }
-    let evaluated_manifest = configuration_value(&evaluation_content, "quality_manifest_sha256")
-        .ok_or_else(|| "release evaluation has no quality-manifest digest".to_owned())?;
-    let evaluated_gates = configuration_value(&evaluation_content, "quality_gates_sha256")
-        .ok_or_else(|| "release evaluation has no quality-gate digest".to_owned())?;
-    if evaluated_manifest != sha256_file(&root.join(constants::QUALITY_MANIFEST_FILE))?
-        || evaluated_gates != sha256_file(&root.join(constants::QUALITY_GATES_FILE))?
+    if evaluated.quality_manifest_sha256
+        != sha256_file(&root.join(constants::QUALITY_MANIFEST_FILE))?
+        || evaluated.quality_gates_sha256 != sha256_file(&root.join(constants::QUALITY_GATES_FILE))?
     {
         return Err(
             "quality policy changed after evaluation; rerun the release evaluation".to_owned(),
@@ -127,14 +174,18 @@ pub(crate) fn approve_quality_release(release: &str) -> Result<(), String> {
         return Ok(());
     }
     quality_evidence::retain()?;
-    let quality_gates_sha256 = evaluated_gates;
-    let license_marker = line_spdx_marker(&project_license(&root)?);
+    let approval = QualityApproval {
+        schema_version: QUALITY_RECORD_SCHEMA_VERSION,
+        release: format!("v{version}"),
+        commit,
+        status: "approved".to_owned(),
+        approved_at: approved_at.to_string(),
+        evaluation: evaluation_relative.to_string_lossy().into_owned(),
+        quality_gates_sha256: evaluated.quality_gates_sha256,
+    };
     fs::write(
         &record,
-        format!(
-            "{license_marker}\n\nschema_version = 1\nrelease = \"v{version}\"\ncommit = \"{commit}\"\nstatus = \"approved\"\napproved_at = \"{approved_at}\"\nevaluation = \"{}\"\nquality_gates_sha256 = \"{quality_gates_sha256}\"\n",
-            json_string(&evaluation_relative.to_string_lossy())
-        ),
+        quality_record_toml(&approval, &project_license(&root)?)?,
     )
     .map_err(|error| format!("could not write {}: {error}", record.display()))?;
     render_quality_status()?;
@@ -219,18 +270,9 @@ pub(crate) fn read_quality_approvals() -> Result<Vec<QualityApproval>, String> {
     for path in records {
         let content = fs::read_to_string(&path)
             .map_err(|error| format!("could not read {}: {error}", path.display()))?;
-        let field = |name: &str| {
-            configuration_value(&content, name)
-                .ok_or_else(|| format!("quality approval {} has no {name}", path.display()))
-        };
-        let approval = QualityApproval {
-            release: field("release")?,
-            commit: field("commit")?,
-            status: field("status")?,
-            approved_at: field("approved_at")?,
-            evaluation: field("evaluation")?,
-            quality_gates_sha256: field("quality_gates_sha256")?,
-        };
+        let approval: QualityApproval =
+            crate::configuration::parse(&content, &path.display().to_string())?;
+        check_record_schema(approval.schema_version)?;
         let directory_release = path
             .parent()
             .and_then(Path::file_name)
@@ -324,3 +366,7 @@ pub(crate) fn quality_approval_date(value: &str) -> Result<String, String> {
     }
     Ok(format!("{day_of_month:02}-{month:02}-{year:04}"))
 }
+
+#[cfg(test)]
+#[path = "../../tests/unit/quality_ledger.rs"]
+mod tests;

@@ -11,7 +11,7 @@ fn json_strings_escape_host_text() {
         ("a\nb", "a\\nb"),
         ("\"\\", "\\\"\\\\"),
     ] {
-        assert_eq!(crate::json_string(source), expected);
+        assert_eq!(crate::runtime::environment::json_string(source), expected);
     }
 }
 

@@ -5,6 +5,27 @@
 use super::*;
 use crate::constants::flags;
 
+/// Review report for package metadata preparation; contract versions remain independent.
+#[derive(serde::Serialize)]
+struct VersionPreparationReport<'a> {
+    /// Generated report schema.
+    schema_version: u32,
+    /// Previous workspace package version.
+    current: &'a str,
+    /// Requested workspace package version.
+    requested: &'a str,
+    /// Reserved list of separately derived updates; currently empty.
+    derived_updates: [String; 0],
+    /// Exact frozen contract manifest digest.
+    contract_freeze_sha256: &'a str,
+    /// Preparation does not edit frozen contracts.
+    frozen_contracts_changed: bool,
+    /// Ordered review actions.
+    actions: [&'static str; 3],
+    /// Publication requires separate review.
+    status: &'static str,
+}
+
 /// Executes the stable version command family.
 pub(super) fn version(action: VersionAction) -> Result<(), String> {
     match action {
@@ -186,12 +207,20 @@ pub(super) fn prepare_version(requested: &str) -> Result<(), String> {
     let output = directory.join(format!("prepare-{requested}.json"));
     fs::write(
         &output,
-        format!(
-            "{{\n  \"schema_version\": 1,\n  \"current\": \"{}\",\n  \"requested\": \"{}\",\n  \"derived_updates\": [],\n  \"contract_freeze_sha256\": \"{}\",\n  \"frozen_contracts_changed\": false,\n  \"actions\": [\n    \"edit-workspace-package-version\",\n    \"run-version-check\",\n    \"review\"\n  ],\n  \"status\": \"review-required\"\n}}\n",
-            json_string(&current),
-            json_string(requested),
-            freeze_digest
-        ),
+        crate::runtime::json::pretty(&VersionPreparationReport {
+            schema_version: 1,
+            current: &current,
+            requested,
+            derived_updates: [],
+            contract_freeze_sha256: &freeze_digest,
+            frozen_contracts_changed: false,
+            actions: [
+                "edit-workspace-package-version",
+                "run-version-check",
+                "review",
+            ],
+            status: "review-required",
+        })?,
     )
     .map_err(|error| format!("could not write {}: {error}", output.display()))?;
     crate::release::version_update::apply(&root, &changes)?;
@@ -535,3 +564,7 @@ pub(super) fn sha256_hex(bytes: &[u8]) -> String {
     }
     output
 }
+
+#[cfg(test)]
+#[path = "../tests/unit/version_reports.rs"]
+mod report_tests;

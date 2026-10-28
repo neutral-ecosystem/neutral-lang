@@ -1,15 +1,34 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//! commands / portable responsibilities for repository automation.
+//! Installation, verification and archival snapshots of reviewed portable plans.
+//!
+//! Installation and snapshot publication use staging directories; validation and
+//! digest checks precede their final rename. Generated migration reports describe
+//! the snapshot and do not authorize a release or modify frozen contract inputs.
 
 use crate::{
     BTreeMap, Component, Path, PathBuf, PortableAction, check_portable_traceability_at,
     collect_regular_files, configuration_section, configuration_value, constants,
-    ensure_no_portable_archive_dependencies, fs, is_sha256, json_string, line_spdx_marker,
-    markdown_link_exists, markdown_link_targets, project_license, read_workspace_text, result_root,
-    sha256_hex, unique_generated_directory, workspace_root,
+    ensure_no_portable_archive_dependencies, fs, is_sha256, line_spdx_marker, markdown_link_exists,
+    markdown_link_targets, project_license, read_workspace_text, result_root, sha256_hex,
+    unique_generated_directory, workspace_root,
 };
 use std::fmt::Write as _;
+
+/// Review metadata published alongside an immutable portable snapshot.
+#[derive(serde::Serialize)]
+struct PortableMigrationReport<'a> {
+    /// Generated report schema.
+    schema_version: u32,
+    /// Snapshot tree digest.
+    tree_sha256: &'a str,
+    /// Number of snapshotted files.
+    file_count: usize,
+    /// Planned successor series, empty when none is configured.
+    next_series: &'a str,
+    /// Snapshot creation does not approve a migration.
+    status: &'static str,
+}
 
 /// Executes the active portable lifecycle command family.
 pub(crate) fn portable(action: PortableAction) -> Result<(), String> {
@@ -416,11 +435,14 @@ pub(crate) fn snapshot_portable() -> Result<(), String> {
     fs::write(partial.join("manifest.sha256"), &manifest)
         .map_err(|error| format!("could not write portable snapshot manifest: {error}"))?;
     let lifecycle = read_workspace_text(&root, constants::PORTABLE_LIFECYCLE_FILE)?;
-    let report = format!(
-        "{{\n  \"schema_version\": 1,\n  \"tree_sha256\": \"{tree_digest}\",\n  \"file_count\": {},\n  \"next_series\": \"{}\",\n  \"status\": \"review-required\"\n}}\n",
-        files.len(),
-        json_string(&configuration_value(&lifecycle, "next_series").unwrap_or_default())
-    );
+    let next_series = configuration_value(&lifecycle, "next_series").unwrap_or_default();
+    let report = crate::runtime::json::pretty(&PortableMigrationReport {
+        schema_version: 1,
+        tree_sha256: &tree_digest,
+        file_count: files.len(),
+        next_series: &next_series,
+        status: "review-required",
+    })?;
     fs::write(partial.join("migration-report.json"), report)
         .map_err(|error| format!("could not write portable migration report: {error}"))?;
     fs::rename(&partial, &output).map_err(|error| {
@@ -455,3 +477,7 @@ pub(crate) fn portable_digest_records(root: &Path, files: &[PathBuf]) -> Result<
     }
     Ok(records)
 }
+
+#[cfg(test)]
+#[path = "../../tests/unit/portable_reports.rs"]
+mod report_tests;

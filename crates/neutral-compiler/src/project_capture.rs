@@ -946,7 +946,8 @@ fn valid_source_id(value: &str) -> bool {
     !value.is_empty() && !value.chars().any(char::is_control)
 }
 
-/// Checks one exact qualified snake-case logical module ID.
+/// Checks the captured envelope's qualified snake-case spelling, before source graph validation.
+/// The graph contract additionally requires a letter after each underscore and excludes keywords.
 fn valid_module_id(value: &str) -> bool {
     !value.is_empty() && value.split("::").all(is_snake_name)
 }
