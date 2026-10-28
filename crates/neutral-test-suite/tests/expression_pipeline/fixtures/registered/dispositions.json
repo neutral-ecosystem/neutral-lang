@@ -1,0 +1,60 @@
+{
+  "schema": "neutral.headless-case-dispositions/1",
+  "blocked_cases": [
+    {
+      "id": "old-reader",
+      "reason": "Historical reader implementation excluded by the approved latest-only development policy; retained oracle data is not a passing execution."
+    },
+    {
+      "id": "old-authoring",
+      "reason": "Historical authoring implementation excluded by the approved latest-only development policy; retained oracle data is not a passing execution."
+    }
+  ],
+  "blocked_authoring_vectors": [
+    {
+      "id": "deferred-guard",
+      "family": "valid",
+      "reason": "Separate authoring/editable-model implementation gate; no production GUI or model-projection comparison is claimed by headless qualification."
+    },
+    {
+      "id": "public-template",
+      "family": "valid",
+      "reason": "Separate authoring/editable-model implementation gate; no production GUI or model-projection comparison is claimed by headless qualification."
+    },
+    {
+      "id": "unicode-byte-mapping",
+      "family": "valid",
+      "reason": "Separate authoring/editable-model implementation gate; no production GUI or model-projection comparison is claimed by headless qualification."
+    },
+    {
+      "id": "unknown-model-field",
+      "family": "invalid",
+      "reason": "Separate authoring/editable-model implementation gate; no production GUI or model-projection comparison is claimed by headless qualification."
+    },
+    {
+      "id": "old-model-profile",
+      "family": "invalid",
+      "reason": "Separate authoring/editable-model implementation gate; no production GUI or model-projection comparison is claimed by headless qualification."
+    },
+    {
+      "id": "orphan-input",
+      "family": "invalid",
+      "reason": "Separate authoring/editable-model implementation gate; no production GUI or model-projection comparison is claimed by headless qualification."
+    },
+    {
+      "id": "orphan-binder",
+      "family": "invalid",
+      "reason": "Separate authoring/editable-model implementation gate; no production GUI or model-projection comparison is claimed by headless qualification."
+    },
+    {
+      "id": "duplicate-node-id",
+      "family": "invalid",
+      "reason": "Separate authoring/editable-model implementation gate; no production GUI or model-projection comparison is claimed by headless qualification."
+    },
+    {
+      "id": "missing-argument",
+      "family": "invalid",
+      "reason": "Separate authoring/editable-model implementation gate; no production GUI or model-projection comparison is claimed by headless qualification."
+    }
+  ]
+}

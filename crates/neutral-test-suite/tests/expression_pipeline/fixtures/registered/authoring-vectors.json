@@ -1,0 +1,434 @@
+{
+  "schema": "neutral.expression-authoring-vectors/1",
+  "status": "candidate-not-approved",
+  "scope": "Literal editable models, LF projections and UTF-8 mappings for the named subset; rejection messages belong to the independent oracle, not production diagnostic codes. Revision negotiation stays in cases.json.",
+  "valid": [
+    {
+      "id": "deferred-guard",
+      "model": {
+        "schema": "neutral.authoring-model/2",
+        "units": [
+          {
+            "id": "unit",
+            "source_id": "source:authoring-fixture",
+            "module": "example::expressions",
+            "imports": [],
+            "uses": [],
+            "declarations": [
+              {
+                "id": "enabled",
+                "kind": "external-input",
+                "name": "enabled",
+                "public": true,
+                "type": [
+                  "core",
+                  "bool"
+                ]
+              },
+              {
+                "id": "count",
+                "kind": "external-input",
+                "name": "count",
+                "public": true,
+                "type": [
+                  "core",
+                  "num"
+                ]
+              },
+              {
+                "id": "result",
+                "kind": "binding",
+                "name": "result",
+                "public": true,
+                "type": [
+                  "core",
+                  "num"
+                ],
+                "value": {
+                  "id": "conditional",
+                  "kind": "if",
+                  "type": [
+                    "core",
+                    "num"
+                  ],
+                  "guard": {
+                    "id": "guard",
+                    "kind": "external",
+                    "type": [
+                      "core",
+                      "bool"
+                    ],
+                    "target": "enabled"
+                  },
+                  "then": {
+                    "id": "addition",
+                    "kind": "binary",
+                    "type": [
+                      "core",
+                      "num"
+                    ],
+                    "operator": "+",
+                    "left": {
+                      "id": "operand",
+                      "kind": "external",
+                      "type": [
+                        "core",
+                        "num"
+                      ],
+                      "target": "count"
+                    },
+                    "right": {
+                      "id": "one",
+                      "kind": "num",
+                      "value": "1"
+                    }
+                  },
+                  "else": {
+                    "id": "zero",
+                    "kind": "num",
+                    "value": "0"
+                  }
+                }
+              }
+            ],
+            "comments": []
+          }
+        ],
+        "connections": []
+      },
+      "expected": {
+        "source_utf8": "neu \"1.0\"\nmodule example::expressions\n\npublic input bool enabled\npublic input num count\npublic num result = if enabled { count + 1 } else { 0 }\n",
+        "mappings": [
+          {
+            "model_id": "enabled",
+            "source_id": "source:authoring-fixture",
+            "start": 39,
+            "end": 64,
+            "role": "declaration"
+          },
+          {
+            "model_id": "count",
+            "source_id": "source:authoring-fixture",
+            "start": 65,
+            "end": 87,
+            "role": "declaration"
+          },
+          {
+            "model_id": "result",
+            "source_id": "source:authoring-fixture",
+            "start": 88,
+            "end": 143,
+            "role": "declaration"
+          },
+          {
+            "model_id": "conditional",
+            "source_id": "source:authoring-fixture",
+            "start": 108,
+            "end": 143,
+            "role": "value"
+          },
+          {
+            "model_id": "guard",
+            "source_id": "source:authoring-fixture",
+            "start": 111,
+            "end": 118,
+            "role": "value"
+          },
+          {
+            "model_id": "operand",
+            "source_id": "source:authoring-fixture",
+            "start": 121,
+            "end": 126,
+            "role": "value"
+          },
+          {
+            "model_id": "addition",
+            "source_id": "source:authoring-fixture",
+            "start": 121,
+            "end": 130,
+            "role": "value"
+          },
+          {
+            "model_id": "one",
+            "source_id": "source:authoring-fixture",
+            "start": 129,
+            "end": 130,
+            "role": "value"
+          },
+          {
+            "model_id": "zero",
+            "source_id": "source:authoring-fixture",
+            "start": 140,
+            "end": 141,
+            "role": "value"
+          }
+        ],
+        "source_sha256": "e97b4894ae02f94ab54b985a4cc955bc607062bc5a67aa63aa3d1c98b060abc1"
+      }
+    },
+    {
+      "id": "public-template",
+      "model": {
+        "schema": "neutral.authoring-model/2",
+        "units": [
+          {
+            "id": "unit",
+            "source_id": "source:authoring-fixture",
+            "module": "example::expressions",
+            "imports": [],
+            "uses": [],
+            "declarations": [
+              {
+                "id": "template",
+                "kind": "template",
+                "name": "Identity",
+                "public": true,
+                "parameters": [
+                  {
+                    "id": "parameter",
+                    "name": "value",
+                    "phase": "static",
+                    "type": [
+                      "core",
+                      "num"
+                    ],
+                    "default": null
+                  }
+                ],
+                "result_type": [
+                  "core",
+                  "num"
+                ],
+                "body": {
+                  "id": "body",
+                  "kind": "bound",
+                  "type": [
+                    "core",
+                    "num"
+                  ],
+                  "binder": "parameter"
+                }
+              },
+              {
+                "id": "result",
+                "kind": "binding",
+                "name": "result",
+                "public": true,
+                "type": [
+                  "core",
+                  "num"
+                ],
+                "value": {
+                  "id": "application",
+                  "kind": "instantiate",
+                  "type": [
+                    "core",
+                    "num"
+                  ],
+                  "target": "template",
+                  "arguments": [
+                    {
+                      "name": "value",
+                      "value": {
+                        "id": "argument",
+                        "kind": "num",
+                        "value": "1"
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "comments": []
+          }
+        ],
+        "connections": []
+      },
+      "expected": {
+        "source_utf8": "neu \"1.0\"\nmodule example::expressions\n\npublic template Identity(static num value) -> num {\n    value\n}\npublic num result = instantiate Identity(value: 1)\n",
+        "mappings": [
+          {
+            "model_id": "template",
+            "source_id": "source:authoring-fixture",
+            "start": 39,
+            "end": 102,
+            "role": "declaration"
+          },
+          {
+            "model_id": "body",
+            "source_id": "source:authoring-fixture",
+            "start": 95,
+            "end": 100,
+            "role": "value"
+          },
+          {
+            "model_id": "result",
+            "source_id": "source:authoring-fixture",
+            "start": 103,
+            "end": 153,
+            "role": "declaration"
+          },
+          {
+            "model_id": "application",
+            "source_id": "source:authoring-fixture",
+            "start": 123,
+            "end": 153,
+            "role": "value"
+          },
+          {
+            "model_id": "argument",
+            "source_id": "source:authoring-fixture",
+            "start": 151,
+            "end": 152,
+            "role": "value"
+          }
+        ],
+        "source_sha256": "6ea337e083c4d68859e799203befb769b2eec5411354f48e3f806d5ceacd61fe"
+      }
+    },
+    {
+      "id": "unicode-byte-mapping",
+      "model": {
+        "schema": "neutral.authoring-model/2",
+        "units": [
+          {
+            "id": "unit",
+            "source_id": "source:authoring-fixture",
+            "module": "example::expressions",
+            "imports": [],
+            "uses": [],
+            "declarations": [
+              {
+                "id": "result",
+                "kind": "binding",
+                "name": "result",
+                "public": true,
+                "type": [
+                  "core",
+                  "string"
+                ],
+                "value": {
+                  "id": "unicode",
+                  "kind": "string",
+                  "value": "héllo 🌍"
+                }
+              }
+            ],
+            "comments": []
+          }
+        ],
+        "connections": []
+      },
+      "expected": {
+        "source_utf8": "neu \"1.0\"\nmodule example::expressions\n\npublic string result = \"héllo 🌍\"\n",
+        "mappings": [
+          {
+            "model_id": "result",
+            "source_id": "source:authoring-fixture",
+            "start": 39,
+            "end": 75,
+            "role": "declaration"
+          },
+          {
+            "model_id": "unicode",
+            "source_id": "source:authoring-fixture",
+            "start": 62,
+            "end": 75,
+            "role": "value"
+          }
+        ],
+        "source_sha256": "94af059a465b6c95b905de93c279d77b61fb0ed30edd21fa380a7fdd691a082f"
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "id": "unknown-model-field",
+      "base": "deferred-guard",
+      "edit": [
+        [
+          "extra"
+        ],
+        true
+      ],
+      "expected_oracle_rejection": "model fields"
+    },
+    {
+      "id": "old-model-profile",
+      "base": "deferred-guard",
+      "edit": [
+        [
+          "schema"
+        ],
+        "neutral.authoring-model/1"
+      ],
+      "expected_oracle_rejection": "model profile"
+    },
+    {
+      "id": "orphan-input",
+      "base": "deferred-guard",
+      "edit": [
+        [
+          "units",
+          0,
+          "declarations",
+          2,
+          "value",
+          "guard",
+          "target"
+        ],
+        "missing"
+      ],
+      "expected_oracle_rejection": "external target"
+    },
+    {
+      "id": "orphan-binder",
+      "base": "public-template",
+      "edit": [
+        [
+          "units",
+          0,
+          "declarations",
+          0,
+          "body",
+          "binder"
+        ],
+        "missing"
+      ],
+      "expected_oracle_rejection": "bound scope"
+    },
+    {
+      "id": "duplicate-node-id",
+      "base": "deferred-guard",
+      "edit": [
+        [
+          "units",
+          0,
+          "declarations",
+          2,
+          "value",
+          "else",
+          "id"
+        ],
+        "one"
+      ],
+      "expected_oracle_rejection": "duplicate model ID"
+    },
+    {
+      "id": "missing-argument",
+      "base": "public-template",
+      "edit": [
+        [
+          "units",
+          0,
+          "declarations",
+          1,
+          "value",
+          "arguments"
+        ],
+        []
+      ],
+      "expected_oracle_rejection": "argument coverage"
+    }
+  ]
+}

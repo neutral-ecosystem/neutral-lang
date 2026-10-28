@@ -32,6 +32,7 @@ use neutral_vocabulary::{VocabularyLimits, composition::CompositionLimits};
 mod bounds;
 mod cache;
 mod consumer;
+mod identity_vectors;
 mod inspection;
 mod projection;
 mod registered;

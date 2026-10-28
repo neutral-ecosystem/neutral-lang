@@ -724,6 +724,17 @@ Slice 1 — consumer contract foundation:
   fuzz targets build with nightly; 14 mutation files resolve to 672 mutations.
   Scope registration does not renew campaign evidence or close the deferred gate.
 
+- [x] Qualify the registered headless source/identity/result corpus and fast
+  fault/bound/cache suites without claiming authoring or campaign completion.
+  Three unchanged complete baselines and six independent supplemental vectors
+  cross source compilation, independent decoding and all five identity partitions.
+  Literal results are checked against separate rational arithmetic; original
+  reviewed bytes remain unchanged. Every source case is an executable test or an
+  explicit historical exclusion; nine authoring vectors have named blockers.
+  All 958 tests, doctests, formatting and warning-free Clippy pass (28-10-2026).
+  Coverage, expanded mutation, fuzz and controlled release/soak measurements on
+  these final inputs are deferred to the user. Task 11 and activation stay open.
+
 Slice 2 — pure semantics and identity:
 
 - [ ] Implement one bounded typed expression model through source, compiler,

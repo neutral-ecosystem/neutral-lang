@@ -315,11 +315,33 @@ and all seven quality steps. Task 11 campaigns and `/3` activation remain separa
   all five sanitizer targets build with nightly. Fourteen reviewed mutation files
   resolve to 672 mutations. This registers scope, not a passing campaign; fresh
   receipts on these changed inputs remain required below.
-- [ ] Expand independent complete-project identity/result vectors as required by frozen activation rules without rewriting old reviewed bytes. Verify every registered case is tested or explicitly blocked, never counted as passed by file presence or oracle integrity alone.
-- [ ] Run focused unit/integration/conformance/property/security tests, exact/one-over controls, exhaustive observed reservation/cancellation sweeps, ordering/concurrent isolation, old-profile regressions and actual clean/cache tests against final unchanged inputs.
+- [x] Expand independent complete-project identity/result vectors as required by frozen activation rules without rewriting old reviewed bytes. Verify every registered case is tested or explicitly blocked, never counted as passed by file presence or oracle integrity alone.
+  Headless comparison (28-10-2026): three unchanged complete baselines and six
+  [supplemental source/identity/result vectors](../../../crates/neutral-test-suite/tests/expression_pipeline/fixtures/identity-supplement/README.md)
+  cross real compilation, independent wire decoding and all five identity APIs.
+  A separate Python implementation recomputes literal transcripts, complete frames
+  and rational results without production Neutral imports. Existing ten frozen
+  identity variations remain executable in the owning IR suite. The source-case
+  inventory requires 66 actual tests and two explicit historical exclusions;
+  nine authoring vectors are named blockers in the test-owned dispositions file.
+  Their oracle integrity is not claimed as production authoring conformance.
+- [x] Run focused unit/integration/conformance/property/security tests, exact/one-over controls, exhaustive observed reservation/cancellation sweeps, ordering/concurrent isolation, old-profile regressions and actual clean/cache tests against final unchanged inputs.
+  `cargo xtask test all` and `cargo xtask ci pr` pass 958 tests, zero skipped,
+  plus doctests. The owning compiler/model/decoder/reader/consumer/identity suites
+  execute their observed reservation/cancellation sweeps and independent bounds;
+  the real expression cache and changed vocabulary/source generations are tested.
+  Historical implementation execution remains excluded by the approved latest-only
+  policy; current-profile rejection tests remain active.
 - [ ] Run `cargo fmt --all`, full Clippy, `cargo xtask test all`, `cargo xtask ci pr`, nightly coverage, reviewed mutation, fuzz campaign and release/soak performance profiles. Inspect actual reports and failures; do not reuse evidence from earlier inputs, lower thresholds or remove scopes to pass.
+  Fast formatting/Clippy/test/CI checks pass. Long measurements are deliberately
+  deferred at the user's request; earlier receipts do not cover these changed inputs.
 - [ ] Update the checklist as each verified requirement is completed. Check this particular gate only when source-to-artifact retention, independent decoding/views, typed obligations, guarded dependencies, explicit prerequisite separation and binding/availability/failure reports all have passing production evidence.
-- [ ] Keep authoring/editable-model/GUI and broader profile activation gates honest: headless gate completion alone cannot satisfy their independent requirements. Report any remaining activation limitation explicitly. No source-profile default switch, release, commit or push is part of this plan.
+  The durable checklist records completed short qualification. Task 11 remains
+  open until fresh final-input campaigns and their actual reports pass review.
+- [x] Keep authoring/editable-model/GUI and broader profile activation gates honest: headless gate completion alone cannot satisfy their independent requirements. Report any remaining activation limitation explicitly. No source-profile default switch, release, commit or push is part of this plan.
+  Named authoring projections/rejections remain blocked on their separate service
+  implementation; headless tests cannot clear those gates. No default, language
+  profile, wire version or release state is changed by this qualification.
 
 ## Execution handoff
 

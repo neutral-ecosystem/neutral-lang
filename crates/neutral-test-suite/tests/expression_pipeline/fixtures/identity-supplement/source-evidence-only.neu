@@ -1,0 +1,8 @@
+neu "1.0"
+module example::expressions
+
+public input bool enabled
+public input num count
+
+public num result = if enabled { count + 1 } else { 0 }
+// retained source evidence

@@ -189,12 +189,45 @@ registered_cases! {
 #[test]
 fn integration_registered_source_inventory_has_no_omissions_or_duplicates() {
     let registry: J = serde_json::from_str(&input("cases.json")).unwrap();
+    let dispositions: J = serde_json::from_str(&input("dispositions.json")).unwrap();
+    let blocked: std::collections::BTreeSet<_> = dispositions["blocked_cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|entry| {
+            assert_ne!(entry["reason"].as_str().unwrap(), "");
+            entry["id"].as_str().unwrap()
+        })
+        .collect();
+    assert_eq!(
+        blocked.len(),
+        dispositions["blocked_cases"].as_array().unwrap().len()
+    );
+    let registered_ids: std::collections::BTreeSet<_> = registry["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|case| case["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        registered_ids.len(),
+        registry["cases"].as_array().unwrap().len()
+    );
+    assert!(blocked.is_subset(&registered_ids));
+    let oracles: J = serde_json::from_str(&input("results-v2.json")).unwrap();
+    let oracle_ids: std::collections::BTreeSet<_> = oracles["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|case| case["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(oracle_ids.len(), oracles["cases"].as_array().unwrap().len());
+    assert_eq!(registered_ids, oracle_ids);
     let active: Vec<_> = registry["cases"]
         .as_array()
         .unwrap()
         .iter()
-        .filter(|case| case.get("reader_profile").is_none())
-        .filter(|case| case.get("authoring_profile").is_none())
+        .filter(|case| !blocked.contains(case["id"].as_str().unwrap()))
         .map(|case| case["id"].as_str().unwrap())
         .collect();
     assert_eq!(active.len(), ACTIVE_CASE_IDS.len());
@@ -391,5 +424,36 @@ fn compare_identities(
                 .unwrap()
                 .identity(),
         expected["logical_identity_equal"].as_bool().unwrap()
+    );
+}
+
+/// Authoring vectors remain named blockers, not fake production passes from oracle self-checks.
+#[test]
+fn integration_registered_authoring_vectors_have_explicit_blocking_dispositions() {
+    let vectors: J = serde_json::from_str(&input("authoring-vectors.json")).unwrap();
+    let dispositions: J = serde_json::from_str(&input("dispositions.json")).unwrap();
+    let mut expected = std::collections::BTreeSet::new();
+    for family in ["valid", "invalid"] {
+        for vector in vectors[family].as_array().unwrap() {
+            assert!(expected.insert((family, vector["id"].as_str().unwrap())));
+        }
+    }
+    let records = dispositions["blocked_authoring_vectors"]
+        .as_array()
+        .unwrap();
+    let actual: std::collections::BTreeSet<_> = records
+        .iter()
+        .map(|record| {
+            assert_ne!(record["reason"].as_str().unwrap(), "");
+            (
+                record["family"].as_str().unwrap(),
+                record["id"].as_str().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(actual.len(), records.len(), "duplicate blocker");
+    assert_eq!(
+        actual, expected,
+        "every authoring case is explicitly blocked until its separate production gate"
     );
 }
