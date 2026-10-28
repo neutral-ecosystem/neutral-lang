@@ -1,0 +1,43 @@
+neu "1.0"
+module example
+
+public record Operation {
+    string name,
+}
+
+public record Result {
+    List<num> values,
+}
+
+public record Report {
+    bool supported = true,
+}
+
+public record Plan {
+    List<Ref<Operation>> prerequisites = [],
+    num value,
+}
+
+string private_note = "do-not-publish"
+public Operation producer = {
+    name: "compile",
+}
+public input bool enabled
+
+public Plan entry = {
+    prerequisites: [ref(producer)],
+    value: if enabled {
+        output<num>(ref(producer), Result, [
+                {
+                    kind: "field",
+                    name: "values"
+                },
+                {
+                    kind: "index",
+                    index: 1
+                },
+            ])
+    } else {
+        1 / 8
+    },
+}

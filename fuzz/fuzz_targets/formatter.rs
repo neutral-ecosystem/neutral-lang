@@ -3,22 +3,18 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 use neutral_core::CancellationToken;
-mod composition_support;
+mod expression_support;
+/// Capture and format arbitrary or header-preserving current source mutations.
 fn exercise(bytes: &[u8]) {
-    if let Some(captured) = composition_support::capture(bytes) {
+    if let Some(captured) = expression_support::capture(bytes) {
         let _ = neutral_compiler::format_expression_source(
             &captured,
-            "example",
+            expression_support::SOURCE_MODULE,
             &CancellationToken::new(),
         );
     }
 }
 fuzz_target!(|bytes: &[u8]| {
     exercise(bytes);
-    let mut seeded = include_bytes!("../seeds/composition-source.neu").to_vec();
-    let header = b"neu \"1.0\"\nmodule example\n".len();
-    for (original, replacement) in seeded[header..].iter_mut().zip(bytes) {
-        *original = *replacement;
-    }
-    exercise(&seeded);
+    exercise(&expression_support::mutated_source(bytes));
 });

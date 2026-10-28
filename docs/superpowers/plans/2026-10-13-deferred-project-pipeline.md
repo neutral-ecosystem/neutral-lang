@@ -308,7 +308,13 @@ and all seven quality steps. Task 11 campaigns and `/3` activation remain separa
 
 **Files:** `fuzz/fuzz_targets/{source,ir,probe,formatter}.rs`, appropriate shared expression harness modules, `config/quality-gates.toml`, benchmark phase registration, owning READMEs and `07-IMPLEMENTATION-CHECKLIST.md`.
 
-- [ ] Add expression source/decoder/consumer paths to existing fuzz harnesses, with runtime-owned registered seeds. Extend reviewed mutation targets to expression typing, guarded demand, restrictions, decoding and identity; old configured targets alone are not expression evidence. Keep thresholds unchanged.
+- [x] Add expression source/decoder/consumer paths to existing fuzz harnesses, with runtime-owned registered seeds. Extend reviewed mutation targets to expression typing, guarded demand, restrictions, decoding and identity; old configured targets alone are not expression evidence. Keep thresholds unchanged.
+  Registered on 28-10-2026: four runtime-owned source seeds drive current capture,
+  full-frame decoding, public dependencies/views, actual nominal entry probing
+  and explicit consumer binding/evaluation. Six deterministic fuzz-smoke tests pass;
+  all five sanitizer targets build with nightly. Fourteen reviewed mutation files
+  resolve to 672 mutations. This registers scope, not a passing campaign; fresh
+  receipts on these changed inputs remain required below.
 - [ ] Expand independent complete-project identity/result vectors as required by frozen activation rules without rewriting old reviewed bytes. Verify every registered case is tested or explicitly blocked, never counted as passed by file presence or oracle integrity alone.
 - [ ] Run focused unit/integration/conformance/property/security tests, exact/one-over controls, exhaustive observed reservation/cancellation sweeps, ordering/concurrent isolation, old-profile regressions and actual clean/cache tests against final unchanged inputs.
 - [ ] Run `cargo fmt --all`, full Clippy, `cargo xtask test all`, `cargo xtask ci pr`, nightly coverage, reviewed mutation, fuzz campaign and release/soak performance profiles. Inspect actual reports and failures; do not reuse evidence from earlier inputs, lower thresholds or remove scopes to pass.

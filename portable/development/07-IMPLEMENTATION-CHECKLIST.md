@@ -716,6 +716,14 @@ Slice 1 — consumer contract foundation:
   examples do not replace these requirements or complete later plan tasks.
   This gate remains open and `/3` is not activated.
 
+- [x] Register current expression source/decoder/consumer fuzz paths and
+  runtime-owned seeds; extend reviewed mutation scope without lowering thresholds.
+  Four source seeds cover guarded inputs/outputs, nested matching, short-circuit
+  demand and finite template expansion. Shared harness smoke tests exercise real
+  independent decoding, public probing and explicit consumer reports. All five
+  fuzz targets build with nightly; 14 mutation files resolve to 672 mutations.
+  Scope registration does not renew campaign evidence or close the deferred gate.
+
 Slice 2 — pure semantics and identity:
 
 - [ ] Implement one bounded typed expression model through source, compiler,

@@ -1,0 +1,47 @@
+neu "1.0"
+module example
+
+public record Result {
+    bool flag,
+}
+
+public variant Mode {
+    bool failed,
+    bool ready,
+}
+
+public input bool enabled
+public input bool other
+public input Mode choice
+public input Result producer
+
+public bool decision = if enabled {
+    match choice {
+        failed(ignored) => output<bool>(ref(producer), Result, [
+                {
+                    kind: "field",
+                    name: "flag"
+                },
+            ]),
+        ready(ignored) => other && (
+            output<bool>(ref(producer), Result, [
+                    {
+                        kind: "field",
+                        name: "flag"
+                    },
+                ]) || output<bool>(ref(producer), Result, [
+                    {
+                        kind: "field",
+                        name: "flag"
+                    },
+                ])
+        ),
+    }
+} else {
+    output<bool>(ref(producer), Result, [
+            {
+                kind: "field",
+                name: "flag"
+            },
+        ])
+}

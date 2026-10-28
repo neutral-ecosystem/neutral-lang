@@ -2,8 +2,12 @@
 //! Coverage-guided target for the complete current expression-project decoder.
 #![no_main]
 use libfuzzer_sys::fuzz_target;
-mod composition_support;
+mod expression_support;
 fuzz_target!(|bytes: &[u8]| {
-    let _ = composition_support::decode(bytes);
-    let _ = composition_support::decode(&composition_support::mutated_seed(bytes));
+    for input in [bytes, &expression_support::mutated_seed(bytes)] {
+        if let Some(project) = expression_support::decode(input) {
+            expression_support::inspect_public(&project);
+            let _ = expression_support::consumer_support::consume(&project, bytes);
+        }
+    }
 });

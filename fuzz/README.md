@@ -37,22 +37,30 @@ separate from the immutable released fixtures under `conformance/`. A confirmed
 finding is minimized first, then retained in the owning crate's deterministic
 regression suite when it represents a real defect.
 
-The vocabulary target exercises current captured composition contracts and their
-source/compiler/reader integration. All five targets use the current complete
-expression-project pipeline.
-`composition_support` supplies bounded capture controls and a reviewed source
-seed; wire/probe targets mutate a valid independently encoded successor frame so
-they reach contract/value/origin validation rather than only rejecting magic.
-Source fuzzing independently validates successful compilation and round trips.
-The vocabulary harness mutates a captured bundle with an exact lock, then drives
-source compilation and independent reading. Invalid mutations must fail before
-complete output. Transitive graph coverage and allocator-fault injection remain
-the responsibility of the deterministic tests and separate review.
-The campaign command supplies tracked seeds from
-`fuzz/seeds/vocabulary/` alongside the ignored mutable corpus. Run
-`cargo xtask fuzz smoke` for deterministic mutations, or select a nightly
-toolchain for `cargo xtask fuzz campaign` to run the configured per-target
-budget. An untraced runner is needed for LeakSanitizer; a ptraced sandbox's leak
-checker shutdown failure is an environment failure, not passing campaign evidence.
-If a system `ccache` wrapper points
-at a read-only cache, set `CCACHE_DISABLE=1` for that run.
+All targets exercise current boundaries: the vocabulary target checks captured
+bundle schemas; the other targets drive complete expression projects. Shared
+`expression_support` registers the [runtime-owned seeds](seeds/README.md), bounds
+source capture and generates valid complete frames for deep wire mutations.
+Source compilation must independently validate and round-trip. Successful wire
+decoding is followed by bounded public-view/guarded-dependency inspection and
+explicit consumer binding requests; the probe selects a real public nominal
+contract rather than mistaking a binding name for a type. Consumer outcomes cover
+selected/skipped outputs, supplied/missing/unavailable/failed states, malformed
+roots, duplicate/unknown keys and subsequent-request recovery. No target adds an
+executor or implicit input lookup.
+
+The mutation scope in `config/quality-gates.toml` includes current shared typing,
+guarded evaluation, consumer binding policy, restrictions, decoding, dependency
+accounting and expression logical-identity framing. Registration is not a passing
+campaign: changed harnesses, tests or scope require new source-bound receipts.
+Transitive graph coverage and allocator-fault injection remain the responsibility
+of the deterministic tests and separate review.
+
+The campaign command supplies tracked seeds from `fuzz/seeds/vocabulary/`
+alongside its ignored mutable corpus; expression sources are registered directly
+in the shared harness. Run `cargo xtask fuzz smoke` for deterministic coverage of
+these harness paths. Select nightly for `cargo xtask fuzz campaign` to run the
+configured per-target budget. An untraced runner is needed for LeakSanitizer; a
+ptraced sandbox's leak-checker shutdown failure is an environment failure, not
+passing campaign evidence. If a system `ccache` wrapper points at a read-only
+cache, set `CCACHE_DISABLE=1` for that run.

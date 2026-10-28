@@ -2,6 +2,8 @@
 
 //! Extended property, hostile-input, isolation, and boundary campaigns.
 
+mod fuzz_harness;
+
 use neutral_compiler::{
     CapturedExpressionProject, CapturedExpressionProjectRequest, CapturedProjectRequest,
     CapturedSourceInput, ProjectCaptureControls, ProjectCaptureLimitValues, ProjectCaptureLimits,

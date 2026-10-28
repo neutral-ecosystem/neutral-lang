@@ -129,6 +129,8 @@ fn reflow(source: &str, indent_width: usize) -> Result<String, String> {
                     line.push(' ');
                 }
             }
+            // Keep whitespace-only else continuations in the preceding statement.
+            '\r' | '\n' if line.trim() == "}" && starts_else(&source[start..]) => continue,
             '\r' | '\n' => {
                 if ch == '\r' && chars.peek().is_some_and(|(_, next)| *next == '\n') {
                     chars.next();
@@ -148,8 +150,13 @@ fn reflow(source: &str, indent_width: usize) -> Result<String, String> {
             }
             _ => {
                 if line.trim() == "}" {
-                    flush_line(&mut output, &mut line, line_depth, indent_width);
-                    line_depth = stack.len();
+                    if starts_else(&source[start..]) {
+                        line.truncate(line.trim_end().len());
+                        line.push(' ');
+                    } else {
+                        flush_line(&mut output, &mut line, line_depth, indent_width);
+                        line_depth = stack.len();
+                    }
                 }
                 line.push(ch);
             }
@@ -164,6 +171,13 @@ fn reflow(source: &str, indent_width: usize) -> Result<String, String> {
         output.pop();
     }
     Ok(output)
+}
+
+/// Recognizes the complete continuation keyword without merging declarations such as `elsewhere`.
+fn starts_else(tail: &str) -> bool {
+    tail.trim_start()
+        .strip_prefix("else")
+        .is_some_and(|tail| tail.starts_with(|ch: char| ch.is_whitespace() || ch == '{'))
 }
 
 /// Consumes one literal or comment as an exact byte span, shielding its punctuation from layout.

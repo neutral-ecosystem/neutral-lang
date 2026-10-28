@@ -157,6 +157,7 @@ dependencies = [
  "neutral-ir",
  "neutral-probe",
  "neutral-reader",
+ "neutral-semantics",
  "neutral-vocabulary",
 ]
 

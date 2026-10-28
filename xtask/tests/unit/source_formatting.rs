@@ -4,6 +4,22 @@
 
 use super::reflow;
 
+/// A top-level conditional's else belongs to the same statement as its preceding closing brace.
+#[test]
+fn source_layout_keeps_else_on_the_conditionals_closing_line() {
+    for source in [
+        "public num value = if enabled { 1 } else { 2 }\n",
+        "public num value = if enabled {\n1\n}\nelse {\n2\n}\n",
+        "public num value = if enabled { 1 }else{ 2 }\n",
+    ] {
+        let formatted = reflow(source, 4).unwrap();
+        assert!(formatted.contains("} else {"), "{formatted}");
+        assert_eq!(reflow(&formatted, 4).unwrap(), formatted);
+    }
+    let separate = reflow("record A {} elsewhere = 2\n", 4).unwrap();
+    assert!(separate.contains("}\nelsewhere"));
+}
+
 #[test]
 /// Expands source declarations and nested initializers while retaining final-member spelling.
 fn source_layout_expands_braces_and_is_idempotent() {

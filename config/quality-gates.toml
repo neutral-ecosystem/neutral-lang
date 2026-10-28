@@ -19,18 +19,27 @@ status = "latest-only-cutover-requires-new-measurement"
 
 [mutation]
 tool = "cargo-mutants"
-# Reviewed critical scope: syntax, shared semantic restrictions, wire, public
-# reference checks, and identity framing. This is not a whole-workspace campaign.
+# Reviewed critical scope: current expression typing, guarded evaluation, explicit
+# consumer binding policy, restrictions, transport, dependencies and logical identity.
+# These named critical slices are not a whole-workspace mutation campaign.
 critical_targets = [
     "crates/neutral-ir/src/language.rs",
     "crates/neutral-compiler/src/frontend/graph_syntax.rs",
+    "crates/neutral-semantics/src/validation/operators.rs",
+    "crates/neutral-semantics/src/validation/trees.rs",
+    "crates/neutral-semantics/src/evaluation/walk.rs",
+    "crates/neutral-semantics/src/evaluation/bindings.rs",
     "crates/neutral-vocabulary/src/composition/values.rs",
     "crates/neutral-encoding/src/expression/project.rs",
     "crates/neutral-reader/src/expression/dependencies.rs",
+    "crates/neutral-reader/src/consumer/expression.rs",
+    "crates/neutral-ir/src/project_identity/expression/logical.rs",
+    "crates/neutral-ir/src/project_identity/expression/contract.rs",
+    "crates/neutral-ir/src/project_identity/expression/trees.rs",
     "crates/neutral-ir/src/project_identity/framing.rs",
 ]
 minimum_caught_percent = 100
-status = "expanded-scope-requires-new-measurement"
+status = "expression-scope-registered-requires-new-measurement"
 
 [fuzz]
 tool = "cargo-fuzz"

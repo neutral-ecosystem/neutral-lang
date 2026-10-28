@@ -5,40 +5,38 @@
 use libfuzzer_sys::fuzz_target;
 use neutral_compiler::compile_expression_project;
 use neutral_core::CancellationToken;
-mod composition_support;
+mod expression_support;
 
+/// Successful compilation must survive independent validation, transport and consumer inspection.
 fn exercise(bytes: &[u8]) {
-    if let Some(captured) = composition_support::capture(bytes) {
+    if let Some(captured) = expression_support::capture(bytes) {
         let cancel = CancellationToken::new();
         if let Ok(ir) = compile_expression_project(&captured, &cancel) {
             let authority = neutral_reader::ValidatedExpressionProject::from_ir(
                 ir,
-                composition_support::semantic_limits(),
+                expression_support::semantic_limits(),
                 &cancel,
             );
-            if let Ok(authority) = authority {
-                let encoded =
-                    neutral_encoding::expression::encode_expression_project(&authority, &cancel)
-                        .unwrap();
-                let decoded = neutral_encoding::expression::decode_expression_project(
-                    &encoded,
-                    neutral_encoding::DecodeLimits::hard(),
-                    composition_support::semantic_limits(),
-                    &cancel,
-                )
-                .expect("compiled expression projects must independently round trip");
-                assert_eq!(decoded.ir(), authority.ir());
-            }
+            let authority =
+                authority.expect("compiled project must pass independent reader validation");
+            let encoded =
+                neutral_encoding::expression::encode_expression_project(&authority, &cancel)
+                    .unwrap();
+            let decoded = neutral_encoding::expression::decode_expression_project(
+                &encoded,
+                neutral_encoding::DecodeLimits::hard(),
+                expression_support::semantic_limits(),
+                &cancel,
+            )
+            .expect("compiled expression projects must independently round trip");
+            assert_eq!(decoded.ir(), authority.ir());
+            expression_support::inspect_public(&decoded);
+            let _ = expression_support::consumer_support::consume(&decoded, bytes);
         }
     }
 }
 
 fuzz_target!(|bytes: &[u8]| {
     exercise(bytes);
-    let mut seeded = include_bytes!("../seeds/composition-source.neu").to_vec();
-    let header = b"neu \"1.0\"\nmodule example\n".len();
-    for (original, replacement) in seeded[header..].iter_mut().zip(bytes) {
-        *original = *replacement;
-    }
-    exercise(&seeded);
+    exercise(&expression_support::mutated_source(bytes));
 });
